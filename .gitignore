@@ -10,3 +10,8 @@ venv/
 build/
 dist/
 *.egg-info/
+
+# M15 (P2-D13): the Claude Code CLI installed locally for the comparison's Claude arm.
+# The pin lives in evals/adr12/package.json; evals/adr12/reports/ is deliberately NOT
+# ignored, so AC-19's credential scan reads the report (AC-50).
+evals/adr12/node_modules/

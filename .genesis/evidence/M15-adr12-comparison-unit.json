@@ -1,0 +1,22 @@
+{
+  "task": "M15-adr12-comparison",
+  "gate": "unit",
+  "command": ".venv\\Scripts\\python.exe -m pytest tests/test_adr12_comparison.py -q",
+  "started_at": "2026-09-16T15:56:04.357Z",
+  "observed_at": "2026-09-16T15:56:10.324Z",
+  "exit_code": 0,
+  "signal": null,
+  "stdout": "..................................                                       [100%]\r\n34 passed in 5.22s\r\n",
+  "stderr": "",
+  "revision": {
+    "commit": "6cacf5e621162e799ad26a0066fc69e35d07ad2d",
+    "dirty": true
+  },
+  "source_hash": "ee9313ffb91608b860ee58229442555fa398300a89a27690e96e61ed38cd1a62",
+  "environment": {
+    "node": "v20.10.0",
+    "platform": "win32",
+    "arch": "x64"
+  },
+  "hash": "90e5917e80590b4a0c9f1ba80b251fed4afa92bc318c99d069409c05c29bf159"
+}

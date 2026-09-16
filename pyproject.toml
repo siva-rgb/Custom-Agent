@@ -25,6 +25,9 @@ test = ["pytest==9.1.1", "pytest-asyncio==1.4.0", "wheel==0.45.1", "cryptography
 examples = ["mcp==2.2.0"]
 # Optional telemetry (P2-D12, NFR-19): only agentsdk.telemetry imports these.
 otel = ["opentelemetry-api==1.44.0", "opentelemetry-sdk==1.44.0", "opentelemetry-exporter-otlp-proto-http==1.44.0"]
+# The ADR-12 comparison only (P2-D13, NFR-20): no module under agentsdk imports it, and the
+# Claude arm also needs the Claude Code CLI pinned in evals/adr12/package.json.
+eval = ["claude-agent-sdk==0.2.152"]
 
 [project.urls]
 Repository = "https://github.com/siva-rgb/Custom-Agent"

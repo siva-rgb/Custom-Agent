@@ -1,0 +1,6 @@
+# The comparison harness, never an SDK dependency (NFR-20).
+claude-agent-sdk==0.2.152
+#
+# The Claude arm also needs the Claude Code CLI, pinned in package.json beside this file
+# and installed locally (DECISION-05ee16ad):
+#   npm install --prefix evals/adr12

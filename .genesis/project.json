@@ -9,7 +9,7 @@
     "non_goals": [],
     "trust_boundary": "local repository",
     "created_at": "2026-09-05T14:48:57.894Z",
-    "updated_at": "2026-09-15T17:32:23.141Z"
+    "updated_at": "2026-09-16T16:25:47.551Z"
   },
   "policy": {
     "ponytail": "full",
@@ -23,11 +23,11 @@
     }
   },
   "lifecycle": {
-    "phase": "build",
-    "status": "active",
-    "active_task": "M15-adr12-comparison",
+    "phase": "verify",
+    "status": "ready",
+    "active_task": null,
     "blocker": null,
-    "next_action": "Run the task pre-flight."
+    "next_action": "Review completed work and choose the next bounded outcome."
   },
   "commands": {},
   "workflow": {
@@ -976,6 +976,22 @@
       "status": "accepted",
       "source": null,
       "recorded_at": "2026-09-15T17:32:22.994Z"
+    },
+    {
+      "id": "DECISION-05ee16ad",
+      "title": "M15: the Claude Code CLI is installed locally under evals/adr12 and pinned",
+      "text": "Owner decision 2026-09-16 at the M15 pre-flight. The Claude Agent SDK spawns the Claude Code CLI, which was not installed on this machine. The CLI is installed under evals/adr12 with npm, pinned to 2.1.267 in evals/adr12/package.json and its lock file, and the harness points the SDK at evals/adr12/node_modules/@anthropic-ai/claude-code/bin/claude.exe through ClaudeAgentOptions cli_path. Nothing is installed machine-wide, so a later global upgrade cannot change the comparison, and the pinned version is named in the report (FR-62). evals/adr12/node_modules is gitignored, while evals/adr12/reports stays visible so that the credential scan reads the report (AC-50). Rejected: a global npm install, which changes the machine and moves with any later upgrade.",
+      "status": "accepted",
+      "source": null,
+      "recorded_at": "2026-09-16T07:48:48.876Z"
+    },
+    {
+      "id": "DECISION-750df4c4",
+      "title": "M15 round 1 follow-ups carried into the next increment",
+      "text": "Three items from the M15 round 1 review are carried forward rather than fixed in M15, on the owner decision of 2026-09-16. None of them affects the delivered 72 row report, which was checked row by row. F1: the retries-from-settings and entry-count checkers in evals/adr12/tasks.py match their wanted digit as a bare substring, so an answer of 15 retries or 16 entries would pass although the fixture says 5 retries and 6 entries. Match the number as a whole word instead, before the comparison is ever run again, because a future run could otherwise record a wrong pass. F2: when a Claude arm run fails before its result message arrives, RunOutcome reports turns and every token count as zero and the cost as zero, which reads as a measured zero rather than the unavailable sentinel that the same row already uses for the SDK cost estimate. Return unavailable on that path so a failed row cannot be read as a cheap one. F3: equalise the two arm prompts or record both of them in the report metadata and pin both in the gate, per KNOWLEDGE-66f5b06a, and treat the token gap as unexplained per KNOWLEDGE-eba388f8. F1 and F2 both touch hashed files, so they arrive with their own gate run and their own independent review; they are not covered by the M15 approval. The M15 review also left two gaps of its own, recorded here so the next reviewer can close them: only 2 of the 20 author mutants were rerun and no new mutant was invented, and the removed CLI probe was substituted with a static check plus proxy poisoning because a rename was blocked by the sandbox.",
+      "status": "accepted",
+      "source": null,
+      "recorded_at": "2026-09-16T16:25:35.548Z"
     }
   ],
   "knowledge": [
@@ -1650,6 +1666,38 @@
       "source": null,
       "tags": [],
       "recorded_at": "2026-09-15T17:32:22.866Z"
+    },
+    {
+      "id": "KNOWLEDGE-d94aee6c",
+      "title": "M15 pre-flight (FR-63): the Claude Agent SDK runs against the gateway",
+      "text": "Recorded before any live comparison (AC-49). Baseline at 6cacf5e with no other python or node process: 1199 passed in 166.64 s. Gateway, probed directly over the Anthropic Messages endpoint at BASE_URL /v1/messages with the existing credential: HTTP 200 with the x-api-key header, HTTP 200 with an Authorization Bearer header, and HTTP 200 with the anthropic-beta header claude-code-20250219 that the Claude Code CLI sends, each answering with model bedrock.anthropic.claude-haiku-4-5 and stop_reason end_turn; the plain model id claude-haiku-4-5 is refused with HTTP 400 and Invalid model name, so the gateway id is required. Usage comes back as input_tokens, output_tokens, cache_read_input_tokens and cache_creation_input_tokens, which is what FR-62 normalises for the Claude arm. Python side: claude-agent-sdk 0.2.152 installed into the repository venv, adding only itself and sniffio, upgrading nothing, and pip check is clean; ClaudeAgentOptions carries tools, allowed_tools, permission_mode (dontAsk is a valid value), setting_sources, cwd, env, model, max_turns and cli_path, so FR-61 configuration maps one to one. The Claude Code CLI, which the Python SDK spawns, was absent from the machine (not on PATH, nothing in the npm global prefix, nothing under the home directory): the owner chose a local pinned install under evals/adr12 (see the M15 CLI decision), version 2.1.267, and the package ships bin/claude.exe, which avoids the npm cmd shim the SDK refuses on Windows. Live Claude arm through that CLI, with tools Read, Glob and Grep, permission_mode dontAsk, setting_sources empty, a fixture folder outside the repository as cwd, and ANTHROPIC_BASE_URL, ANTHROPIC_AUTH_TOKEN, ANTHROPIC_MODEL, ANTHROPIC_DEFAULT_HAIKU_MODEL and CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC set as FR-61 requires: it answered the one-file question correctly (fox) in 2 turns, is_error false, its own cost estimate 0.00607, wall time 5.1 s, and reported the usage fields above. The CLI also printed a warning that claude.ai connectors are disabled because an auth source is set, which is the intended configuration. Outcome: FR-63 is satisfied and M15 does not stop.",
+      "source": null,
+      "tags": [],
+      "recorded_at": "2026-09-16T07:48:47.720Z"
+    },
+    {
+      "id": "KNOWLEDGE-ca9ae048",
+      "title": "M15 live ADR-12 comparison: what it measured",
+      "text": "The live report is evals/adr12/reports/adr12-comparison-2026-09-16.json and .md, dated 2026-09-16T09:13:04Z: 12 tasks by 2 arms by 3 repetitions, 72 rows, 71 checkers passed, no credential and no gateway host in either file. Model bedrock.anthropic.claude-haiku-4-5 through the same gateway for both arms; versions agentsdk 0.1.0.dev0 (OpenAI-compatible chat completions) and claude-agent-sdk 0.2.152 with Claude Code CLI 2.1.267 (Anthropic Messages through the CLI). Both arms costed from one price list, input 0.000001 and output 0.000005 per token, which is the published Haiku 4.5 rate, so the Claude arm own estimate and the computed cost agree. Results: this SDK 35 of 36 checkers passed, 69687 prompt and 3473 completion tokens, cost 0.0871, median 2 turns, median wall 3723 ms; the Claude Agent SDK 36 of 36, 303691 prompt and 10796 completion tokens, cost 0.3577, median 3 turns, median wall 6140 ms. By kind both arms passed every single-step, long and decline run; the only failure was one multi-step run. That failure is a transient gateway outage, not an SDK defect: ModelProviderUnavailable on key-holding-the-region repetition 2, which the same task passed on both arms in the other two repetitions. Two findings for the second increment and for Phase 5A. First, the Claude arm spends about 4.4 times the prompt tokens and about 4.1 times the cost for the same tasks and the same model, at about 1.6 times the median wall time, which is the price of its system prompt and tool preamble; this SDK sends only what the task needs. Second, the failed run took 2555071 ms, about 42.6 minutes, with one turn recorded: the HTTP client timeout of 60 seconds is a per read timeout rather than a deadline for the whole call, and the retry policy is 3 attempts, so a response that trickles can stall a run for tens of minutes. Nothing bounds one model call end to end today; the comparison harness applies no deadline of its own either. An earlier live run of the same comparison read every correct decline as a failure, because the checker wanted cannot or unable or no tool while both arms answered that they do not have the ability to delete files; the checker was widened to the spellings the arms use and the whole comparison was rerun, so this report reflects one checker version.",
+      "source": null,
+      "tags": [],
+      "recorded_at": "2026-09-16T09:14:46.914Z"
+    },
+    {
+      "id": "KNOWLEDGE-eba388f8",
+      "title": "Correction to KNOWLEDGE-ca9ae048: the cause of the M15 token gap was not measured",
+      "text": "KNOWLEDGE-ca9ae048 says the Claude arm spends about 4.4 times the prompt tokens and about 4.1 times the cost because of its system prompt and tool preamble. The system prompt half is wrong and is withdrawn here. In evals/adr12/arms.py the method options_for builds ClaudeAgentOptions with tools, allowed_tools, permission_mode, setting_sources, cwd, model, max_turns, cli_path and env, and never sets system_prompt, so the Claude Code CLI receives that flag with an empty value and the arm runs with no system prompt of its own. Every measured fact in that record stands unchanged: 303691 prompt tokens against 69687, cost 0.3577 against 0.0871, median 3 turns against 2, median wall 6140 ms against 3723 ms, same model through the same gateway on one price list. What is withdrawn is the cause. M15 measured the gap and did not measure why it exists, and no cause should be read into these numbers. Candidate contributors, none of them isolated by this harness, are the CLI tool preamble and tool schemas, the scaffolding messages the CLI sends of its own accord, the extra turn in the median, and the framing asymmetry recorded beside this entry, in which this SDK arm receives a 251 character instruction to answer tersely from the files while the Claude arm receives none. Attributing the gap needs a controlled run that varies one contributor at a time. Raised by the independent L4 reviewer for M15 round 1 and confirmed in the source by the author.",
+      "source": null,
+      "tags": [],
+      "recorded_at": "2026-09-16T16:25:13.966Z"
+    },
+    {
+      "id": "KNOWLEDGE-66f5b06a",
+      "title": "The ADR-12 harness frames the two arms differently and does not disclose it",
+      "text": "In evals/adr12/arms.py the ThisSdkArm passes a 251 character instruction which tells the model to answer questions about the files in its working folder, to answer with what the files say and nothing else, and to say plainly that it cannot do a thing rather than pretending it did. The ClaudeAgentSdkArm sets no system prompt at all, so the CLI runs with an empty one. FR-61 names only tools, permission mode, setting sources and env as the fields that must match between arms, so the harness meets the requirement as written, and the delivered report states no comparative verdict, so nothing published is false. The asymmetry is nonetheless undisclosed: it appears in neither the report Markdown, nor the report JSON metadata, nor the harness README, and no test pins either arm prompt. It plausibly moves the very measures under comparison, because an instruction to answer tersely pushes completion tokens and turns down. Before the comparison is run again, either give both arms the same instruction or record each arm prompt in the report metadata and pin both in the gate, and then say in the report which of the two was chosen. Raised by the independent L4 reviewer for M15 round 1 and confirmed in the source by the author. See KNOWLEDGE-eba388f8, which withdraws the causal claim this asymmetry undermines.",
+      "source": null,
+      "tags": [],
+      "recorded_at": "2026-09-16T16:25:23.588Z"
     }
   ],
   "tasks": [
@@ -2533,7 +2581,7 @@
     {
       "id": "M15-adr12-comparison",
       "outcome": "The first ADR-12 comparison measures this SDK against the raw Claude Agent SDK on 12 file tasks with the same model and gateway, and records what it found",
-      "state": "active",
+      "state": "done",
       "risk": "medium",
       "owner": null,
       "scope": [],
@@ -2552,22 +2600,37 @@
           "id": "unit",
           "command": ".venv\\Scripts\\python.exe -m pytest tests/test_adr12_comparison.py -q",
           "mandatory": true,
-          "status": "pending",
-          "evidence": null
+          "status": "pass",
+          "evidence": {
+            "path": ".genesis/evidence/M15-adr12-comparison-unit.json",
+            "source_hash": "ee9313ffb91608b860ee58229442555fa398300a89a27690e96e61ed38cd1a62",
+            "hash": "90e5917e80590b4a0c9f1ba80b251fed4afa92bc318c99d069409c05c29bf159",
+            "observed_at": "2026-09-16T15:56:10.324Z"
+          }
         },
         {
           "id": "regression",
           "command": ".venv\\Scripts\\python.exe -m pytest -q",
           "mandatory": true,
-          "status": "pending",
-          "evidence": null
+          "status": "pass",
+          "evidence": {
+            "path": ".genesis/evidence/M15-adr12-comparison-regression.json",
+            "source_hash": "ee9313ffb91608b860ee58229442555fa398300a89a27690e96e61ed38cd1a62",
+            "hash": "a975fa9a96eda8374a1bb183f3304c16d8451ddf1a5e2b28d18647e72fe33792",
+            "observed_at": "2026-09-16T15:59:02.689Z"
+          }
         },
         {
           "id": "independent-review",
           "command": "",
           "mandatory": true,
-          "status": "pending",
-          "evidence": null
+          "status": "pass",
+          "evidence": {
+            "human": "Claude Sonnet 5 (independent L4 reviewer, M15 round 1, fresh session)",
+            "reason": "Verified independently: gate green on source hash ee9313ff (unit 34 passed in 5.22s, regression 1233 passed in 171.42s), matching the recorded evidence. KNOWLEDGE-d94aee6c pre-flight recorded before any live run and KNOWLEDGE-ca9ae048 live findings recorded before this review, both read from the store. The AC-50 report is exactly 72 rows, 12 tasks by 2 arms by 3 repetitions, 71 checkers passed, every FR-62 measure present on every row, listed by git ls-files --others --exclude-standard, and the AC-19 credential scan passes with it in place. NFR-20 confirmed by grep and pyproject.toml: no import of claude_agent_sdk under agentsdk, the pin lives only in the eval extra and evals/adr12/requirements.txt, and the wheel packages list excludes evals. Attack items 1 through 7 were probed with scripts and real output. Three caveats, none blocking. First, two of twelve checkers (retries-from-settings, entry-count) match their wanted digit as a bare substring, so a wrong two digit answer such as fifteen or sixteen would pass; not blocking because it did not occur in the delivered 72 row report and it is the same substring checker tradeoff the brief already declares. Second, the Claude arm runs with an empty system prompt (the literal CLI flag is --system-prompt with an empty value, confirmed by inspecting the compiled command line) while this SDK arm gets a 251 character terse answer instruction; this asymmetry is undisclosed and the KNOWLEDGE-ca9ae048 record attributes part of the token gap to the Claude arm system prompt, which is empty by construction; not blocking because FR-61 names only tools, permission mode, setting sources and env as the fields that must match between arms, and the written report itself makes no comparative verdict. Third, offline reproduction shows that a Claude arm failure occurring before its ResultMessage arrives reports turns and every token count as a bare zero and cost as zero rather than unavailable, which would read as a false zero on a future rerun rather than the unavailable AC-50 requires; not blocking for this round because the delivered report contains no such row and the root cause is the same unbounded call time gap the author already declared and deferred as A13. Recommend the next session tighten the two numeric checkers, disclose or equalize the instruction asymmetry, and mark turns and tokens unavailable rather than zero on a pre result failure.",
+            "source_hash": "ee9313ffb91608b860ee58229442555fa398300a89a27690e96e61ed38cd1a62",
+            "observed_at": "2026-09-16T16:02:24.990Z"
+          }
         }
       ],
       "next_action": "Run the task pre-flight.",
@@ -2576,7 +2639,7 @@
       "failures": [],
       "limitations": [],
       "created_at": "2026-09-14T07:21:30.187Z",
-      "updated_at": "2026-09-14T07:21:30.188Z"
+      "updated_at": "2026-09-16T16:25:47.550Z"
     }
   ],
   "learning_proposals": [],
@@ -3084,6 +3147,15 @@
       "task": "M14-timings-and-telemetry",
       "human": "Claude Fable 5.1 (independent L4 reviewer, M14 round 2, fresh session)",
       "reason": "Round 2 change verified. C2 fix sound on both stores for a StrEnum member, str subclasses overriding str, eq, len and getitem, unstorable, whitespace, non-text and empty names: ModelCalled.model, its cost_usd, RunResult.cost_usd, the runs row and the OpenAI-compatible wire payload agree, an unstorable name records None and is unpriced, non-text and empty fall back to the run model as B3 declares. C1 fix sound: export(handle) from another thread loop with debug on and off, that loop ending before, during and after the run, from no loop at all, 40 handles at once, closed and stopped run loops, follow cancellation before and after its first step, flush and shutdown timeouts; B5 and B6 behave as declared. FR-49 and FR-50 unchanged on the run loop on both backends, and a foreign-loop follower changes no status, result, event or stored row. Gates rerun: unit 89, regression 1199, both at hash f131773d; one earlier regression run failed on a transient gateway connection reset in the live golden eval, unrelated to the change. Mutants: all 10 author round 2 mutants killed; of 10 own mutants 3 killed, 2 equivalent, 5 survived the full suite as gate blind spots where the code is correct (a str subclass overriding str or len, the _resolve done check, flush with several followed handles, a stopped unclosed run loop treated as running which makes the suite wait 599 s but stay green). Caveat R1, pre-existing M12 race, not a blocker: a callers own events() iterator on another thread loop can hang after receiving every event when the run loop final wake lands between _stream reading _ended and appending its waiter, since _waiters has no lock; seen on Postgres with a debug-mode foreign loop 4 and 5 of 10 trials and once in 400 on memory. The run, its run-loop iterators and the exporter, which now follows on the run loop, are unaffected in every probe, and FR-48 keeps readers outside the contract, but the round 2 _wake docstring and B4 overclaim cross-loop reader support and the new foreign-iterator test covers only the memory store. Caveat R2, pre-existing, not a blocker: a hook replacing model_settings with a non-dict Mapping is ignored by sent_model, which then records and prices the run model while the client sends the mapping model; the field is typed dict and round 1 behaved the same.",
+      "revision": null
+    },
+    {
+      "id": "d7c2cdee-1c50-4fa2-ba6d-40d94738744e",
+      "at": "2026-09-16T16:02:24.990Z",
+      "action": "approve",
+      "task": "M15-adr12-comparison",
+      "human": "Claude Sonnet 5 (independent L4 reviewer, M15 round 1, fresh session)",
+      "reason": "Verified independently: gate green on source hash ee9313ff (unit 34 passed in 5.22s, regression 1233 passed in 171.42s), matching the recorded evidence. KNOWLEDGE-d94aee6c pre-flight recorded before any live run and KNOWLEDGE-ca9ae048 live findings recorded before this review, both read from the store. The AC-50 report is exactly 72 rows, 12 tasks by 2 arms by 3 repetitions, 71 checkers passed, every FR-62 measure present on every row, listed by git ls-files --others --exclude-standard, and the AC-19 credential scan passes with it in place. NFR-20 confirmed by grep and pyproject.toml: no import of claude_agent_sdk under agentsdk, the pin lives only in the eval extra and evals/adr12/requirements.txt, and the wheel packages list excludes evals. Attack items 1 through 7 were probed with scripts and real output. Three caveats, none blocking. First, two of twelve checkers (retries-from-settings, entry-count) match their wanted digit as a bare substring, so a wrong two digit answer such as fifteen or sixteen would pass; not blocking because it did not occur in the delivered 72 row report and it is the same substring checker tradeoff the brief already declares. Second, the Claude arm runs with an empty system prompt (the literal CLI flag is --system-prompt with an empty value, confirmed by inspecting the compiled command line) while this SDK arm gets a 251 character terse answer instruction; this asymmetry is undisclosed and the KNOWLEDGE-ca9ae048 record attributes part of the token gap to the Claude arm system prompt, which is empty by construction; not blocking because FR-61 names only tools, permission mode, setting sources and env as the fields that must match between arms, and the written report itself makes no comparative verdict. Third, offline reproduction shows that a Claude arm failure occurring before its ResultMessage arrives reports turns and every token count as a bare zero and cost as zero rather than unavailable, which would read as a false zero on a future rerun rather than the unavailable AC-50 requires; not blocking for this round because the delivered report contains no such row and the root cause is the same unbounded call time gap the author already declared and deferred as A13. Recommend the next session tighten the two numeric checkers, disclose or equalize the instruction asymmetry, and mark turns and tokens unavailable rather than zero on a pre result failure.",
       "revision": null
     }
   ],

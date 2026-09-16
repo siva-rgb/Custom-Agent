@@ -1,0 +1,1 @@
+# Keeps reports/ in the repository, so a live report lands in a folder the credential scan reads (AC-50).
