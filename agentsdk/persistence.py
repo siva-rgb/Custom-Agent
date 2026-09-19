@@ -17,6 +17,7 @@ from .artifacts import DEFAULT_MAX_CONTENT_BYTES
 from .events import EventSink
 from .postgres import (
     PostgresArtifactStore,
+    PostgresRunStateStore,
     PostgresEventStore,
     PostgresRunStore,
     PostgresSessionStore,
@@ -80,6 +81,13 @@ class Persistence:
 
     def event_sink_for(self, scope: RunScope) -> EventSink:
         return PostgresEventStore(self.dsn, scope.tenant_id, scope.project_id, scope.run_id)
+
+    def run_state_store(self, tenant_id: str, project_id: str) -> PostgresRunStateStore:
+        """The Postgres RunStateStore for one tenant and project (FR-65, FR-66).
+
+        An empty or unstorable scope is refused here with ValueError.
+        """
+        return PostgresRunStateStore(self.dsn, tenant_id, project_id)
 
     def artifact_store(
         self,

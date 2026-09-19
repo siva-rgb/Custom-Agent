@@ -10,10 +10,23 @@ from .artifacts import ArtifactRef, ArtifactStore, InMemoryArtifactStore
 from .handle import RunHandle, RunState
 from .model import ReasoningEffort
 from .persistence import Persistence
+from .plan import (
+    AcceptanceCriterion,
+    BudgetReservation,
+    InMemoryRunStateStore,
+    NodeRetryPolicy,
+    PlanNode,
+    PlanVersion,
+    RunStateStore,
+    plan_from_document,
+)
 from .scheduler import SchedulerLimits
 from .errors import (
     AgentSDKError,
     ArtifactIntegrityError,
+    InvalidPlan,
+    PlanIntegrityError,
+    PlanNotFound,
     ArtifactNotFound,
     BudgetExceeded,
     Cancelled,
@@ -76,6 +89,16 @@ __all__ = [
     "ArtifactRef",
     "ArtifactStore",
     "InMemoryArtifactStore",
+    # Plans (FR-64 to FR-66): the in-memory run-state store is built directly; the
+    # Postgres one comes from Persistence.run_state_store.
+    "PlanNode",
+    "PlanVersion",
+    "AcceptanceCriterion",
+    "BudgetReservation",
+    "NodeRetryPolicy",
+    "plan_from_document",
+    "RunStateStore",
+    "InMemoryRunStateStore",
     "ContentProvenance",
     "InstructionAuthority",
     "Message",
@@ -101,6 +124,9 @@ __all__ = [
     "ToolCancelled",
     "ArtifactNotFound",
     "ArtifactIntegrityError",
+    "InvalidPlan",
+    "PlanIntegrityError",
+    "PlanNotFound",
     "WorkflowError",
     "BudgetExceeded",
     "MaxTurnsExceeded",

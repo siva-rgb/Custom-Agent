@@ -9,7 +9,7 @@
     "non_goals": [],
     "trust_boundary": "local repository",
     "created_at": "2026-09-05T14:48:57.894Z",
-    "updated_at": "2026-09-16T16:25:47.551Z"
+    "updated_at": "2026-09-19T17:15:13.088Z"
   },
   "policy": {
     "ponytail": "full",
@@ -23,19 +23,19 @@
     }
   },
   "lifecycle": {
-    "phase": "verify",
-    "status": "ready",
-    "active_task": null,
+    "phase": "build",
+    "status": "active",
+    "active_task": "M17-budget-governor",
     "blocker": null,
-    "next_action": "Review completed work and choose the next bounded outcome."
+    "next_action": "Run the task pre-flight."
   },
   "commands": {},
   "workflow": {
     "type": "new-product",
     "started_at": "2026-09-05T14:48:57.897Z",
     "spec_check": {
-      "at": "2026-09-14T07:21:29.107Z",
-      "source_hash": "a87de13b9d75e5b0b0f327d21110fd5c9d02d72ce2a35655ef25fb9f4ecbf993",
+      "at": "2026-09-16T17:16:40.787Z",
+      "source_hash": "5dfaf6e48ace4630940e5aa5c29aa8af373bbb31fd39a0f6935f11b487dfa6a0",
       "requirements": [
         "AC-1",
         "AC-10",
@@ -83,7 +83,20 @@
         "AC-49",
         "AC-5",
         "AC-50",
+        "AC-51",
+        "AC-52",
+        "AC-53",
+        "AC-54",
+        "AC-55",
+        "AC-56",
+        "AC-57",
+        "AC-58",
+        "AC-59",
         "AC-6",
+        "AC-60",
+        "AC-61",
+        "AC-62",
+        "AC-63",
         "AC-7",
         "AC-8",
         "AC-9",
@@ -147,7 +160,22 @@
         "FR-61",
         "FR-62",
         "FR-63",
+        "FR-64",
+        "FR-65",
+        "FR-66",
+        "FR-67",
+        "FR-68",
+        "FR-69",
         "FR-7",
+        "FR-70",
+        "FR-71",
+        "FR-72",
+        "FR-73",
+        "FR-74",
+        "FR-75",
+        "FR-76",
+        "FR-77",
+        "FR-78",
         "FR-8",
         "FR-9",
         "NFR-1",
@@ -163,6 +191,9 @@
         "NFR-19",
         "NFR-2",
         "NFR-20",
+        "NFR-21",
+        "NFR-22",
+        "NFR-23",
         "NFR-3",
         "NFR-4",
         "NFR-5",
@@ -173,14 +204,14 @@
       ]
     },
     "plan_check": {
-      "at": "2026-09-14T07:21:30.367Z",
-      "source_hash": "4a7a77de8da22daf36885781ff1d83dd639af34f7ba135d66bf41bd83fb22005"
+      "at": "2026-09-19T12:27:44.968Z",
+      "source_hash": "b389ce0c62ed57d18e1b8c07bc7661b712c053816cba4d8331a55d0ec59943fc"
     },
     "plan_approval": {
       "human": "owner",
-      "reason": "Owner approved the Phase 2 increment 1 plan on 2026-09-14: M11 concurrency foundations, M12 run handles and cancellation, M13 artifacts, M14 timings and telemetry, M15 ADR-12 comparison, in that order, each with unit, regression and independent-review gates",
-      "at": "2026-09-14T07:24:06.445Z",
-      "source_hash": "4a7a77de8da22daf36885781ff1d83dd639af34f7ba135d66bf41bd83fb22005"
+      "reason": "Owner approved the Phase 2 increment 2 plan on 2026-09-19: M16 plan persistence, M17 budget governor, M18 subagents, M19 orchestrator and M20 context policy and compaction, 20 tasks covering 164 requirements, each milestone gated by its own unit file, the full regression suite and a separate independent review",
+      "at": "2026-09-19T12:39:24.079Z",
+      "source_hash": "b389ce0c62ed57d18e1b8c07bc7661b712c053816cba4d8331a55d0ec59943fc"
     }
   },
   "artifacts": [
@@ -236,7 +267,20 @@
         "AC-49",
         "AC-5",
         "AC-50",
+        "AC-51",
+        "AC-52",
+        "AC-53",
+        "AC-54",
+        "AC-55",
+        "AC-56",
+        "AC-57",
+        "AC-58",
+        "AC-59",
         "AC-6",
+        "AC-60",
+        "AC-61",
+        "AC-62",
+        "AC-63",
         "AC-7",
         "AC-8",
         "AC-9",
@@ -300,7 +344,22 @@
         "FR-61",
         "FR-62",
         "FR-63",
+        "FR-64",
+        "FR-65",
+        "FR-66",
+        "FR-67",
+        "FR-68",
+        "FR-69",
         "FR-7",
+        "FR-70",
+        "FR-71",
+        "FR-72",
+        "FR-73",
+        "FR-74",
+        "FR-75",
+        "FR-76",
+        "FR-77",
+        "FR-78",
         "FR-8",
         "FR-9",
         "NFR-1",
@@ -316,6 +375,9 @@
         "NFR-19",
         "NFR-2",
         "NFR-20",
+        "NFR-21",
+        "NFR-22",
+        "NFR-23",
         "NFR-3",
         "NFR-4",
         "NFR-5",
@@ -324,12 +386,12 @@
         "NFR-8",
         "NFR-9"
       ],
-      "source_hash": "a87de13b9d75e5b0b0f327d21110fd5c9d02d72ce2a35655ef25fb9f4ecbf993",
+      "source_hash": "5dfaf6e48ace4630940e5aa5c29aa8af373bbb31fd39a0f6935f11b487dfa6a0",
       "approval": {
         "human": "owner",
-        "reason": "Owner approved Phase 2 increment 1 on 2026-09-14 after four read-only reviews against the code: M11 to M15, FR-43 to FR-63, NFR-15 to NFR-20, AC-34 to AC-50, with decisions P2-D5 to P2-D14 and the backlog placement",
-        "at": "2026-09-14T07:21:29.293Z",
-        "source_hash": "a87de13b9d75e5b0b0f327d21110fd5c9d02d72ce2a35655ef25fb9f4ecbf993"
+        "reason": "Owner approved Phase 2 increment 2 on 2026-09-19 after reviewing the specified section: M16 to M20, FR-64 to FR-78, NFR-21 to NFR-23, AC-51 to AC-63, built from owner decisions P2-D15 to P2-D27 recorded as DECISION-8e6927c4, DECISION-4aa01ef9 and DECISION-c49af041, with I-02 and I-03 deferred by P2-D25",
+        "at": "2026-09-19T12:27:29.819Z",
+        "source_hash": "5dfaf6e48ace4630940e5aa5c29aa8af373bbb31fd39a0f6935f11b487dfa6a0"
       }
     }
   ],
@@ -992,6 +1054,46 @@
       "status": "accepted",
       "source": null,
       "recorded_at": "2026-09-16T16:25:35.548Z"
+    },
+    {
+      "id": "DECISION-8e6927c4",
+      "title": "Phase 2 increment 2: plan, criteria, loops, replanning, result contract and run scope (P2-D15 to P2-D18, P2-D22, P2-D26)",
+      "text": "Owner accepted on 2026-09-16, before any increment 2 requirement was written. P2-D15: the planner emits a JSON document validated against a shipped schema and stored as an immutable PlanVersion with parent_plan, with a RunStateStore holding node status. Taken as settled rather than put to the owner, because ADR-03 already requires immutable versions with parent_plan and the design calls the plan a persisted and visible object; an in memory plan cannot answer why a run did what it did after the fact. P2-D16: the acceptance criteria increment 2 can actually check are deterministic only, namely that output validates against expected_output_schema, that a named artifact exists with a recorded checksum, and that a named tool returns success. A critic typed criterion parses but is refused at runtime until Phase 3 builds the critic, which keeps Phase 3 additive and keeps a plan written now valid then. P2-D17: no loop nodes. Convergence goes through replanning bounded by max_replans, so ADR-02 stays DAG-only; the cost is one plan version per round and the gain is that every round is audited. Reopening ADR-02 remains scheduled for Phase 5A. Closes backlog I-01. P2-D18: replanning proceeds automatically while budget remains and the replan count is under its limit, and never reruns a completed side effecting node. PlanNode gains a side_effecting flag defaulting to True, so the unsafe case is the default. P2-D22: a subagent result that fails its output schema is re-asked once with the validation error appended, then the node fails with output_contract_violation. The retry draws on that node own reservation, so it cannot escape the budget. P2-D26: a tool reaches its run through an explicit RunScope argument passed to the tool callable, not through a context variable, because M11 and M12 showed how much grief implicit cross loop context causes and an explicit argument is what a test can pin.",
+      "status": "accepted",
+      "source": null,
+      "recorded_at": "2026-09-16T17:13:13.024Z"
+    },
+    {
+      "id": "DECISION-4aa01ef9",
+      "title": "Phase 2 increment 2: the ADR-06 budget numbers and a pricing source (P2-D19, P2-D20)",
+      "text": "Owner accepted on 2026-09-16. P2-D19 fills the four figures DECISION-e1bf0327 left to this specification and closes backlog I-05. A planner proposed budget_reservation is capped at 40 percent of the currently unallocated pool, so no single node can starve its siblings. Nodes for which the planner proposes no reservation split the unallocated pool equally. The orchestrator reserve is 20 percent of the run ceiling and the unallocated reserve is another 20 percent, and the unallocated reserve is the only source of additional allocation, drawn by deterministic orchestrator policy and never at the request of a model. All four are fields on BudgetPolicy and these are their defaults, so a run works out of the box and a deployment can tighten them. P2-D20 closes backlog I-13: a price table with an explicit date ships inside the package, a caller supplied ModelPricing overrides it, and a USD budget on a model absent from the table is a configuration error raised at the call site rather than a silently unpriced call. The date is part of the table and is reported, so a stale price cannot be read as current fact. Token ceilings continue to work for every model with or without a price. Rejected: requiring every caller to supply prices, which is how cost_usd came to be None today and would make USD budgets unusable out of the box; and fetching prices at runtime, which this gateway does not allow because /model/info returns 403.",
+      "status": "accepted",
+      "source": null,
+      "recorded_at": "2026-09-16T17:13:24.013Z"
+    },
+    {
+      "id": "DECISION-c49af041",
+      "title": "Phase 2 increment 2: limits, tool visibility, compaction, deferrals and the milestone split (P2-D21, P2-D23, P2-D24, P2-D25, P2-D27)",
+      "text": "Owner accepted on 2026-09-16. P2-D21: recursion depth 3, which is orchestrator then child then grandchild, raising MaxDepthExceeded beyond it; max_concurrent_subagents 4; max_tasks_per_run 50; queue_policy FIFO. Depth 3 allows hub and spoke with one nesting, and 4 concurrent bounds the budget overshoot that soft enforcement permits to four model calls. P2-D23 reverses DECISION-ca1ad3e0 for subagents and closes backlog I-14: an agent is sent only the schemas of the tools its profile lets it execute, so visibility follows execution. The argument is mechanism rather than the M15 gap, whose cause is unmeasured per KNOWLEDGE-eba388f8: every unusable schema is prompt tokens on every turn of every child, and a tool that is visible but not callable invites a wasted turn. The consequence is recorded deliberately: the tool set an agent actually saw becomes part of what the ExecutionManifest must record, or two runs sharing a manifest could have seen different tools. P2-D24 closes backlog I-17 and I-24: ContextCompactor triggers at a configurable fraction of the model context window, default 0.75; the summary inherits the maximum taint of everything it summarises and keeps provenance for every source it names; and each compaction is recorded as an artifact and a run event, so a compacted run can still be audited. Caller triggered compaction was rejected because an unattended long run is exactly the failure that moved compaction forward from Phase 7. P2-D25 defers two outline items: sibling stagger for prompt cache reuse, backlog I-02, waits for the native Anthropic adapter because the OpenAI compatible gateway exposes no cache control markers and there is nothing to stagger for yet; and scanning child output for instruction shaped text, backlog I-03, waits for Phase 4, because taint labels already stop a tainted result from triggering an action and scanning is defence in depth rather than the missing control. P2-D27 splits increment 2 into five milestones, smallest provable step first: M16 PlanVersion and RunStateStore, the plan as a persisted immutable object across both stores; M17 the budget governor with reservations, reclaim, soft enforcement and the dated price table; M18 subagents with curated briefing, hub and spoke, the structured result contract, the depth limit and SchedulerLimits; M19 the orchestrator itself, DAG execution over the plan, acceptance criteria and replanning; M20 ContextPolicy and ContextCompactor. Every milestone keeps one exact demo command that proves it works.",
+      "status": "accepted",
+      "source": null,
+      "recorded_at": "2026-09-16T17:13:39.201Z"
+    },
+    {
+      "id": "DECISION-8f8cc54c",
+      "title": "M16 clarifications of FR-64 and FR-66: node events and forward node fields",
+      "text": "Owner decided on 2026-09-19 during the M16 pre-flight, which found two places where the approved specification did not say enough to build M16. First, FR-66 says node transitions appear in the run event stream, but the event sink is per run and owns sequence numbering, and nothing runs nodes until the M19 orchestrator; AC-51 and AC-52 test no events. Decided: M16 adds the event types PlanNodeStarted and PlanNodeFinished and one transition path that writes the node status row and emits the event through that run own sink, with the node id in the envelope task_id column that the schema already reserves for Phase 2 and plan_id and version in the payload. M16 tests prove the row and the event together on both stores with sequence_no contiguous; seeing them live through RunHandle.events is proven by AC-58 in M19, once the orchestrator drives nodes. Rejected: moving the events to M19, which would split FR-66 across two milestones and risk reshaping the M16 store API. Second, FR-64 gives PlanNode an acceptance_criteria field whose behaviour is FR-74 in M19 and a budget_reservation field whose behaviour is FR-67 in M17, while AC-51 requires a field for field round trip and P2-D16 requires a plan written now to stay valid later. Decided: M16 fixes both stored shapes with no behaviour. AcceptanceCriterion carries its four kinds, output_schema, artifact_exists, tool_succeeds and critic, with their fields; a reservation carries an optional USD Decimal and an optional token count. M19 adds evaluation and M17 adds enforcement without changing either stored shape. Rejected: opaque JSON until then, which could leave a plan stored in M16 invalid against the later types.",
+      "status": "accepted",
+      "source": null,
+      "recorded_at": "2026-09-19T12:41:38.412Z"
+    },
+    {
+      "id": "DECISION-6d073ac0",
+      "title": "M16 round 1: F3 blocks completion; F1 and F5 fixed with it; F2 and F4 carried to M19",
+      "text": "The M16 round 1 reviewer, Fable 5.1, approved with caveats F1 to F5. The owner verified F1 to F3 first-hand and argued that F3 breaks AC-51, leaving the call to the implementing session, which decided on 2026-09-19 that F3 blocks. AC-51 requires a plan on both stores to read back field for field with its plan_hash unchanged; on Postgres, floats that JSON writes in exponent form such as 1e16 and 1e300, and negative zero, inside expected_output_schema or criterion arguments came back normalised by JSONB with a different hash, from valid planner input and silently, while the in-memory store kept them. The author had already fixed A6, the same class of defect, as a defect. F3 also covers get_plan never comparing the recomputed hash with the stored one, so a document edited in the database read back without error. Fix: the document is stored as its exact canonical text rather than JSONB, and get_plan refuses a row whose recomputed hash differs from its stored hash. F1, fixed in the same pass: plan_id was a global key, so another tenant could store a version under an existing plan_id, blocking the owner replan, and learn from the refusal that the plan exists; plan identity becomes tenant, project, plan_id and version on both stores. F5, fixed in the same pass because it breaks the pinned contract that every refusal raises InvalidPlan: nesting 200 or 800 deep raised RecursionError; depth is bounded and refused as InvalidPlan. Both fixes change migration 0007, which was never committed or released but was applied to the development database; the owner chose to rewrite 0007 in place and reset its two tables on the development database, holding only 14 example-tenant demo rows, rather than add a migration and renumber the specification. Carried to M19, before anything drives nodes: F2, a transition accepts any event sink, so a node event can land in another run; F4, on Postgres the row lock ends at commit before the emit, so two racing transitions of one node can record Finished before Started. A7 stands as declared, judged by the reviewer not a breach of NFR-22 as written. A round 2 review runs on a different model after the fixes.",
+      "status": "accepted",
+      "source": null,
+      "recorded_at": "2026-09-19T14:54:02.956Z"
     }
   ],
   "knowledge": [
@@ -1698,6 +1800,22 @@
       "source": null,
       "tags": [],
       "recorded_at": "2026-09-16T16:25:23.588Z"
+    },
+    {
+      "id": "KNOWLEDGE-9a3abf61",
+      "title": "M16 pre-flight: baseline, what M16 extends, and why the suite hung on 2026-09-16",
+      "text": "Baseline at b3654cf with no other python or node process: 1233 passed in 250.23 s, instrumented with a memory sampler every 2 s and a pytest faulthandler timeout of 120 s per test, with the owner working normally in parallel. Lowest free memory during the run was 924 MB of 16008, peak footprint of the whole suite 32 MB across at most 3 processes, and no test ran past 120 s. This refutes the diagnosis given during M15, which blamed memory pressure for two regression gate runs that hung: the suite passed today with less free memory than either hung run had. Memory pressure slows the suite, 250 s against 160 s, and does not hang it. The first hung run stopped at 35 percent, and tests 440 and 441 of 1233 are the two live gateway tests in test_golden_eval.py, the only place the suite waits on an outside server with no end to end deadline; this is the gap M15 measured, where the httpx 60 s timeout applies per read so a trickling response is never cut off. The second hung run position is unknown, because the author truncated its log when printing it. Code facts for M16: jsonschema 4.26.0 is already a runtime dependency used by the executor, so validating planner output adds nothing and NFR-21 holds. run_events.event_type carries no CHECK constraint, so the new event types need no migration. run_events.task_id exists, is unpopulated, and the schema comment reserves it for Phase 2, so a node id goes there per DECISION-8f8cc54c. The event sink is per run and owns sequence numbering, on both stores. Migrations are discovered by NNNN_lower_snake_case.sql name and checksummed, so M16 adds 0007. The AC-44 session guard in tests/conftest.py lists tracked tables in _TRACKED and skips a table a pending migration has not created, so M16 adds plan_versions and plan_node_states there. The M13 ArtifactStore protocol with its in-memory and Postgres implementations is the pattern for the plan store. InvalidStructuredOutput exists in errors.py, unused since Phase 0, for M18. Two spec gaps were found and decided by the owner as DECISION-8f8cc54c.",
+      "source": null,
+      "tags": [],
+      "recorded_at": "2026-09-19T12:55:14.827Z"
+    },
+    {
+      "id": "KNOWLEDGE-de013a75",
+      "title": "M16 round 2: F1, F3 and F5 verified fixed; follow-ups G1 and G3",
+      "text": "Round 2, Sonnet 5 in a fresh session, approved at 2026-09-19T17:06:04Z with no blocking finding, on source hash 8f5e56d9 with unit 142 and regression 1375. The owner verified it first-hand. F3: the round 1 probe p02_hash reports no Postgres failures across 115 checks, and its tamper step now raises PlanIntegrityError. F1: every check of the owning tenant side passes in p01_scope; its remaining FAIL lines expect another tenant reusing a plan id to be refused, whereas under scoped identity that is the other tenant own plan and reveals nothing. The rewrite of migration 0007 and the reset left the development database consistent: the recorded checksum matches the file, document is text, both primary keys lead with tenant_id and project_id, the remaining demo plan rows hash correctly from their stored text, and no plan row points at a missing run or version. Follow-ups, none blocking. G1: the duplicate node id check in plan.py counts each id in a list, so it grows with the square of the plan size, about 2 s at 16000 nodes; max_tasks_per_run is 50 by default, so fix it only if large plans become possible, with a Counter. G2 is F4, already carried to M19 with F2 by DECISION-6d073ac0. G3: round 1 probes p02_hash, p07_residue and p08_demo still assume a JSONB document and now print false FAIL lines; they are review scratch, not part of the repository, so update them before rerunning them.",
+      "source": null,
+      "tags": [],
+      "recorded_at": "2026-09-19T17:15:12.932Z"
     }
   ],
   "tasks": [
@@ -1720,9 +1838,9 @@
           "status": "pass",
           "evidence": {
             "human": "owner",
-            "reason": "Owner approved Phase 2 increment 1 on 2026-09-14 after four read-only reviews against the code: M11 to M15, FR-43 to FR-63, NFR-15 to NFR-20, AC-34 to AC-50, with decisions P2-D5 to P2-D14 and the backlog placement",
-            "source_hash": "f7950438ebe0344174ff7ea7418f0d30c08b78d4457f5793719ad70fc8b4e54f",
-            "observed_at": "2026-09-14T07:21:29.293Z"
+            "reason": "Owner approved Phase 2 increment 2 on 2026-09-19 after reviewing the specified section: M16 to M20, FR-64 to FR-78, NFR-21 to NFR-23, AC-51 to AC-63, built from owner decisions P2-D15 to P2-D27 recorded as DECISION-8e6927c4, DECISION-4aa01ef9 and DECISION-c49af041, with I-02 and I-03 deferred by P2-D25",
+            "source_hash": "ab7e545bb97b9ad49c4a407f510411ffe7aff885e81342cdd45ba4939731bf77",
+            "observed_at": "2026-09-19T12:27:29.819Z"
           }
         }
       ],
@@ -1732,7 +1850,7 @@
       "failures": [],
       "limitations": [],
       "created_at": "2026-09-05T14:48:57.897Z",
-      "updated_at": "2026-09-14T07:21:29.293Z"
+      "updated_at": "2026-09-19T12:27:29.819Z"
     },
     {
       "id": "M1-primitives",
@@ -2640,6 +2758,259 @@
       "limitations": [],
       "created_at": "2026-09-14T07:21:30.187Z",
       "updated_at": "2026-09-16T16:25:47.550Z"
+    },
+    {
+      "id": "M16-plan-persistence",
+      "outcome": "The plan is a persisted immutable object: PlanNode and PlanVersion with parent_plan, schema-validated planner output, and a RunStateStore holding node status on both stores",
+      "state": "done",
+      "risk": "medium",
+      "owner": null,
+      "scope": [],
+      "dependencies": [],
+      "requirements": [
+        "FR-64",
+        "FR-65",
+        "FR-66",
+        "AC-51",
+        "AC-52",
+        "NFR-22"
+      ],
+      "gates": [
+        {
+          "id": "unit",
+          "command": ".venv\\Scripts\\python.exe -m pytest tests/test_plan.py -q",
+          "mandatory": true,
+          "status": "pass",
+          "evidence": {
+            "path": ".genesis/evidence/M16-plan-persistence-unit.json",
+            "source_hash": "8f5e56d9bb574b7b7e1924d5470141e4168a50f0999ce94809f811e28e8e07c5",
+            "hash": "e38a5d06002288a4c14274f78830816f815793d4fa465c0713f71ae9a1d1cf8b",
+            "observed_at": "2026-09-19T16:59:45.341Z"
+          }
+        },
+        {
+          "id": "regression",
+          "command": ".venv\\Scripts\\python.exe -m pytest -q",
+          "mandatory": true,
+          "status": "pass",
+          "evidence": {
+            "path": ".genesis/evidence/M16-plan-persistence-regression.json",
+            "source_hash": "8f5e56d9bb574b7b7e1924d5470141e4168a50f0999ce94809f811e28e8e07c5",
+            "hash": "bc1eebc67f2bcda7eb5951e162c1d55bc196126a70e2f363c0d32c49b3bd3a0f",
+            "observed_at": "2026-09-19T17:03:49.248Z"
+          }
+        },
+        {
+          "id": "independent-review",
+          "command": "",
+          "mandatory": true,
+          "status": "pass",
+          "evidence": {
+            "human": "Claude Sonnet 5 (independent L4 reviewer, M16 round 2, fresh session)",
+            "reason": "Verified F1, F3 and F5 firsthand end to end on both stores with live Postgres probes: extreme JSON values (floats of every magnitude, negative zero, integers beyond 2 to the 63, unicode, Decimal forms) round trip exactly; the integrity check fires on a tampered document, malformed JSON, a schema invalid document and the plan_hash column alone, but never on an honest row; scope isolation holds for get_plan, versions, node_states and transition across tenant, project and run; the advisory lock held under real concurrency (thirty simultaneous claims across three plan ids plus ten sequential replan rounds) with no deadlock or starvation; and the MAX_JSON_DEPTH 64 boundary is exact on both entry points with only InvalidPlan ever raised at any depth up to twenty thousand. Migration 0007 checksum, shape, keys and idempotency confirmed directly against the live dev database and consistent with the file on disk (checksum adb9ad83), and a live spot mutation reverting document back to JSONB was killed by the migration test then restored and checksum verified. Reran every round 1 probe; all pass except three probe artifacts from the JSONB to TEXT schema change, which I confirmed by direct query are not product defects. Full regression suite 1375 passed in 249 seconds and the gate is green on both unit and regression, source hash 8f5e56d9 matching KICKOFF. Two non blocking caveats recorded: an O of n squared duplicate node id check in plan.py line 348 has no upper bound on plan size and could take tens of seconds for plans of many thousands of nodes, though real plans are capped at fifty nodes by policy and this is unchanged by round 2; and F4 remains present and unchanged (one Started after Finished inversion observed under a natural Postgres race), carried to M19 as already recorded in DECISION-6d073ac0.",
+            "source_hash": "8f5e56d9bb574b7b7e1924d5470141e4168a50f0999ce94809f811e28e8e07c5",
+            "observed_at": "2026-09-19T17:06:04.666Z"
+          }
+        }
+      ],
+      "next_action": "Run the task pre-flight.",
+      "blocker": null,
+      "notes": [],
+      "failures": [],
+      "limitations": [],
+      "created_at": "2026-09-19T12:27:44.234Z",
+      "updated_at": "2026-09-19T17:15:13.087Z"
+    },
+    {
+      "id": "M17-budget-governor",
+      "outcome": "Runs carry an ADR-06 budget: reservations, reclaim and soft enforcement in USD and tokens, the P2-D19 defaults, and a dated price table that makes an unpriced USD budget a configuration error",
+      "state": "active",
+      "risk": "high",
+      "owner": null,
+      "scope": [],
+      "dependencies": [],
+      "requirements": [
+        "FR-67",
+        "FR-68",
+        "FR-69",
+        "AC-53",
+        "AC-54",
+        "AC-55",
+        "NFR-23"
+      ],
+      "gates": [
+        {
+          "id": "unit",
+          "command": ".venv\\Scripts\\python.exe -m pytest tests/test_budget.py -q",
+          "mandatory": true,
+          "status": "pending",
+          "evidence": null
+        },
+        {
+          "id": "regression",
+          "command": ".venv\\Scripts\\python.exe -m pytest -q",
+          "mandatory": true,
+          "status": "pending",
+          "evidence": null
+        },
+        {
+          "id": "independent-review",
+          "command": "",
+          "mandatory": true,
+          "status": "pending",
+          "evidence": null
+        }
+      ],
+      "next_action": "Run the task pre-flight.",
+      "blocker": null,
+      "notes": [],
+      "failures": [],
+      "limitations": [],
+      "created_at": "2026-09-19T12:27:44.381Z",
+      "updated_at": "2026-09-19T12:27:44.382Z"
+    },
+    {
+      "id": "M18-subagents",
+      "outcome": "The orchestrator spawns subagents as linked runs: hub-and-spoke with curated briefing, taint carried across the run boundary, a structured result contract, and a depth limit with the new SchedulerLimits fields",
+      "state": "queued",
+      "risk": "high",
+      "owner": null,
+      "scope": [],
+      "dependencies": [],
+      "requirements": [
+        "FR-70",
+        "FR-71",
+        "FR-72",
+        "AC-56",
+        "AC-57",
+        "NFR-22"
+      ],
+      "gates": [
+        {
+          "id": "unit",
+          "command": ".venv\\Scripts\\python.exe -m pytest tests/test_subagents.py -q",
+          "mandatory": true,
+          "status": "pending",
+          "evidence": null
+        },
+        {
+          "id": "regression",
+          "command": ".venv\\Scripts\\python.exe -m pytest -q",
+          "mandatory": true,
+          "status": "pending",
+          "evidence": null
+        },
+        {
+          "id": "independent-review",
+          "command": "",
+          "mandatory": true,
+          "status": "pending",
+          "evidence": null
+        }
+      ],
+      "next_action": "Run the task pre-flight.",
+      "blocker": null,
+      "notes": [],
+      "failures": [],
+      "limitations": [],
+      "created_at": "2026-09-19T12:27:44.522Z",
+      "updated_at": "2026-09-19T12:27:44.522Z"
+    },
+    {
+      "id": "M19-orchestrator",
+      "outcome": "An Orchestrator executes a PlanVersion over its DAG with deterministic acceptance criteria, guarded automatic replanning that never reruns a completed side-effecting node, and tools that reach their run through RunScope",
+      "state": "queued",
+      "risk": "high",
+      "owner": null,
+      "scope": [],
+      "dependencies": [],
+      "requirements": [
+        "FR-73",
+        "FR-74",
+        "FR-75",
+        "FR-76",
+        "AC-58",
+        "AC-59",
+        "AC-60",
+        "AC-63",
+        "NFR-21",
+        "NFR-22"
+      ],
+      "gates": [
+        {
+          "id": "unit",
+          "command": ".venv\\Scripts\\python.exe -m pytest tests/test_orchestrator.py -q",
+          "mandatory": true,
+          "status": "pending",
+          "evidence": null
+        },
+        {
+          "id": "regression",
+          "command": ".venv\\Scripts\\python.exe -m pytest -q",
+          "mandatory": true,
+          "status": "pending",
+          "evidence": null
+        },
+        {
+          "id": "independent-review",
+          "command": "",
+          "mandatory": true,
+          "status": "pending",
+          "evidence": null
+        }
+      ],
+      "next_action": "Run the task pre-flight.",
+      "blocker": null,
+      "notes": [],
+      "failures": [],
+      "limitations": [],
+      "created_at": "2026-09-19T12:27:44.668Z",
+      "updated_at": "2026-09-19T12:27:44.668Z"
+    },
+    {
+      "id": "M20-context-policy-and-compaction",
+      "outcome": "An agent sees only the tools it may execute, recorded in the manifest, and long histories compact at a threshold with taint and provenance kept and every compaction recorded",
+      "state": "queued",
+      "risk": "medium",
+      "owner": null,
+      "scope": [],
+      "dependencies": [],
+      "requirements": [
+        "FR-77",
+        "FR-78",
+        "AC-61",
+        "AC-62"
+      ],
+      "gates": [
+        {
+          "id": "unit",
+          "command": ".venv\\Scripts\\python.exe -m pytest tests/test_context_policy.py -q",
+          "mandatory": true,
+          "status": "pending",
+          "evidence": null
+        },
+        {
+          "id": "regression",
+          "command": ".venv\\Scripts\\python.exe -m pytest -q",
+          "mandatory": true,
+          "status": "pending",
+          "evidence": null
+        },
+        {
+          "id": "independent-review",
+          "command": "",
+          "mandatory": true,
+          "status": "pending",
+          "evidence": null
+        }
+      ],
+      "next_action": "Run the task pre-flight.",
+      "blocker": null,
+      "notes": [],
+      "failures": [],
+      "limitations": [],
+      "created_at": "2026-09-19T12:27:44.803Z",
+      "updated_at": "2026-09-19T12:27:44.803Z"
     }
   ],
   "learning_proposals": [],
@@ -3156,6 +3527,24 @@
       "task": "M15-adr12-comparison",
       "human": "Claude Sonnet 5 (independent L4 reviewer, M15 round 1, fresh session)",
       "reason": "Verified independently: gate green on source hash ee9313ff (unit 34 passed in 5.22s, regression 1233 passed in 171.42s), matching the recorded evidence. KNOWLEDGE-d94aee6c pre-flight recorded before any live run and KNOWLEDGE-ca9ae048 live findings recorded before this review, both read from the store. The AC-50 report is exactly 72 rows, 12 tasks by 2 arms by 3 repetitions, 71 checkers passed, every FR-62 measure present on every row, listed by git ls-files --others --exclude-standard, and the AC-19 credential scan passes with it in place. NFR-20 confirmed by grep and pyproject.toml: no import of claude_agent_sdk under agentsdk, the pin lives only in the eval extra and evals/adr12/requirements.txt, and the wheel packages list excludes evals. Attack items 1 through 7 were probed with scripts and real output. Three caveats, none blocking. First, two of twelve checkers (retries-from-settings, entry-count) match their wanted digit as a bare substring, so a wrong two digit answer such as fifteen or sixteen would pass; not blocking because it did not occur in the delivered 72 row report and it is the same substring checker tradeoff the brief already declares. Second, the Claude arm runs with an empty system prompt (the literal CLI flag is --system-prompt with an empty value, confirmed by inspecting the compiled command line) while this SDK arm gets a 251 character terse answer instruction; this asymmetry is undisclosed and the KNOWLEDGE-ca9ae048 record attributes part of the token gap to the Claude arm system prompt, which is empty by construction; not blocking because FR-61 names only tools, permission mode, setting sources and env as the fields that must match between arms, and the written report itself makes no comparative verdict. Third, offline reproduction shows that a Claude arm failure occurring before its ResultMessage arrives reports turns and every token count as a bare zero and cost as zero rather than unavailable, which would read as a false zero on a future rerun rather than the unavailable AC-50 requires; not blocking for this round because the delivered report contains no such row and the root cause is the same unbounded call time gap the author already declared and deferred as A13. Recommend the next session tighten the two numeric checkers, disclose or equalize the instruction asymmetry, and mark turns and tokens unavailable rather than zero on a pre result failure.",
+      "revision": null
+    },
+    {
+      "id": "7fe54917-0a86-4a8b-9c3a-6f34434c3165",
+      "at": "2026-09-19T14:23:45.523Z",
+      "action": "approve",
+      "task": "M16-plan-persistence",
+      "human": "Claude Fable 5.1 (independent L4 reviewer, M16 round 1, fresh session)",
+      "reason": "Verified first-hand: FR-64 to FR-66, AC-51, AC-52 and NFR-22 on both stores. Full suite 1347 passed in 240s with -p no:cacheprovider, store counts equal at start and end, no orphan or residue; genesis gate green on 65686fe0 (unit 114, regression 1347). All eight attack items probed with rerunnable scripts under m16r1-probes. 13 own mutants: 12 killed, the survivor R12 is unpinned only under A7. Demo offline and live 8 of 8, checked against the store, its rows removed. Caveats, none blocking: F1 plan_id is a global key on both stores, so another tenant or another run can store a free version number under an existing plan_id and block the owner replan (D13 trusted caller); F2 transition accepts any sink, so a node event can land in another run; F3 on Postgres, floats written in exponent form (1e16 and above, 1e300) and -0.0 inside expected_output_schema or criterion arguments read back with a different plan_hash than written and than the column while the in-memory store keeps them, and get_plan never compares the recomputed hash to the column so a tampered document reads back silently; F4 on Postgres the row lock ends at commit before the emit, so two concurrent transitions of one node can record Finished before Started (shown with a slow sink, 0 of 40 naturally), sequence numbers stay contiguous; F5 RecursionError instead of InvalidPlan for schemas nested 200 deep or arguments 800 deep; A7 judged not a breach of NFR-22 as written. Recommend fixing F3 and F2 before M19 relies on plan_hash and node events.",
+      "revision": null
+    },
+    {
+      "id": "345f578f-924c-4bc8-8b5f-36fd270f0369",
+      "at": "2026-09-19T17:06:04.666Z",
+      "action": "approve",
+      "task": "M16-plan-persistence",
+      "human": "Claude Sonnet 5 (independent L4 reviewer, M16 round 2, fresh session)",
+      "reason": "Verified F1, F3 and F5 firsthand end to end on both stores with live Postgres probes: extreme JSON values (floats of every magnitude, negative zero, integers beyond 2 to the 63, unicode, Decimal forms) round trip exactly; the integrity check fires on a tampered document, malformed JSON, a schema invalid document and the plan_hash column alone, but never on an honest row; scope isolation holds for get_plan, versions, node_states and transition across tenant, project and run; the advisory lock held under real concurrency (thirty simultaneous claims across three plan ids plus ten sequential replan rounds) with no deadlock or starvation; and the MAX_JSON_DEPTH 64 boundary is exact on both entry points with only InvalidPlan ever raised at any depth up to twenty thousand. Migration 0007 checksum, shape, keys and idempotency confirmed directly against the live dev database and consistent with the file on disk (checksum adb9ad83), and a live spot mutation reverting document back to JSONB was killed by the migration test then restored and checksum verified. Reran every round 1 probe; all pass except three probe artifacts from the JSONB to TEXT schema change, which I confirmed by direct query are not product defects. Full regression suite 1375 passed in 249 seconds and the gate is green on both unit and regression, source hash 8f5e56d9 matching KICKOFF. Two non blocking caveats recorded: an O of n squared duplicate node id check in plan.py line 348 has no upper bound on plan size and could take tens of seconds for plans of many thousands of nodes, though real plans are capped at fifty nodes by policy and this is unchanged by round 2; and F4 remains present and unchanged (one Started after Finished inversion observed under a natural Postgres race), carried to M19 as already recorded in DECISION-6d073ac0.",
       "revision": null
     }
   ],

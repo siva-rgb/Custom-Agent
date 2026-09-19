@@ -7,7 +7,7 @@ persisted so you can reconstruct exactly what happened afterwards.
 
 > **Status: `0.1.0.dev0`, pre-release.** Phase 0 (the single-agent foundation) and
 > a store-hardening milestone for Phase 2 are complete, each approved by an
-> independent review; the suite has 1233 tests. It is not on PyPI yet, and a lot is
+> independent review; the suite has 1375 tests. It is not on PyPI yet, and a lot is
 > deliberately not built -- see [What it does not do yet](#what-it-does-not-do-yet).
 
 ## What it does
@@ -435,6 +435,7 @@ credentials -- which is also how the test suite checks them.
 | [`11_run_handle.py`](scripts/11_run_handle.py) | a run's events streamed through its handle as they happen, and a second run cancelled mid-flight |
 | [`12_artifacts.py`](scripts/12_artifacts.py) | an artifact put, read back and checked against its hash, kept within its tenant, expired and deleted |
 | [`13_telemetry.py`](scripts/13_telemetry.py) | per-call timings on every event, and the same run as an OpenTelemetry span tree sent over OTLP/HTTP |
+| [`14_plan.py`](scripts/14_plan.py) | a planner's plan checked and stored as an immutable version, its nodes moved with events, and a replan that leaves version 1 untouched |
 
 ```bash
 python scripts/02_custom_tools.py --offline
@@ -463,7 +464,7 @@ Narrowing that is a known, recorded gap.
 .venv/Scripts/python -m pytest -q
 ```
 
-The full suite (1233 tests) runs against a **real database and the live gateway**,
+The full suite (1375 tests) runs against a **real database and the live gateway**,
 including an evaluation that calls two real models and spends tokens. Tests that
 need configuration fail rather than skip when it is missing, on purpose: a test
 suite that skips to green proves nothing.

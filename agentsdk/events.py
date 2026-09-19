@@ -31,6 +31,10 @@ class EventType(str, Enum):
     RUN_FAILED = "RunFailed"
     # FR-52 (M12): a cancelled run's last event, carrying the reason.
     RUN_CANCELLED = "RunCancelled"
+    # FR-66 (M16): a plan node started, and finished in any final status; the node id
+    # travels in the envelope's task_id (DECISION-8f8cc54c).
+    PLAN_NODE_STARTED = "PlanNodeStarted"
+    PLAN_NODE_FINISHED = "PlanNodeFinished"
 
 
 @dataclass(frozen=True)

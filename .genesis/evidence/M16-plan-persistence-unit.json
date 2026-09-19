@@ -1,0 +1,22 @@
+{
+  "task": "M16-plan-persistence",
+  "gate": "unit",
+  "command": ".venv\\Scripts\\python.exe -m pytest tests/test_plan.py -q",
+  "started_at": "2026-09-19T16:59:32.010Z",
+  "observed_at": "2026-09-19T16:59:45.341Z",
+  "exit_code": 0,
+  "signal": null,
+  "stdout": "........................................................................ [ 50%]\r\n......................................................................   [100%]\r\n142 passed in 12.54s\r\n",
+  "stderr": "",
+  "revision": {
+    "commit": "b3654cf4bea7471041d3b61d04b7abd6d14c341a",
+    "dirty": true
+  },
+  "source_hash": "8f5e56d9bb574b7b7e1924d5470141e4168a50f0999ce94809f811e28e8e07c5",
+  "environment": {
+    "node": "v20.10.0",
+    "platform": "win32",
+    "arch": "x64"
+  },
+  "hash": "e38a5d06002288a4c14274f78830816f815793d4fa465c0713f71ae9a1d1cf8b"
+}

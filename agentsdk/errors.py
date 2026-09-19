@@ -110,6 +110,28 @@ class ToolCancelled(ToolError):
 # --- Artifacts --------------------------------------------------------------
 
 
+class InvalidPlan(AgentSDKError, ValueError):
+    """FR-64, FR-65: a plan, a node or a planner's document that cannot be a plan.
+
+    A ValueError, as every refusal at construction is. `path` is where a planner's
+    document failed, its location joined with "/" ("nodes/1"), or None when the
+    refusal is not about a place in a document.
+    """
+
+    def __init__(self, message: str, *, path: str | None = None) -> None:
+        super().__init__(message)
+        self.path = path
+
+
+class PlanNotFound(AgentSDKError):
+    """FR-65, FR-66: no such plan version, or node, in this store's scope."""
+
+
+class PlanIntegrityError(AgentSDKError):
+    """FR-65, AC-51: a stored plan no longer matches the hash it was stored with, so it
+    was changed outside the SDK and is not returned (DECISION-6d073ac0, F3)."""
+
+
 class ArtifactNotFound(AgentSDKError):
     """No artifact with this id is visible to the store's tenant and project (FR-54).
 

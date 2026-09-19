@@ -26,7 +26,8 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from decimal import Decimal
 from pathlib import Path
-from typing import Any
+from types import MappingProxyType
+from typing import Any, Mapping
 
 from psycopg_pool import ConnectionPool
 
@@ -44,9 +45,18 @@ from .artifacts import (
     refuse_bad_scope,
     utc_now,
 )
-from .events import SCHEMA_VERSION, EventType, RunEvent
+from .errors import InvalidPlan, PlanIntegrityError, PlanNotFound
+from .events import SCHEMA_VERSION, EventSink, EventType, RunEvent
 from .migrate import apply_migrations
 from .model import Usage
+from .plan import (
+    PlanVersion,
+    canonical_text,
+    checked_status,
+    emit_transition,
+    plan_from_document,
+    refuse_transition,
+)
 from .primitives import (
     UNSTORABLE,
     refuse_unstorable_fields,
@@ -1114,3 +1124,165 @@ class PostgresArtifactStore:
 
     async def expire(self) -> int:
         return await _write_then_honour_cancellation(self._expire, self._clock())
+
+
+class PostgresRunStateStore:
+    """FR-65, FR-66's durable RunStateStore: plan_versions and plan_node_states
+    (migration 0007), bound to one tenant and project.
+
+    Every statement is filtered by the store's tenant and project, and they lead every
+    key, so another scope's plan and an unknown one are the same "not found", and a
+    plan id another scope uses neither blocks nor reveals anything (DECISION-6d073ac0,
+    F1). A version is only ever inserted, never updated; its document is stored as the
+    exact text it was hashed over, and a row whose text no longer hashes to its stored
+    plan_hash is refused on read with PlanIntegrityError (F3). A transition locks its
+    node's row, so two transitions of one node cannot both leave a final status; the
+    event is emitted after the row is committed, on the same worker thread, through the
+    run's own sink. I/O runs on worker threads through the pool (FR-20).
+    """
+
+    def __init__(self, dsn: str, tenant_id: str, project_id: str) -> None:
+        refuse_bad_scope(tenant_id, project_id)
+        self._dsn = dsn
+        self._tenant_id = tenant_id
+        self._project_id = project_id
+
+    def for_scope(self, tenant_id: str, project_id: str) -> PostgresRunStateStore:
+        """A store over the same database, bound to another tenant and project."""
+        return PostgresRunStateStore(self._dsn, tenant_id, project_id)
+
+    def _scope(self) -> tuple[str, str]:
+        return self._tenant_id, self._project_id
+
+    async def put_plan(self, plan: PlanVersion) -> None:
+        if not isinstance(plan, PlanVersion):
+            raise InvalidPlan(f"put_plan needs a PlanVersion, got {type(plan).__name__}")
+        await _write_then_honour_cancellation(self._insert_plan, plan)
+
+    def _insert_plan(self, plan: PlanVersion) -> None:
+        tenant_id, project_id = self._scope()
+        with _pool(self._dsn).connection() as conn, conn.transaction():
+            # One plan at a time per scope and plan id, so two runs cannot both find the
+            # id unclaimed and both store under it. A hash collision only serialises.
+            conn.execute(
+                "SELECT pg_advisory_xact_lock(hashtextextended(%s, 0))",
+                (json.dumps([tenant_id, project_id, plan.plan_id]),),
+            )
+            if conn.execute(
+                "SELECT 1 FROM runs WHERE run_id = %s AND tenant_id = %s AND project_id = %s",
+                (plan.run_id, tenant_id, project_id),
+            ).fetchone() is None:
+                raise InvalidPlan(f"run {plan.run_id} is not a run of this store's tenant and project")
+            parent_id, parent_version = plan.parent_plan if plan.parent_plan is not None else (None, None)
+            # The parent first: it is what the caller named.
+            if parent_id is not None and conn.execute(
+                "SELECT 1 FROM plan_versions WHERE plan_id = %s AND version = %s AND run_id = %s"
+                " AND tenant_id = %s AND project_id = %s",
+                (parent_id, parent_version, plan.run_id, tenant_id, project_id),
+            ).fetchone() is None:
+                raise InvalidPlan(f"parent_plan {plan.parent_plan} is not a stored version of this run's plans")
+            owner = conn.execute(
+                "SELECT run_id FROM plan_versions WHERE tenant_id = %s AND project_id = %s AND plan_id = %s LIMIT 1",
+                (tenant_id, project_id, plan.plan_id),
+            ).fetchone()
+            if owner is not None and str(owner[0]) != plan.run_id:
+                raise InvalidPlan(f"plan {plan.plan_id} belongs to run {owner[0]}, not run {plan.run_id}")
+            inserted = conn.execute(
+                "INSERT INTO plan_versions (tenant_id, project_id, plan_id, version, run_id,"
+                " parent_plan_id, parent_version, plan_hash, document, created_at)"
+                " VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)"
+                " ON CONFLICT (tenant_id, project_id, plan_id, version) DO NOTHING RETURNING 1",
+                (tenant_id, project_id, plan.plan_id, plan.version, plan.run_id, parent_id, parent_version,
+                 plan.plan_hash, canonical_text(plan.to_document()), plan.created_at),
+            ).fetchone()
+            if inserted is None:
+                raise InvalidPlan(f"plan {plan.plan_id} version {plan.version} is already stored")
+            with conn.cursor() as cursor:
+                cursor.executemany(
+                    "INSERT INTO plan_node_states (plan_id, version, node_id, run_id, tenant_id, project_id, status)"
+                    " VALUES (%s, %s, %s, %s, %s, %s, 'pending')",
+                    [(plan.plan_id, plan.version, item.node_id, plan.run_id, tenant_id, project_id) for item in plan.nodes],
+                )
+
+    @staticmethod
+    def _addressable(plan_id: Any, version: Any) -> bool:
+        return type(plan_id) is str and column_rejection_reason(plan_id, "UUID") is None and type(version) is int
+
+    async def get_plan(self, plan_id: str, version: int) -> PlanVersion:
+        rows = await asyncio.to_thread(self._select_versions, plan_id, version)
+        if not rows:
+            raise PlanNotFound(f"no plan {plan_id} version {version} in this scope")
+        return rows[0]
+
+    async def versions(self, plan_id: str) -> tuple[PlanVersion, ...]:
+        return tuple(await asyncio.to_thread(self._select_versions, plan_id, None))
+
+    def _select_versions(self, plan_id: Any, version: int | None) -> list[PlanVersion]:
+        if not self._addressable(plan_id, 1 if version is None else version):
+            return []
+        sql = (
+            "SELECT version, run_id, parent_plan_id, parent_version, document, created_at, plan_hash"
+            " FROM plan_versions WHERE plan_id = %s AND tenant_id = %s AND project_id = %s"
+        )
+        params: tuple[Any, ...] = (plan_id, *self._scope())
+        if version is not None:
+            sql, params = sql + " AND version = %s", params + (version,)
+        with _pool(self._dsn).connection() as conn:
+            rows = conn.execute(sql + " ORDER BY version", params).fetchall()
+        plans = []
+        for number, run_id, parent_id, parent_version, document, created_at, stored_hash in rows:
+            try:
+                plan = plan_from_document(
+                    json.loads(document), plan_id=plan_id, version=number, run_id=str(run_id),
+                    parent_plan=None if parent_id is None else (str(parent_id), parent_version),
+                    created_at=created_at,
+                )
+            except (ValueError, InvalidPlan) as exc:
+                raise PlanIntegrityError(
+                    f"plan {plan_id} version {number} is no longer a valid plan: {type(exc).__name__}"
+                ) from None
+            if plan.plan_hash != stored_hash:
+                raise PlanIntegrityError(f"plan {plan_id} version {number} does not match the hash it was stored with")
+            plans.append(plan)
+        return plans
+
+    async def node_states(self, plan_id: str, version: int) -> Mapping[str, str]:
+        rows = await asyncio.to_thread(self._select_states, plan_id, version)
+        if not rows:
+            # Every stored version has at least one node, so no rows is no plan.
+            raise PlanNotFound(f"no plan {plan_id} version {version} in this scope")
+        return MappingProxyType(dict(rows))
+
+    def _select_states(self, plan_id: Any, version: Any) -> list[tuple[str, str]]:
+        if not self._addressable(plan_id, version):
+            return []
+        with _pool(self._dsn).connection() as conn:
+            return conn.execute(
+                "SELECT node_id, status FROM plan_node_states"
+                " WHERE plan_id = %s AND version = %s AND tenant_id = %s AND project_id = %s ORDER BY node_id",
+                (plan_id, version, *self._scope()),
+            ).fetchall()
+
+    async def transition(self, plan_id: str, version: int, node_id: str, status: str, *, sink: EventSink) -> None:
+        checked_status(status)
+        await _write_then_honour_cancellation(self._transition, plan_id, version, node_id, status, sink)
+
+    def _transition(self, plan_id: Any, version: Any, node_id: Any, status: str, sink: EventSink) -> None:
+        if not self._addressable(plan_id, version) or type(node_id) is not str:
+            raise PlanNotFound(f"no node {node_id!r} in plan {plan_id} version {version} in this scope")
+        with _pool(self._dsn).connection() as conn, conn.transaction():
+            row = conn.execute(
+                "SELECT status FROM plan_node_states"
+                " WHERE plan_id = %s AND version = %s AND node_id = %s AND tenant_id = %s AND project_id = %s"
+                " FOR UPDATE",
+                (plan_id, version, node_id, *self._scope()),
+            ).fetchone()
+            if row is None:
+                raise PlanNotFound(f"no node {node_id!r} in plan {plan_id} version {version} in this scope")
+            refuse_transition(node_id, row[0], status)
+            conn.execute(
+                "UPDATE plan_node_states SET status = %s, updated_at = now()"
+                " WHERE plan_id = %s AND version = %s AND node_id = %s AND tenant_id = %s AND project_id = %s",
+                (status, plan_id, version, node_id, *self._scope()),
+            )
+        emit_transition(sink, plan_id, version, node_id, status)

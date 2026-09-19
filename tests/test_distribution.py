@@ -37,6 +37,8 @@ EXPECTED_EXAMPLES = {
     "11_run_handle.py",
     "12_artifacts.py",
     "13_telemetry.py",
+    # FR-66 (M16): the plan as a persisted object.
+    "14_plan.py",
 }
 
 

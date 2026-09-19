@@ -27,13 +27,15 @@ load_dotenv()
 _DSN = normalise_database_url(os.environ.get("DATABASE_URL"))
 # Each table, and the id column whose set of values the session must leave as it
 # found it. From M13 that includes every artifact, which a run's cleanup would
-# otherwise not see.
+# otherwise not see, and from M16 every stored plan version and node state (AC-63).
 _TRACKED = (
     ("runs", "run_id"),
     ("messages", "run_id"),
     ("run_events", "run_id"),
     ("execution_manifests", "run_id"),
     ("artifacts", "artifact_id"),
+    ("plan_versions", "run_id"),
+    ("plan_node_states", "run_id"),
 )
 _RUN_TABLES = tuple(table for table, _ in _TRACKED)
 
