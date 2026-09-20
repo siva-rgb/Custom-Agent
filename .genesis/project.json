@@ -9,7 +9,7 @@
     "non_goals": [],
     "trust_boundary": "local repository",
     "created_at": "2026-09-05T14:48:57.894Z",
-    "updated_at": "2026-09-19T17:15:13.088Z"
+    "updated_at": "2026-09-19T17:36:43.078Z"
   },
   "policy": {
     "ponytail": "full",
@@ -1094,6 +1094,22 @@
       "status": "accepted",
       "source": null,
       "recorded_at": "2026-09-19T14:54:02.956Z"
+    },
+    {
+      "id": "DECISION-c274eb02",
+      "title": "M17 clarifications of FR-67 to FR-69: a governor with an internal lease, and a cited price table of the models in use",
+      "text": "Owner decided on 2026-09-19 at the M17 pre-flight, which found two places where the approved specification did not say enough to build M17. First, FR-67 and FR-68 enforce budgets over plan nodes and child runs, but nothing runs nodes or children until M18 and M19, and FR-68 keeps budgets for plain single-agent runs out of scope, backlog I-04. Decided: M17 builds a BudgetGovernor over a PlanVersion, holding the plan-time split into orchestrator reserve, unallocated reserve and node reservations, the reclaim, and the deterministic top-up, plus an internal budget lease that the agent loop checks at its existing checkpoint before each model call. The lease is not a public single-agent budget, so I-04 stays out. M17 tests drive several runs, each holding one node lease under one governor with scripted costs, proving AC-53 and AC-54 including budget_exceeded endings; M18 and M19 hand leases to children and nodes without changing the governor. Rejected: swapping M17 and M18, which needs a plan reopen and leaves the M18 retry-draws-on-reservation half unbuilt. Second, FR-69 names a dated price table without its contents. Decided: only the models this project uses, openai.gpt-4o-mini, the SDK default, and bedrock.anthropic.claude-haiku-4-5, used by the golden eval and M15, each price taken from the provider official pricing page at build time with its source URL and the date recorded in the table, and the table stating plainly that it is list price, which may not be what the gateway bills. Every other model needs a caller-supplied ModelPricing for a USD budget. Rejected: a broad table across all four providers, and Haiku only.",
+      "status": "accepted",
+      "source": null,
+      "recorded_at": "2026-09-19T17:29:33.164Z"
+    },
+    {
+      "id": "DECISION-727f3a42",
+      "title": "M17 price table ships gpt-4o-mini only; Bedrock Haiku 4.5 left out until its rate is verified",
+      "text": "Owner decided on 2026-09-19, refining DECISION-c274eb02. The shipped price table holds openai.gpt-4o-mini alone, at the OpenAI list price read on 2026-09-19 from https://developers.openai.com/api/docs/pricing: 0.15 USD per million input tokens, 0.075 cached input, 0.60 output, with that URL and date in the table. bedrock.anthropic.claude-haiku-4-5 is left out because its price could not be verified: Bedrock sets its own prices, its regional endpoints for Haiku 4.5 cost 10 percent more than global ones, the AWS pricing page did not load, and the gateway endpoint type is unknown (KNOWLEDGE-b40dd9de). A USD budget on that model needs a caller-supplied ModelPricing, as for every model outside the table, which is what M15 already did. It is added once the rate the gateway actually charges is known and cited.",
+      "status": "accepted",
+      "source": null,
+      "recorded_at": "2026-09-19T17:36:43.077Z"
     }
   ],
   "knowledge": [
@@ -1816,6 +1832,14 @@
       "source": null,
       "tags": [],
       "recorded_at": "2026-09-19T17:15:12.932Z"
+    },
+    {
+      "id": "KNOWLEDGE-b40dd9de",
+      "title": "M17 pre-flight: baseline, what the budget governor touches, and the prices found",
+      "text": "Baseline at 7d9e485 with no other python or node process: 1375 passed in 233.16 s, peak suite footprint 32 MB, no test past 120 s. Code facts: ModelPricing in registry.py holds Decimal USD per token for input, output, cache_read and cache_write, and call_cost prices one call, returning None rather than 0 when a used class has no price. A run price comes only from a caller-supplied ModelRegistry entry, entry.capabilities.pricing, read in Runner._cost and recorded in the manifest pricing column; the registry ships none. The per-run meter in loop.py sums call costs. The agent loop already calls control.checkpoint before each model call, the natural place for a lease check. BudgetExceeded, MaxDepthExceeded, DependencyFailed and ReplanLimitExceeded exist in errors.py as unused Phase 0 placeholders under WorkflowError. PlanNode.budget_reservation from M16 carries an optional Decimal usd and an optional int tokens. Migration checksums are newline-normalised, so a CRLF checkout does not break them. Prices fetched on 2026-09-19 from official pages: Anthropic, https://platform.claude.com/docs/en/about-claude/pricing, Claude Haiku 4.5 at 1 USD per million input tokens, 5 output, 0.10 cache hits, 1.25 for 5 minute cache writes; OpenAI, https://developers.openai.com/api/docs/pricing, gpt-4o-mini at 0.15 input, 0.075 cached input, 0.60 output; neither page carries a date. The Anthropic page says Amazon Bedrock sets its own prices and that its regional endpoints for Haiku 4.5 carry a 10 percent premium over global ones; the AWS Bedrock pricing page reset the connection twice and was not read, and which endpoint type the gateway uses is not visible from here. So the list price for bedrock.anthropic.claude-haiku-4-5 is unverified, and M15 costed that model at the Anthropic first-party rate: if the gateway routes to a regional endpoint, both M15 arms were understated by 10 percent, with their ratio unchanged.",
+      "source": null,
+      "tags": [],
+      "recorded_at": "2026-09-19T17:29:33.306Z"
     }
   ],
   "tasks": [
