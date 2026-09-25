@@ -36,6 +36,9 @@ def build_manifest(
     reasoning_effort: str | None = None,
     pricing: dict[str, str | None] | None = None,
     scheduler_limits: dict[str, Any] | None = None,
+    budget_policy: dict[str, Any] | None = None,
+    budget_reservations: dict[str, Any] | None = None,
+    price_table_date: str | None = None,
 ) -> dict[str, Any]:
     # The spec hash covers what actually changes behaviour: identity,
     # instructions and the tool profile. A spec whose display name changed is
@@ -58,4 +61,10 @@ def build_manifest(
         "pricing": pricing,
         # FR-43, beside the spec hash for the same reason.
         "scheduler_limits": scheduler_limits,
+        # FR-67 to FR-69 (M17): what this run was allowed to spend, and the date of
+        # the shipped price table when that table is what priced it. The spend itself
+        # is written when the run ends; it is not known here.
+        "budget_policy": budget_policy,
+        "budget_reservations": budget_reservations,
+        "price_table_date": price_table_date,
     }

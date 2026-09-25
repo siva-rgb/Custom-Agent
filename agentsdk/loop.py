@@ -42,6 +42,7 @@ from .model import ModelClient, ModelRequest, ModelResponse, StopReason, Usage
 from .outcomes import Completed, Failed, ToolExecutionOutcome
 from .primitives import Message, Role, ToolCall, ToolResult
 from .primitives import unstorable_reason
+from .budget import tokens_of
 from .registry import add_costs
 from .timings import elapsed_ms, now_ns, wall_clock
 from .tools import ToolRegistry
@@ -79,8 +80,16 @@ class RunMeter:
     no_call_cost: Decimal | None = None
     usage: Usage = field(default_factory=Usage)
     call_costs: list[Decimal | None] = field(default_factory=list)
+    # FR-68: what a budget was charged for this run, summed per call exactly as a
+    # lease charges it, because a run's summed usage loses the calls whose provider
+    # reported no total (round 3, H2).
+    budget_tokens: int = 0
+    # FR-69: the shipped price table's date, set when that table priced a call --
+    # including a call a before_model hook moved to another model (round 3, H5).
+    price_table_date: str | None = None
 
     def record(self, usage: Usage, cost: Decimal | None) -> None:
+        self.budget_tokens += tokens_of(usage)
         self.usage = self.usage + usage
         self.call_costs.append(cost)
 
@@ -119,6 +128,7 @@ class AgentLoop:
         assembler: ContextAssembler | None = None,
         hook: RuntimeHook | None = None,
         cost_of: Callable[[ModelRequest, Usage], Decimal | None] | None = None,
+        budget: Any | None = None,
         meter: RunMeter | None = None,
         tool_slot: Callable[[str], Any] | None = None,
         model_slot: Callable[[], Any] | None = None,
@@ -136,6 +146,7 @@ class AgentLoop:
         self._hook = hook if hook is not None else RuntimeHook()
         # How to price one call: the Runner knows the registry, the loop does not.
         self._cost_of = cost_of
+        self._budget = budget
         # The Runner's meter, so the account survives an exception that leaves
         # this loop before it can return an outcome.
         self._meter = meter
@@ -205,6 +216,11 @@ class AgentLoop:
             # FR-50: no model call starts once the run has been asked to stop, even
             # when the hook above is what asked.
             control.checkpoint()
+            # FR-68: enforcement is soft and checked here, before each call. An agent
+            # at or over its reservation, or a run at its ceiling, makes no further
+            # call; what it already spent stands and is charged to the run.
+            if self._budget is not None and not self._budget.may_call():
+                return _outcome(meter, None, turn, error="budget_exceeded")
             sending = False
             try:
                 # FR-46: the wait for a provider slot is outside send, so it is
@@ -233,6 +249,10 @@ class AgentLoop:
                 # One cancelled while waiting for its provider slot was never sent.
                 if sending:
                     control.cancelled_in_flight = True
+                    if self._budget is not None:
+                        # It may have been billed and reports no usage: the spend
+                        # stops being knowable rather than staying comfortably exact.
+                        self._budget.charge(None, None)
                 raise
 
             # The provider has billed this call, whatever happens next. So the
@@ -242,6 +262,8 @@ class AgentLoop:
             spent = response.usage
             call_cost = self._price(request, spent)
             meter.record(spent, call_cost)
+            if self._budget is not None:
+                self._budget.charge(spent, call_cost)
             await store(
                 self._events.emit,
                 EventType.MODEL_CALLED,

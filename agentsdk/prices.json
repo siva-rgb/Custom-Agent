@@ -1,0 +1,13 @@
+{
+  "date": "2026-09-19",
+  "note": "List prices read from each provider's own pricing page on the date above. A gateway or reseller may bill differently; a caller-supplied ModelPricing overrides any entry here.",
+  "models": {
+    "openai.gpt-4o-mini": {
+      "source": "https://developers.openai.com/api/docs/pricing",
+      "input": "0.00000015",
+      "cache_read": "0.000000075",
+      "output": "0.0000006",
+      "cache_write_note": "The cited page lists input, cached input and output only. cache_write is therefore absent rather than 0: a call that reports cache-write tokens cannot be priced from this table, and an unpriced call leaves a run's cost unknown rather than understated (NFR-11, F8)."
+    }
+  }
+}

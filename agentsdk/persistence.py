@@ -45,7 +45,13 @@ class RunRecorder(Protocol):
     def start_run(self, scope: RunScope, *, manifest: dict[str, Any], **fields: Any) -> None: ...
 
     def finish_run(
-        self, scope: RunScope, status: str, usage: Any = None, cost_usd: Any = None
+        self,
+        scope: RunScope,
+        status: str,
+        usage: Any = None,
+        cost_usd: Any = None,
+        budget_spend: dict[str, Any] | None = None,
+        price_table_date: str | None = None,
     ) -> None: ...
 
 

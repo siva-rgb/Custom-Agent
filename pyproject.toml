@@ -38,7 +38,7 @@ packages = ["agentsdk", "agentsdk.providers"]
 [tool.setuptools.package-data]
 # apply_schema reads these from the installed package, not from a checkout (FR-22),
 # and so does agentsdk.plan with the planner's schema (FR-65).
-agentsdk = ["schema.sql", "migrations/*.sql", "schemas/*.json"]
+agentsdk = ["schema.sql", "migrations/*.sql", "schemas/*.json", "prices.json"]
 
 [tool.setuptools.dynamic]
 version = { attr = "agentsdk.version.__version__" }

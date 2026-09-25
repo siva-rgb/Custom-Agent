@@ -39,6 +39,8 @@ EXPECTED_EXAMPLES = {
     "13_telemetry.py",
     # FR-66 (M16): the plan as a persisted object.
     "14_plan.py",
+    # FR-69 (M17): the budget governor.
+    "15_budget.py",
 }
 
 

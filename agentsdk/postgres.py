@@ -697,6 +697,8 @@ class PostgresRunStore:
     # FR-31: the Runner hands this store a run's usage and cost with its status.
     # Declared rather than inferred from finish_run's signature: see Runner._finish.
     records_accounting = True
+    # FR-68: and the budget a run held, beside its usage and cost (M17).
+    records_budget = True
 
     # FR-31: the columns migration 0003 created, one per Usage field. Named
     # here rather than read off Usage because they are what the migration made;
@@ -716,6 +718,8 @@ class PostgresRunStore:
         status: str,
         usage: Usage | None = None,
         cost_usd: Decimal | None = None,
+        budget_spend: dict[str, Any] | None = None,
+        price_table_date: str | None = None,
     ) -> None:
         """Tenant-scoped, like every other statement here.
 
@@ -731,6 +735,20 @@ class PostgresRunStore:
         caller before M9 did, writes NULL: unknown, not zero.
         """
         counts = [self._bigint_or_null(getattr(usage, name, None)) for name in self._USAGE_COLUMNS]
+        self._write_terminal_row(scope, status, counts, cost_usd)
+        # The budget columns are accounting, and accounting never fails a run (NFR-11).
+        # They are written after the status row is committed, in their own statements,
+        # so a value this database cannot hold costs the manifest its budget and never
+        # the run its status (round 4, J1).
+        if budget_spend is not None or price_table_date is not None:
+            try:
+                self._write_budget_columns(scope, budget_spend, price_table_date)
+            except Exception:  # noqa: BLE001 - the run's status is already recorded
+                pass
+
+    def _write_terminal_row(
+        self, scope: RunScope, status: str, counts: list[int | None], cost_usd: Decimal | None
+    ) -> None:
         with _pool(self._dsn).connection() as conn:
             conn.execute(
                 "UPDATE runs SET status = %s, completed_at = %s, "
@@ -747,6 +765,28 @@ class PostgresRunStore:
                     scope.project_id,
                 ),
             )
+
+    def _write_budget_columns(
+        self, scope: RunScope, budget_spend: dict[str, Any] | None, price_table_date: str | None
+    ) -> None:
+        with _pool(self._dsn).connection() as conn:
+            if price_table_date is not None:
+                # FR-69: the shipped table priced at least one call of this run, which
+                # a before_model hook can make true of a run whose recorded model the
+                # table does not list (round 3, H5). Only ever filled in, never cleared.
+                conn.execute(
+                    "UPDATE execution_manifests SET price_table_date = %s"
+                    " WHERE run_id = %s AND tenant_id = %s AND project_id = %s AND price_table_date IS NULL",
+                    (price_table_date, scope.run_id, scope.tenant_id, scope.project_id),
+                )
+            if budget_spend is not None:
+                # FR-68: the run's final spend, known only now, beside the policy and
+                # reservations its manifest already holds.
+                conn.execute(
+                    "UPDATE execution_manifests SET budget_spend = %s"
+                    " WHERE run_id = %s AND tenant_id = %s AND project_id = %s",
+                    (Jsonb(budget_spend), scope.run_id, scope.tenant_id, scope.project_id),
+                )
 
     @staticmethod
     def _bigint_or_null(value: Any) -> int | None:
@@ -797,18 +837,24 @@ class PostgresRunStore:
         """
         pricing = manifest.get("pricing")
         scheduler_limits = manifest.get("scheduler_limits")
+        # FR-68, FR-69 (0008): what this run was allowed to spend, and the date of the
+        # shipped price table when that table is what priced it. NULL when neither
+        # applies, as for every manifest written before 0008.
+        budget_policy = manifest.get("budget_policy")
+        budget_reservations = manifest.get("budget_reservations")
         conn.execute(
             """
                 INSERT INTO execution_manifests (
                     run_id, tenant_id, project_id, sdk_version, agent_spec_hash,
                     instructions_hash, model_id, model_version,
                     model_adapter_version, tool_spec_hashes, policy_version,
-                    max_output_tokens, reasoning_effort, pricing, scheduler_limits
+                    max_output_tokens, reasoning_effort, pricing, scheduler_limits,
+                    budget_policy, budget_reservations, price_table_date
                 )
                 -- Tenancy from the run row, as everywhere else. Inside
                 -- start_run the row is written in this same transaction, so
                 -- the SELECT sees it.
-                SELECT r.run_id, r.tenant_id, r.project_id, %s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s
+                SELECT r.run_id, r.tenant_id, r.project_id, %s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s
                 FROM runs r
                 WHERE r.run_id = %s AND r.tenant_id = %s AND r.project_id = %s
             """,
@@ -825,6 +871,9 @@ class PostgresRunStore:
                 manifest.get("reasoning_effort"),
                 Jsonb(pricing) if pricing is not None else None,
                 Jsonb(scheduler_limits) if scheduler_limits is not None else None,
+                Jsonb(budget_policy) if budget_policy is not None else None,
+                Jsonb(budget_reservations) if budget_reservations is not None else None,
+                manifest.get("price_table_date"),
                 scope.run_id,
                 scope.tenant_id,
                 scope.project_id,

@@ -23,7 +23,7 @@ from dataclasses import dataclass, field
 from enum import Enum
 
 from .context import ContextAssembler
-from .errors import describe_exception
+from .errors import UnpricedModel, describe_exception
 from .events import EventSink, EventType, InMemoryEventSink, RunEvent
 from .executor import ToolExecutor
 from .handle import PublishingSink, RunControl, RunHandle, RunState
@@ -36,6 +36,8 @@ from .permissions import AllowlistPermissionChecker, PermissionChecker
 from .persistence import Persistence
 from .postgres import RunScope, column_rejection_reason
 from .primitives import unstorable_reason
+from .budget import BudgetLease, tokens_of
+from .prices import PRICE_TABLE_DATE, shipped_pricing
 from .registry import ModelRegistry, call_cost, default_registry
 from .scheduler import ProviderSlots, RunSlots, SchedulerLimits
 from .session import InMemorySessionStore, SessionStore
@@ -155,6 +157,11 @@ class AgentSpec:
         return AllowlistPermissionChecker(set(self.tool_profile))
 
 
+def _decimal_text(value: Any) -> str | None:
+    """A Decimal as text: JSONB has no decimal, and a float would drift."""
+    return None if value is None else str(value)
+
+
 @dataclass(frozen=True)
 class RunConfig:
     tenant_id: str
@@ -173,6 +180,11 @@ class RunConfig:
     # FR-43: this run's per-run and per-tool limits, replacing the Runner's as a
     # whole. None runs under the Runner's.
     scheduler_limits: SchedulerLimits | None = None
+    # FR-67, FR-68: this run's claim on a plan node's reservation, handed over by
+    # whatever drives the plan -- the orchestrator M19 brings. Application code
+    # driving a plain run leaves it None; budgets for plain single-agent runs are
+    # out of scope (backlog I-04, DECISION-c274eb02).
+    budget_lease: BudgetLease | None = None
 
     def __post_init__(self) -> None:
         # Before the range checks: a bool passes every one of them (True >= 1,
@@ -396,6 +408,10 @@ class Runner:
         # loop raises: the failure path reports what the meter recorded, not what
         # the events happened to capture (R2).
         meter = RunMeter(no_call_cost=self._cost(recorded_model, Usage()))
+        # FR-69: a USD ceiling on a model nothing prices is a configuration error, so
+        # it is raised here, at the call site, with the rest of them -- not inside the
+        # run, where every exception becomes a FAILED result.
+        self._budget_record(config.budget_lease, recorded_model)
         provider_name = self._provider_name(client_key)
         return _OpenedRun(
             scope=scope,
@@ -439,16 +455,32 @@ class Runner:
                 provider_name=opened.provider_name,
             )
         except asyncio.CancelledError:
-            return await self._cancelled(scope, events, meter, control)
+            return await self._cancelled(scope, events, meter, control, config.budget_lease)
         except Exception as exc:  # noqa: BLE001
             if control.requested and not control.terminal:
                 # Asked to stop first: the run ends as it was asked to, whatever
                 # failed on the way out (FR-50).
-                return await self._cancelled(scope, events, meter, control)
+                return await self._cancelled(scope, events, meter, control, config.budget_lease)
             reason = describe_exception(exc)
+            already_terminal = control.terminal_written
             control.terminal = True
-            await self._safe_emit(events, EventType.RUN_FAILED, {"status": "failed", "reason": reason, **_run_timing(control)}, control)
-            await self._safe_finish(scope, RunStatus.FAILED, meter.usage, meter.cost_usd, control)
+            if not already_terminal:
+                await self._safe_emit(
+                    events, EventType.RUN_FAILED,
+                    {"status": "failed", "reason": reason, **_run_timing(control)}, control,
+                )
+            # Else the run already wrote its terminal event and only the store call
+            # after it failed: the caller still hears the failure in the result, but
+            # nothing is written after a terminal event (round 4, J1).
+            if not already_terminal:
+                await self._safe_finish(
+                    scope, RunStatus.FAILED, meter.usage, meter.cost_usd, control,
+                    self._spend_record(config.budget_lease, meter.usage, meter.cost_usd, meter.budget_tokens),
+                    meter.price_table_date,
+                )
+            # Else the run reached its own ending and only the write after it failed.
+            # Trying again here could record FAILED for a run that completed, which is
+            # a worse lie than the row the failed write left behind (round 4, J1).
             return RunResult(
                 status=RunStatus.FAILED,
                 output=None,
@@ -464,7 +496,12 @@ class Runner:
             )
 
     async def _cancelled(
-        self, scope: RunScope, events: EventSink, meter: RunMeter, control: RunControl
+        self,
+        scope: RunScope,
+        events: EventSink,
+        meter: RunMeter,
+        control: RunControl,
+        lease: Any | None = None,
     ) -> RunResult:
         """FR-50: record the run cancelled, as every terminal path records itself.
 
@@ -482,7 +519,10 @@ class Runner:
             {"status": RunStatus.CANCELLED.value, "turns": control.turns, "reason": reason, **_run_timing(control)},
             control,
         )
-        await self._safe_finish(scope, RunStatus.CANCELLED, meter.usage, cost, control)
+        await self._safe_finish(
+            scope, RunStatus.CANCELLED, meter.usage, cost, control,
+            self._spend_record(lease, meter.usage, cost, meter.budget_tokens), meter.price_table_date,
+        )
         return RunResult(
             status=RunStatus.CANCELLED,
             output=None,
@@ -493,6 +533,40 @@ class Runner:
             cost_usd=cost,
         )
 
+    @staticmethod
+    def _spend_record(
+        lease: Any, usage: Usage, cost_usd: Decimal | None, budget_tokens: int | None = None
+    ) -> dict[str, Any] | None:
+        """FR-68, NFR-23: what THIS run spent, for its manifest. None without a lease.
+
+        Round 1 recorded the lease's running total here, so a second run on the same
+        lease inherited the first one's spend and a run refused before its first call
+        recorded a spend it never made (F1). The run's own meter is what FR-68 means by
+        its final spend and what NFR-23 compares with its ModelCalled costs; the node's
+        total to date is kept beside it, under its own key.
+        """
+        if lease is None:
+            return None
+        try:
+            return Runner._spend_fields(lease, usage, cost_usd, budget_tokens)
+        except Exception:  # noqa: BLE001 - accounting never fails a run (NFR-11, H1)
+            return {"usd": None, "tokens": None, "node_id": None, "node_total": None}
+
+    @staticmethod
+    def _spend_fields(
+        lease: Any, usage: Usage, cost_usd: Decimal | None, budget_tokens: int | None
+    ) -> dict[str, Any]:
+        node = lease.spent
+        return {
+            "usd": _decimal_text(cost_usd),
+            # The sum of what each call counted, exactly as the lease charged them:
+            # a run's summed usage loses the calls whose provider reported no total
+            # (round 3, H2), and one call's count is not a run's (round 2, G1).
+            "tokens": tokens_of(usage) if budget_tokens is None else budget_tokens,
+            "node_id": lease.node_id,
+            "node_total": {"usd": _decimal_text(node.usd), "tokens": node.tokens},
+        }
+
     async def _safe_finish(
         self,
         scope: RunScope,
@@ -500,6 +574,8 @@ class Runner:
         usage: Usage,
         cost_usd: Decimal | None,
         control: RunControl,
+        budget_spend: dict[str, Any] | None = None,
+        price_table_date: str | None = None,
     ) -> None:
         # Threaded like every other store call (FR-20). This one runs once, on
         # a terminal path that is already failing or cancelled, so it is not what
@@ -509,12 +585,18 @@ class Runner:
         if self._persistence is None:
             return
         try:
-            await control.store(self._finish, scope, status, usage, cost_usd)
+            await control.store(self._finish, scope, status, usage, cost_usd, budget_spend, price_table_date)
         except Exception:  # noqa: BLE001 - persistence must not mask the real outcome
             pass
 
     def _finish(
-        self, scope: RunScope, status: RunStatus, usage: Usage, cost_usd: Decimal | None
+        self,
+        scope: RunScope,
+        status: RunStatus,
+        usage: Usage,
+        cost_usd: Decimal | None,
+        budget_spend: dict[str, Any] | None = None,
+        price_table_date: str | None = None,
     ) -> None:
         """The terminal write, carrying the run's usage and cost to a recorder
         that declares it records them (FR-31).
@@ -528,7 +610,17 @@ class Runner:
         """
         runs = self._persistence.runs
         if getattr(runs, "records_accounting", False) is True:
-            runs.finish_run(scope, status.value, usage=usage, cost_usd=cost_usd)
+            # The budget is offered the same way M9's accounting is: only to a
+            # recorder that declares it takes it, never inferred from a signature.
+            if (budget_spend is not None or price_table_date is not None) and getattr(
+                runs, "records_budget", False
+            ) is True:
+                runs.finish_run(
+                    scope, status.value, usage=usage, cost_usd=cost_usd,
+                    budget_spend=budget_spend, price_table_date=price_table_date,
+                )
+            else:
+                runs.finish_run(scope, status.value, usage=usage, cost_usd=cost_usd)
         else:
             runs.finish_run(scope, status.value)
 
@@ -559,6 +651,8 @@ class Runner:
     ) -> RunResult:
         run_id = scope.run_id
         limits = self._limits_for(config)
+        # FR-69: refused before anything runs, with or without persistence.
+        budget_record = self._budget_record(config.budget_lease, recorded_model)
         sessions = self._sessions
         if self._persistence is not None:
             sessions = self._persistence.session_store_for(scope)
@@ -588,6 +682,7 @@ class Runner:
                     reasoning_effort=reasoning_effort.value if reasoning_effort is not None else None,
                     pricing=self._pricing_record(recorded_model),
                     scheduler_limits=limits.to_json(),
+                    **budget_record,
                 ),
             )
 
@@ -645,7 +740,16 @@ class Runner:
             # Priced by the model the request was actually sent with, which a
             # before_model hook may have changed (FR-30): decided by the same function
             # that names it in ModelCalled (FR-57; M14 review round 1, C2).
-            return self._cost(sent_model(request, recorded_model), usage)
+            model = sent_model(request, recorded_model)
+            try:
+                pricing, table_date = self._effective_pricing(model)
+                if table_date is not None:
+                    # The shipped table priced this call, whichever model a hook sent
+                    # it with, so its date is what the manifest must record (H5).
+                    meter.price_table_date = table_date
+                return call_cost(usage, pricing)
+            except Exception:  # noqa: BLE001 - accounting never fails a run (NFR-11)
+                return None
 
         loop = AgentLoop(
             model_client=self._clients[client_key],
@@ -656,6 +760,7 @@ class Runner:
             assembler=self._assembler,
             hook=self._hook,
             cost_of=cost_of,
+            budget=config.budget_lease,
             meter=meter,
             tool_slot=RunSlots(limits).slot,
             model_slot=partial(self._provider_slots.slot, client_key),
@@ -700,8 +805,17 @@ class Runner:
             EventType.RUN_COMPLETED if status is RunStatus.COMPLETED else EventType.RUN_FAILED,
             {"status": status.value, "turns": outcome.turns, "reason": error, **_run_timing(control)},
         )
+        control.terminal_written = True
         if self._persistence is not None:
-            await control.store(self._finish, scope, status, meter.usage, meter.cost_usd)
+            # NOT swallowed, unlike the failure and cancellation paths: a run recorded
+            # as still running is a lie the caller should hear about (M4). What round 4
+            # found (J1) is what happens next -- see the handler in run(), which must
+            # not write a second terminal event over this one.
+            await control.store(
+                self._finish, scope, status, meter.usage, meter.cost_usd,
+                self._spend_record(config.budget_lease, meter.usage, meter.cost_usd, meter.budget_tokens),
+                meter.price_table_date,
+            )
         return RunResult(
             status=status,
             output=outcome.output,
@@ -725,6 +839,20 @@ class Runner:
             provider_concurrency_limits=self._limits.provider_concurrency_limits,
         )
 
+    def _effective_pricing(self, model_id: str | None) -> tuple[Any, str | None]:
+        """The prices a model is costed with, and the shipped table's date when that
+        table is what supplied them (FR-69).
+
+        The caller's registry wins; the shipped table is the default behind it; a model
+        in neither stays unpriced, which is not the same as free.
+        """
+        entry = self._models.resolve(model_id) if model_id else None
+        pricing = entry.capabilities.pricing if entry is not None else None
+        if pricing is not None:
+            return pricing, None
+        shipped = shipped_pricing(model_id)
+        return (shipped, PRICE_TABLE_DATE if shipped is not None else None)
+
     def _cost(self, model_id: str | None, usage: Usage) -> Decimal | None:
         """What `usage` cost on `model_id`, or None when that cannot be known.
 
@@ -732,16 +860,45 @@ class Runner:
         caller's, and accounting never fails a run (NFR-11).
         """
         try:
-            entry = self._models.resolve(model_id) if model_id else None
-            return call_cost(usage, entry.capabilities.pricing if entry is not None else None)
+            pricing, _ = self._effective_pricing(model_id)
+            return call_cost(usage, pricing)
         except Exception:  # noqa: BLE001
             return None
 
     def _pricing_record(self, model_id: str | None) -> dict[str, str | None] | None:
         """The prices a run is costed with, for its manifest (FR-31)."""
-        entry = self._models.resolve(model_id) if model_id else None
-        pricing = entry.capabilities.pricing if entry is not None else None
+        pricing, _ = self._effective_pricing(model_id)
         return pricing.to_json() if pricing is not None else None
+
+    def _budget_record(self, lease: Any, model_id: str | None) -> dict[str, Any]:
+        """FR-67 to FR-69: the policy and reservation this run runs under, for its
+        manifest, and the refusal when a USD ceiling meets a model nothing prices.
+
+        Raised here, at the call site, rather than discovered as an unpriced run
+        afterwards: a USD budget that cannot be measured is a configuration error.
+        """
+        if lease is None:
+            return {}
+        policy = lease.governor.policy
+        if policy.run_ceiling_usd is not None and self._effective_pricing(model_id)[0] is None:
+            raise UnpricedModel(
+                f"a USD budget needs a price for {model_id!r}: the model registry has none and the"
+                f" shipped price table of {PRICE_TABLE_DATE} does not list it"
+            )
+        reservation = lease.reservation
+        return {
+            "budget_policy": {
+                "run_ceiling_usd": _decimal_text(policy.run_ceiling_usd),
+                "run_ceiling_tokens": policy.run_ceiling_tokens,
+                "orchestrator_reserve_fraction": _decimal_text(policy.orchestrator_reserve_fraction),
+                "unallocated_reserve_fraction": _decimal_text(policy.unallocated_reserve_fraction),
+                "reservation_cap_fraction": _decimal_text(policy.reservation_cap_fraction),
+                "max_replans": policy.max_replans,
+            },
+            "budget_reservations": {
+                lease.node_id: {"usd": _decimal_text(reservation.usd), "tokens": reservation.tokens}
+            },
+        }
 
     def _default_model_id(self, client_key: str) -> str | None:
         """The client's own default model, used when no model was named (FR-32).

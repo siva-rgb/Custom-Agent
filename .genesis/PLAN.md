@@ -138,15 +138,15 @@
 
 ### M17-budget-governor — Runs carry an ADR-06 budget: reservations, reclaim and soft enforcement in USD and tokens, the P2-D19 defaults, and a dated price table that makes an unpriced USD budget a configuration error
 
-- state/risk: active / high
+- state/risk: done / high
 - requirements: FR-67, FR-68, FR-69, AC-53, AC-54, AC-55, NFR-23
 - scope: not bounded
-- gates: unit: .venv\Scripts\python.exe -m pytest tests/test_budget.py -q, regression: .venv\Scripts\python.exe -m pytest -q, independent-review: pending
+- gates: unit: .venv\Scripts\python.exe -m pytest tests/test_budget.py -q, regression: .venv\Scripts\python.exe -m pytest -q, independent-review: pass
 - next: Run the task pre-flight.
 
 ### M18-subagents — The orchestrator spawns subagents as linked runs: hub-and-spoke with curated briefing, taint carried across the run boundary, a structured result contract, and a depth limit with the new SchedulerLimits fields
 
-- state/risk: queued / high
+- state/risk: active / high
 - requirements: FR-70, FR-71, FR-72, AC-56, AC-57, NFR-22
 - scope: not bounded
 - gates: unit: .venv\Scripts\python.exe -m pytest tests/test_subagents.py -q, regression: .venv\Scripts\python.exe -m pytest -q, independent-review: pending

@@ -44,6 +44,11 @@ class RunControl:
         # Set immediately before a terminal event is written. From then on a request
         # has no effect: the run ends as it was already ending (FR-50).
         self.terminal = False
+        # Set once a terminal event has actually been WRITTEN, which `terminal`
+        # above does not mean: it is set before the write, so that a cancellation
+        # arriving during it has no effect. A failure after this one is set must
+        # not write a second terminal event over the first (round 4, J1).
+        self.terminal_written = False
         # A model call is in flight from entering ModelClient.send until it returns
         # (P2-D7); waiting for a provider slot is not in flight.
         self.in_flight = False

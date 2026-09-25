@@ -153,7 +153,15 @@ class WorkflowError(AgentSDKError):
 
 
 class BudgetExceeded(WorkflowError):
-    """Defined for Phase 2 (ADR-06)."""
+    """ADR-06: a budget cannot cover what was asked of it (M17)."""
+
+
+class UnpricedModel(AgentSDKError, ValueError):
+    """FR-69: a USD ceiling on a model no pricing covers, refused at the call site.
+
+    A configuration error, not a run failure: a USD budget that cannot be measured is
+    not a budget. A token ceiling applies to any model, priced or not.
+    """
 
 
 class MaxTurnsExceeded(WorkflowError):

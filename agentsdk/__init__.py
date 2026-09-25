@@ -7,6 +7,7 @@ the public surface is AgentSpec / RunConfig / Runner / RunResult (NFR-5).
 
 from .api import AgentSpec, RunConfig, Runner, RunResult, RunStatus
 from .artifacts import ArtifactRef, ArtifactStore, InMemoryArtifactStore
+from .budget import BudgetAllocation, BudgetAmount, BudgetGovernor, BudgetLease, BudgetPolicy
 from .handle import RunHandle, RunState
 from .model import ReasoningEffort
 from .persistence import Persistence
@@ -27,6 +28,7 @@ from .errors import (
     InvalidPlan,
     PlanIntegrityError,
     PlanNotFound,
+    UnpricedModel,
     ArtifactNotFound,
     BudgetExceeded,
     Cancelled,
@@ -93,6 +95,13 @@ __all__ = [
     # Postgres one comes from Persistence.run_state_store.
     "PlanNode",
     "PlanVersion",
+    # Budgets (FR-67, FR-68): the governor holds a run's ceiling and hands a
+    # lease to each node; M19's orchestrator is what sets RunConfig.budget_lease.
+    "BudgetPolicy",
+    "BudgetAmount",
+    "BudgetAllocation",
+    "BudgetGovernor",
+    "BudgetLease",
     "AcceptanceCriterion",
     "BudgetReservation",
     "NodeRetryPolicy",
@@ -126,6 +135,7 @@ __all__ = [
     "ArtifactIntegrityError",
     "InvalidPlan",
     "PlanIntegrityError",
+    "UnpricedModel",
     "PlanNotFound",
     "WorkflowError",
     "BudgetExceeded",
