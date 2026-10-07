@@ -9,7 +9,7 @@
     "non_goals": [],
     "trust_boundary": "local repository",
     "created_at": "2026-09-05T14:48:57.894Z",
-    "updated_at": "2026-10-06T17:17:28.779Z"
+    "updated_at": "2026-10-07T05:19:05.541Z"
   },
   "policy": {
     "ponytail": "full",
@@ -25,7 +25,7 @@
   "lifecycle": {
     "phase": "build",
     "status": "active",
-    "active_task": "M19-orchestrator",
+    "active_task": "M18a-validation-and-guard",
     "blocker": null,
     "next_action": "Run the task pre-flight."
   },
@@ -34,8 +34,8 @@
     "type": "new-product",
     "started_at": "2026-09-05T14:48:57.897Z",
     "spec_check": {
-      "at": "2026-09-16T17:16:40.787Z",
-      "source_hash": "5dfaf6e48ace4630940e5aa5c29aa8af373bbb31fd39a0f6935f11b487dfa6a0",
+      "at": "2026-10-07T05:18:10.900Z",
+      "source_hash": "1b060a79210276c81be0cc76b7f4cf9fae1fb7ff8d5a90b05c0e346b776b4ff3",
       "requirements": [
         "AC-1",
         "AC-10",
@@ -97,6 +97,10 @@
         "AC-61",
         "AC-62",
         "AC-63",
+        "AC-64",
+        "AC-65",
+        "AC-66",
+        "AC-67",
         "AC-7",
         "AC-8",
         "AC-9",
@@ -176,7 +180,13 @@
         "FR-76",
         "FR-77",
         "FR-78",
+        "FR-79",
         "FR-8",
+        "FR-80",
+        "FR-81",
+        "FR-82",
+        "FR-83",
+        "FR-84",
         "FR-9",
         "NFR-1",
         "NFR-10",
@@ -204,14 +214,14 @@
       ]
     },
     "plan_check": {
-      "at": "2026-09-19T12:27:44.968Z",
-      "source_hash": "b389ce0c62ed57d18e1b8c07bc7661b712c053816cba4d8331a55d0ec59943fc"
+      "at": "2026-10-07T05:19:05.378Z",
+      "source_hash": "49bd9a6d9de4e3e872fe02a47577bb26fe1b7081d2fc7048312ed6210e7e98cd"
     },
     "plan_approval": {
       "human": "owner",
-      "reason": "Owner approved the Phase 2 increment 2 plan on 2026-09-19: M16 plan persistence, M17 budget governor, M18 subagents, M19 orchestrator and M20 context policy and compaction, 20 tasks covering 164 requirements, each milestone gated by its own unit file, the full regression suite and a separate independent review",
-      "at": "2026-09-19T12:39:24.079Z",
-      "source_hash": "b389ce0c62ed57d18e1b8c07bc7661b712c053816cba4d8331a55d0ec59943fc"
+      "reason": "Owner approval 2026-10-07, recorded on the owner instruction in session: M18a-validation-and-guard is inserted before M19 so the loop-thread guard exists before the orchestrator adds store call sites (DECISION-938f4485). It carries FR-79 to FR-84 and AC-64 to AC-67 from M18 round 4 caveats C1, C2, C4 and the C3 resolution (DECISION-01c140d4). M19 and M20 are unchanged.",
+      "at": "2026-10-07T05:19:05.540Z",
+      "source_hash": "49bd9a6d9de4e3e872fe02a47577bb26fe1b7081d2fc7048312ed6210e7e98cd"
     }
   },
   "artifacts": [
@@ -281,6 +291,10 @@
         "AC-61",
         "AC-62",
         "AC-63",
+        "AC-64",
+        "AC-65",
+        "AC-66",
+        "AC-67",
         "AC-7",
         "AC-8",
         "AC-9",
@@ -360,7 +374,13 @@
         "FR-76",
         "FR-77",
         "FR-78",
+        "FR-79",
         "FR-8",
+        "FR-80",
+        "FR-81",
+        "FR-82",
+        "FR-83",
+        "FR-84",
         "FR-9",
         "NFR-1",
         "NFR-10",
@@ -386,12 +406,12 @@
         "NFR-8",
         "NFR-9"
       ],
-      "source_hash": "5dfaf6e48ace4630940e5aa5c29aa8af373bbb31fd39a0f6935f11b487dfa6a0",
+      "source_hash": "1b060a79210276c81be0cc76b7f4cf9fae1fb7ff8d5a90b05c0e346b776b4ff3",
       "approval": {
         "human": "owner",
-        "reason": "Owner approved Phase 2 increment 2 on 2026-09-19 after reviewing the specified section: M16 to M20, FR-64 to FR-78, NFR-21 to NFR-23, AC-51 to AC-63, built from owner decisions P2-D15 to P2-D27 recorded as DECISION-8e6927c4, DECISION-4aa01ef9 and DECISION-c49af041, with I-02 and I-03 deferred by P2-D25",
-        "at": "2026-09-19T12:27:29.819Z",
-        "source_hash": "5dfaf6e48ace4630940e5aa5c29aa8af373bbb31fd39a0f6935f11b487dfa6a0"
+        "reason": "Owner approval 2026-10-07, recorded on the owner instruction in session: M18a added to Phase 2 increment 2 as FR-79 to FR-84 with AC-64 to AC-67, filing M18 round 4 caveats C1, C2, C4 and the C3 resolution (DECISION-938f4485, DECISION-01c140d4). No existing requirement changed.",
+        "at": "2026-10-07T05:18:11.068Z",
+        "source_hash": "1b060a79210276c81be0cc76b7f4cf9fae1fb7ff8d5a90b05c0e346b776b4ff3"
       }
     }
   ],
@@ -1182,6 +1202,22 @@
       "status": "accepted",
       "source": null,
       "recorded_at": "2026-09-28T12:49:51.501Z"
+    },
+    {
+      "id": "DECISION-938f4485",
+      "title": "M18 round 4 caveats C1, C2 and C4 become M18a, specified before M19",
+      "text": "Owner decision 2026-10-07. The round 4 review approved M18 with five non-blocking caveats. C1 (RunConfig validates neither depth nor output_schema), C2 (Briefing.expected_output_schema unvalidated, raising after _admit consumed a task count) and C4 (the thread-identity guard enumerates paths, the third recurrence of KNOWLEDGE-c0f23fea) are specified as FR-79 to FR-82 in a new task M18a, sequenced BEFORE M19 so the loop-thread guard exists before the orchestrator adds store call sites of its own. Rejected: amending M19 (mixes a validation and test-infrastructure change into the highest-risk milestone, and one reviewer would review the orchestrator and the guard together) and appending after M20 (two more milestones add call sites first). C5, the live example leaving rows under example-tenant, stays outside NFR-16 scope.",
+      "status": "accepted",
+      "source": null,
+      "recorded_at": "2026-10-07T05:17:09.047Z"
+    },
+    {
+      "id": "DECISION-01c140d4",
+      "title": "C3 resolved: a briefed input gets a provenance-manifest entry and a data-only marker",
+      "text": "Owner decision 2026-10-07, answering M18 round 4 caveat C3: a briefed input reached the child user message with no data-only marker and no provenance-manifest entry, and only the result label carried the taint; the live structured child echoed the injected phrase and the example checked a substring. Both halves are specified: FR-83 adds a provenance-manifest entry for every briefed input (uri or hash, origin, instruction authority, trust zone, taint flags) as request metadata, which is the enforceable half under ADR-26; FR-84 adds a delimited data-only marker in the briefing text as signalling only, leaving ADR-17 intact (provenance informs policy, never instructs the model), and changes the example to assert the result provenance instead of a substring. Rejected: marker only (nothing downstream can act on it) and defer to P2-D25 (leaves the child own context the one place taint is unrepresented).",
+      "status": "accepted",
+      "source": null,
+      "recorded_at": "2026-10-07T05:17:09.840Z"
     }
   ],
   "knowledge": [
@@ -1950,9 +1986,9 @@
           "status": "pass",
           "evidence": {
             "human": "owner",
-            "reason": "Owner approved Phase 2 increment 2 on 2026-09-19 after reviewing the specified section: M16 to M20, FR-64 to FR-78, NFR-21 to NFR-23, AC-51 to AC-63, built from owner decisions P2-D15 to P2-D27 recorded as DECISION-8e6927c4, DECISION-4aa01ef9 and DECISION-c49af041, with I-02 and I-03 deferred by P2-D25",
-            "source_hash": "ab7e545bb97b9ad49c4a407f510411ffe7aff885e81342cdd45ba4939731bf77",
-            "observed_at": "2026-09-19T12:27:29.819Z"
+            "reason": "Owner approval 2026-10-07, recorded on the owner instruction in session: M18a added to Phase 2 increment 2 as FR-79 to FR-84 with AC-64 to AC-67, filing M18 round 4 caveats C1, C2, C4 and the C3 resolution (DECISION-938f4485, DECISION-01c140d4). No existing requirement changed.",
+            "source_hash": "85e3767d7ee7c1125f1d13936ab689d55b460f7112646e8a7307dd33f86ed59a",
+            "observed_at": "2026-10-07T05:18:11.068Z"
           }
         }
       ],
@@ -1962,7 +1998,7 @@
       "failures": [],
       "limitations": [],
       "created_at": "2026-09-05T14:48:57.897Z",
-      "updated_at": "2026-09-19T12:27:29.819Z"
+      "updated_at": "2026-10-07T05:18:11.068Z"
     },
     {
       "id": "M1-primitives",
@@ -3059,9 +3095,60 @@
       "updated_at": "2026-10-06T17:17:28.778Z"
     },
     {
+      "id": "M18a-validation-and-guard",
+      "outcome": "RunConfig and Briefing refuse an invalid depth, output_schema or expected_output_schema at construction; the loop-thread rule is asserted of every store call by an autouse fixture and refused at the store checkout itself; and a briefed input carries a provenance-manifest entry and a data-only marker",
+      "state": "active",
+      "risk": "high",
+      "owner": null,
+      "scope": [],
+      "dependencies": [],
+      "requirements": [
+        "FR-79",
+        "FR-80",
+        "FR-81",
+        "FR-82",
+        "FR-83",
+        "FR-84",
+        "AC-64",
+        "AC-65",
+        "AC-66",
+        "AC-67"
+      ],
+      "gates": [
+        {
+          "id": "unit",
+          "command": ".venv\\Scripts\\python.exe -m pytest tests/test_validation_and_guard.py -q",
+          "mandatory": true,
+          "status": "pending",
+          "evidence": null
+        },
+        {
+          "id": "regression",
+          "command": ".venv\\Scripts\\python.exe -m pytest -q",
+          "mandatory": true,
+          "status": "pending",
+          "evidence": null
+        },
+        {
+          "id": "independent-review",
+          "command": "",
+          "mandatory": true,
+          "status": "pending",
+          "evidence": null
+        }
+      ],
+      "next_action": "Run the task pre-flight.",
+      "blocker": null,
+      "notes": [],
+      "failures": [],
+      "limitations": [],
+      "created_at": "2026-10-07T05:18:21.086Z",
+      "updated_at": "2026-10-07T05:18:21.087Z"
+    },
+    {
       "id": "M19-orchestrator",
       "outcome": "An Orchestrator executes a PlanVersion over its DAG with deterministic acceptance criteria, guarded automatic replanning that never reruns a completed side-effecting node, and tools that reach their run through RunScope",
-      "state": "active",
+      "state": "queued",
       "risk": "high",
       "owner": null,
       "scope": [],
@@ -3107,7 +3194,7 @@
       "failures": [],
       "limitations": [],
       "created_at": "2026-09-19T12:27:44.668Z",
-      "updated_at": "2026-09-19T12:27:44.668Z"
+      "updated_at": "2026-10-07T05:18:21.342Z"
     },
     {
       "id": "M20-context-policy-and-compaction",
@@ -3782,13 +3869,13 @@
   ],
   "discovery": null,
   "checkpoint": {
-    "at": "2026-09-14T07:24:06.583Z",
+    "at": "2026-10-07T05:07:51.378Z",
     "revision": {
-      "commit": "aa146f33b37faf166bd08488c122e23e99178898",
-      "dirty": true,
-      "source_hash": "ef833c1abc8cfa8fb3f613cfeedf70319464a4c6f2193ab937b6722bdeaff835"
+      "commit": "50bcec0b42d11de9edc80842c37eed29aacda391",
+      "dirty": false,
+      "source_hash": "2ad12a2a9094bc025409573e5846cf8d993fdc7173ed3fecec5c1c1224eef6aa"
     },
-    "active_task": "M11-concurrency-foundations",
+    "active_task": "M19-orchestrator",
     "next_action": "Run the task pre-flight."
   },
   "legacy": null
