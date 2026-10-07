@@ -146,15 +146,15 @@
 
 ### M18-subagents — The orchestrator spawns subagents as linked runs: hub-and-spoke with curated briefing, taint carried across the run boundary, a structured result contract, and a depth limit with the new SchedulerLimits fields
 
-- state/risk: active / high
+- state/risk: done / high
 - requirements: FR-70, FR-71, FR-72, AC-56, AC-57, NFR-22
 - scope: not bounded
-- gates: unit: .venv\Scripts\python.exe -m pytest tests/test_subagents.py -q, regression: .venv\Scripts\python.exe -m pytest -q, independent-review: pending
+- gates: unit: .venv\Scripts\python.exe -m pytest tests/test_subagents.py -q, regression: .venv\Scripts\python.exe -m pytest -q, independent-review: pass
 - next: Run the task pre-flight.
 
 ### M19-orchestrator — An Orchestrator executes a PlanVersion over its DAG with deterministic acceptance criteria, guarded automatic replanning that never reruns a completed side-effecting node, and tools that reach their run through RunScope
 
-- state/risk: queued / high
+- state/risk: active / high
 - requirements: FR-73, FR-74, FR-75, FR-76, AC-58, AC-59, AC-60, AC-63, NFR-21, NFR-22
 - scope: not bounded
 - gates: unit: .venv\Scripts\python.exe -m pytest tests/test_orchestrator.py -q, regression: .venv\Scripts\python.exe -m pytest -q, independent-review: pending

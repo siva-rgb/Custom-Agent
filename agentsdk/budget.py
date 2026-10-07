@@ -291,10 +291,20 @@ class BudgetGovernor:
     def top_up(self, node_id: str, amount: BudgetAmount) -> None:
         """Move `amount` from the unallocated reserve to a node's reservation.
 
-        Deterministic orchestrator policy only; a model never asks for this.
+        Deterministic orchestrator policy only; a model never asks for this. The amount
+        must be positive in whichever units it sets: a BudgetAmount records what it is
+        given, including a negative (H1), so a top-up that did not check its sign could
+        take money back out of a node through a method that only claims to add it
+        (M17 round 5, K3).
         """
         if not isinstance(amount, BudgetAmount):
             raise ValueError(f"amount must be a BudgetAmount, got {type(amount).__name__}")
+        if amount.usd is None and amount.tokens is None:
+            raise ValueError("a top-up must set usd, tokens or both")
+        if amount.usd is not None and amount.usd <= 0:
+            raise ValueError(f"a top-up's usd must be above 0, got {amount.usd}")
+        if amount.tokens is not None and amount.tokens <= 0:
+            raise ValueError(f"a top-up's tokens must be above 0, got {amount.tokens}")
         with self._lock:
             if node_id not in self._reservations:
                 raise KeyError(node_id)

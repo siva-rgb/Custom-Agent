@@ -382,7 +382,10 @@ async def test_a_runs_effective_limits_are_recorded_in_its_manifest_on_postgres(
         result = await runner.run(agent(), "go", config() if run_limits is None else config(scheduler_limits=run_limits))
         assert result.status is RunStatus.COMPLETED, (label, result.error)
         [(stored,)] = query("SELECT scheduler_limits FROM execution_manifests WHERE run_id=%s", (result.run_id,))
-        assert stored == expected, label
+        # Every limit the type carries is recorded, so a limit added later (M18 added
+        # the three subagent ones, FR-72) is recorded too rather than silently absent.
+        assert set(stored) == set(limits().to_json()), label
+        assert {name: stored[name] for name in expected} == expected, label
 
 
 class Namespace:

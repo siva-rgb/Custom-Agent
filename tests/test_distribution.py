@@ -41,6 +41,8 @@ EXPECTED_EXAMPLES = {
     "14_plan.py",
     # FR-69 (M17): the budget governor.
     "15_budget.py",
+    # FR-72 (M18): subagents under a run's limits.
+    "16_subagents.py",
 }
 
 

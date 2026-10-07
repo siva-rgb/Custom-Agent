@@ -23,6 +23,10 @@ execute with a result before the cancellation continues.
 
 from __future__ import annotations
 
+import json
+
+import jsonschema
+
 import asyncio
 import dataclasses
 from collections.abc import Callable, Sequence
@@ -129,6 +133,7 @@ class AgentLoop:
         hook: RuntimeHook | None = None,
         cost_of: Callable[[ModelRequest, Usage], Decimal | None] | None = None,
         budget: Any | None = None,
+        output_schema: dict[str, Any] | None = None,
         meter: RunMeter | None = None,
         tool_slot: Callable[[str], Any] | None = None,
         model_slot: Callable[[], Any] | None = None,
@@ -147,6 +152,7 @@ class AgentLoop:
         # How to price one call: the Runner knows the registry, the loop does not.
         self._cost_of = cost_of
         self._budget = budget
+        self._output_schema = output_schema
         # The Runner's meter, so the account survives an exception that leaves
         # this loop before it can return an outcome.
         self._meter = meter
@@ -196,6 +202,7 @@ class AgentLoop:
         store = control.store
         await store(self._sessions.append, run_id, Message(role=Role.USER, content=task))
 
+        re_asked = False
         for turn in range(1, max_turns + 1):
             control.turns = turn
             control.checkpoint()
@@ -205,6 +212,7 @@ class AgentLoop:
                 self._registry.schemas(),
                 instructions=instructions,
                 model_settings=model_settings,
+                output_schema=self._output_schema,
             )
 
             before = self._hook.before_model(request)
@@ -303,6 +311,28 @@ class AgentLoop:
                 return _outcome(meter, response.message.content, turn, error=unfinished)
 
             if not response.tool_calls:
+                # FR-71: a node that asked for structured output gets one re-ask, with
+                # the validation error put to the model and the invalid answer left in
+                # the history, so the failure is inspectable afterwards (AC-57). The
+                # re-ask is another turn, so it draws on the same reservation and the
+                # same turn limit; a second failure ends the node.
+                if self._output_schema is not None:
+                    problem = schema_problem(response.message.content, self._output_schema)
+                    if problem is not None:
+                        if re_asked:
+                            return _outcome(
+                                meter, response.message.content, turn, error="output_contract_violation"
+                            )
+                        re_asked = True
+                        await store(
+                            self._sessions.append,
+                            run_id,
+                            Message(role=Role.USER, content=(
+                                "That answer did not match the required JSON schema: "
+                                f"{problem}. Reply with JSON that validates against the schema, and nothing else."
+                            )),
+                        )
+                        continue
                 return _outcome(meter, response.message.content, turn)
 
             # FR-50: none of this response's calls starts once the run has been
@@ -526,6 +556,28 @@ async def _cancel_and_wait(tasks: set[asyncio.Future[Any]]) -> None:
         except asyncio.CancelledError:
             pass
         remaining = {task for task in remaining if not task.done()}
+
+
+def schema_problem(text: str | None, schema: dict[str, Any]) -> str | None:
+    """Why `text` is not a JSON document matching `schema`, or None when it is.
+
+    Total by intent: this runs on the path that ends a run, and a checker that can
+    raise would fail a node for its own reasons rather than the model's (FR-71).
+    """
+    if text is None:
+        return "the answer was empty"
+    try:
+        document = json.loads(text)
+    except Exception as exc:  # noqa: BLE001 - whatever cannot be read is not the schema
+        return f"it is not JSON ({type(exc).__name__})"
+    try:
+        jsonschema.validate(document, schema)
+    except jsonschema.ValidationError as exc:
+        where = "/".join(str(part) for part in exc.absolute_path)
+        return f"{exc.message}{f' at {where}' if where else ''}"
+    except Exception as exc:  # noqa: BLE001 - a schema that cannot judge judges nothing
+        return f"the schema could not be applied ({type(exc).__name__})"
+    return None
 
 
 def _outcome(meter: RunMeter, output: str | None, turns: int, **fields: Any) -> LoopOutcome:

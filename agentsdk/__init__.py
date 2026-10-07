@@ -22,6 +22,7 @@ from .plan import (
     plan_from_document,
 )
 from .scheduler import SchedulerLimits
+from .subagents import Briefing, SubagentPool, SubagentResult
 from .errors import (
     AgentSDKError,
     ArtifactIntegrityError,
@@ -102,6 +103,11 @@ __all__ = [
     "BudgetAllocation",
     "BudgetGovernor",
     "BudgetLease",
+    # Subagents (FR-70 to FR-72): the pool runs a child for a parent run; M19's
+    # orchestrator is its intended caller.
+    "Briefing",
+    "SubagentPool",
+    "SubagentResult",
     "AcceptanceCriterion",
     "BudgetReservation",
     "NodeRetryPolicy",

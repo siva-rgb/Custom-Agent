@@ -185,6 +185,12 @@ class RunConfig:
     # driving a plain run leaves it None; budgets for plain single-agent runs are
     # out of scope (backlog I-04, DECISION-c274eb02).
     budget_lease: BudgetLease | None = None
+    # FR-70 to FR-72 (M18): how deep this run sits under its top-level parent, and
+    # the schema its answer must match. Both are set by the SubagentPool when it
+    # spawns a child, never by application code, as budget_lease is
+    # (DECISION-35f4c3f4).
+    depth: int = 0
+    output_schema: dict[str, Any] | None = None
 
     def __post_init__(self) -> None:
         # Before the range checks: a bool passes every one of them (True >= 1,
@@ -469,6 +475,7 @@ class Runner:
                     events, EventType.RUN_FAILED,
                     {"status": "failed", "reason": reason, **_run_timing(control)}, control,
                 )
+                control.terminal_written = True
             # Else the run already wrote its terminal event and only the store call
             # after it failed: the caller still hears the failure in the result, but
             # nothing is written after a terminal event (round 4, J1).
@@ -519,6 +526,7 @@ class Runner:
             {"status": RunStatus.CANCELLED.value, "turns": control.turns, "reason": reason, **_run_timing(control)},
             control,
         )
+        control.terminal_written = True
         await self._safe_finish(
             scope, RunStatus.CANCELLED, meter.usage, cost, control,
             self._spend_record(lease, meter.usage, cost, meter.budget_tokens), meter.price_table_date,
@@ -761,6 +769,7 @@ class Runner:
             hook=self._hook,
             cost_of=cost_of,
             budget=config.budget_lease,
+            output_schema=config.output_schema,
             meter=meter,
             tool_slot=RunSlots(limits).slot,
             model_slot=partial(self._provider_slots.slot, client_key),
@@ -826,6 +835,17 @@ class Runner:
             cost_usd=meter.cost_usd,
         )
 
+    def _history_for(self, scope: RunScope) -> list[Any]:
+        """The messages a run left behind, from wherever that run's session lives.
+
+        Not application API: `SubagentPool` uses it to find out what a child took in
+        through its own tools, which decides the provenance its answer carries (FR-70).
+        """
+        store = (
+            self._persistence.session_store_for(scope) if self._persistence is not None else self._sessions
+        )
+        return list(store.history(scope.run_id))
+
     def _limits_for(self, config: RunConfig) -> SchedulerLimits:
         """The limits a run executes under (FR-43): its own per-run and per-tool
         limits as a whole when its RunConfig sets them, and always the Runner's
@@ -837,6 +857,12 @@ class Runner:
             max_concurrent_tools=chosen.max_concurrent_tools,
             tool_concurrency_limits=chosen.tool_concurrency_limits,
             provider_concurrency_limits=self._limits.provider_concurrency_limits,
+            # FR-72's limits are the run's own too. Rebuilding from three fields left
+            # the other three at their defaults, so a child recorded limits that never
+            # governed it (round 1, L2).
+            max_concurrent_subagents=chosen.max_concurrent_subagents,
+            max_tasks_per_run=chosen.max_tasks_per_run,
+            queue_policy=chosen.queue_policy,
         )
 
     def _effective_pricing(self, model_id: str | None) -> tuple[Any, str | None]:

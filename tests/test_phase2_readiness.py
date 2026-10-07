@@ -1013,6 +1013,11 @@ async def test_no_store_call_runs_on_the_event_loop_thread_on_any_run_path(monke
     Records the thread of every database connection checkout, across five run
     paths -- now including one where every kind of tool failure happens -- and
     requires none of them to be the event loop's thread.
+
+    M18 added a sixth path: a SubagentPool spawn, which reads the child's history to
+    find out what it took in. The five Runner paths could not see that call site, and
+    it read on the loop for two review rounds (M18 round 3). A property asserted of
+    "every store call" has to be asserted of every way of making one.
     """
     from agentsdk import postgres
     from agentsdk.hooks import RuntimeHook
@@ -1058,6 +1063,32 @@ async def test_no_store_call_runs_on_the_event_loop_thread_on_any_run_path(monke
             on_loop = sum(1 for ident in mine if ident == loop_thread)
             if on_loop:
                 offenders[label] = f"{on_loop} of {len(mine)} checkouts"
+        # The sixth path: a SubagentPool spawn, whose read of the child's history is a
+        # store call the five Runner paths above cannot reach (M18 round 3).
+        from agentsdk.postgres import RunScope
+        from agentsdk.subagents import Briefing, SubagentPool
+
+        first = len(log)
+        parent = await Runner({"m": _OneToolCall()}, tools=NOOP_TOOLS, persistence=persistence).run(
+            AgentSpec(id="threads", instructions="go", tool_profile=("noop",)),
+            "go",
+            RunConfig(tenant_id=tenant, project_id="p-threads", max_turns=4),
+        )
+        pool = SubagentPool(
+            Runner({"m": _OneToolCall()}, tools=NOOP_TOOLS, persistence=persistence)
+        )
+        child = await pool.spawn(
+            parent=RunScope(run_id=parent.run_id, tenant_id=tenant, project_id="p-threads"),
+            briefing=Briefing(objective="go", assigned_role="worker", max_turns=4),
+            agent=AgentSpec(id="threads-child", instructions="go", tool_profile=("noop",)),
+            depth=1,
+        )
+        assert child.status is RunStatus.COMPLETED, child.error
+        mine = log[first:]
+        checkouts["a subagent spawn"] = len(mine)
+        on_loop = sum(1 for ident in mine if ident == loop_thread)
+        if on_loop:
+            offenders["a subagent spawn"] = f"{on_loop} of {len(mine)} checkouts"
     finally:
         monkeypatch.undo()
         _drop_runs(tenant)

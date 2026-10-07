@@ -24,6 +24,11 @@ from .primitives import unstorable_reason
 # P2-D5: four tool calls of one run at once, and no per-tool or per-provider
 # limit unless one is set.
 DEFAULT_MAX_CONCURRENT_TOOLS = 4
+# P2-D21: hub and spoke with one nesting, and a fan-out whose overshoot ADR-06
+# can bound. FIFO is the only queue policy this increment accepts.
+DEFAULT_MAX_CONCURRENT_SUBAGENTS = 4
+DEFAULT_MAX_TASKS_PER_RUN = 50
+QUEUE_POLICIES = ("fifo",)
 
 # The manifest records every limit (migration 0004), and a limit is a count like
 # max_turns: refused where an INTEGER would be, so a value cannot complete in
@@ -79,9 +84,21 @@ class SchedulerLimits:
     max_concurrent_tools: int = DEFAULT_MAX_CONCURRENT_TOOLS
     tool_concurrency_limits: Mapping[str, int] = field(default_factory=dict)
     provider_concurrency_limits: Mapping[str, int] = field(default_factory=dict)
+    # FR-72 (M18), with P2-D21's figures: how many children one run may run at once,
+    # how many tasks it may spawn in total, and the order they are taken in. M11 said
+    # these arrive with the subagents rather than being reserved empty (FR-43).
+    max_concurrent_subagents: int = DEFAULT_MAX_CONCURRENT_SUBAGENTS
+    max_tasks_per_run: int = DEFAULT_MAX_TASKS_PER_RUN
+    queue_policy: str = "fifo"
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "max_concurrent_tools", _count(self.max_concurrent_tools, "max_concurrent_tools"))
+        for name in ("max_concurrent_subagents", "max_tasks_per_run"):
+            object.__setattr__(self, name, _count(getattr(self, name), name))
+        if type(self.queue_policy) is not str or self.queue_policy not in QUEUE_POLICIES:
+            raise ValueError(
+                f"queue_policy must be one of {', '.join(QUEUE_POLICIES)}, got {self.queue_policy!r}"
+            )
         for name in ("tool_concurrency_limits", "provider_concurrency_limits"):
             object.__setattr__(self, name, _limits_by_name(getattr(self, name), name))
 
@@ -92,6 +109,9 @@ class SchedulerLimits:
                 self.max_concurrent_tools,
                 tuple(sorted(self.tool_concurrency_limits.items())),
                 tuple(sorted(self.provider_concurrency_limits.items())),
+                self.max_concurrent_subagents,
+                self.max_tasks_per_run,
+                self.queue_policy,
             )
         )
 
@@ -101,6 +121,9 @@ class SchedulerLimits:
             "max_concurrent_tools": self.max_concurrent_tools,
             "tool_concurrency_limits": dict(sorted(self.tool_concurrency_limits.items())),
             "provider_concurrency_limits": dict(sorted(self.provider_concurrency_limits.items())),
+            "max_concurrent_subagents": self.max_concurrent_subagents,
+            "max_tasks_per_run": self.max_tasks_per_run,
+            "queue_policy": self.queue_policy,
         }
 
 

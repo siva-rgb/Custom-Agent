@@ -17,10 +17,20 @@ policy; it does not enforce it, and it is never an instruction to the model.
 
 from __future__ import annotations
 
+import json
 from typing import Any
 
 from .model import ModelRequest
 from .primitives import Message, Role
+
+
+def _schema_instruction(output_schema: dict[str, Any]) -> str:
+    """What the model is told when its answer must match a schema."""
+    return (
+        "Answer with a single JSON document and nothing else: no prose, no explanation "
+        "and no code fences. It must validate against this JSON Schema:\n"
+        + json.dumps(output_schema, sort_keys=True)
+    )
 
 
 class ContextAssembler:
@@ -32,7 +42,16 @@ class ContextAssembler:
         instructions: str | None = None,
         model_settings: dict[str, Any] | None = None,
         metadata: dict[str, Any] | None = None,
+        output_schema: dict[str, Any] | None = None,
     ) -> ModelRequest:
+        if output_schema is not None:
+            # NFR-1: every provider reads the instructions, and not every provider has
+            # a structured-output mode. The schema is stated here so a child is asked
+            # for JSON whatever it is running on; an adapter that can also ask for it
+            # in the provider's own way does that as well (FR-71, M18).
+            instructions = "\n\n".join(
+                part for part in (instructions, _schema_instruction(output_schema)) if part
+            )
         request_metadata = dict(metadata or {})
         provenance = self._provenance_manifest(history)
         if provenance:
@@ -41,9 +60,9 @@ class ContextAssembler:
             messages=tuple(history),
             tools=tuple(tool_schemas or ()),
             instructions=instructions,
-            # Always None in Phase 0; the slot exists so this call site does not
-            # change when Phase 2 starts requesting structured output.
-            output_schema=None,
+            # None until a node asks for structured output (FR-71, M18): the slot
+            # existed from Phase 0 so this call site did not have to change.
+            output_schema=output_schema,
             model_settings=dict(model_settings or {}),
             metadata=request_metadata,
         )

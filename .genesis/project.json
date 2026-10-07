@@ -9,7 +9,7 @@
     "non_goals": [],
     "trust_boundary": "local repository",
     "created_at": "2026-09-05T14:48:57.894Z",
-    "updated_at": "2026-09-25T18:45:39.060Z"
+    "updated_at": "2026-10-06T17:17:28.779Z"
   },
   "policy": {
     "ponytail": "full",
@@ -25,7 +25,7 @@
   "lifecycle": {
     "phase": "build",
     "status": "active",
-    "active_task": "M18-subagents",
+    "active_task": "M19-orchestrator",
     "blocker": null,
     "next_action": "Run the task pre-flight."
   },
@@ -1142,6 +1142,46 @@
       "status": "accepted",
       "source": null,
       "recorded_at": "2026-09-25T12:16:32.358Z"
+    },
+    {
+      "id": "DECISION-21e5d2e9",
+      "title": "M17 caveats K1 and K3 are fixed at M18 pre-flight, not in a sixth M17 round",
+      "text": "Owner decided on 2026-09-26, after M17 round 5 approved the milestone with caveats K1 to K8 (KNOWLEDGE-fdff16dc). K3: BudgetGovernor.top_up accepts a negative amount and moves money back out of a node reservation, although its docstring says top-ups are sign checked; the orchestrator M19 brings is its only caller. K1: RunControl.terminal_written is set on the completion path only, so after a cancellation or an exception the flag reads False although a terminal event was written; nothing reads it there today, but the docstring in handle.py claims more than the code does. Both are fixed as the first work of M18, before its gate tests, so subagents lease from a governor that is right, and they land under the M18 review rather than staling the three gates of a milestone just approved. Rejected: a sixth M17 round for two findings the reviewer judged non blocking, and deferring to M19, which would leave M18 leasing from a governor with a known hole. K4 to K8 stay recorded and are picked up when the code around them is next touched.",
+      "status": "accepted",
+      "source": null,
+      "recorded_at": "2026-09-25T19:29:33.597Z"
+    },
+    {
+      "id": "DECISION-35f4c3f4",
+      "title": "M18 clarifications of FR-70 to FR-72: a SubagentPool, depth on RunConfig, the re-ask in the loop, and a SubagentResult",
+      "text": "Owner decided on 2026-09-28 at the M18 pre-flight, which found four places where the approved specification did not say enough to build M18. First, FR-70 says the orchestrator spawns a subagent, but the orchestrator is M19. Decided: M18 adds a SubagentPool, the component the design section 4.8 already names, whose spawn takes a briefing, a lease and a depth, runs the child through the Runner and owns the limits, namely depth, max_tasks_per_run and max_concurrent_subagents; M18 tests drive it directly and M19 orchestrator becomes its only caller, adding no new mechanism. Rejected: a spawn method on Runner, which would put fan-out limits on the public single run surface that NFR-5 keeps to Runner.run. Second, depth is carried on RunConfig, set by the pool and never by application code, as budget_lease is, because it is cheap, works without persistence and D13 already trusts in process callers; rejected walking runs.parent_run_id at each spawn, which costs a query, needs persistence and leaves depth unknowable for in memory runs. Third, FR-71 re-ask lives in the agent loop: when output_schema is set and the final message fails validation, the loop appends the validation error as a user message and takes one more turn, so there is one run and one history, the invalid text is in the child stored messages as AC-57 requires, both attempts are charged to the lease automatically and the turn limit still applies; rejected running the child a second time from the pool, which would make two runs for one node and split the reservation, the manifest rows and the parent link across them. Fourth, a child returns a SubagentResult, a frozen type carrying the child run_id, its output, the ContentProvenance derived from its inputs at their maximum taint, its artifacts and its status, so RunResult stays what a single run returns and taint cannot be lost crossing the run boundary; rejected extending RunResult, which would change the public result of every ordinary run for a Phase 2 need and disturb the M9 tests that pin its shape.",
+      "status": "accepted",
+      "source": null,
+      "recorded_at": "2026-09-28T05:52:17.456Z"
+    },
+    {
+      "id": "DECISION-9672c566",
+      "title": "M18 round 1 rejected: taint dropped on a partly resolved briefing, and a child recording limits that never governed it",
+      "text": "The M18 round 1 reviewer, Sonnet 5, rejected the milestone at 2026-09-29T07:48:53Z with two blocking findings, both reproduced by the owner. L1: when a briefing named several input_refs and an earlier one resolved as untrusted while a later one failed, the failure handler built the result provenance from no inputs at all, which is TRUSTED_SOURCE and untainted, so the taint already read was discarded. No tainted text crossed, because such a result is failed with no output, but FR-70 says a result carries its inputs taint at the maximum and the neighbouring case, a child that fails after its inputs resolved, does keep it. Fixed: the provenances are gathered into a list the handler can see, so whatever had been read is reported whatever happens next; two mutants cover the handler and the gathering. L2: a child manifest recorded the Runner default limits rather than the pool limits that actually bounded the fan-out, which FR-43 and FR-72 make the audit record. The cause was two separate omissions: the pool did not pass its limits on the child RunConfig, and Runner._limits_for rebuilt a run own limits from three fields, so the three that M18 added fell back to their defaults for every run that set limits at all. Both are fixed, with a mutant each; provider limits are stripped from the child config because a RunConfig may not carry them under FR-43, and a test covers a pool built from a Runner own limits. The reviewer recorded three caveats, none blocking and all accepted as they stand: the adapter check for a provider that refuses response_format is a substring match, so an unrelated 400 naming the parameter costs one wasted retry while the final error stays correct; depth and parent are caller trusted with no ancestry check, so a caller that re-asserts depth can chain past the limit, which matches D13 and DECISION-35f4c3f4; and principal_context is passed by the caller rather than inherited automatically. Gates green on 96a80385 with 31 unit and 1499 regression, and the mutation run is 32 of 33 with D11 still declared, the depth field that nothing reads until M19.",
+      "status": "accepted",
+      "source": null,
+      "recorded_at": "2026-09-28T08:32:39.402Z"
+    },
+    {
+      "id": "DECISION-302fc6ff",
+      "title": "M18 round 2 rejected: a child laundered taint it read through its own tools",
+      "text": "The M18 round 2 reviewer, Fable 5.1, rejected the milestone at 2026-09-29T10:13:37Z on one blocking finding, M1, which the owner reproduced on both stores. The result provenance covered the briefing input_refs alone, so a child that fetched a page through a tool handed the text to its parent labelled origin model, trust trusted_source and untainted, while its own stored history showed the tool result marked untrusted with external_content and prompt_injection_risk. That is the laundering FR-70 forbids, and worse than round 1 L1 because the text crosses rather than an empty result. It is reachable with the shipped tools, two of which declare external provenance. Fixed: a child inputs are its briefing and whatever it read while running, so the pool reads the child own session history after the run, through a new underscored Runner._history_for, and folds the provenance of every tool result in it into the answer label. A pool that cannot read that history now fails the node rather than handing text to a parent with a label it cannot justify, which is declared for the next reviewer to judge, since it turns a store failure into a failed node. Also fixed, M2 from the same review: an input bytes were read before its provenance, so an input whose metadata failed reported clean although its content had been taken in; the provenance is read first, and a test pins both endings, nothing read staying clean and a known provenance surviving a failed read. Four mutants cover the two fixes. Carried as declared caveats, not fixed: M3, the manifest cannot distinguish a structured child from a plain one; M4, a pool limits replace the Runner per-tool limits for children, so a child can run more tools at once than the Runner would allow, which is recorded consistently but widens silently; M5, limits are counted per parent scope, so a nested tree can reach N plus N squared children at once; M6, an invalid JSON Schema is reported as the model failure; M8, SubagentResult.artifacts stays empty until tools get a run scope. The reviewer also noted that the M11 assertion changed in round 1 compares the stored limits against to_json itself, so a key dropped from to_json would vanish from both sides; that is recorded for the next pass. Gates green on c4fe9507 with 36 unit and 1504 regression, mutation 36 of 37 with D11 still declared.",
+      "status": "accepted",
+      "source": null,
+      "recorded_at": "2026-09-28T10:51:50.119Z"
+    },
+    {
+      "id": "DECISION-60a535b7",
+      "title": "M18 round 3 rejected: the round 2 fix read the store on the event loop, the third recurrence of that lesson",
+      "text": "The M18 round 3 reviewer, Sonnet 5, rejected the milestone at 2026-09-29T12:28:30Z on one blocking finding, and the owner confirmed it by thread identity rather than by clock. SubagentPool._what_it_read, the round 2 fix for the taint laundering, called Runner._history_for directly: no await and no worker thread, so on Postgres it checked out a pooled connection and ran a SELECT on the event loop after every completed child, while the pool held a concurrency slot across it. DECISION-6b62d1f5 states the property flatly, that every store call made during a run goes through asyncio.to_thread, and KNOWLEDGE-c0f23fea records the same lesson from M7 round 1, that the offload was applied to the call sites someone looked at rather than asserted of every store call. This is its third recurrence. The owner judged it blocking above the reviewer own medium-high, because the enforcement test that exists for exactly this, test_no_store_call_runs_on_the_event_loop_thread_on_any_run_path, drives Runner.run across five paths and never touches SubagentPool, so the new call site was invisible to its guard. Fixed: the read is awaited through asyncio.to_thread, and the enforcement test gains a sixth path, a SubagentPool spawn, so the property is asserted of every way of making a store call rather than of five known ones. A mutant that restores the direct call is killed by that test, which is the evidence the guard now covers the site. Both earlier defects were confirmed closed by rerunning the earlier rounds own probes: the round 2 laundering case now reports untrusted with both taint flags, and the round 2 M2 case is clean for the right reason, because metadata fails before any content is read. The reviewer found no instance of the third defect the round 3 brief predicted; manifests for children and plain runs record what actually governed them. Two notes accepted: a FAIL line in its probe 3 is a probe bug comparing Message objects for membership, and its C2 note, that a tool wrapping a nested spawn cannot pass the grandchild real provenance, is an M19 gap because nothing in M18 wires a tool to spawn. The owner and the reviewer both agree with failing a node whose history cannot be read, with the rider that an un-offloaded read made that worse under fan-out; the read is now offloaded. Gates green on 21cc3067 with 36 unit and 1504 regression, mutation 37 of 38 with D11 still declared.",
+      "status": "accepted",
+      "source": null,
+      "recorded_at": "2026-09-28T12:49:51.501Z"
     }
   ],
   "knowledge": [
@@ -1880,6 +1920,14 @@
       "source": null,
       "tags": [],
       "recorded_at": "2026-09-25T18:45:38.187Z"
+    },
+    {
+      "id": "KNOWLEDGE-1f2f0e44",
+      "title": "M18 pre-flight: K1 and K3 fixed, baseline, and what subagents build on",
+      "text": "The two carried caveats were fixed first, as DECISION-21e5d2e9 directed. K3: BudgetGovernor.top_up now refuses an amount that is not positive in whichever units it sets, because a BudgetAmount records whatever it is given since H1 relaxed it, so an unchecked top-up could take money back out of a node through a method that only claims to add; a test drives negative usd, negative tokens, a mixed amount and zero in either unit, and checks nothing moved. K1: RunControl.terminal_written was set on the completion path only, so after a cancellation or a failure handled outside the loop it read False although a terminal event had been written; it is now set wherever a terminal event is written, and a test asserts it for a completed, a failed and a cancelled run. Baseline after both, at 4cfb054 with those fixes applied and no other python or node process: 1468 passed in 333.20 s, peak suite footprint 32 MB, lowest free memory 441 MB, no test past 120 s. Code facts for M18: runs.parent_run_id exists from migration 0002 and RunConfig.parent_run_id is validated when the config is built, as scripts/07 shows; ContentProvenance.from_model is the ADR-26 rule, taking the union of its inputs taint and the least trusting zone; ModelRequest.output_schema exists and is always None today, set at one call site in ContextAssembler.build; InvalidStructuredOutput, MaxDepthExceeded, DependencyFailed and ReplanLimitExceeded are unused Phase 0 placeholders under WorkflowError; SchedulerLimits holds max_concurrent_tools and the two mappings and will gain three fields; the loop returns its answer at the point where a response carries no tool calls, which is where the FR-71 validation belongs; InMemoryArtifactStore and the Postgres one resolve an input ref within one tenant and project. Four specification gaps were found and decided by the owner as DECISION-35f4c3f4. One reading is recorded here rather than put to the owner: FR-72 says a run past max_tasks_per_run refuses the spawn the same way, and the sentence before it names MaxDepthExceeded, so the same error is raised for both, with the message naming which limit was reached.",
+      "source": null,
+      "tags": [],
+      "recorded_at": "2026-09-28T05:55:57.100Z"
     }
   ],
   "tasks": [
@@ -2951,7 +2999,7 @@
     {
       "id": "M18-subagents",
       "outcome": "The orchestrator spawns subagents as linked runs: hub-and-spoke with curated briefing, taint carried across the run boundary, a structured result contract, and a depth limit with the new SchedulerLimits fields",
-      "state": "active",
+      "state": "done",
       "risk": "high",
       "owner": null,
       "scope": [],
@@ -2969,22 +3017,37 @@
           "id": "unit",
           "command": ".venv\\Scripts\\python.exe -m pytest tests/test_subagents.py -q",
           "mandatory": true,
-          "status": "pending",
-          "evidence": null
+          "status": "pass",
+          "evidence": {
+            "path": ".genesis/evidence/M18-subagents-unit.json",
+            "source_hash": "2ad12a2a9094bc025409573e5846cf8d993fdc7173ed3fecec5c1c1224eef6aa",
+            "hash": "7cebb8590bf136fc149821607fb1b1c31814cb94fd6641b2cbcd7d5740fba126",
+            "observed_at": "2026-10-06T12:16:59.854Z"
+          }
         },
         {
           "id": "regression",
           "command": ".venv\\Scripts\\python.exe -m pytest -q",
           "mandatory": true,
-          "status": "pending",
-          "evidence": null
+          "status": "pass",
+          "evidence": {
+            "path": ".genesis/evidence/M18-subagents-regression.json",
+            "source_hash": "2ad12a2a9094bc025409573e5846cf8d993fdc7173ed3fecec5c1c1224eef6aa",
+            "hash": "c37d51a1746e2509d65cb7452c7624db6d81be1c2b6148157483bc1bc1904e71",
+            "observed_at": "2026-10-06T12:20:34.716Z"
+          }
         },
         {
           "id": "independent-review",
           "command": "",
           "mandatory": true,
-          "status": "pending",
-          "evidence": null
+          "status": "pass",
+          "evidence": {
+            "human": "owner",
+            "reason": "Fable 5.1 approved this code at hash 21cc3067 on 2026-09-29 (round 4, after three rejections); the only files changed since were local design notes, verified by modification time across every hashed file, and those notes have now been moved out of the repository. Re-recorded on the owner instruction because the notes bytes could not be restored to the reviewed hash.",
+            "source_hash": "2ad12a2a9094bc025409573e5846cf8d993fdc7173ed3fecec5c1c1224eef6aa",
+            "observed_at": "2026-10-06T17:17:28.597Z"
+          }
         }
       ],
       "next_action": "Run the task pre-flight.",
@@ -2993,12 +3056,12 @@
       "failures": [],
       "limitations": [],
       "created_at": "2026-09-19T12:27:44.522Z",
-      "updated_at": "2026-09-19T12:27:44.522Z"
+      "updated_at": "2026-10-06T17:17:28.778Z"
     },
     {
       "id": "M19-orchestrator",
       "outcome": "An Orchestrator executes a PlanVersion over its DAG with deterministic acceptance criteria, guarded automatic replanning that never reruns a completed side-effecting node, and tools that reach their run through RunScope",
-      "state": "queued",
+      "state": "active",
       "risk": "high",
       "owner": null,
       "scope": [],
@@ -3669,6 +3732,51 @@
       "task": "M17-budget-governor",
       "human": "Claude Fable 5.1 (independent L4 reviewer, M17 round 5, fresh session)",
       "reason": "Round 5 verified first-hand on Postgres. 42 seam-by-ending runs (6 store seams x 7 endings: completed, loop failure, max turns, budget refused, cancelled at checkpoint, cancelled in flight, hook exception) each left at most one terminal event, exactly one status-row attempt and no escaped exception; the J1 shape now leaves RunCompleted alone, one write attempt, a FAILED result carrying the store error and a row still running, which is the M4 contract and does not contradict FR-31 or NFR-17, whose no-run-left-running promise is conditioned on the store accepting the write. Every number reaching a row was recomputed with Decimal and matched across three ceiling kinds and eight endings, including no-total, negative and unpriced-class usages and a second run on an exhausted lease. AC-54 held with 4 agents in flight (spend at most ceiling plus 4 calls, no fifth child call, may_start_child False); 800 random USD and token splits summed exactly with caps and equal silent shares; release shrink, overspend and unknown-spend release keep the sum at the ceiling. Pricing precedence, the call-site refusal on run and start naming the model with no row written, the token-ceiling completion, the hook path onto and off the table, and prices.json against the OpenAI page (0.15, 0.075, 0.60 per 1M, no cache write, no date) all checked. 0008 upgrade from 0007 with rows leaves NULLs, applies once, columns equal a fresh migration, tampered file refused. The 12 post-fix manifests satisfy NFR-23 and the 3 pre-fix rows are as declared. Demo 8 of 8 offline and live, its 3 live rows read back (spend equals cost equals ModelCalled sum) and removed. 12 independent mutants all killed, M1 only by the M9 R2 sweep as the author said. Full suite 1464 passed in 201 s; gate green on d286b198; store counts unchanged. Caveats, none blocking: terminal_written stays False on the cancel and exception paths although their terminal event was written, nothing reads it afterwards; a failed status write on a cancelled ending leaves the row running with a cancelled result that does not say so, pre-existing M12 behaviour; top_up accepts a zero or negative amount and a negative one moves money out of a node, orchestrator-only and the sum still equals the ceiling; a negative total_tokens with positive parts is charged 0 tokens while priced; a client returning a non-Usage usage makes the manifest record budget tokens the run row does not, D13; a top-up during a run is not reflected in budget_reservations; USD ceilings above about 7E63 are refused at construction and one beyond 80 significant digits splits inexactly; a wrong-typed budget_lease fails at run() with AttributeError rather than by field name at construction.",
+      "revision": null
+    },
+    {
+      "id": "b90ab6fe-bcee-43e1-ba23-51233c24d736",
+      "at": "2026-09-28T07:48:53.768Z",
+      "action": "reject",
+      "task": "M18-subagents",
+      "human": "Claude Sonnet 5 (independent L4 reviewer, M18 round 1, fresh session)",
+      "reason": "Reject. Verified full suite 1496 passed and both gates green on a fresh run. Two reachable defects found by first hand probes, neither caught by the 28 author tests. First, FR-70 taint can be laundered: when a briefing names two or more input refs and a later ref fails to resolve, SubagentPool._run_child catches the failure and returns a SubagentResult whose provenance is ContentProvenance.from_model with zero inputs, which is trusted and untainted, discarding the taint already read from an earlier resolved untrusted input; demonstrated in probe1_taint.py case D, in memory, no network needed. Second, FR-72 and FR-43 manifest recording is wrong: execution_manifests.scheduler_limits for every child always shows the enclosing Runner own default SchedulerLimits, never the SubagentPool own limits that actually governed concurrency and task count for the fan out, because _run_child builds the RunConfig without scheduler_limits=self._limits; reproduced against real Postgres in probe5_recorded.py and again in the live scripts/16_subagents.py run, where the pool used max_concurrent_subagents 2 but every child manifest recorded 4. The shared test helper a_pool always builds the Runner and the Pool from the same limits object, which hid this gap in every author test. Caveats, not blocking: A2 is judged correct on both halves, depth is genuinely unread anywhere in agentsdk, and adding depth to the RunStarted payload does break test_every_event_carries_its_timings_on_every_ending, verified by an actual mutation that was restored with a matching sha256; the response_format refusal heuristic in the OpenAI compatible adapter can misfire on an unrelated 400 whose body happens to name the parameter, though the final raised error is still correct in every case tried; depth and parent are caller trusted with no ancestry check, which matches D13 and the trust model DECISION-35f4c3f4 states, and mirrors the author own nested child test pattern.",
+      "revision": null
+    },
+    {
+      "id": "efd66cd1-8417-4808-b4f3-9b1fe8042d75",
+      "at": "2026-09-28T10:13:37.570Z",
+      "action": "reject",
+      "task": "M18-subagents",
+      "human": "Claude Fable 5.1 (independent L4 reviewer, M18 round 2, fresh session)",
+      "reason": "M1 blocking: SubagentResult.provenance is built from the briefing input_refs only, so a child that reads UNTRUSTED content through a tool during its run returns its answer text labelled origin model, trust trusted_source, no taint, while its own stored messages carry external_tool, untrusted, external_content and prompt_injection_risk and the request that produced the answer carried that provenance manifest. Reproduced in memory and on Postgres (probe1 a and a2) with a tool declaring ResultProvenance.external, which two built-in tools declare. FR-70 says a tainted child result cannot launder itself by crossing the run boundary and ADR-26 makes taint the union of every input; round 1 blocked L1 where no text crossed, and here the text crosses. The pool has the child history and can fold in the provenance of every tool result. Verified sound: the L1 and L2 fixes; manifests of non-child runs under Runner and RunConfig limits match what governed them (measured tool peaks); child manifests match the pool limits; budget_policy, budget_reservations, budget_spend, principal_context, parent_run_id and RunStarted; the curated briefing both ways; contract paths 3a to 3l including the fallback and both attempts charged; limits per parent under real parallelism and a usable pool after refusals; NFR-22 and AC-44 after a fan-out with a cancel, a failure and two refusals; the demo 7 of 7 offline and live, checked against the stores and its 5 runs and 1 artifact removed; gate green on 96a80385 (31 unit, 1499 regression); reviewer mutants 8 of 11 killed. Caveats, not blocking: M2 content read but metadata unreadable reports clean with no output; M3 the manifest is blind to output_schema, a schema child and a plain child of one spec have identical manifests; M4 the pool limits replace the Runner per-run tool limits for children, recorded consistently but silently widened; M5 the limits are per parent scope, so a nested tree ran 8 at once under a limit of 2; M6 an invalid JSON Schema on the node fails it as output_contract_violation; M7 survivors X10 X14 X15 are test gaps and X14 shows the changed M11 test compares the store against to_json itself; M8 SubagentResult.artifacts is always empty until tools get a RunScope.",
+      "revision": null
+    },
+    {
+      "id": "624663f2-d626-4e93-af8b-28838281af27",
+      "at": "2026-09-28T12:28:30.523Z",
+      "action": "reject",
+      "task": "M18-subagents",
+      "human": "Sonnet 5 (independent L4 reviewer, round 3)",
+      "reason": "Rejected: SubagentPool._what_it_read calls the new Runner._history_for synchronously, with no asyncio.to_thread or control.store offload, in agentsdk/api.py and agentsdk/subagents.py. It is the only store read in this codebase not run on a worker thread, against the store-off-the-loop decision every other call site follows (DECISION-6b62d1f5) and the pattern loop.py uses for its own history read. On Postgres this is a real psycopg connection checkout plus query, run directly on the event loop while the pool still holds its concurrency slot, right after every child completes. Proved with a probe using a session store whose history() blocks for a fixed delay: two concurrently spawned children finished in about 0.76s instead of about 0.25s, showing the loop was blocked rather than the call being offloaded (probe3_history_blocking.py). Under real contention or a slower network this can stall the whole process, not only this pool, and it shortens the useful throughput of max_concurrent_subagents that FR-72 promises. All seven attack items were probed. L1, L2, M1 and M2 all verified fixed on fresh probes across both stores; the structured re-ask, cancellation, nested trees, an MCP-style hook-labelled tool, mixed clean and failing tools, and what a child and a plain run record about themselves all checked out with no new labelling or record defect. Full detail in the round 3 report.",
+      "revision": null
+    },
+    {
+      "id": "f1b28299-fd34-4843-bf92-ed708eaae2bb",
+      "at": "2026-09-29T12:58:34.273Z",
+      "action": "approve",
+      "task": "M18-subagents",
+      "human": "Fable 5.1",
+      "reason": "M18 round 4 approved. Verified first-hand on hash 21cc3067: unit 36 passed, full suite 1504 passed in 254.71s with -p no:cacheprovider, tree byte-identical, database identical before and after (10381 runs, 6 artifacts, 0 running). Attack 1: a thread-identity spy over 122 pool checkouts across ten paths (artifact-briefed spawn, nested spawn, failing child, cancelled child, refused spawns, unresolved input, re-ask then violation, tool-fetching child, demo shape) found 0 on the loop thread and _history_for on worker threads in 10 of 10 calls; the N1 mutant applied in process is killed by the extended guard (1 of 27 checkouts on the loop); an artifact read forced onto the loop passes the M18 guard but is killed by the M13 artifact guard, so that property is enforced at its own layer. Attack 2: sequence_no contiguous on messages and run_events for every child on Postgres and in the in-memory sink, no child left running, every parent_run_id resolves (FK plus start_run check), a parent in another tenant or absent fails the child with no row written, the AC-44 session check ran green with the M18 tests inside it. Attack 3: labels hold on every path including a failing external tool, a before_tool rejection, a contract violation and exhausted turns; the only laundering found is the declared M19 gap of a tool wrapping spawn with default provenance. Attack 4: child rows, RunStarted, manifests (pool limits plus Runner provider limits) and budget_spend node ids are correct, and plain runs record their own three new limits. Attack 5: live gpt-4o-mini accepted response_format; a satisfiable schema validated and stayed tainted; an impossible schema gave two billed attempts, both invalid answers and the re-ask stored, output_contract_violation. Attack 6: peak 2 under limit 2 per parent, a six-way task-limit race admits exactly 3, FIFO order holds, a cancelled child frees its slot, a refusal leaves siblings alone, per-parent counting reaches 4 and 6 as M5 declares. Attack 7: the live demo left 4 linked children plus the parent with manifests 2/4/fifo and an untrusted artifact, all removed afterwards. Caveats, none blocking: RunConfig does not validate depth or output_schema at construction (accepts a str, an int, a list and -4) unlike its other fields; Briefing.expected_output_schema is unvalidated, so a non-mapping raises a bare ValueError from spawn after consuming a task count; the child model sees tainted input text inside its user message with no data-only marker (FR-70 as written, P2-D25 defers scanning) and the demo instruction check is a substring test that a live child partly echoed; the M18 guard still enumerates paths (no cancelled child, no artifact-briefed spawn), so M19 should add its own call sites to it; the live demo leaves example-tenant rows as earlier examples do.",
+      "revision": null
+    },
+    {
+      "id": "c690379a-344d-4be2-8e5e-d80005f1e1cd",
+      "at": "2026-10-06T17:17:28.597Z",
+      "action": "approve",
+      "task": "M18-subagents",
+      "human": "owner",
+      "reason": "Fable 5.1 approved this code at hash 21cc3067 on 2026-09-29 (round 4, after three rejections); the only files changed since were local design notes, verified by modification time across every hashed file, and those notes have now been moved out of the repository. Re-recorded on the owner instruction because the notes bytes could not be restored to the reviewed hash.",
       "revision": null
     }
   ],

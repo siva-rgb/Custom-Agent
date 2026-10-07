@@ -639,6 +639,71 @@ def test_a_lease_charges_tokens_a_provider_reports_without_a_total():
     assert lease.spent.tokens == 10 and made.spend.tokens == 10
 
 
+def test_a_top_up_cannot_take_money_back_out_of_a_node():
+    """K3 (M17 round 5): a top-up moves money INTO a reservation. An amount records
+    whatever it is given, including a negative one (H1), so the sign has to be checked
+    where it is spent -- here -- or the orchestrator could quietly shrink a node's
+    reservation through a method whose docstring says it only adds."""
+    made = governor({"a": None, "b": None}, run_ceiling_usd=Decimal("10.00"), run_ceiling_tokens=1000)
+    lease = made.lease("a")
+    reserved, reserve = lease.reservation, made.remaining_unallocated
+    for amount in (
+        budget().BudgetAmount(usd=Decimal("-1.00")),
+        budget().BudgetAmount(tokens=-10),
+        budget().BudgetAmount(usd=Decimal("1.00"), tokens=-10),
+        budget().BudgetAmount(usd=Decimal("0")),
+        budget().BudgetAmount(tokens=0),
+    ):
+        with pytest.raises(ValueError, match="amount|usd|tokens"):
+            made.top_up("a", amount)
+    assert lease.reservation == reserved, "nothing moved"
+    assert made.remaining_unallocated == reserve
+    # And the ordinary case still works.
+    made.top_up("a", budget().BudgetAmount(usd=Decimal("1.00"), tokens=10))
+    assert lease.reservation.usd == reserved.usd + Decimal("1.00")
+    assert lease.reservation.tokens == reserved.tokens + 10
+
+
+@pytest.mark.parametrize("ending", ["completed", "failed", "cancelled"])
+def test_every_ending_records_that_its_terminal_event_was_written(ending):
+    """K1 (M17 round 5): `terminal_written` was set on the completion path only, so
+    after a cancellation or a failure it read False although a terminal event had been
+    written. Nothing reads it there yet, which is how a flag becomes a lie: the handler
+    that skips a second terminal event keys on it (J1)."""
+    started, release = asyncio.Event(), asyncio.Event()
+
+    class Model:
+        async def send(self, request):
+            if ending == "failed":
+                raise importlib.import_module("agentsdk.errors").ModelProviderUnavailable("no capacity")
+            if ending == "cancelled":
+                started.set()
+                await release.wait()
+            return ModelResponse(
+                message=Message(role=Role.ASSISTANT, content="done"),
+                stop_reason=StopReason.END_TURN, usage=Usage(10, 1, 11),
+            )
+
+    made = governor({"a": "5.00"})
+    lease = made.lease("a")
+    config = RunConfig(tenant_id=TENANT, project_id=PROJECT, max_turns=1, model_override=MODEL, budget_lease=lease)
+
+    async def go():
+        handle = await runner(Model()).start(AGENT, "spend", config)
+        if ending == "cancelled":
+            await started.wait()
+            handle.cancel("stopping")
+        try:
+            await handle.result()
+        except asyncio.CancelledError:
+            pass
+        release.set()
+        return handle
+
+    handle = asyncio.run(go())
+    assert handle._control.terminal_written is True, f"{ending}: a terminal event was written but not recorded"
+
+
 def test_a_top_up_is_refused_whole_or_applied_whole():
     """F3 and F4: a released lease cannot be topped up, and a top-up that cannot be
     paid in one unit moves nothing in the other."""

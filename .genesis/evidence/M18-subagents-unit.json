@@ -1,0 +1,22 @@
+{
+  "task": "M18-subagents",
+  "gate": "unit",
+  "command": ".venv\\Scripts\\python.exe -m pytest tests/test_subagents.py -q",
+  "started_at": "2026-10-06T12:16:51.191Z",
+  "observed_at": "2026-10-06T12:16:59.854Z",
+  "exit_code": 0,
+  "signal": null,
+  "stdout": "....................................                                     [100%]\r\n36 passed in 5.49s\r\n",
+  "stderr": "",
+  "revision": {
+    "commit": "4cfb054f1686b2b59968bbc9418c436ef9edd0d4",
+    "dirty": true
+  },
+  "source_hash": "2ad12a2a9094bc025409573e5846cf8d993fdc7173ed3fecec5c1c1224eef6aa",
+  "environment": {
+    "node": "v20.10.0",
+    "platform": "win32",
+    "arch": "x64"
+  },
+  "hash": "7cebb8590bf136fc149821607fb1b1c31814cb94fd6641b2cbcd7d5740fba126"
+}

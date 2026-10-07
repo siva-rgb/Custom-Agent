@@ -292,6 +292,23 @@ class OpenAICompatibleModelClient:
 
     async def _send(self, request: ModelRequest) -> ModelResponse:
         payload = self.build_payload(request)
+        try:
+            return await self._send_payload(payload)
+        except ModelError as exc:
+            # A provider that does not take response_format says so with a 4xx. The
+            # schema is in the instructions too, so the call is worth making once more
+            # without the parameter rather than failing the node (FR-71, NFR-1).
+            if "response_format" not in payload or not self._refused_response_format(exc):
+                raise
+            payload = {key: value for key, value in payload.items() if key != "response_format"}
+            return await self._send_payload(payload)
+
+    @staticmethod
+    def _refused_response_format(exc: ModelError) -> bool:
+        text = str(exc).lower()
+        return "response_format" in text or "json_schema" in text
+
+    async def _send_payload(self, payload: dict[str, Any]) -> ModelResponse:
         url = urljoin(self._base_url, "v1/chat/completions")
         delay = self._retry.backoff_seconds
 
@@ -436,6 +453,15 @@ class OpenAICompatibleModelClient:
         for key in ("temperature", "top_p", "stop"):
             if key in request.model_settings:
                 payload[key] = request.model_settings[key]
+        if request.output_schema is not None:
+            # FR-71: ask the provider for structured output in its own terms as well as
+            # in the instructions. A provider that refuses the parameter is retried
+            # once without it (see _send), so the schema still governs through the
+            # instructions and the re-ask.
+            payload["response_format"] = {
+                "type": "json_schema",
+                "json_schema": {"name": "answer", "schema": dict(request.output_schema)},
+            }
         return payload
 
     # --- translation: provider -> canonical ---------------------------------
