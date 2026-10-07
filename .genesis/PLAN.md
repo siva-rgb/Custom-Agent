@@ -154,15 +154,15 @@
 
 ### M18a-validation-and-guard — RunConfig and Briefing refuse an invalid depth, output_schema or expected_output_schema at construction; the loop-thread rule is asserted of every store call by an autouse fixture and refused at the store checkout itself; and a briefed input carries a provenance-manifest entry and a data-only marker
 
-- state/risk: active / high
+- state/risk: done / high
 - requirements: FR-79, FR-80, FR-81, FR-82, FR-83, FR-84, AC-64, AC-65, AC-66, AC-67
 - scope: not bounded
-- gates: unit: .venv\Scripts\python.exe -m pytest tests/test_validation_and_guard.py -q, regression: .venv\Scripts\python.exe -m pytest -q, independent-review: pending
+- gates: unit: .venv\Scripts\python.exe -m pytest tests/test_validation_and_guard.py -q, regression: .venv\Scripts\python.exe -m pytest -q, independent-review: pass
 - next: Run the task pre-flight.
 
 ### M19-orchestrator — An Orchestrator executes a PlanVersion over its DAG with deterministic acceptance criteria, guarded automatic replanning that never reruns a completed side-effecting node, and tools that reach their run through RunScope
 
-- state/risk: queued / high
+- state/risk: active / high
 - requirements: FR-73, FR-74, FR-75, FR-76, AC-58, AC-59, AC-60, AC-63, NFR-21, NFR-22
 - scope: not bounded
 - gates: unit: .venv\Scripts\python.exe -m pytest tests/test_orchestrator.py -q, regression: .venv\Scripts\python.exe -m pytest -q, independent-review: pending

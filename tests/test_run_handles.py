@@ -739,10 +739,11 @@ async def test_cancelled_during_a_parallel_batch_pairs_every_call_with_a_result(
 
     assert_cancelled(result, backend, in_flight=False)
     assert sorted(stopped) == ["c1", "c2", "c3"], "a running tool did not receive CancelledError"
-    assert [r.tool_call_id for r in tool_results(sessions, backend, result.run_id)] == ["c1", "c2", "c3", "c4"]
+    stored = await asyncio.to_thread(tool_results, sessions, backend, result.run_id)
+    assert [r.tool_call_id for r in stored] == ["c1", "c2", "c3", "c4"]
     for key in ("c1", "c2", "c3"):
-        assert_cancelled_call(result, sessions, backend, key, reached_step_6=True)
-    assert_cancelled_call(result, sessions, backend, "c4", reached_step_6=False)
+        await asyncio.to_thread(assert_cancelled_call, result, sessions, backend, key, reached_step_6=True)
+    await asyncio.to_thread(assert_cancelled_call, result, sessions, backend, "c4", reached_step_6=False)
     assert ("tool", "c4") not in log
     assert_nothing_started_after_cancel(log)
 
@@ -763,8 +764,8 @@ async def test_cancelled_while_a_tool_call_waits_for_a_concurrency_slot(backend)
 
     assert_cancelled(result, backend, in_flight=False)
     assert stopped == ["c1"]
-    assert_cancelled_call(result, sessions, backend, "c1", reached_step_6=True)
-    assert_cancelled_call(result, sessions, backend, "c2", reached_step_6=False)
+    await asyncio.to_thread(assert_cancelled_call, result, sessions, backend, "c1", reached_step_6=True)
+    await asyncio.to_thread(assert_cancelled_call, result, sessions, backend, "c2", reached_step_6=False)
     assert_nothing_started_after_cancel(log)
 
 
@@ -803,7 +804,8 @@ async def test_cancelled_while_a_store_write_is_held_inside_the_store(backend, w
 
     kinds = assert_cancelled(result, backend, in_flight=False)
     assert kinds.count("ModelCalled") == 1, "the held emission was not completed"
-    assert [m.role for m in history(sessions, backend, result.run_id)] == [Role.USER, Role.ASSISTANT]
+    stored = await asyncio.to_thread(history, sessions, backend, result.run_id)
+    assert [m.role for m in stored] == [Role.USER, Role.ASSISTANT]
     assert_nothing_started_after_cancel(log)
 
 

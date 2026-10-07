@@ -134,6 +134,7 @@ class AgentLoop:
         cost_of: Callable[[ModelRequest, Usage], Decimal | None] | None = None,
         budget: Any | None = None,
         output_schema: dict[str, Any] | None = None,
+        briefed_inputs: tuple[tuple[str, Any], ...] = (),
         meter: RunMeter | None = None,
         tool_slot: Callable[[str], Any] | None = None,
         model_slot: Callable[[], Any] | None = None,
@@ -153,6 +154,7 @@ class AgentLoop:
         self._cost_of = cost_of
         self._budget = budget
         self._output_schema = output_schema
+        self._briefed_inputs = briefed_inputs
         # The Runner's meter, so the account survives an exception that leaves
         # this loop before it can return an outcome.
         self._meter = meter
@@ -213,6 +215,7 @@ class AgentLoop:
                 instructions=instructions,
                 model_settings=model_settings,
                 output_schema=self._output_schema,
+                briefed_inputs=self._briefed_inputs,
             )
 
             before = self._hook.before_model(request)

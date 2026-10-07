@@ -9,6 +9,7 @@ run_id per test and asserts only on that run, so tests are isolated without
 tearing down tables another developer may be looking at.
 """
 
+import asyncio
 import json
 import os
 import uuid
@@ -800,8 +801,9 @@ async def test_a_whole_run_persists_and_reconstructs():
     )
     assert result.status is RunStatus.COMPLETED
 
-    trace = PostgresTrace(DSN).reconstruct(
-        RunScope(run_id=result.run_id, tenant_id="t-e2e", project_id="p-e2e")
+    trace = await asyncio.to_thread(
+        PostgresTrace(DSN).reconstruct,
+        RunScope(run_id=result.run_id, tenant_id="t-e2e", project_id="p-e2e"),
     )
 
     # AC-7: the trace reconstructs from state PLUS events, in order.
@@ -1150,8 +1152,9 @@ async def test_the_runs_row_records_what_the_runner_was_asked_for():
         "go",
         RunConfig(tenant_id="t-recorded", project_id="p-recorded", max_turns=9),
     )
-    stored = PostgresRunStore(DSN).get_run(
-        RunScope(run_id=result.run_id, tenant_id="t-recorded", project_id="p-recorded")
+    stored = await asyncio.to_thread(
+        PostgresRunStore(DSN).get_run,
+        RunScope(run_id=result.run_id, tenant_id="t-recorded", project_id="p-recorded"),
     )
     assert stored["agent_spec_id"] == "recorded-spec"
     assert stored["model_id"] == "openai.gpt-4o-mini"

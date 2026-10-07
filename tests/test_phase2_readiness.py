@@ -239,6 +239,13 @@ class Run:
                 conn.execute("DELETE FROM runs WHERE run_id = ANY(%s)", (ids,))
         return False
 
+    # For async tests: the same row written and removed on a worker thread (FR-81).
+    async def __aenter__(self):
+        return await asyncio.to_thread(self.__enter__)
+
+    async def __aexit__(self, *exc):
+        return await asyncio.to_thread(self.__exit__, *exc)
+
 
 def sinks_for(scope, count):
     from agentsdk.postgres import PostgresEventStore
@@ -367,7 +374,7 @@ async def test_twelve_concurrent_message_writers_all_commit():
     """AC-13. Before FR-19: 9 of 12 committed and 3 raised UniqueViolation --
     a subagent's message dropped, and a raw driver exception handed to a caller
     for a write that would have succeeded a millisecond later."""
-    with Run("ac13m") as scope:
+    async with Run("ac13m") as scope:
         store = Persistence.postgres(DSN).session_store_for(scope)
 
         failures = await _race(
@@ -406,7 +413,7 @@ async def test_twelve_concurrent_event_writers_all_commit():
     one of the two call sites could lose the lock with the suite still green."""
     from agentsdk.events import EventType
 
-    with Run("ac13e") as scope:
+    async with Run("ac13e") as scope:
         sinks = sinks_for(scope, WRITERS)
 
         failures = await _race(
@@ -439,13 +446,13 @@ async def test_a_write_for_someone_elses_run_still_fails():
     which would be a defect if it also meant a write that SHOULD fail quietly
     succeeded. The tenancy check is the one that must survive the change.
     """
-    with Run("ac13x") as scope:
+    async with Run("ac13x") as scope:
         impostor = RunScope(
             run_id=scope.run_id, tenant_id="SYN-m7-other", project_id="p-other"
         )
         store = Persistence.postgres(DSN).session_store_for(impostor)
         with pytest.raises(ValueError, match="does not exist or belongs to someone else"):
-            store.append(impostor.run_id, Message(role=Role.ASSISTANT, content="nope"))
+            await asyncio.to_thread(store.append, impostor.run_id, Message(role=Role.ASSISTANT, content="nope"))
 
         assert query(
             "SELECT count(*) FROM messages WHERE run_id=%s", (scope.run_id,)
@@ -1018,6 +1025,13 @@ async def test_no_store_call_runs_on_the_event_loop_thread_on_any_run_path(monke
     find out what it took in. The five Runner paths could not see that call site, and
     it read on the loop for two review rounds (M18 round 3). A property asserted of
     "every store call" has to be asserted of every way of making one.
+
+    Since M18a this test is the second check, not the guarantee. The guarantee is
+    the autouse fixture in tests/conftest.py (FR-81), which fails any test in the
+    suite that checks out a connection on a thread running an event loop, with the
+    refusal at postgres._checkout (FR-82) behind it. Round 4 showed why a list of
+    paths cannot be the guarantee: the artifact read in _brief and the cancelled
+    child were on none of them (C4).
     """
     from agentsdk import postgres
     from agentsdk.hooks import RuntimeHook

@@ -1,0 +1,22 @@
+{
+  "task": "M18a-validation-and-guard",
+  "gate": "unit",
+  "command": ".venv\\Scripts\\python.exe -m pytest tests/test_validation_and_guard.py -q",
+  "started_at": "2026-10-07T07:57:16.497Z",
+  "observed_at": "2026-10-07T07:57:20.737Z",
+  "exit_code": 0,
+  "signal": null,
+  "stdout": "...................................                                      [100%]\r\n35 passed in 3.48s\r\n",
+  "stderr": "",
+  "revision": {
+    "commit": "252c51a07e496ff1182ba42af72c86b90f868f06",
+    "dirty": true
+  },
+  "source_hash": "d5c75afd05c6b9250f4a029da7eece2f62c471c84fb2a5f3df166e4a7e714cc6",
+  "environment": {
+    "node": "v20.10.0",
+    "platform": "win32",
+    "arch": "x64"
+  },
+  "hash": "acff35fc6fb6ede8a26dd6f8d580b69e262cd48978725b355ab23be4ed760715"
+}

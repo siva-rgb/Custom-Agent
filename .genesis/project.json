@@ -9,7 +9,7 @@
     "non_goals": [],
     "trust_boundary": "local repository",
     "created_at": "2026-09-05T14:48:57.894Z",
-    "updated_at": "2026-10-07T05:19:05.541Z"
+    "updated_at": "2026-10-07T11:22:13.465Z"
   },
   "policy": {
     "ponytail": "full",
@@ -25,7 +25,7 @@
   "lifecycle": {
     "phase": "build",
     "status": "active",
-    "active_task": "M18a-validation-and-guard",
+    "active_task": "M19-orchestrator",
     "blocker": null,
     "next_action": "Run the task pre-flight."
   },
@@ -1218,6 +1218,30 @@
       "status": "accepted",
       "source": null,
       "recorded_at": "2026-10-07T05:17:09.840Z"
+    },
+    {
+      "id": "DECISION-53ee27f6",
+      "title": "M18a clarifications of FR-79 and FR-82: depth 0 is the top-level run, and the refusal is a module switch the test harness turns on",
+      "text": "Owner decision 2026-10-07 at M18a pre-flight. (1) FR-79 says depth must be an int of 1 or more and AC-64 refuses 0, but RunConfig.depth defaults to 0 and P2-D21 makes the orchestrator depth 0. Read as: a run with no parent_run_id is depth 0; a run with a parent_run_id must have depth from 1 to 2**31-1; a bool or non-int is refused either way. AC-64 zero case is a child at depth 0. Rejected: depth None by default (changes the field type and stops recording the orchestrator as 0) and refusing 0 always (contradicts P2-D21). (2) FR-82 on under tests and off in production is decided by a module-level switch, postgres.REFUSE_ON_EVENT_LOOP, False in code and turned on for every test by the autouse fixture in tests/conftest.py; AC-66 off case flips it per test. Rejected: an environment variable (covers tests only where every runner sets it), a flag on Persistence (threads through every store constructor and still needs conftest to flip it) and detecting pytest in sys.modules (a production process that imports pytest would start failing runs). The refusal raises RuntimeError naming the store method, inside a run it reaches Runner total boundary as any other failure (INVARIANT-af776957).",
+      "status": "accepted",
+      "source": null,
+      "recorded_at": "2026-10-07T06:04:58.587Z"
+    },
+    {
+      "id": "DECISION-e4fe2bc5",
+      "title": "M18a FR-81 finding: 37 tests read the store on the loop; the reads are offloaded, the fixture is not narrowed",
+      "text": "Owner decision 2026-10-07. With the FR-81 autouse fixture and the FR-82 refusal on and nothing else changed, the full suite gave 38 failed and 37 teardown errors. 37 were test code reading the store synchronously from async tests after a run, at 8 helper lines in 6 approved files: history() in test_concurrency.py:181 (18) and test_run_handles.py:175 (5), start_run in test_artifacts.py:125 (6) and test_phase2_readiness.py:199 (3), PostgresTrace.reconstruct in test_golden_eval.py:705 (2) and :400 (1) and test_persistence.py:803 (1), get_run in test_persistence.py:1153 (1). No call came from agentsdk: no run path violates FR-20. The 38th was a defect in the new fixture, which wrapped each _pool() call in a fresh object and broke the one-pool-per-DSN identity test; fixed by caching one wrapper per pool, which changes nothing the fixture catches. Resolution: the reads are offloaded with asyncio.to_thread at their call sites and listed in the round 1 review prompt. Rejected: narrowing the fixture to calls made inside a run (a hook, tool or pool path outside the run task would slip through, the KNOWLEDGE-c0f23fea shape) and an opt-out marker (KNOWLEDGE-0e7be079).",
+      "status": "accepted",
+      "source": null,
+      "recorded_at": "2026-10-07T06:15:03.358Z"
+    },
+    {
+      "id": "DECISION-8161bcb1",
+      "title": "M18a: DECISION-53ee27f6 revised: RunConfig.depth is None unless the pool placed the run",
+      "text": "Owner decision 2026-10-07, revising part (1) of DECISION-53ee27f6 on new evidence. The first reading (a run with a parent_run_id must be depth 1 or more) refused FR-21 public usage: RunConfig(parent_run_id=...) without depth is what scripts/07 and seven approved tests build, and all eight raised in the full suite. Now depth is int or None, default None; None is a run the pool did not place (every top-level run, the orchestrator depth 0 of P2-D21, an FR-21 child built by application code); a depth that is set must be an int from 1 to 2**31-1 and never a bool, with or without a parent, so AC-64 zero class is refused literally. Nothing reads depth (D11), so the type change costs nothing today. Rejected: keeping the first reading and adding depth to callers (changes the FR-21 contract no FR asks to change) and accepting 0 everywhere (AC-64 would need amending). Part (2), the FR-82 module switch, stands.",
+      "status": "accepted",
+      "source": null,
+      "recorded_at": "2026-10-07T07:52:54.492Z"
     }
   ],
   "knowledge": [
@@ -1964,6 +1988,22 @@
       "source": null,
       "tags": [],
       "recorded_at": "2026-09-28T05:55:57.100Z"
+    },
+    {
+      "id": "KNOWLEDGE-0ca63339",
+      "title": "M18a pre-flight: baseline, the checkout sites, and where briefed-input provenance has to travel",
+      "text": "Baseline at 252c51a, clean tree, no other python or node process: 1504 passed in 283.97 s with -p no:cacheprovider. Code facts: postgres.py has 19 connection checkouts, every one written as _pool(self._dsn).connection() inside a synchronous store method, and no other module checks out from the pool; apply_schema and migrate use psycopg.connect directly and run before any loop. The async artifact and run-state methods already offload through asyncio.to_thread. ContextAssembler.build assembles request metadata provenance only from tool results in the history; providers never read ModelRequest.metadata, so an entry there reaches no prompt. The child task is one string built by SubagentPool._brief and stored as the run first user message, so FR-84 marker is visible in stored history; a briefed input reaches the child loop through nothing but that string, so FR-83 needs a channel from the pool to the assembler. RunConfig.depth defaults to 0 and nothing reads it (D11); FR-79 and AC-64 refuse 0, resolved by the owner. ContentProvenance.from_model always yields origin model and authority advisory, so the demo injected-instruction check can assert trust zone and taint, not authority. The existing thread-identity test monkeypatches postgres._pool through the test monkeypatch fixture and calls undo, so an autouse wrapper must use its own MonkeyPatch to survive it.",
+      "source": null,
+      "tags": [],
+      "recorded_at": "2026-10-07T06:04:58.828Z"
+    },
+    {
+      "id": "KNOWLEDGE-8bde2cc5",
+      "title": "M18a round 1 approved; six caveats carried forward",
+      "text": "Sonnet 5 approved M18a-validation-and-guard in round 1 at 2026-10-07T08:52:32Z (control 98d3eb3b) on source hash d5c75afd, the hash of both passing gates; the first approval in the M18 chain. The owner confirmed C4 itself rather than a proxy: with the to_thread removed from the Postgres artifact read used by _brief, the M18 enumeration test still passed while FR-82 refused at the checkout and FR-81 failed the test at teardown, independently. Owner scans: the only .connection( in agentsdk is inside _checkout, no getconn anywhere; the fixture has no marker, path list, name filter or skip. Caveats carried forward, none blocking: (1) migrate.py is the only Postgres I/O neither guard watches; literally compliant, since FR-82 governs store calls and migration is schema setup, but Persistence.postgres built from inside a coroutine runs apply_schema on the loop unwatched; a one-time startup cost, owner-highlighted. (2) A refused terminal write leaves the run row running, byte for byte what an ordinary database failure at that write already does through the swallow in _safe_finish; reachable only if the terminal write is un-offloaded, which the fixture now catches; the running-row gap in _safe_finish is pre-existing, open, and not M18a work; owner-highlighted. (3) A test that replaces postgres._pool with an unwatched pool and swallows the refusal would evade FR-81; no existing test does, and the four that patch _pool capture the watched pool. (4) The logs-once set _LOGGED is unlocked, so concurrent first violations may log twice. (5) The example check labelled_like_the_note duplicates the taint check before it. (6) Custom assemblers now always receive briefed_inputs as a keyword.",
+      "source": null,
+      "tags": [],
+      "recorded_at": "2026-10-07T11:22:05.643Z"
     }
   ],
   "tasks": [
@@ -3097,7 +3137,7 @@
     {
       "id": "M18a-validation-and-guard",
       "outcome": "RunConfig and Briefing refuse an invalid depth, output_schema or expected_output_schema at construction; the loop-thread rule is asserted of every store call by an autouse fixture and refused at the store checkout itself; and a briefed input carries a provenance-manifest entry and a data-only marker",
-      "state": "active",
+      "state": "done",
       "risk": "high",
       "owner": null,
       "scope": [],
@@ -3119,22 +3159,37 @@
           "id": "unit",
           "command": ".venv\\Scripts\\python.exe -m pytest tests/test_validation_and_guard.py -q",
           "mandatory": true,
-          "status": "pending",
-          "evidence": null
+          "status": "pass",
+          "evidence": {
+            "path": ".genesis/evidence/M18a-validation-and-guard-unit.json",
+            "source_hash": "d5c75afd05c6b9250f4a029da7eece2f62c471c84fb2a5f3df166e4a7e714cc6",
+            "hash": "acff35fc6fb6ede8a26dd6f8d580b69e262cd48978725b355ab23be4ed760715",
+            "observed_at": "2026-10-07T07:57:20.737Z"
+          }
         },
         {
           "id": "regression",
           "command": ".venv\\Scripts\\python.exe -m pytest -q",
           "mandatory": true,
-          "status": "pending",
-          "evidence": null
+          "status": "pass",
+          "evidence": {
+            "path": ".genesis/evidence/M18a-validation-and-guard-regression.json",
+            "source_hash": "d5c75afd05c6b9250f4a029da7eece2f62c471c84fb2a5f3df166e4a7e714cc6",
+            "hash": "6ed8436280de2331a69e04fdcefd0544084f83e2a28323e55fdde51cf42bcea0",
+            "observed_at": "2026-10-07T08:01:20.025Z"
+          }
         },
         {
           "id": "independent-review",
           "command": "",
           "mandatory": true,
-          "status": "pending",
-          "evidence": null
+          "status": "pass",
+          "evidence": {
+            "human": "Sonnet 5 (independent L4 reviewer, M18a round 1)",
+            "reason": "Verified first-hand: full suite 1539 passed in 276s; all 18 checkouts route through _checkout and nothing else in agentsdk opens a connection except migrate.py; refusal leaks no pooled connection (200 refusals, pool stats unchanged); autouse fixture has no marker, name filter or path list and fails at teardown even when the refusal is swallowed (own-loop thread, fresh DSN, after close_pools, call_soon, async fixture setup and teardown all caught; sync test and offloaded call pass); a mutant putting _history_for back on the loop is caught; FR-79 and FR-80 refuse the full classes and accept mappings, None and depth 1 to 2**31-1; briefed input appears per request as labels only, including the re-ask; example check passes on provenance and fails on a clean label; edits to approved tests only offload reads. Caveats: a test that replaces postgres._pool with an unwatched pool and swallows the refusal would evade FR-81 (no existing test does); a refused terminal write leaves the run row running exactly as an ordinary database failure at that write does; the logs-once set is unlocked; the example check duplicates the taint check before it; custom assemblers now always receive briefed_inputs.",
+            "source_hash": "d5c75afd05c6b9250f4a029da7eece2f62c471c84fb2a5f3df166e4a7e714cc6",
+            "observed_at": "2026-10-07T08:52:32.520Z"
+          }
         }
       ],
       "next_action": "Run the task pre-flight.",
@@ -3143,12 +3198,12 @@
       "failures": [],
       "limitations": [],
       "created_at": "2026-10-07T05:18:21.086Z",
-      "updated_at": "2026-10-07T05:18:21.087Z"
+      "updated_at": "2026-10-07T11:22:05.803Z"
     },
     {
       "id": "M19-orchestrator",
       "outcome": "An Orchestrator executes a PlanVersion over its DAG with deterministic acceptance criteria, guarded automatic replanning that never reruns a completed side-effecting node, and tools that reach their run through RunScope",
-      "state": "queued",
+      "state": "active",
       "risk": "high",
       "owner": null,
       "scope": [],
@@ -3865,15 +3920,24 @@
       "human": "owner",
       "reason": "Fable 5.1 approved this code at hash 21cc3067 on 2026-09-29 (round 4, after three rejections); the only files changed since were local design notes, verified by modification time across every hashed file, and those notes have now been moved out of the repository. Re-recorded on the owner instruction because the notes bytes could not be restored to the reviewed hash.",
       "revision": null
+    },
+    {
+      "id": "98d3eb3b-7ea8-4b6c-a962-35b130643615",
+      "at": "2026-10-07T08:52:32.520Z",
+      "action": "approve",
+      "task": "M18a-validation-and-guard",
+      "human": "Sonnet 5 (independent L4 reviewer, M18a round 1)",
+      "reason": "Verified first-hand: full suite 1539 passed in 276s; all 18 checkouts route through _checkout and nothing else in agentsdk opens a connection except migrate.py; refusal leaks no pooled connection (200 refusals, pool stats unchanged); autouse fixture has no marker, name filter or path list and fails at teardown even when the refusal is swallowed (own-loop thread, fresh DSN, after close_pools, call_soon, async fixture setup and teardown all caught; sync test and offloaded call pass); a mutant putting _history_for back on the loop is caught; FR-79 and FR-80 refuse the full classes and accept mappings, None and depth 1 to 2**31-1; briefed input appears per request as labels only, including the re-ask; example check passes on provenance and fails on a clean label; edits to approved tests only offload reads. Caveats: a test that replaces postgres._pool with an unwatched pool and swallows the refusal would evade FR-81 (no existing test does); a refused terminal write leaves the run row running exactly as an ordinary database failure at that write does; the logs-once set is unlocked; the example check duplicates the taint check before it; custom assemblers now always receive briefed_inputs.",
+      "revision": null
     }
   ],
   "discovery": null,
   "checkpoint": {
-    "at": "2026-10-07T05:07:51.378Z",
+    "at": "2026-10-07T11:22:13.405Z",
     "revision": {
-      "commit": "50bcec0b42d11de9edc80842c37eed29aacda391",
-      "dirty": false,
-      "source_hash": "2ad12a2a9094bc025409573e5846cf8d993fdc7173ed3fecec5c1c1224eef6aa"
+      "commit": "252c51a07e496ff1182ba42af72c86b90f868f06",
+      "dirty": true,
+      "source_hash": "d5c75afd05c6b9250f4a029da7eece2f62c471c84fb2a5f3df166e4a7e714cc6"
     },
     "active_task": "M19-orchestrator",
     "next_action": "Run the task pre-flight."

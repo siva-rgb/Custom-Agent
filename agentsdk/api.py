@@ -16,7 +16,7 @@ from __future__ import annotations
 import asyncio
 from decimal import Decimal
 from functools import partial
-from typing import Any
+from typing import Any, Mapping
 
 import uuid
 from dataclasses import dataclass, field
@@ -35,7 +35,7 @@ from .model import ModelClient, ModelRequest, ReasoningEffort, Usage
 from .permissions import AllowlistPermissionChecker, PermissionChecker
 from .persistence import Persistence
 from .postgres import RunScope, column_rejection_reason
-from .primitives import unstorable_reason
+from .primitives import ContentProvenance, unstorable_reason
 from .budget import BudgetLease, tokens_of
 from .prices import PRICE_TABLE_DATE, shipped_pricing
 from .registry import ModelRegistry, call_cost, default_registry
@@ -188,9 +188,14 @@ class RunConfig:
     # FR-70 to FR-72 (M18): how deep this run sits under its top-level parent, and
     # the schema its answer must match. Both are set by the SubagentPool when it
     # spawns a child, never by application code, as budget_lease is
-    # (DECISION-35f4c3f4).
-    depth: int = 0
+    # (DECISION-35f4c3f4). None for a run the pool did not place: every top-level
+    # run, the orchestrator's depth 0 (P2-D21), and an FR-21 child built by
+    # application code (M18a).
+    depth: int | None = None
     output_schema: dict[str, Any] | None = None
+    # FR-83 (M18a): each input the child was briefed with, as its uri and its
+    # provenance, for the request's provenance manifest. Set by the pool.
+    briefed_inputs: tuple[tuple[str, ContentProvenance], ...] = ()
 
     def __post_init__(self) -> None:
         # Before the range checks: a bool passes every one of them (True >= 1,
@@ -230,6 +235,25 @@ class RunConfig:
             self, "reasoning_effort", _reasoning_effort(self.reasoning_effort, "RunConfig")
         )
         _refuse_bad_scheduler_limits(self.scheduler_limits, "RunConfig")
+        # FR-79 (M18a): refused here, by name, as max_turns is -- round 4 found both
+        # accepted, and a non-mapping schema surfacing only as a re-ask and a failed
+        # run. A depth that is set is the pool placing a child: 1 or more, never a
+        # bool (DECISION-53ee27f6 as revised).
+        if self.depth is not None and (type(self.depth) is not int or not 1 <= self.depth <= _MAX_TURNS_CEILING):
+            raise ValueError(f"depth must be None or an int from 1 to {_MAX_TURNS_CEILING}, got {self.depth!r}")
+        if self.output_schema is not None:
+            if not isinstance(self.output_schema, Mapping):
+                raise ValueError(
+                    f"output_schema must be a mapping or None, got {type(self.output_schema).__name__}"
+                )
+            object.__setattr__(self, "output_schema", dict(self.output_schema))
+        if not isinstance(self.briefed_inputs, (list, tuple)) or not all(
+            isinstance(entry, tuple) and len(entry) == 2 and type(entry[0]) is str and entry[0]
+            and isinstance(entry[1], ContentProvenance)
+            for entry in self.briefed_inputs
+        ):
+            raise ValueError("briefed_inputs must be a tuple of (uri, ContentProvenance) pairs")
+        object.__setattr__(self, "briefed_inputs", tuple(self.briefed_inputs))
         if self.scheduler_limits is not None and self.scheduler_limits.provider_concurrency_limits:
             # A provider limit is shared by every run of a Runner, so one run
             # cannot set it.
@@ -770,6 +794,7 @@ class Runner:
             cost_of=cost_of,
             budget=config.budget_lease,
             output_schema=config.output_schema,
+            briefed_inputs=config.briefed_inputs,
             meter=meter,
             tool_slot=RunSlots(limits).slot,
             model_slot=partial(self._provider_slots.slot, client_key),

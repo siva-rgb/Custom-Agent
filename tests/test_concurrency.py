@@ -551,7 +551,7 @@ async def test_results_sit_in_issue_order_whatever_order_the_calls_finish_in(bac
     assert result.status is RunStatus.COMPLETED, result.error
     finished = [e.payload["tool_call_id"] for e in result.events if e.event_type is EventType.TOOL_CALLED]
     assert finished == list(reversed(SIX)), f"the gates were opened newest first, but calls finished {finished}"
-    stored = tool_results(sessions, backend, result.run_id)
+    stored = await asyncio.to_thread(tool_results, sessions, backend, result.run_id)
     assert [(r.tool_call_id, r.content) for r in stored] == [(key, f"gated {key}") for key in SIX]
     assert_events_well_formed(result, backend)
 
@@ -1127,7 +1127,7 @@ async def run_with_source(persistence, source, via):
     )
     result = await runner.run(agent("sourced"), "go", config())
     assert result.status is RunStatus.COMPLETED, result.error
-    [stored] = tool_results(sessions, persistence, result.run_id)
+    [stored] = await asyncio.to_thread(tool_results, sessions, persistence, result.run_id)
     return result, stored
 
 
@@ -1206,7 +1206,7 @@ async def test_a_name_the_store_cannot_hold_is_withheld_and_counted_rather_than_
     )
     result = await runner.run(agent(tool.name), "go", config())
     assert result.status is RunStatus.COMPLETED, result.error
-    [stored] = tool_results(sessions, backend, result.run_id)
+    [stored] = await asyncio.to_thread(tool_results, sessions, backend, result.run_id)
     assert stored.is_error is False, stored.content
     assert unstorable_reason(stored.content) is None
     shown = sorted(line for line in stored.content.splitlines() if not line.startswith("["))

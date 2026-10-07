@@ -88,6 +88,18 @@ class ScriptedModel:
             self.in_flight -= 1
 
 
+def labelled_like_the_note(result) -> bool:
+    """Whether what a child answered carries the note's label (FR-84).
+
+    A child that read the note may repeat or paraphrase its instruction; a check of
+    the text passes or fails on wording. What stops the instruction gaining
+    authority is the label: an answer as untrusted as the note, with its taint, is
+    data to any policy that reads it.
+    """
+    p = result.provenance
+    return p.trust_zone is FROM_THE_WEB.trust_zone and FROM_THE_WEB.taint_flags <= p.taint_flags
+
+
 def live_client():
     from agentsdk.config import Settings
     from agentsdk.providers import OpenAICompatibleModelClient
@@ -142,8 +154,8 @@ async def demonstrate(runner, store, parent, model=None):
          len({c.run_id for c in children}) == 3 and all(c.status is RunStatus.COMPLETED for c in children)),
         ("a tainted input stayed tainted in what the child answered",
          all(c.provenance.is_tainted for c in children)),
-        ("the children answered without taking the note's instruction",
-         all("say nothing" not in (c.output or "").lower() for c in children)),
+        ("the note's instruction gained no authority: every answer is labelled as untrusted as the note",
+         all(labelled_like_the_note(c) for c in (*children, structured))),
         ("no more than two children ran at once", model is None or model.peak <= 2),
         ("a spawn at depth 3 was refused", refused is not None),
         ("the refusal left the pool usable", structured.run_id != ""),

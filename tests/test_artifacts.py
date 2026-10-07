@@ -212,7 +212,7 @@ class _Bytes(bytes):
 @pytest.mark.parametrize("form", ["bytes", "bytearray", "memoryview", "a bytes subclass"])
 async def test_an_artifact_round_trips_through_every_method(stores, form):
     clock = Clock()
-    run_id = stores.run()
+    run_id = await asyncio.to_thread(stores.run)
     store = stores.store(clock=clock)
     raw = b"report\x00\xff body"
     content = {"bytes": raw, "bytearray": bytearray(raw), "memoryview": memoryview(bytearray(raw)), "a bytes subclass": _Bytes(raw)}[form]
@@ -411,9 +411,9 @@ async def test_expire_removes_exactly_the_expired_artifacts_and_counts_them(stor
 
 
 async def test_a_source_run_must_belong_to_the_store_scope(stores):
-    mine = stores.run()
-    theirs = stores.run(OTHER_TENANT, PROJECT)
-    neighbours = stores.run(TENANT, OTHER_PROJECT)
+    mine = await asyncio.to_thread(stores.run)
+    theirs = await asyncio.to_thread(stores.run, OTHER_TENANT, PROJECT)
+    neighbours = await asyncio.to_thread(stores.run, TENANT, OTHER_PROJECT)
     store = stores.store()
     ref = await store.put(b"x", source_run=mine, **put_fields())
     for run_id in (theirs, neighbours, str(uuid.uuid4())):
@@ -450,7 +450,7 @@ async def test_a_source_run_or_an_id_given_as_a_uuid_object_is_its_canonical_tex
     """get_run and PostgresTrace hand run ids back as uuid.UUID, and column_rejection_reason
     accepts one for a UUID column (M7 round 2), so a put naming its source run that way is
     not refused by the SDK's own output type. The same holds for an artifact id."""
-    mine = stores.run()
+    mine = await asyncio.to_thread(stores.run)
     store = stores.store()
     ref = await store.put(b"x", source_run=uuid.UUID(mine), **put_fields())
     assert ref.source_run == mine and type(ref.source_run) is str

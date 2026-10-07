@@ -38,6 +38,7 @@ them survived a round of that correction and had to be found again -- the shape
 is easier to remove from the test you are looking at than from the file.
 """
 
+import asyncio
 import dataclasses
 import json
 import os
@@ -397,7 +398,7 @@ async def test_the_run_reconstructs_from_state_plus_events():
     explicitly not the source of truth, so the trace has to read all three."""
     result, scope, _echo, _purge, _register, _model = await run_scripted("nfr3")
 
-    trace = PostgresTrace(DSN).reconstruct(scope)
+    trace = await asyncio.to_thread(PostgresTrace(DSN).reconstruct, scope)
     assert trace["run"]["status"] == "completed"
     assert [m["sequence_no"] for m in trace["messages"]] == list(
         range(1, len(trace["messages"]) + 1)
@@ -702,7 +703,7 @@ async def test_the_same_eval_passes_against_a_live_provider(model_id):
 
     # AC-4 and NFR-3 on this run's own rows.
     scope = RunScope(run_id=result.run_id, tenant_id=run.tenant, project_id="p-live")
-    trace = PostgresTrace(DSN).reconstruct(scope)
+    trace = await asyncio.to_thread(PostgresTrace(DSN).reconstruct, scope)
     assert trace["run"]["status"] == "completed"
     assert trace["run"]["model_id"] == model_id
     assert trace["manifest"] is not None

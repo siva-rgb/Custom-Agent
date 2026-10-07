@@ -19,6 +19,8 @@ import contextlib
 import dataclasses
 import hashlib
 import json
+import logging
+import sys
 import threading
 import uuid
 from collections.abc import Callable
@@ -133,6 +135,41 @@ def _pool(dsn: str) -> ConnectionPool:
             _POOLS[dsn] = pool
     return pool
 
+
+# FR-82 (M18a): whether a checkout from a thread running an event loop is refused.
+# Off in production, where a latent violation should cost latency rather than a run;
+# tests/conftest.py turns it on for every test, where it must fail loudly
+# (DECISION-53ee27f6).
+REFUSE_ON_EVENT_LOOP = False
+_LOGGED: set[str] = set()
+
+
+def _checkout(dsn: str) -> contextlib.AbstractContextManager[Any]:
+    """A pooled connection for a store method, never taken on the event loop (FR-20).
+
+    Every store method reaches the database through here, so a call site added
+    tomorrow is covered without anyone listing it -- the lesson of
+    KNOWLEDGE-c0f23fea, which enumerated call sites three times and missed one each
+    time. The context manager is built before the check and checks out only when
+    entered, so a refused call takes no connection but is still visible to anything
+    wrapping the pool.
+    """
+    connection = _pool(dsn).connection()
+    try:
+        asyncio.get_running_loop()
+    except RuntimeError:
+        return connection  # a worker thread, or synchronous code with no loop
+    method = sys._getframe(1).f_code.co_qualname
+    message = (
+        f"{method} checked out a database connection on the event loop thread; "
+        "store calls made from a coroutine go through asyncio.to_thread (FR-20)"
+    )
+    if REFUSE_ON_EVENT_LOOP:
+        raise RuntimeError(message)
+    if method not in _LOGGED:
+        _LOGGED.add(method)
+        logging.getLogger(__name__).warning(message)
+    return connection
 
 def close_pools() -> None:
     """Close every pool. For process shutdown and for tests that count
@@ -344,7 +381,7 @@ class PostgresSessionStore:
                 "tenant_id and project_id are mandatory on every row (ADR-11)"
             )
         tool_calls, tool_results = _message_to_columns(message)
-        with _pool(self._dsn).connection() as conn:
+        with _checkout(self._dsn) as conn:
             with conn.transaction():
                 _serialise_writers(conn, run_id, _LOCK_MESSAGES)
                 # sequence_no is computed INSIDE the insert's transaction, so
@@ -409,7 +446,7 @@ class PostgresSessionStore:
                 "PostgresSessionStore must be bound to the run's scope before reading; "
                 "tenancy is enforced on read as well as write (NFR-2)"
             )
-        with _pool(self._dsn).connection() as conn:
+        with _checkout(self._dsn) as conn:
             rows = conn.execute(
                 """
                 SELECT role, content, tool_calls, tool_results
@@ -488,7 +525,7 @@ class PostgresEventStore:
             payload=payload or {},
             **identifiers,
         )
-        with _pool(self._dsn).connection() as conn:
+        with _checkout(self._dsn) as conn:
             _serialise_writers(conn, event.run_id, _LOCK_EVENTS)
             cursor = conn.execute(
                 """
@@ -647,7 +684,7 @@ class PostgresRunStore:
             reason = column_rejection_reason(value, sql_type)
             if reason is not None:
                 raise ValueError(f"{name} cannot be stored: {reason}")
-        with _pool(self._dsn).connection() as conn:
+        with _checkout(self._dsn) as conn:
             with conn.transaction():
                 cursor = conn.execute(
                     """
@@ -749,7 +786,7 @@ class PostgresRunStore:
     def _write_terminal_row(
         self, scope: RunScope, status: str, counts: list[int | None], cost_usd: Decimal | None
     ) -> None:
-        with _pool(self._dsn).connection() as conn:
+        with _checkout(self._dsn) as conn:
             conn.execute(
                 "UPDATE runs SET status = %s, completed_at = %s, "
                 + ", ".join(f"{name} = %s" for name in self._USAGE_COLUMNS)
@@ -769,7 +806,7 @@ class PostgresRunStore:
     def _write_budget_columns(
         self, scope: RunScope, budget_spend: dict[str, Any] | None, price_table_date: str | None
     ) -> None:
-        with _pool(self._dsn).connection() as conn:
+        with _checkout(self._dsn) as conn:
             if price_table_date is not None:
                 # FR-69: the shipped table priced at least one call of this run, which
                 # a before_model hook can make true of a run whose recorded model the
@@ -821,7 +858,7 @@ class PostgresRunStore:
         adds a manifest, so it cannot leave a run without one. A second call
         for the same run is refused by the primary key, not by care.
         """
-        with _pool(self._dsn).connection() as conn:
+        with _checkout(self._dsn) as conn:
             self._insert_manifest(conn, scope, manifest)
 
     @staticmethod
@@ -888,7 +925,7 @@ class PostgresRunStore:
             "principal_context", "max_turns", "model_id", "started_at",
             "completed_at", "parent_run_id", *self._USAGE_COLUMNS, "cost_usd",
         )
-        with _pool(self._dsn).connection() as conn:
+        with _checkout(self._dsn) as conn:
             row = conn.execute(
                 f"SELECT {', '.join(keys)} FROM runs"
                 " WHERE run_id = %s AND tenant_id = %s AND project_id = %s",
@@ -915,7 +952,7 @@ class PostgresTrace:
         differently from the store it reads beside."""
         run = self._runs.get_run(scope)
         tenancy = (scope.run_id, scope.tenant_id, scope.project_id)
-        with _pool(self._dsn).connection() as conn:
+        with _checkout(self._dsn) as conn:
             messages = conn.execute(
                 "SELECT sequence_no, role, content, tool_calls, tool_results"
                 " FROM messages WHERE run_id = %s AND tenant_id = %s AND project_id = %s"
@@ -1073,14 +1110,14 @@ class PostgresArtifactStore:
         return ref
 
     def _remove(self, artifact_id: str) -> None:
-        with _pool(self._dsn).connection() as conn:
+        with _checkout(self._dsn) as conn:
             conn.execute(
                 "DELETE FROM artifacts WHERE artifact_id = %s AND tenant_id = %s AND project_id = %s",
                 (artifact_id, self._tenant_id, self._project_id),
             )
 
     def _insert(self, ref: ArtifactRef, data: bytes) -> None:
-        with _pool(self._dsn).connection() as conn:
+        with _checkout(self._dsn) as conn:
             cursor = conn.execute(
                 """
                 INSERT INTO artifacts (
@@ -1124,7 +1161,7 @@ class PostgresArtifactStore:
 
     def _select(self, key: str, now: datetime, with_content: bool) -> tuple | None:
         columns = _ARTIFACT_COLUMNS + (", content" if with_content else "")
-        with _pool(self._dsn).connection() as conn:
+        with _checkout(self._dsn) as conn:
             with conn.cursor(binary=True) as cursor:
                 return cursor.execute(
                     f"SELECT {columns} FROM artifacts"
@@ -1151,7 +1188,7 @@ class PostgresArtifactStore:
         return _artifact_from_row(await self._visible(artifact_id, with_content=False))
 
     def _delete(self, key: str, now: datetime) -> int:
-        with _pool(self._dsn).connection() as conn:
+        with _checkout(self._dsn) as conn:
             return conn.execute(
                 "DELETE FROM artifacts WHERE artifact_id = %s AND tenant_id = %s AND project_id = %s"
                 " AND (expires_at IS NULL OR expires_at > %s)",
@@ -1165,7 +1202,7 @@ class PostgresArtifactStore:
             raise not_found(artifact_id)
 
     def _expire(self, now: datetime) -> int:
-        with _pool(self._dsn).connection() as conn:
+        with _checkout(self._dsn) as conn:
             return conn.execute(
                 "DELETE FROM artifacts WHERE tenant_id = %s AND project_id = %s AND expires_at <= %s",
                 (self._tenant_id, self._project_id, now),
@@ -1210,7 +1247,7 @@ class PostgresRunStateStore:
 
     def _insert_plan(self, plan: PlanVersion) -> None:
         tenant_id, project_id = self._scope()
-        with _pool(self._dsn).connection() as conn, conn.transaction():
+        with _checkout(self._dsn) as conn, conn.transaction():
             # One plan at a time per scope and plan id, so two runs cannot both find the
             # id unclaimed and both store under it. A hash collision only serialises.
             conn.execute(
@@ -1276,7 +1313,7 @@ class PostgresRunStateStore:
         params: tuple[Any, ...] = (plan_id, *self._scope())
         if version is not None:
             sql, params = sql + " AND version = %s", params + (version,)
-        with _pool(self._dsn).connection() as conn:
+        with _checkout(self._dsn) as conn:
             rows = conn.execute(sql + " ORDER BY version", params).fetchall()
         plans = []
         for number, run_id, parent_id, parent_version, document, created_at, stored_hash in rows:
@@ -1305,7 +1342,7 @@ class PostgresRunStateStore:
     def _select_states(self, plan_id: Any, version: Any) -> list[tuple[str, str]]:
         if not self._addressable(plan_id, version):
             return []
-        with _pool(self._dsn).connection() as conn:
+        with _checkout(self._dsn) as conn:
             return conn.execute(
                 "SELECT node_id, status FROM plan_node_states"
                 " WHERE plan_id = %s AND version = %s AND tenant_id = %s AND project_id = %s ORDER BY node_id",
@@ -1319,7 +1356,7 @@ class PostgresRunStateStore:
     def _transition(self, plan_id: Any, version: Any, node_id: Any, status: str, sink: EventSink) -> None:
         if not self._addressable(plan_id, version) or type(node_id) is not str:
             raise PlanNotFound(f"no node {node_id!r} in plan {plan_id} version {version} in this scope")
-        with _pool(self._dsn).connection() as conn, conn.transaction():
+        with _checkout(self._dsn) as conn, conn.transaction():
             row = conn.execute(
                 "SELECT status FROM plan_node_states"
                 " WHERE plan_id = %s AND version = %s AND node_id = %s AND tenant_id = %s AND project_id = %s"

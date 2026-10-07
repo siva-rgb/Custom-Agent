@@ -21,7 +21,7 @@ import json
 from typing import Any
 
 from .model import ModelRequest
-from .primitives import Message, Role
+from .primitives import ContentProvenance, Message, Role
 
 
 def _schema_instruction(output_schema: dict[str, Any]) -> str:
@@ -31,6 +31,22 @@ def _schema_instruction(output_schema: dict[str, Any]) -> str:
         "and no code fences. It must validate against this JSON Schema:\n"
         + json.dumps(output_schema, sort_keys=True)
     )
+
+
+def _briefed_entry(uri: str, p: ContentProvenance) -> dict[str, Any]:
+    """FR-83 (M18a): what a subagent was briefed with, by its uri and its labels.
+
+    Never its content: that would put the content in the metadata channel as well as
+    the prompt, and the metadata channel is the one the model cannot argue with
+    (ADR-26).
+    """
+    return {
+        "briefed_input": uri,
+        "origin": p.origin.value,
+        "instruction_authority": p.instruction_authority.value,
+        "trust_zone": p.trust_zone.value,
+        "taint_flags": sorted(flag.value for flag in p.taint_flags),
+    }
 
 
 class ContextAssembler:
@@ -43,6 +59,7 @@ class ContextAssembler:
         model_settings: dict[str, Any] | None = None,
         metadata: dict[str, Any] | None = None,
         output_schema: dict[str, Any] | None = None,
+        briefed_inputs: tuple[tuple[str, ContentProvenance], ...] = (),
     ) -> ModelRequest:
         if output_schema is not None:
             # NFR-1: every provider reads the instructions, and not every provider has
@@ -53,7 +70,8 @@ class ContextAssembler:
                 part for part in (instructions, _schema_instruction(output_schema)) if part
             )
         request_metadata = dict(metadata or {})
-        provenance = self._provenance_manifest(history)
+        provenance = [_briefed_entry(uri, p) for uri, p in briefed_inputs]
+        provenance += self._provenance_manifest(history)
         if provenance:
             request_metadata["provenance"] = provenance
         return ModelRequest(
