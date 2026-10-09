@@ -336,6 +336,8 @@ class AgentLoop:
                             )),
                         )
                         continue
+                if control.failure is not None:
+                    return _outcome(meter, response.message.content, turn, error=control.failure)
                 return _outcome(meter, response.message.content, turn)
 
             # FR-50: none of this response's calls starts once the run has been

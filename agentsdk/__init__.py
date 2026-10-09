@@ -23,6 +23,8 @@ from .plan import (
 )
 from .scheduler import SchedulerLimits
 from .subagents import Briefing, SubagentPool, SubagentResult
+from .orchestrator import Orchestrator
+from .scope import ToolScope
 from .errors import (
     AgentSDKError,
     ArtifactIntegrityError,
@@ -108,6 +110,9 @@ __all__ = [
     "Briefing",
     "SubagentPool",
     "SubagentResult",
+    # The orchestrator (FR-73 to FR-75) and the scope a tool reaches its run through (FR-76).
+    "Orchestrator",
+    "ToolScope",
     "AcceptanceCriterion",
     "BudgetReservation",
     "NodeRetryPolicy",

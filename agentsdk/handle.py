@@ -54,6 +54,11 @@ class RunControl:
         self.in_flight = False
         self.cancelled_in_flight = False
         self.turns = 0
+        # M19, FR-75: why this run has failed although its model may still answer,
+        # set by the plan tool through its scope while the run's plan is unresolved
+        # and cleared when a later version succeeds. A final answer with this set
+        # ends the run failed with it, so a failed plan is never a silent success.
+        self.failure: str | None = None
         # When the run's coroutine began (FR-57): wall clock for the terminal event, and
         # the performance counter its duration is measured from.
         self.started_at: str | None = None
@@ -164,6 +169,10 @@ class PublishingSink:
 
     def events(self) -> tuple[RunEvent, ...]:
         return self._sink.events()
+
+    @property
+    def scope(self) -> Any:
+        return getattr(self._sink, "scope", None)
 
 
 class RunHandle:

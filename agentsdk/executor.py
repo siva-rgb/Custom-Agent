@@ -95,6 +95,26 @@ class PreparedCall:
     state: _CallState
 
 
+def _with_scope(fn: Any, arguments: dict[str, Any], scope: Any) -> dict[str, Any]:
+    """FR-76: the call's arguments, plus the run's scope for a tool that declares a
+    parameter annotated RunScope (or ToolScope). The scope overrides anything a
+    model sent under that name, so a model cannot hand a tool another run.
+    A tool that declares none is called exactly as before."""
+    if scope is None:
+        return arguments
+    try:
+        parameters = inspect.signature(fn).parameters.values()
+    except (TypeError, ValueError):
+        return arguments
+    for parameter in parameters:
+        annotation = parameter.annotation
+        named = isinstance(annotation, str) and annotation.rsplit(".", 1)[-1] in ("RunScope", "ToolScope")
+        typed = isinstance(annotation, type) and annotation.__name__ in ("RunScope", "ToolScope")
+        if named or typed:
+            return {**arguments, parameter.name: scope}
+    return arguments
+
+
 class ToolExecutor:
     def __init__(
         self,
@@ -102,8 +122,12 @@ class ToolExecutor:
         permission_checker: PermissionChecker,
         hook: RuntimeHook | None = None,
         emit: Callable[[str, dict[str, Any]], Any] | None = None,
+        scope: Any = None,
     ) -> None:
         self._registry = registry
+        # FR-76: what a tool that declares a RunScope parameter receives. None
+        # outside a run, where such a tool is called exactly as before.
+        self._scope = scope
         self._permissions = permission_checker
         self._hook = hook or RuntimeHook()
         # Event emission is injected: ToolExecutor must not know what a
@@ -281,9 +305,17 @@ class ToolExecutor:
             return await self._failed(tool_call, ToolExecutionError(str(exc)), state)
 
         # --- 7. assign provenance ----------------------------------------------
-        source = None
+        source, taken_in = None, ()
         if isinstance(value, ToolOutput):
-            source, value = value.source_uri, value.content
+            source, taken_in, value = value.source_uri, value.taken_in, value.content
+            if not isinstance(taken_in, (tuple, list)) or not all(
+                isinstance(p, ContentProvenance) for p in taken_in
+            ):
+                return await self._failed(
+                    tool_call,
+                    ToolExecutionError(f"tool {tool_call.name!r} returned taken_in that is not ContentProvenance"),
+                    state,
+                )
         if isinstance(source, str):
             # The text it holds, read with str's own methods: a subclass decides
             # its own truthiness and length (FR-47, KNOWLEDGE-739aca22).
@@ -308,7 +340,7 @@ class ToolExecutor:
         # The tool's declared labels (FR-40); undeclared, internal_tool as before.
         provenance = tool.spec.result_provenance.for_source(
             source if isinstance(source, str) and source else tool.spec.schema_hash()
-        )
+        ).taking_in(*taken_in)
         tool_result = ToolResult(
             tool_call_id=tool_call.id,
             content=content,
@@ -411,7 +443,7 @@ class ToolExecutor:
             # iscoroutinefunction() is False for a wrapper or a class with an
             # async __call__, which would silently return an un-awaited
             # coroutine as if it were the tool's result.
-            value = tool.fn(**arguments)
+            value = tool.fn(**_with_scope(tool.fn, arguments, self._scope))
             if inspect.isawaitable(value):
                 value = await value
             return value

@@ -208,6 +208,7 @@ class SubagentPool:
             depth=depth,
             output_schema=None if briefing.expected_output_schema is None else dict(briefing.expected_output_schema),
             briefed_inputs=tuple(briefed),
+            node_id=node_id,
         )
         provenances = [p for _, p in briefed]
         result = await self._runner.run(agent, task, config)

@@ -504,7 +504,17 @@ def refuse_transition(node_id: str, current: str, status: str) -> None:
         raise InvalidPlan(f"node {node_id!r} cannot return to pending")
 
 
-def emit_transition(sink: EventSink, plan_id: str, version: int, node_id: str, status: str) -> None:
+def refuse_foreign_sink(sink: Any, tenant_id: str, project_id: str, run_id: str) -> None:
+    """A node's events go to its plan's own run, or the transition is refused before
+    anything changes (M16 round 1, F2): a sink of another run, or one that cannot say
+    which run it writes to, would put a node event in a record it does not belong to."""
+    if getattr(sink, "scope", None) != (tenant_id, project_id, run_id):
+        raise InvalidPlan(f"the event sink does not write to run {run_id}, the run this plan belongs to")
+
+
+def emit_transition(
+    sink: EventSink, plan_id: str, version: int, node_id: str, status: str, reason: str | None = None
+) -> None:
     """FR-66: starting and finishing emit through the run's own sink; the rest do not."""
     if status == "running":
         event_type = EventType.PLAN_NODE_STARTED
@@ -512,7 +522,12 @@ def emit_transition(sink: EventSink, plan_id: str, version: int, node_id: str, s
         event_type = EventType.PLAN_NODE_FINISHED
     else:
         return
-    sink.emit(event_type, {"plan_id": plan_id, "version": version, "status": status}, task_id=node_id)
+    payload: dict[str, Any] = {"plan_id": plan_id, "version": version, "status": status}
+    if reason is not None:
+        # FR-74: why a node ended as it did -- acceptance_criterion_failed naming the
+        # criterion, criterion_not_available, budget_exceeded (M19).
+        payload["reason"] = reason
+    sink.emit(event_type, payload, task_id=node_id)
 
 
 class RunStateStore(Protocol):
@@ -526,7 +541,9 @@ class RunStateStore(Protocol):
 
     async def node_states(self, plan_id: str, version: int) -> Mapping[str, str]: ...
 
-    async def transition(self, plan_id: str, version: int, node_id: str, status: str, *, sink: EventSink) -> None: ...
+    async def transition(
+        self, plan_id: str, version: int, node_id: str, status: str, *, sink: EventSink, reason: str | None = None
+    ) -> None: ...
 
 
 class InMemoryRunStateStore:
@@ -599,14 +616,17 @@ class InMemoryRunStateStore:
             self._mine(plan_id, version)
             return MappingProxyType(dict(self._states[self._key(plan_id, version)]))
 
-    async def transition(self, plan_id: str, version: int, node_id: str, status: str, *, sink: EventSink) -> None:
+    async def transition(
+        self, plan_id: str, version: int, node_id: str, status: str, *, sink: EventSink, reason: str | None = None
+    ) -> None:
         checked_status(status)
         with self._lock:
             plan = self._mine(plan_id, version)
             plan.node(node_id)
+            refuse_foreign_sink(sink, self._tenant_id, self._project_id, plan.run_id)
             states = self._states[self._key(plan_id, version)]
             refuse_transition(node_id, states[node_id], status)
             states[node_id] = status
             # Inside the lock, so this store's rows and the run's events are in the
             # same order.
-            emit_transition(sink, plan_id, version, node_id, status)
+            emit_transition(sink, plan_id, version, node_id, status, reason)

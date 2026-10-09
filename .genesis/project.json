@@ -9,7 +9,7 @@
     "non_goals": [],
     "trust_boundary": "local repository",
     "created_at": "2026-09-05T14:48:57.894Z",
-    "updated_at": "2026-10-07T11:22:13.465Z"
+    "updated_at": "2026-10-09T13:39:27.442Z"
   },
   "policy": {
     "ponytail": "full",
@@ -25,7 +25,7 @@
   "lifecycle": {
     "phase": "build",
     "status": "active",
-    "active_task": "M19-orchestrator",
+    "active_task": "M20-context-policy-and-compaction",
     "blocker": null,
     "next_action": "Run the task pre-flight."
   },
@@ -1242,6 +1242,54 @@
       "status": "accepted",
       "source": null,
       "recorded_at": "2026-10-07T07:52:54.492Z"
+    },
+    {
+      "id": "DECISION-25bc616e",
+      "title": "Publishing amended: the session-folder name is filtered, and the ADR-12 reports may differ",
+      "text": "Owner decision 2026-10-07, amending DECISION-a3c77601. Publishing had been blocked since M15, so GitHub held M14 as its last commit: a dry run of .git/publish-filter/publish.sh failed verify.py with 9 problems. Review prompts from M16 on name the agent session scratchpad, whose folder name writes the local user folder and cloud-folder path in a dashed form that no rule matched; and M15 evals/adr12/reports/adr12-comparison-2026-09-16.json records local paths, which the filter scrubbed but verify.py refused, because it allowed filtered changes only under .genesis/ and in SPEC.md. Fixed in .git/publish-filter, which is never published: rules.txt gains a regex rule for the dashed folder name, ordered before the bare username rule; verify.py MAY_DIFFER also allows evals/adr12/reports/, which holds measured data rather than code, so every code file must still be byte-identical. The rebuilt copy verified with 0 problems over 722 file versions and every message, authors, dates and commit count unchanged, and phase-2 was pushed as a fast-forward from 064a670 to 26900a1 (M18a); main unchanged at 51e48e7. git-filter-repo is pinned at 2.47.0 in a throwaway venv so filtering stays deterministic. Rejected: dropping the report from the published copy (GitHub would lose the M15 measurements) and not publishing.",
+      "status": "accepted",
+      "source": null,
+      "recorded_at": "2026-10-07T12:59:38.021Z"
+    },
+    {
+      "id": "DECISION-c8d0932a",
+      "title": "M19 clarifications of FR-73 to FR-76: a run with a plan tool, outputs as briefed inputs, what replans, one governor re-split",
+      "text": "Owner decisions 2026-10-07 at M19 pre-flight. (1) The orchestrator is one Runner run at depth 0 whose agent has one plan tool: the model submits a plan as the tool arguments, validated against the shipped plan schema; the tool, which receives its RunScope (FR-76), stores the PlanVersion, executes the DAG through SubagentPool with children linked to this run, and returns each node outcome as its result. A failed plan returns to the model, whose next call of the tool is the replan, so replanning happens inside the same run, counted against the orchestrator reserve and bounded by max_replans. Rejected: a Python driver writing run records itself (a second way of recording a run) and a caller-supplied plan (moves FR-73 counted planning and FR-75 automatic replanning out of M19). (2) A done node output is stored as an artifact in the run scope carrying its SubagentResult provenance, and each dependent receives its dependencies outputs as briefed inputs beside its own input_refs, so taint follows the edges through FR-70 and FR-83. Rejected: dependencies as ordering only, since input_refs are fixed at plan time and a planner cannot name an artifact that does not exist yet. (3) Every node failure is replannable except budget_exceeded and cancellation, including acceptance_criterion_failed, output_contract_violation, criterion_not_available, a failed child run and a refused spawn; max_replans and the run ceiling bound it. Rejected: replanning only when the plan was wrong. (4) One BudgetGovernor per orchestrator run: a replan keeps all spend and every done node reservation and splits what remains unallocated among the new version not-done nodes by the M17 rules, through one new governor method. Rejected: a fresh governor per version, which would carve the orchestrator and unallocated reserves out again on every replan.",
+      "status": "accepted",
+      "source": null,
+      "recorded_at": "2026-10-07T13:55:52.601Z"
+    },
+    {
+      "id": "DECISION-8d125c3c",
+      "title": "M19 round 1 rejected: a failed plan ended the run completed, and taint reached the orchestrator under a clean label",
+      "text": "Round 1, Sonnet 5 standing in for Fable 5.1, rejected M19 at 17:50:11Z on source hash 3fdc0710; the owner reproduced D1. D1 (blocking): a failed plan could end the run completed, because only CancelledError out of a version set the run unresolved: a child answer over the artifact store cap raised out of the plan tool, the model answered, and the run completed with its only node cancelled. D2: a failed tool_succeeds criterion put the tool text into the node reason and dropped its provenance. D3: the provenance of a node was refreshed on every child while its answer was kept from the last done version, so a rerun that failed reported the old tainted answer under the new clean label. D4 (low): a retired budget record was keyed node@vN, which a planner chosen node id could collide with, losing spend from the allocation record. Repairs: D1 is made total rather than patched on one path. RunConfig.pending_failure, set by Orchestrator.config, makes an orchestrator run unresolved from its start, so a run that never completes a plan version cannot end completed, including one whose model never calls run_plan or whose every document is refused by schema validation; run_plan sets the run unresolved on entry and on any exception, and only a done version clears it; a node is total, so a failure inside one node, an unstorable output included (output_not_stored), fails that node and leaves its siblings. D2 and D3 are repaired at their common cause: the report and its taken_in are built from one record, every label of what a node report says (its child provenance whatever its status, a criterion tool result provenance when its text is shown), and an answer only for a node done in this version, stored with its own label. D4: adopt checks before it moves anything, gives a retired record the first free key, never retires a kept record twice, and refuses a new node whose id is a kept record. Each finding has a test written first that failed on the round 1 code. Reviewer caveats kept in view, not repaired: AttributedArtifacts scopes writes but not reads or deletes, since the store is bound to tenant and project rather than run; ToolScope underscored fields are accepted as in-process trusted code (D13) with a narrower type recommended. Round 2 goes to Fable 5.1, as Sonnet 5 has reviewed M18 rounds 1 and 3, M18a round 1 and M19 round 1.",
+      "status": "accepted",
+      "source": null,
+      "recorded_at": "2026-10-07T18:02:55.084Z"
+    },
+    {
+      "id": "DECISION-aab73fd5",
+      "title": "M19 round 2 rejected: a done side-effecting node was rerun after a version omitted it; artifact_exists accepted any run artifact",
+      "text": "Round 2, Opus 5 standing in for Fable 5.1, rejected M19 at 12:12:13Z on source hash 285bdb1f; the owner reproduced D5. D5 (blocking): the run remembered what was done one version deep, because run.statuses was replaced by each version and _carried compared only with the version before, so a version omitting a done side-effecting node followed by one naming it again ran it a second time; side_effecting defaults to True, so this is the invoice sent twice, and the plan shape is the model choice. Repair: a run-lifetime record of every done node (the version it was done in, its definition then, whether it had side effects), written in a finally so a node done before a raise or a cancellation is remembered, and consulted by _carried: a node that had side effects is carried whenever it reappears, a pure one when unchanged since it was done. Second, from the review caveats: artifact_exists verified any artifact of the tenant and project, so an artifact another run left there satisfied it; now the artifact must have this orchestrator run or one of its child runs as source_run before its hash is checked, and the report names each done node output uri so a replan can require it, since a planner cannot know a uri before it is written. Tests for both written first and failing on the round 2 code. Caveats recorded, not repaired: a tool declaring a RunScope parameter receives the Runner through ToolScope._runner and can reach any tenant artifact store, in any run, orchestrated or not; this is in-process trusted code under D13 and could build a store directly, but it is wider than NFR-2 multi-tenant by construction suggests, and a narrower tool scope type should replace the underscored fields; a hand-built RunConfig without pending_failure can reach run_plan and end completed with no plan, reachable only by bypassing Orchestrator.config. The round 2 reviewer first ran the gates without --timeout and recorded regression:fail, then reran them correctly: 44 and 1583 passed on 285bdb1f. Round 3 rotation is tight: Opus 5.5 implemented; Sonnet 5, Fable 5.1 and Opus 5 have reviewed; Fable 5.1 is least recently exposed.",
+      "status": "accepted",
+      "source": null,
+      "recorded_at": "2026-10-08T12:49:09.859Z"
+    },
+    {
+      "id": "DECISION-ac35bfd2",
+      "title": "M19 round 3, D6: a node finished in a batch whose settling raised is recorded as it ended",
+      "text": "Round 3 (Sonnet 5 standing in for Fable 5.1) rejected M19 on D6: asyncio.wait(FIRST_COMPLETED) can return several finished node tasks; _execute settled them one at a time, and when settling the first raised (a transient store error on a transition), the rest stayed in running, their tasks already complete and their tools already run; the except branch then marked them cancelled, so run.done never recorded them, the replan ran them again, and the persisted state said cancelled for work that happened. Repair: after cancelling and awaiting the unfinished tasks, the except branch settles every task that returned a result with its own status, reason and labels before marking anything else cancelled; settle() sets the in-memory status before it writes, so a store that fails again still leaves run.done true (the persisted row then stays at running, never a false cancelled). Test written first and failing on the round 3 code (3 tool calls, not 2): test_d6_a_sibling_finished_in_the_same_batch_as_a_faulting_transition_is_done_not_cancelled. Two mutants added (no harvest; harvested recorded cancelled). Round 4 rotation: Opus 5 (the owner's default; Fable 5.1 failed on first call three rounds running). Round 4 re-covers what round 3 left partial: FR-76 attribution first-hand including an Optional[RunScope] annotation, the Postgres half of F2/F4 run on its own, and a USD-ceiling budget case.",
+      "status": "accepted",
+      "source": null,
+      "recorded_at": "2026-10-08T17:31:19.297Z"
+    },
+    {
+      "id": "DECISION-9a55c8c7",
+      "title": "M19 round 4, D6 again: a fault no longer cancels the nodes already running",
+      "text": "Round 4 (Opus 5) rejected M19: the round 3 repair of D6 cancelled the unfinished node tasks and then harvested only tasks that had returned, so a sibling still in flight after its child had run its tool -- awaiting its output write -- was cancelled, recorded cancelled and rerun on the replan; the reviewer's unchanged round 3 probe still reproduced it 5 of 6 times. The round 3 test parked both tasks behind a barrier after Orchestrator._node returned, so nothing was ever in flight and it could only see the path the repair covered. Repair: a non-cancellation exception out of the scheduler (a transition the store refused) no longer cancels anything; the version awaits every running node to its end, then settles each with its own result, and only then marks what never started cancelled. A real cancellation still cancels and awaits every child at once, and a cancellation that arrives while the nodes finish after a fault cancels them and is re-raised. Harvesting before cancelling would not have been enough: in the reviewer's probe the sibling had not returned when the fault landed. Tests, the first two written first and failing on the round 4 code (3 tool calls, not 2): a deterministic in-flight case (b held at its output write after its tool ran; a's done transition faults only once b is there); the reviewer's unheld shape repeated 8 times per run; and a guard that a cancellation during the wait still ends the run cancelled with b cancelled. Three mutants added. Non-blocking round 4 findings carried, not repaired here: _with_scope matches the annotation by literal name, so RunScope | None, an alias or a subclass receives no scope (FR-76 says a tool that declares one receives it); a criterion whose own check raises is reported node_error rather than naming the criterion (FR-74); _check's emit closure ignores its event_type. Round 5 rotation: Fable 5.1 retried first, falling back to Sonnet 5.",
+      "status": "accepted",
+      "source": null,
+      "recorded_at": "2026-10-09T12:02:27.175Z"
     }
   ],
   "knowledge": [
@@ -2004,6 +2052,30 @@
       "source": null,
       "tags": [],
       "recorded_at": "2026-10-07T11:22:05.643Z"
+    },
+    {
+      "id": "KNOWLEDGE-99cf7886",
+      "title": "M19 pre-flight: baseline, what M19 owes from earlier milestones, and the readings taken",
+      "text": "Baseline at 7af8202 with only Genesis records changed, no other python or node process: 1539 passed in 283.68 s with -p no:cacheprovider. Owed before anything drives nodes (DECISION-6d073ac0): F2, a RunStateStore transition accepts any event sink, so a node event can land in another run; F4, on Postgres the row lock ends at commit before the emit, so two racing transitions of one node can record Finished before Started. Reachable now and owed: the M18 round 3 note that a tool wrapping a nested spawn cannot pass the grandchild real provenance, which FR-76 makes reachable; D11, RunConfig.depth read by nothing until M19. Carried and not in scope unless touched: G1 (quadratic duplicate node check, harmless under max_tasks_per_run 50), K2 and K4 to K8 (KNOWLEDGE-fdff16dc), M18 M3 to M8, M18a caveats (KNOWLEDGE-8bde2cc5), the ADR-12 harness follow-ups (DECISION-750df4c4, which belong to the eval harness, not M19). Code facts: BudgetGovernor(policy, plan) splits once per plan and has orchestrator_lease and top_up; BudgetPolicy.max_replans defaults to 3; AcceptanceCriterion stores kind, target, arguments, description, with artifact_exists naming an artifact uri in target; PlanNode stores timeout and retry_policy with no behaviour yet; EventType has PLAN_NODE_STARTED and PLAN_NODE_FINISHED, emitted by emit_transition through a sink the caller passes; the executor calls tools as tool.fn(**arguments); RunScope is a frozen postgres.RunScope of run_id, tenant_id and project_id. Readings taken here rather than put to the owner, stated in the review prompt: a node assigned_role resolves through a roles mapping given to the orchestrator, an unknown role failing the node; artifact_exists passes when the named uri exists in the run scope, was written by that node, and reads back verifying its content_hash (FR-55), so a mismatched hash is a tampered artifact; timeout and retry_policy keep their stored shape and gain no behaviour in M19, because FR-73 to FR-76 give them none; FR-76 extends RunScope with an optional node_id and artifact store rather than adding a second type of the same name.",
+      "source": null,
+      "tags": [],
+      "recorded_at": "2026-10-07T13:55:52.737Z"
+    },
+    {
+      "id": "KNOWLEDGE-14f3ec8b",
+      "title": "A test that fixes the schedule cannot see the race it is for",
+      "text": "M19 round 4: the D6 test parked both sibling tasks behind a barrier until both had returned, so asyncio.wait always handed back two finished tasks and the in-flight case the defect lived in could never occur; the test passed while the reviewer's probe reproduced the defect 5 of 6 times. A test for a property of concurrent code must not choose which tasks are in flight. Either hold the exact case deterministically at a point that leaves it in flight (here: after the child's tool ran, at the output write), or run the unheld shape repeatedly, and prefer both. Write the test to the property (a node whose tool ran is never rerun), not to the repair (harvest what returned).",
+      "source": null,
+      "tags": [],
+      "recorded_at": "2026-10-09T12:02:27.324Z"
+    },
+    {
+      "id": "KNOWLEDGE-75464135",
+      "title": "M19 round 5 approved after four rejections; caveats carried forward",
+      "text": "Approved 13:07:29Z by Sonnet 5 (fallback for Fable 5.1) on source hash 6871154d: unit 51 passed, regression 1590 passed, 43 of 43 author mutants killed. The reviewer's own D6 probe ran clean 20 of 20 and, with the wait removed, reproduced 9 of 12, so the negative is meaningful. Coverage note: the approval rests partly on carry-over. Round 5 did not re-probe budget/USD, FR-76 attribution or the Postgres half of F2/F4 first-hand; the owner accepted that because budget.py, executor.py, scope.py, tools.py, plan.py and postgres.py are byte-identical to what round 4 (Opus 5) verified first-hand, and taint was checked again because orchestrator.py changed. Non-blocking caveats carried forward: (1) _with_scope matches the annotation by literal name, so a tool declaring RunScope | None, an alias or a subclass receives no scope, against FR-76; (2) a criterion whose own check raises is reported node_error rather than naming the criterion, against FR-74; (3) _check's emit closure ignores its event_type; (4) node rows of an abandoned version can be left running or pending, judged in round 4 the least false option, since cancelled is final and asserts the node did not run; (5) from DECISION-aab73fd5: ToolScope._runner gives any scoped tool the Runner, so it can reach any tenant's artifact store and set _control.failure (D13, in-process, but wider than NFR-2 suggests), and AttributedArtifacts scopes writes, not reads or deletes; (6) pending_failure is caller-settable, and a hand-built RunConfig without it can end completed with no plan. Label note: the reviewer called the round 4 finding D7; DECISION-9a55c8c7 records it as D6 repaired a second time.",
+      "source": null,
+      "tags": [],
+      "recorded_at": "2026-10-09T13:39:22.895Z"
     }
   ],
   "tasks": [
@@ -3203,7 +3275,7 @@
     {
       "id": "M19-orchestrator",
       "outcome": "An Orchestrator executes a PlanVersion over its DAG with deterministic acceptance criteria, guarded automatic replanning that never reruns a completed side-effecting node, and tools that reach their run through RunScope",
-      "state": "active",
+      "state": "done",
       "risk": "high",
       "owner": null,
       "scope": [],
@@ -3225,22 +3297,37 @@
           "id": "unit",
           "command": ".venv\\Scripts\\python.exe -m pytest tests/test_orchestrator.py -q",
           "mandatory": true,
-          "status": "pending",
-          "evidence": null
+          "status": "pass",
+          "evidence": {
+            "path": ".genesis/evidence/M19-orchestrator-unit.json",
+            "source_hash": "6871154d6723fd305db4ba66473f9cec4a9430ccafb85a788e035c3a56d52f96",
+            "hash": "1004e59ff54912d8916d41dd329d972dc78e7214251f40798cfcaf3d87c4fa4c",
+            "observed_at": "2026-10-09T12:48:23.806Z"
+          }
         },
         {
           "id": "regression",
           "command": ".venv\\Scripts\\python.exe -m pytest -q",
           "mandatory": true,
-          "status": "pending",
-          "evidence": null
+          "status": "pass",
+          "evidence": {
+            "path": ".genesis/evidence/M19-orchestrator-regression.json",
+            "source_hash": "6871154d6723fd305db4ba66473f9cec4a9430ccafb85a788e035c3a56d52f96",
+            "hash": "c5daae9663e5a7468cafac42543af3663e0df4b8790943c9faa30e47258b89a9",
+            "observed_at": "2026-10-09T12:52:52.265Z"
+          }
         },
         {
           "id": "independent-review",
           "command": "",
           "mandatory": true,
-          "status": "pending",
-          "evidence": null
+          "status": "pass",
+          "evidence": {
+            "human": "Sonnet 5 (independent L4 reviewer, M19 round 5, fallback for Fable 5.1 which was out of quota)",
+            "reason": "Sonnet 5 reviewed as the fallback because Fable 5.1 failed to start. D7 repair judged on mechanism: after a fault every running node task is awaited to its own end and harvested before anything is cancelled; only a real CancelledError cancels. Gate re-run with timeout 590000: unit 51 and regression 1590 pass, source hash 6871154d unchanged, no stray python. Own randomized fault injection (random transition, random delays, siblings in every state, no hold chosen) 475 of 475 attempts memory and 55 of 55 Postgres made each tool call exactly once and completed, including skipped and carried transitions; 60 random cancellations on Postgres left no non-terminal run and contiguous sequences. Mutants without the wait, with a swallowed cancellation and with the fault re-raised in place of the cancellation all fail the new tests for the right reason and the same probe fails 22 of 60 on the no-wait mutant. Caveats: live demo and USD ceiling not re-probed first-hand, relied on round 4 and the suite; the no-hold test is probabilistic but the deterministic held-sibling test carries the property; after a fault the version waits for running nodes bounded only by their own budget and cancellation; declared limitations unchanged.",
+            "source_hash": "6871154d6723fd305db4ba66473f9cec4a9430ccafb85a788e035c3a56d52f96",
+            "observed_at": "2026-10-09T13:07:29.487Z"
+          }
         }
       ],
       "next_action": "Run the task pre-flight.",
@@ -3249,12 +3336,12 @@
       "failures": [],
       "limitations": [],
       "created_at": "2026-09-19T12:27:44.668Z",
-      "updated_at": "2026-10-07T05:18:21.342Z"
+      "updated_at": "2026-10-09T13:39:23.160Z"
     },
     {
       "id": "M20-context-policy-and-compaction",
       "outcome": "An agent sees only the tools it may execute, recorded in the manifest, and long histories compact at a threshold with taint and provenance kept and every compaction recorded",
-      "state": "queued",
+      "state": "active",
       "risk": "medium",
       "owner": null,
       "scope": [],
@@ -3929,17 +4016,62 @@
       "human": "Sonnet 5 (independent L4 reviewer, M18a round 1)",
       "reason": "Verified first-hand: full suite 1539 passed in 276s; all 18 checkouts route through _checkout and nothing else in agentsdk opens a connection except migrate.py; refusal leaks no pooled connection (200 refusals, pool stats unchanged); autouse fixture has no marker, name filter or path list and fails at teardown even when the refusal is swallowed (own-loop thread, fresh DSN, after close_pools, call_soon, async fixture setup and teardown all caught; sync test and offloaded call pass); a mutant putting _history_for back on the loop is caught; FR-79 and FR-80 refuse the full classes and accept mappings, None and depth 1 to 2**31-1; briefed input appears per request as labels only, including the re-ask; example check passes on provenance and fails on a clean label; edits to approved tests only offload reads. Caveats: a test that replaces postgres._pool with an unwatched pool and swallows the refusal would evade FR-81 (no existing test does); a refused terminal write leaves the run row running exactly as an ordinary database failure at that write does; the logs-once set is unlocked; the example check duplicates the taint check before it; custom assemblers now always receive briefed_inputs.",
       "revision": null
+    },
+    {
+      "id": "092feaa8-f8db-4b4c-baa0-6f9e79312d0f",
+      "at": "2026-10-07T17:50:11.782Z",
+      "action": "reject",
+      "task": "M19-orchestrator",
+      "human": "Sonnet 5 (independent L4 reviewer, M19 round 1, substituted for Fable 5.1 which was out of quota)",
+      "reason": "Round 1 rejected on three reachable defects, all reproduced on both stores. (1) A failed plan can end the run completed: an exception escaping a node task, for example the output artifact write refusing a child answer over the 10485760 byte cap or any store error, reaches the tool as ToolExecutionError, control.failure is never set, the model answers, and the run is completed with error None while the version nodes are cancelled. (2) A tool_succeeds criterion failure puts the check tool result content into the node reason, and the reason reaches the orchestrator labelled trusted_source with no taint although the tool is declared external; the criterion outcome provenance is dropped. (3) After a replan reruns a non-carried node and the rerun fails, the report still shows the earlier version answer for that node (run.answers is never cleared) under the new child provenance, so text derived from tainted input reaches the orchestrator labelled trusted_source. Lower: a model-chosen node id such as f@v1 collides with the governor kept-record key and corrupts the allocation. Verified fine: gate file 32 passed, full suite 1571 passed, demo offline and live read back from Postgres, first plan split identical to M17 over 400 fuzz cases, cancellation in node, criterion, replan and artifact write all clean, F2 and F4 sinks. Reviewed by Sonnet 5 not Fable 5.1.",
+      "revision": null
+    },
+    {
+      "id": "4c1534cc-e354-4d82-ad1c-ecd802a6a846",
+      "at": "2026-10-08T12:12:13.333Z",
+      "action": "reject",
+      "task": "M19-orchestrator",
+      "human": "Opus 5 (independent L4 reviewer, M19 round 2, substituted for Fable 5.1 which was out of quota)",
+      "reason": "Opus 5 standing in for Fable 5.1, which was out of quota; neither the implementer (Opus 5.5) nor round 1 reviewer (Sonnet 5). Round 1 D1 to D4 all verified repaired, first-hand. BLOCKING D5, FR-75: a done side_effecting node IS rerun. Orchestrator._carried compares the new version only with the immediately previous one, and _Run.statuses is replaced wholesale by every version, so a run memory of what was done is one version deep. Versions send+check, then check alone, then send+check again, with send side_effecting True calling a counting tool: the tool ran TWICE, two child runs for that node, PlanNodeStarted for send at version 1 and again at version 3 on Postgres, and the governor re-funded send after retiring its record. The information needed was still held in _Run.outputs and _Run.answers, unconsulted. Same shape as round 1 and as M18: a property stated of every path, enforced on the path someone looked at. Second finding, medium, FR-76: a tool_succeeds criterion tool receives a ToolScope whose node_id names the node, but whose artifacts store is the orchestrator run AttributedArtifacts built with node_id None, so an artifact it writes records source_task NULL while its scope claims a node. Verified sound: every ending on both stores, including cancellation during a node, during a criterion check, during a replan and inside the output artifact write, with no run left running, no orphan and contiguous sequences; output_not_stored fails only its own node and leaves its sibling; taint on every edge, a carried answer keeping its own stored label and taking_in never cleaning; budget sums to the ceiling exactly across replans, carries, a node that never started and a re-funded node, with D4 closed; every deterministic criterion both ways plus critic; no schema_hash moved on any of six built-ins; F2 and F4 on both stores, with the F4 rollback proven on Postgres; demo offline 5 of 5 and live 4 of 4, read back from Postgres. Caveats: artifact_exists verifies tenant and project scope, not the run, so an artifact no run of this plan ever wrote satisfies it (probed); ToolScope underscored fields let any scoped tool reach another tenant artifact store through _runner and set control failure; pending_failure lets a caller record a genuinely successful run as failed in the row and the RunFailed event; the in-memory run state store does not roll a status back when its emit fails, unlike Postgres now; a sink whose scope property raises makes transition raise RuntimeError, not InvalidPlan; a criterion tool with no timeout_seconds hangs the run unbounded; a BaseException out of a tool leaves the run row running, confirmed pre-existing on a plain run. Disclosure: my own first command ran the gates at the default 120 s timeout and recorded regression as fail; I re-ran genesis gate with timeout 590000 and both are green again on source hash 285bdb1f, 44 and 1583 passed. The store was returned to the owner baseline exactly.",
+      "revision": null
+    },
+    {
+      "id": "05154356-d39b-4130-841f-01f3dfc60066",
+      "at": "2026-10-08T13:26:09.823Z",
+      "action": "reject",
+      "task": "M19-orchestrator",
+      "human": "Sonnet 5 (independent L4 reviewer, M19 round 3, substituted for Fable 5.1 which was out of quota)",
+      "reason": "Reviewed by Sonnet 5 standing in for Fable 5.1 (out of quota). D6 (medium): the D5 record is built from the version statuses dict, which lags finished tasks. In _execute, when settle raises (a store error on a transition) while a sibling task has already finished but is not yet harvested, the except handler cancels the unharvested running dict and marks that finished node cancelled; the finally in _submit records only statuses done nodes, so a side-effecting node whose child completed and whose output was stored is not in run.done, and the next run_plan that names it runs it again. Reproduced: two side-effecting nodes, first done transition raises once, replan names both, the note tool ran twice for one of them (counts a1 b2, a1 b2, a2 b1 over 3 runs, in memory). Fix: before cancelling in the except branch, harvest tasks that are done, or record done from task results rather than from statuses. Everything else probed held: endings on Postgres (7 scenarios, no run left running, sequences contiguous, no orphans), taint on carried, omitted-then-carried and criterion-text edges, budget sum equals ceiling across 4 versions with carries and skipped nodes, criteria both ways including hang timeout and raise, F2 sinks, demo offline and live read back from Postgres and removed by run id; gate file 47 passed.",
+      "revision": null
+    },
+    {
+      "id": "ef8f3d7d-1654-462b-a7d5-79fb3061e947",
+      "at": "2026-10-09T11:48:29.329Z",
+      "action": "reject",
+      "task": "M19-orchestrator",
+      "human": "Opus 5 (independent L4 reviewer, M19 round 4)",
+      "reason": "D7 blocking: the D6 repair covers only a node task that RETURNED, so the round 3 reproduction still reproduces on the repaired code. Two side-effecting siblings calling a counting tool, the run-state store transition raising once on a version 1 unreasoned done, then a replan naming both: note calls a:1 b:2 (3 calls, not 2), a PlanNodeFinished of b cancelled for a node whose tool had already run, and b run again in version 2. Traced: a returns done, settling it raises, the except branch cancels sibling b while b is inside _attempt after its child had already run the side-effecting tool; task.cancelled() is then true so the harvest loop skips b, the final loop records b cancelled, run.done never gets it and _carried does not carry it. Reproduced repeatedly with no barrier, on the in-memory and the Postgres store; in one variant all three child runs read completed in Postgres while the version 1 node row for b reads cancelled, so the record contradicts itself. The comment at orchestrator.py line 204 states the property of this very path (a node that finished before a raise OR A CANCELLATION has had its side effects all the same) and it is false there. The author test hides the case: pinning the asyncio.wait batch with a barrier over Orchestrator._node makes every task return before the raise, so no in-flight task is present when the except branch runs. This is not in the declared limitations, and side_effecting defaults to True, so it is the harm P2-D18 exists to prevent. Everything else verified sound. I reran both gates myself on source hash 9728e423: unit 48 passed, regression 1587 passed in 281s, and the run_id sets of all seven tables are identical before and after (AC-63). Each half of the D6 repair is independently necessary (no harvest alone gives 3 calls, reverting the settle order alone gives 3, both give 4); every mutation restored by SHA-256. Criteria exercised both ways and each failure names the criterion; critic ends criterion_not_available and reads back from Postgres; a tampered content hash fails ArtifactIntegrityError; an artifact of another run is refused. Taint holds on every edge tried (criterion tool text, carried answer, skipped node, replan) and taking_in only raises taint and lowers trust. Budget sums exactly to the ceiling in USD and in tokens after replans, carries, nodes that never started, a proposer at the cap, six replans and a 1e11 ceiling; for_run plus adopt is identical to the M17 constructor; the D4 clash is refused with state unchanged. FR-76 attribution asserted first hand on both stores: source_run is the child run and source_task is the node id; a model supplied scope is overridden; no schema_hash moves. F2 and F4 verified on Postgres on its own: five misreporting sinks each refused InvalidPlan with nothing changed and no event emitted, a failing emit rolls the row back to pending, three racing transitions recorded Started before Finished every time. Demo 5 of 5 offline and 4 of 4 live, the live run checked in Postgres and removed by its own six run ids. Caveats: a parameter annotated RunScope or None silently receives None, and a RunScope subclass under another name is not injected, because _with_scope matches the annotation by name; a plan_node_states row left running or pending for an abandoned version I judge the right trade-off against a false cancelled, since NFR-22 binds child runs and every child run was terminal in every probe; a criterion check has no deadline and hangs the run.",
+      "revision": null
+    },
+    {
+      "id": "cf10cf56-23c7-4b3d-9932-19412446fe1b",
+      "at": "2026-10-09T13:07:29.487Z",
+      "action": "approve",
+      "task": "M19-orchestrator",
+      "human": "Sonnet 5 (independent L4 reviewer, M19 round 5, fallback for Fable 5.1 which was out of quota)",
+      "reason": "Sonnet 5 reviewed as the fallback because Fable 5.1 failed to start. D7 repair judged on mechanism: after a fault every running node task is awaited to its own end and harvested before anything is cancelled; only a real CancelledError cancels. Gate re-run with timeout 590000: unit 51 and regression 1590 pass, source hash 6871154d unchanged, no stray python. Own randomized fault injection (random transition, random delays, siblings in every state, no hold chosen) 475 of 475 attempts memory and 55 of 55 Postgres made each tool call exactly once and completed, including skipped and carried transitions; 60 random cancellations on Postgres left no non-terminal run and contiguous sequences. Mutants without the wait, with a swallowed cancellation and with the fault re-raised in place of the cancellation all fail the new tests for the right reason and the same probe fails 22 of 60 on the no-wait mutant. Caveats: live demo and USD ceiling not re-probed first-hand, relied on round 4 and the suite; the no-hold test is probabilistic but the deterministic held-sibling test carries the property; after a fault the version waits for running nodes bounded only by their own budget and cancellation; declared limitations unchanged.",
+      "revision": null
     }
   ],
   "discovery": null,
   "checkpoint": {
-    "at": "2026-10-07T11:22:13.405Z",
+    "at": "2026-10-09T13:39:27.390Z",
     "revision": {
-      "commit": "252c51a07e496ff1182ba42af72c86b90f868f06",
+      "commit": "7af820299637117baff62901e15ec07cb5f7cc05",
       "dirty": true,
-      "source_hash": "d5c75afd05c6b9250f4a029da7eece2f62c471c84fb2a5f3df166e4a7e714cc6"
+      "source_hash": "6871154d6723fd305db4ba66473f9cec4a9430ccafb85a788e035c3a56d52f96"
     },
-    "active_task": "M19-orchestrator",
+    "active_task": "M20-context-policy-and-compaction",
     "next_action": "Run the task pre-flight."
   },
   "legacy": null

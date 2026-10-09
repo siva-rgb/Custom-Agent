@@ -142,6 +142,20 @@ class ContentProvenance:
             taint_flags=taint,
         )
 
+    def taking_in(self, *inputs: ContentProvenance) -> ContentProvenance:
+        """This provenance, raised to carry what `inputs` carry (M19).
+
+        The union of the taint and the least trusted zone, as `from_model` takes them;
+        origin, authority and source stay this one's. It can only add taint and lower
+        trust, so a tool that reports what it read cannot use it to clean its result.
+        """
+        taint, trust = self.taint_flags, self.trust_zone
+        for provenance in inputs:
+            taint |= provenance.taint_flags
+            if _TRUST_ORDER.index(provenance.trust_zone) > _TRUST_ORDER.index(trust):
+                trust = provenance.trust_zone
+        return replace(self, taint_flags=taint, trust_zone=trust)
+
     def with_taint(self, *flags: TaintFlag) -> ContentProvenance:
         return replace(self, taint_flags=self.taint_flags | frozenset(flags))
 

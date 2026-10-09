@@ -108,6 +108,11 @@ class ToolOutput:
 
     content: Any
     source_uri: str | None = None
+    # M19: the provenance of whatever this result was made from that the tool's
+    # declared labels do not already cover -- a child's answer, for a tool that
+    # runs one. The result carries their taint at its maximum (ADR-26); it can
+    # never make the result cleaner than declared (M18 round 3 note).
+    taken_in: tuple[Any, ...] = ()
 
 
 @dataclass(frozen=True)

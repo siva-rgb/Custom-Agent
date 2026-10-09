@@ -43,6 +43,8 @@ EXPECTED_EXAMPLES = {
     "15_budget.py",
     # FR-72 (M18): subagents under a run's limits.
     "16_subagents.py",
+    # FR-75 (M19): the orchestrator, a failed criterion and the replan.
+    "17_orchestrator.py",
 }
 
 

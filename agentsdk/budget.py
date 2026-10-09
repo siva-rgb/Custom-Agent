@@ -155,7 +155,12 @@ def _split_usd_within(
 ) -> tuple[Decimal, Decimal, dict[str, Decimal]]:
     orchestrator = ceiling * policy.orchestrator_reserve_fraction
     unallocated = ceiling * policy.unallocated_reserve_fraction
-    pool = ceiling - orchestrator - unallocated
+    reservations, pool = _grant_usd(policy, nodes, ceiling - orchestrator - unallocated)
+    return orchestrator, unallocated + pool, reservations
+
+
+def _grant_usd(policy: BudgetPolicy, nodes: tuple[Any, ...], pool: Decimal) -> tuple[dict[str, Decimal], Decimal]:
+    """FR-67's per-node rule over `pool`: what each node is granted, and what is left."""
     reservations: dict[str, Decimal] = {}
     unproposed = []
     for node in nodes:
@@ -179,7 +184,7 @@ def _split_usd_within(
         for node_id in unproposed:
             reservations[node_id] = each
         pool -= each * len(unproposed)
-    return orchestrator, unallocated + pool, reservations
+    return reservations, pool
 
 
 def _split_tokens(policy: BudgetPolicy, nodes: tuple[Any, ...]) -> tuple[int, int, dict[str, int]] | None:
@@ -188,7 +193,12 @@ def _split_tokens(policy: BudgetPolicy, nodes: tuple[Any, ...]) -> tuple[int, in
         return None
     orchestrator = int(Decimal(ceiling) * policy.orchestrator_reserve_fraction)
     unallocated = int(Decimal(ceiling) * policy.unallocated_reserve_fraction)
-    pool = ceiling - orchestrator - unallocated
+    reservations, pool = _grant_tokens(policy, nodes, ceiling - orchestrator - unallocated)
+    return orchestrator, unallocated + pool, reservations
+
+
+def _grant_tokens(policy: BudgetPolicy, nodes: tuple[Any, ...], pool: int) -> tuple[dict[str, int], int]:
+    """FR-67's per-node rule over `pool`, in tokens."""
     reservations: dict[str, int] = {}
     unproposed = []
     for node in nodes:
@@ -205,7 +215,7 @@ def _split_tokens(policy: BudgetPolicy, nodes: tuple[Any, ...]) -> tuple[int, in
             reservations[node_id] = each
         # Whatever integer division could not divide stays unallocated.
         pool -= each * len(unproposed)
-    return orchestrator, unallocated + pool, reservations
+    return reservations, pool
 
 
 class BudgetGovernor:
@@ -237,6 +247,99 @@ class BudgetGovernor:
         self._leases: dict[str, BudgetLease] = {}
         self._spent_usd: Decimal | None = Decimal(0)
         self._spent_tokens = 0
+        # The records of nodes a replan retired (M19): kept, so the allocation still sums
+        # to the ceiling, and never funded or retired again.
+        self._kept: set[str] = set()
+
+    @classmethod
+    def for_run(cls, policy: BudgetPolicy) -> BudgetGovernor:
+        """A governor for an orchestrator run, before it has a plan (M19, FR-73).
+
+        The orchestrator reserve is set aside now, because the run's first planning call
+        is counted before any plan exists; everything else is unallocated until `adopt`.
+        """
+        if not isinstance(policy, BudgetPolicy):
+            raise ValueError(f"policy must be a BudgetPolicy, got {type(policy).__name__}")
+        self = cls.__new__(cls)
+        self.policy, self.plan, self._lock = policy, None, threading.Lock()
+        usd, tokens = policy.run_ceiling_usd, policy.run_ceiling_tokens
+        with localcontext() as context:
+            context.prec = 80  # as _split_usd, so a large ceiling still splits (round 3, H4)
+            orchestrator_usd = None if usd is None else usd * policy.orchestrator_reserve_fraction
+        orchestrator_tokens = None if tokens is None else int(Decimal(tokens) * policy.orchestrator_reserve_fraction)
+        self._orchestrator = BudgetAmount(usd=orchestrator_usd, tokens=orchestrator_tokens)
+        self._unallocated_usd = None if usd is None else usd - orchestrator_usd
+        self._unallocated_tokens = None if tokens is None else tokens - orchestrator_tokens
+        self._reservations, self._leases, self._kept = {}, {}, set()
+        self._spent_usd, self._spent_tokens = Decimal(0), 0
+        return self
+
+    def adopt(self, plan: Any, *, carried: tuple[str, ...] = ()) -> None:
+        """Fund a plan version's nodes from what this run has left (FR-67, FR-75).
+
+        The first plan is split exactly as the constructor splits it. A replan keeps
+        every spend and every node in `carried` -- done in the version before and
+        carried into this one -- and splits what is unallocated, above the unallocated
+        reserve, among the new version's other nodes by the same rule, so replanning
+        stays inside the run ceiling (FR-68, DECISION-c8d0932a). A node of the old
+        version that ran keeps its record under a new key, `node@vN` or the first free
+        `node@vN#k`; one that never started gives its reservation back. A new node whose
+        id is already one of those records is refused, so no spend is ever written over
+        (M19 round 1, D4). Everything is checked before anything moves.
+        """
+        nodes = getattr(plan, "nodes", None)
+        if not nodes:
+            raise ValueError("a governor needs a PlanVersion with at least one node")
+        with self._lock:
+            before = None if self.plan is None else self.plan.version
+            leaving = [n for n in self._reservations if n != _ORCHESTRATOR and n not in carried and n not in self._kept]
+            for node_id in leaving:
+                lease = self._leases.get(node_id)
+                if lease is not None and not lease._released:
+                    raise ValueError(f"node {node_id!r} is still running and cannot be replanned")
+            funded = tuple(n for n in nodes if n.node_id not in carried)
+            taken = {_ORCHESTRATOR, *self._kept}
+            clash = [n.node_id for n in funded if n.node_id in taken]
+            if clash:
+                raise ValueError(
+                    f"node_id {clash[0]!r} is already a budget record of this run; give the node another id"
+                )
+            funded_ids = {n.node_id for n in funded}
+            for node_id in leaving:
+                lease = self._leases.pop(node_id, None)
+                amount = self._reservations.pop(node_id)
+                if lease is None:
+                    if amount[0] is not None and self._unallocated_usd is not None:
+                        self._unallocated_usd += amount[0]
+                    if amount[1] is not None and self._unallocated_tokens is not None:
+                        self._unallocated_tokens += amount[1]
+                    continue
+                kept, k = f"{node_id}@v{before}", 1
+                while kept in self._reservations or kept in funded_ids or kept in leaving:
+                    k += 1
+                    kept = f"{node_id}@v{before}#{k}"
+                self._reservations[kept] = amount
+                self._leases[kept] = lease
+                self._kept.add(kept)
+            if self.policy.run_ceiling_usd is not None:
+                with localcontext() as context:
+                    context.prec = 80
+                    reserve = self.policy.run_ceiling_usd * self.policy.unallocated_reserve_fraction
+                    pool = max(Decimal(0), self._unallocated_usd - reserve)
+                    granted, left = _grant_usd(self.policy, funded, pool)
+                    self._unallocated_usd = self._unallocated_usd - pool + left
+            else:
+                granted = {}
+            if self.policy.run_ceiling_tokens is not None:
+                reserve_tokens = int(Decimal(self.policy.run_ceiling_tokens) * self.policy.unallocated_reserve_fraction)
+                pool_tokens = max(0, self._unallocated_tokens - reserve_tokens)
+                granted_tokens, left_tokens = _grant_tokens(self.policy, funded, pool_tokens)
+                self._unallocated_tokens = self._unallocated_tokens - pool_tokens + left_tokens
+            else:
+                granted_tokens = {}
+            for node in funded:
+                self._reservations[node.node_id] = [granted.get(node.node_id), granted_tokens.get(node.node_id)]
+            self.plan = plan
 
     # --- what the split decided ---------------------------------------------------------------
 

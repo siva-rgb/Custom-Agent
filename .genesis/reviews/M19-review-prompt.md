@@ -1,0 +1,240 @@
+You are the independent L4 reviewer for a bounded task in a Genesis-governed repository. You did
+not write this code and you must not trust its author's claims about it.
+
+**Use a fresh model: this round is for Fable 5.1**, in a fresh session. M19 was implemented
+by Opus 5.5. The code it builds on was reviewed by Sonnet 5 and Fable 5.1 in turn (M18 rounds 1
+to 4, M18a round 1 by Sonnet 5). If you have reviewed M19 before, say so and ask for a different
+session. Re-derive the requirements from SPEC.md ("#### M19") rather than inheriting the framing
+below.
+
+## Repository
+
+`<repo>` is the folder that holds this file's repository; run everything from it.
+
+```bash
+PATH="$PWD/.venv/Scripts:$PATH" node ~/Desktop/genesis-kit/tools/genesis.mjs <command> .
+```
+
+The PATH prefix is required: graphizer shells out to python3, and without the venv first on PATH
+that hits the Microsoft Store alias and crashes Node.
+
+- **Configuration:** both gates need DATABASE_URL from .env; the regression gate also needs
+  BASE_URL and MODEL_API_KEY. **Never print credentials or a connection string.**
+- **Install:** `.venv\Scripts\python.exe -m pip install -r requirements.txt`. M19 adds no library (NFR-21).
+- **Host:** Windows Developer Mode must be on (D7).
+
+**Only one test session at a time, and nothing else in parallel with one.** Every pytest session
+compares the store's ids at its start and end (AC-44, AC-63), the development database is shared,
+and M14's timing tests assert lower bounds. Before running tests or gates, check that no other
+python or node process is running. Run your own probes with `-p no:cacheprovider`: Genesis hashes
+.pytest_cache, so a cache write can make a gate read stale with no code change. The full suite
+takes about 5 minutes; keep every command in the foreground and under 590 s. **`genesis gate` kills
+a gate after 120 s unless you pass `--timeout 590000`**, and on this host that kills only the venv
+launcher (KNOWLEDGE-64fa6e18): run `genesis gate . M19-orchestrator --timeout 590000`, then check
+for a stray python process. **A probe that can hang** (a mutant that stops cancellation, say) must
+run under its own timeout with `taskkill /T /F` on the whole tree, and be followed by a search for
+mutation debris and a store residue check: the author's first mutation run hung exactly this way.
+
+**The FR-81 fixture is active in every test.** A store call made from a coroutine on the event
+loop fails the test at teardown, so read the store from async probes with `asyncio.to_thread`.
+
+**If the suite hangs, it is not memory** (KNOWLEDGE-9a3abf61). Suspect the two live-gateway tests
+in `test_golden_eval.py`; rerun with `-o faulthandler_timeout=120`.
+
+## Task under review
+
+**M19-orchestrator**, **round 1**: an Orchestrator executes a PlanVersion over its DAG with
+deterministic acceptance criteria, guarded automatic replanning that never reruns a completed
+side-effecting node, and tools that reach their run through RunScope.
+
+### Owner decisions and readings that shape it
+
+Read these before the code:
+
+- **DECISION-c8d0932a** (pre-flight, owner): the orchestrator is one Runner run at depth 0 whose
+  agent has one `run_plan` tool; a done node's output is stored as an artifact and briefed to its
+  dependents; every node failure replans except `budget_exceeded` and cancellation; one
+  `BudgetGovernor` per run re-splits what is left on a replan.
+- **KNOWLEDGE-99cf7886** (pre-flight readings, not put to the owner). Two of them changed during
+  the build, and the change is the author's, so judge it:
+  - **`artifact_exists`**: the pre-flight reading required the artifact to have been written by
+    the node. Artifact uris are derived from their ids (`urn:agentsdk:artifact:<id>`), so a planner
+    can never name an artifact a node has yet to write. As built, the criterion passes when the uri
+    resolves to an artifact in the run's scope whose content verifies against its recorded
+    `content_hash` (FR-55); missing and tampered both fail.
+  - **FR-76's scope**: the reading said RunScope gains optional fields. RunScope checks every one of
+    its fields for storability (DECISION-53461588), and an artifact store is not a value, so
+    `ToolScope` is a subclass of `RunScope`. A tool declaring a `RunScope` parameter receives a
+    `ToolScope`. It also carries underscored fields (`_events`, `_control`, `_runner`, `_lease`) that
+    only the plan tool uses. Decide whether exposing those to every scoped tool is acceptable.
+  - Unchanged: roles map `assigned_role` to an AgentSpec, an unknown role failing the node; a node's
+    `timeout` and `retry_policy` stay stored with no behaviour.
+- **DECISION-6d073ac0**: M16's F2 and F4, owed before anything drives nodes, are fixed here.
+
+### Where to attack first
+
+1. **The run is never a silent success, and never left running.** A failed plan version sets
+   `RunControl.failure`; the loop ends the run `failed` with it at the model's final answer unless a
+   later version succeeded. Try every way a run with a failed plan could end `completed`, and every
+   way an orchestrated run, or one of its children, could be left `running` (cancellation during a
+   node, during a criterion check, during a replan, during the output artifact write).
+2. **Taint along every edge.** A node's output carries its child's provenance into the artifact
+   that dependents are briefed with (FR-70, FR-83), and into the `run_plan` result through the new
+   `ToolOutput.taken_in`, which may only raise taint and lower trust. Look for any path where text
+   reaches a model, a dependent or the orchestrator with a label cleaner than its source: a carried
+   node, a criterion's tool result, a skipped node, a replan.
+3. **The budget across versions.** `BudgetGovernor.for_run` and `adopt` are new. The first plan must
+   split exactly as the M17 constructor does; a replan must keep every spend inside the run ceiling
+   and keep the unallocated reserve. Check the allocation still sums to the ceiling (M17 round 2,
+   G2) after replans, carries and nodes that never started.
+4. **FR-76 at the executor.** `_with_scope` injects the scope by parameter annotation. Can a model
+   supply or forge it, can a tool without one see a change, does any `schema_hash` move, and does
+   attribution hold for every way a tool can write an artifact?
+
+### Requirements it claims to satisfy (verbatim from SPEC.md)
+
+- **FR-73:** `Orchestrator` executes a `PlanVersion` over its DAG: a node becomes `ready` when every dependency is `done`, ready nodes run concurrently within `max_concurrent_subagents`, and queueing is FIFO. Cancellation reaches children: cancelling the run cancels every running child and awaits it, and no child is left running once the parent has returned or raised (NFR-17, FR-51). A node that fails does not cancel its siblings; nodes that depend on it become `skipped` unless replanning (FR-75) supersedes them. The orchestrator itself is an agent run with its own reservation, so its planning calls are counted, not free.
+- **FR-74:** A node is `done` only when its execution terminated successfully, its output validated against `expected_output_schema` when one is set, and every acceptance criterion is satisfied (P2-D16). This increment evaluates three deterministic kinds: `output_schema`, already covered by FR-71; `artifact_exists`, naming an artifact whose `content_hash` must match what the node recorded (M13); and `tool_succeeds`, naming a registered tool and arguments that must return a non-error outcome, executed through the normal executor with the node's permissions. A `critic` criterion parses and stores, so a plan written now stays valid when Phase 3 builds the critic, but a run that reaches one ends that node `failed` with reason `criterion_not_available`, naming it. A criterion that is not satisfied fails the node with `acceptance_criterion_failed`, naming which.
+- **FR-75:** Replanning is automatic while the run's budget remains, the replan count is below `max_replans`, and the failure is replannable (P2-D18). It produces a new `PlanVersion` whose `parent_plan` is the version that failed, inside the same run and the same ceiling. A node already `done` and `side_effecting=True` is carried into the new version as `done` and is never rerun; a `done` node with `side_effecting=False` may be rerun. When the budget is spent, or `max_replans` is reached, the run ends `failed` carrying the last plan version, not a silent success. `scripts/17_orchestrator.py` runs a four-node plan in which one node fails its acceptance criterion, prints the replan and shows that the completed side-effecting node was not rerun.
+- **FR-76:** A tool reaches its run through an explicit `RunScope` argument (P2-D26), carrying `run_id`, `tenant_id`, `project_id`, the node id when one applies, and the artifact store bound to that run. A tool that declares no `RunScope` parameter is called exactly as before, so every existing tool and every built-in keeps working unchanged and no `schema_hash` moves. A tool that declares one receives it, and the artifact it writes through that scope is attributed to the run and node that wrote it.
+- **NFR-21:** Phase 2's second increment adds no runtime dependency (NFR-6, NFR-13, NFR-18). The plan schema, the price table and the compaction summary all use what the SDK already carries.
+- **NFR-22:** Orchestration never corrupts the record. Under parallel subagents, replanning and cancellation, every run's `sequence_no` values stay unique and contiguous on both stores, no child is left `running` once its parent has returned or raised, every child's `parent_run_id` resolves to a run that exists, and a plan version is never mutated after it is stored (NFR-17).
+- **AC-58:** A diamond-shaped plan runs its two independent nodes concurrently and its dependent node only after both are `done`, respecting `max_concurrent_subagents`; cancelling the parent mid-flight cancels and awaits every running child, leaves no run `running` on either store, and satisfies NFR-22.
+- **AC-59:** Each deterministic criterion is exercised both ways: `output_schema` passing and failing, `artifact_exists` with a matching and a mismatched `content_hash`, and `tool_succeeds` with a succeeding and a failing tool; each failure ends the node `acceptance_criterion_failed` naming the criterion. A plan carrying a `critic` criterion stores and reads back, and reaching it ends the node `criterion_not_available`.
+- **AC-60:** A plan whose node fails its criterion replans within budget, produces a new `PlanVersion` whose `parent_plan` is the failed one, and carries a completed `side_effecting=True` node forward as `done` without rerunning it, proven by a counter in the tool that node used. With `max_replans` reached, and separately with the budget spent, the run ends `failed` carrying its last plan version.
+- **AC-63:** A full regression run still leaves AC-44's invariant intact with orchestration in place: the set of `run_id`s in `runs`, `messages`, `run_events`, `execution_manifests`, `artifacts`, `plan_versions` and `plan_node_states` is unchanged from before the run.
+
+### Standing invariants that constrain every task
+
+- Every `ToolResult` carries exactly one `ContentProvenance`.
+- Every persisted row carries non-null `tenant_id` and `project_id`.
+- `ToolExecutor` order is fixed: resolve, validate, permission, execute.
+- No credential enters model context, a persisted row, or a `RunEvent` payload.
+- Application code calls `Runner.run()` and nothing else. (The Orchestrator supplies a tool, an
+  agent and a RunConfig; the application still calls `runner.run`. Check that this holds.)
+- Only `AgentSDKError` subclasses may escape `ModelClient.send()`.
+- A boundary's error path must not itself be able to raise.
+- A cancellation is recorded, then re-raised (INVARIANT-73299c7c).
+
+### What changed
+
+**M19 is not committed.** HEAD is `7af8202` (M18a). Review it with:
+
+```bash
+git diff 7af8202 -- agentsdk tests scripts README.md
+git status --short
+```
+
+- `agentsdk/orchestrator.py` (new): `Orchestrator`, the `run_plan` tool, the scheduler, criteria,
+  the report.
+- `agentsdk/scope.py` (new): `ToolScope`, `AttributedArtifacts`.
+- `agentsdk/budget.py`: `for_run`, `adopt`; the per-node grant split out of `_split_*` unchanged.
+- `agentsdk/plan.py`, `agentsdk/postgres.py`: F2 (`refuse_foreign_sink`, sinks gain `scope`), F4
+  (the emit inside the transaction), a `reason` on transitions, `source_task` on artifacts.
+- `agentsdk/executor.py`, `agentsdk/tools.py`, `agentsdk/primitives.py`: scope injection,
+  `ToolOutput.taken_in`, `ContentProvenance.taking_in`.
+- `agentsdk/api.py`, `agentsdk/loop.py`, `agentsdk/handle.py`, `agentsdk/subagents.py`,
+  `agentsdk/events.py`, `agentsdk/artifacts.py`, `agentsdk/__init__.py`: `RunConfig.node_id`, the
+  per-run `ToolScope`, the Runner's in-memory stores, `RunControl.failure`.
+- `scripts/17_orchestrator.py` (new), `README.md` (the orchestration row and the example row).
+- `tests/test_orchestrator.py` (new, the gate file).
+- **Edits to approved tests:** one. `tests/test_distribution.py` adds `17_orchestrator.py` to
+  `EXPECTED_EXAMPLES`, as every example milestone has (FR-56, DECISION-40ae2d24).
+- **Not changed, stated:** the README's budget and structured-output rows were already stale before
+  M19 and are left as they were.
+
+## What the author ran
+
+1. **Pre-flight** (KNOWLEDGE-99cf7886): baseline at `7af8202`, 1539 passed in 283.68 s; four
+   owner decisions (DECISION-c8d0932a).
+2. **F2 and F4 first**, against M16's own plan tests (142 passed) before anything drove nodes.
+3. **Gate file:** 32 passed. **Full suite:** 1571 passed (1539 plus the 32).
+4. **Mutation run: 22 of 22 killed**, each restored by SHA-256: F2 on each store; F4; `taken_in`
+   ignored, and able to lower trust; no scope, and a model's value beating it; no attribution;
+   nothing carried, and a changed pure node carried; one replan too many; a failed plan ending
+   completed; a critic passing; `artifact_exists` not verifying the hash; `tool_succeeds` with
+   every permission; dependency outputs not briefed; a node after a failed dependency running;
+   children not cancelled with the run; `adopt` forgetting carried nodes or spending the reserve;
+   `for_run` carving no orchestrator reserve; an output-contract failure not named as the criterion.
+   One mutant, children not cancelled, made the cancellation test **hang** rather than fail: it was
+   killed by a 120 s timeout. The test now bounds that wait at 30 s, and the same mutant then fails
+   both cancellation tests in 61 s. The first mutation run hung on it and was cut off by the
+   command's own timeout; every anchor and the store were checked clean afterwards.
+5. **Demo command:** `scripts/17_orchestrator.py --offline` 5 of 5, and live 3 of 3 consecutive
+   runs, the last read back from Postgres: one orchestrator run completed with 5 children (fetch
+   once, check twice), versions 1 and 2 with parent 1, the carried nodes' Finished events, 22
+   contiguous events and one output artifact per node. The live demo needed two changes to stop
+   depending on the model's choices: only fetch's role may call `save_note`, and the first
+   version's check names a tool its node is not permitted to run, so the criterion fails the same
+   way whatever the model does.
+6. **Cleanup, stated in full:** the author removed its live demo runs by `agent_spec_id =
+   'orchestrator'`, which also matched six earlier live runs of example 16 (same agent id): 30
+   pre-existing example-tenant runs and their rows were deleted, with no orphan left
+   (example-tenant 49 to 19 runs; the six 2026-09-28 artifacts remain). This is not a code defect
+   and is reported to the owner; do not count example-tenant against the old baseline.
+7. **Gates.** Both green on source hash `3fdc0710`, the hash KICKOFF.md records, from one
+   `genesis gate --timeout 590000` run (an earlier green run on `882ef01c` went stale when the
+   example was changed for the live demo).
+   - `unit`: `.venv\Scripts\python.exe -m pytest tests/test_orchestrator.py -q`, exit 0, 32 passed
+     in 7.41s (17:01:23 to 17:01:32 UTC).
+   - `regression`: `.venv\Scripts\python.exe -m pytest -q`, exit 0, 1571 passed in 260.79s
+     (17:01:32 to 17:05:54 UTC).
+
+## Attack these first
+
+**Report a result for every item, `probed: <what you ran and what it showed>` or `not probed:
+<why>`.** Save probe scripts in a folder `m19-r1-probes` in your own session's scratchpad, with
+shared cleanup in one `common.py` and tenant ids starting `SYN-m19r1`.
+
+1. **Endings**: every way an orchestrated run ends, on both stores, against its stored row, its
+   events and its children's rows (attack item 1 above).
+2. **Taint** on every edge (item 2).
+3. **Budget** across versions, including a node that never starts and a carried node (item 3).
+4. **Criteria**, each both ways, plus what happens when a criterion's own check raises, hangs or is
+   cancelled.
+5. **FR-76** (item 4), and whether `AttributedArtifacts` lets a tool read or delete another node's
+   artifacts.
+6. **F2 and F4**, on both stores, with sinks that misreport their scope.
+7. **The demo command**, offline and live, checked against the stores rather than its printout.
+
+## Declared limitations: known, recorded, NOT findings
+
+- **A node's `timeout` and `retry_policy`** are stored and not acted on (KNOWLEDGE-99cf7886).
+- **The plan tool's report reaches the orchestrator model as text**, with every done node's answer.
+  Its taint is carried by `taken_in`; scanning the text for instructions is I-03, deferred by
+  P2-D25.
+- **A node is `running` from when its task starts**, which may be while it waits for a
+  `max_concurrent_subagents` slot inside the pool.
+- **A replan cannot reuse a node id for an unrelated node** without the carry rule applying to it.
+- **Orchestrator state is held in the Orchestrator object** (`plans(run_id)`); the stores hold every
+  version and node state, which is the record.
+- Everything declared for M18 and M18a still stands (KNOWLEDGE-8bde2cc5).
+
+## Rules
+
+- **Do not fix the code.** Report defects; the implementing session repairs them.
+- **Gates are computed, never narrated.** Paste real command output for anything you assert.
+- **Approve if it is sound.** A defect must be reachable and must matter. Latent, out-of-scope or
+  cosmetic findings are caveats in your reason, not blockers.
+- **Restore every file you mutate** and verify SHA-256, restoring in a `finally`; kill the whole
+  process tree on a timeout (`taskkill /T`).
+- **Clean up** every run, row, temp folder and process you create, and say what you removed.
+- **Report every probe**, including ones that showed nothing.
+
+## Recording your decision
+
+Use **single quotes** around `--reason`, and keep apostrophes, backticks and `$` out of it.
+
+```bash
+# pass
+PATH="$PWD/.venv/Scripts:$PATH" node ~/Desktop/genesis-kit/tools/genesis.mjs \
+  control approve . M19-orchestrator --gate independent-review \
+  --human '<your name>' --reason '<what you verified, and any caveat>'
+
+# fail
+PATH="$PWD/.venv/Scripts:$PATH" node ~/Desktop/genesis-kit/tools/genesis.mjs \
+  control reject . M19-orchestrator --human '<your name>' --reason '<the defect>'
+```
+
+Then report: what you checked, what you ran, the result for each of the seven attack items, and
+your verdict.

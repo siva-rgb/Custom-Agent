@@ -84,6 +84,12 @@ class InMemoryEventSink:
         # events before this lock (KNOWLEDGE-93fa7f44).
         self._lock = threading.Lock()
 
+    @property
+    def scope(self) -> tuple[str, str, str]:
+        """The tenant, project and run this sink writes to, so a writer can check it
+        is writing to the run it means (M19, F2)."""
+        return (self._tenant_id, self._project_id, self._run_id)
+
     def emit(
         self, event_type: EventType, payload: dict[str, Any] | None = None, **identifiers: Any
     ) -> RunEvent:

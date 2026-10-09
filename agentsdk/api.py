@@ -35,6 +35,9 @@ from .model import ModelClient, ModelRequest, ReasoningEffort, Usage
 from .permissions import AllowlistPermissionChecker, PermissionChecker
 from .persistence import Persistence
 from .postgres import RunScope, column_rejection_reason
+from .artifacts import InMemoryArtifactStore
+from .plan import InMemoryRunStateStore
+from .scope import AttributedArtifacts, ToolScope
 from .primitives import ContentProvenance, unstorable_reason
 from .budget import BudgetLease, tokens_of
 from .prices import PRICE_TABLE_DATE, shipped_pricing
@@ -196,6 +199,14 @@ class RunConfig:
     # FR-83 (M18a): each input the child was briefed with, as its uri and its
     # provenance, for the request's provenance manifest. Set by the pool.
     briefed_inputs: tuple[tuple[str, ContentProvenance], ...] = ()
+    # FR-76 (M19): the plan node this run executes, set by the pool, so its tools'
+    # scope and the artifacts they write name it. None outside a plan.
+    node_id: str | None = None
+    # M19, round 1 D1: why this run ends failed unless something it runs resolves it
+    # first. Set by Orchestrator.config(), so an orchestrator run that never completes
+    # a plan version -- whose model gives up, or never calls run_plan -- cannot end
+    # completed (FR-75). None for every other run.
+    pending_failure: str | None = None
 
     def __post_init__(self) -> None:
         # Before the range checks: a bool passes every one of them (True >= 1,
@@ -254,6 +265,15 @@ class RunConfig:
         ):
             raise ValueError("briefed_inputs must be a tuple of (uri, ContentProvenance) pairs")
         object.__setattr__(self, "briefed_inputs", tuple(self.briefed_inputs))
+        if self.node_id is not None and (
+            type(self.node_id) is not str or not self.node_id or unstorable_reason(self.node_id) is not None
+        ):
+            raise ValueError(f"node_id must be None or a non-empty storable str, got {self.node_id!r}")
+        if self.pending_failure is not None and (
+            type(self.pending_failure) is not str or not self.pending_failure
+            or unstorable_reason(self.pending_failure) is not None
+        ):
+            raise ValueError(f"pending_failure must be None or a non-empty storable str, got {self.pending_failure!r}")
         if self.scheduler_limits is not None and self.scheduler_limits.provider_concurrency_limits:
             # A provider limit is shared by every run of a Runner, so one run
             # cannot set it.
@@ -347,6 +367,30 @@ class Runner:
             self._registry.register(tool)
         self._hook = hook if hook is not None else RuntimeHook()
         self._assembler = assembler if assembler is not None else ContextAssembler()
+        # FR-76 (M19): with no persistence, the in-memory artifact and run-state
+        # stores a run's tools reach, admitting exactly the runs this Runner started.
+        self._started: set[tuple[str, str, str]] = set()
+        self._memory_artifacts: InMemoryArtifactStore | None = None
+        self._memory_states: InMemoryRunStateStore | None = None
+
+    def _admits(self, tenant_id: str, project_id: str, run_id: str) -> bool:
+        return (tenant_id, project_id, run_id) in self._started
+
+    def _artifacts_for(self, tenant_id: str, project_id: str) -> Any:
+        """The artifact store bound to a run's tenant and project (FR-76)."""
+        if self._persistence is not None:
+            return self._persistence.artifact_store(tenant_id, project_id)
+        if self._memory_artifacts is None:
+            self._memory_artifacts = InMemoryArtifactStore(tenant_id, project_id, runs=self._admits)
+        return self._memory_artifacts.for_scope(tenant_id, project_id)
+
+    def _run_states_for(self, tenant_id: str, project_id: str) -> Any:
+        """The RunStateStore for a run's tenant and project (FR-65, M19)."""
+        if self._persistence is not None:
+            return self._persistence.run_state_store(tenant_id, project_id)
+        if self._memory_states is None:
+            self._memory_states = InMemoryRunStateStore(tenant_id, project_id, runs=self._admits)
+        return self._memory_states.for_scope(tenant_id, project_id)
 
     async def run(self, spec: AgentSpec, task: str, config: RunConfig) -> RunResult:
         """Drive one agent to a terminal status (FR-1): a run started with start()
@@ -682,6 +726,8 @@ class Runner:
         provider_name: str | None = None,
     ) -> RunResult:
         run_id = scope.run_id
+        self._started.add((scope.tenant_id, scope.project_id, run_id))
+        control.failure = config.pending_failure
         limits = self._limits_for(config)
         # FR-69: refused before anything runs, with or without persistence.
         budget_record = self._budget_record(config.budget_lease, recorded_model)
@@ -766,6 +812,15 @@ class Runner:
             hook=self._hook,
             # A coroutine, which the executor awaits: see ToolExecutor._safe_emit.
             emit=emit_tool_called,
+            # FR-76: what a tool declaring a RunScope parameter receives.
+            scope=ToolScope(
+                run_id=run_id, tenant_id=scope.tenant_id, project_id=scope.project_id,
+                node_id=config.node_id,
+                artifacts=AttributedArtifacts(
+                    partial(self._artifacts_for, scope.tenant_id, scope.project_id), run_id, config.node_id
+                ),
+                _events=events, _control=control, _runner=self, _lease=config.budget_lease,
+            ),
         )
 
         def cost_of(request: ModelRequest, usage: Usage) -> Decimal | None:

@@ -69,6 +69,7 @@ class ArtifactStore(Protocol):
         source_run: str | None = None,
         classification: str | None = None,
         expires_at: datetime | None = None,
+        source_task: str | None = None,
     ) -> ArtifactRef: ...
 
     async def get(self, artifact_id: str) -> bytes: ...
@@ -163,6 +164,7 @@ def prepare_put(
     classification: Any,
     expires_at: Any,
     now: datetime,
+    source_task: Any = None,
     max_content_bytes: int,
 ) -> tuple[ArtifactRef, bytes]:
     """Validate a put and build what it stores, before anything is written (FR-54).
@@ -181,6 +183,8 @@ def prepare_put(
         raise ValueError(f"mime_type must have the form type/subtype, got {mime!r}")
     agent = _text_field("created_by_agent", created_by_agent)
     classification_text = _text_field("classification", classification, optional=True)
+    # FR-76: the plan node that wrote it, when a tool wrote it through its scope.
+    task = _text_field("source_task", source_task, optional=True)
 
     if expires_at is not None:
         if not isinstance(expires_at, datetime) or expires_at.tzinfo is None or expires_at.utcoffset() is None:
@@ -209,7 +213,7 @@ def prepare_put(
         size=len(data),
         created_by_agent=agent,
         source_run=run_id,
-        source_task=None,
+        source_task=task,
         provenance=checked,
         classification=classification_text,
         created_at=now,
@@ -266,6 +270,7 @@ class InMemoryArtifactStore:
         source_run: str | None = None,
         classification: str | None = None,
         expires_at: datetime | None = None,
+        source_task: str | None = None,
     ) -> ArtifactRef:
         ref, data = prepare_put(
             content,
@@ -279,6 +284,7 @@ class InMemoryArtifactStore:
             expires_at=expires_at,
             now=self._clock(),
             max_content_bytes=self._cap,
+            source_task=source_task,
         )
         if ref.source_run is not None and not (
             self._runs is not None and self._runs(self._tenant_id, self._project_id, ref.source_run) is True

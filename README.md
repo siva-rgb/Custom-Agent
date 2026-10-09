@@ -77,7 +77,7 @@ Stated plainly, because an SDK that overstates itself costs you a week:
 
 | not built | where it lands |
 |---|---|
-| Multi-agent orchestration, planning, DAGs, replanning | Phase 2. `RunConfig.parent_run_id` records lineage today; nothing orchestrates |
+| Within orchestration (plans run as DAGs of child runs, with deterministic acceptance criteria and replanning, since M19): critic criteria, loop nodes, and any behaviour for a node's `timeout` and `retry_policy`, which are stored but not acted on | Critic in Phase 3; loops in Phase 5A; timeout and retry not yet scheduled |
 | Streaming of model tokens as they are generated (a run's events do stream, through `RunHandle.events()`) | Later; not yet scheduled |
 | Native MCP (Model Context Protocol) support | Phase 4 |
 | Human approval workflows | Phase 4. The approval step exists and auto-allows |
@@ -438,6 +438,7 @@ credentials -- which is also how the test suite checks them.
 | [`14_plan.py`](scripts/14_plan.py) | a planner's plan checked and stored as an immutable version, its nodes moved with events, and a replan that leaves version 1 untouched |
 | [`15_budget.py`](scripts/15_budget.py) | a run ceiling split over a plan, a node's unspent reservation reclaimed, and a run refused its next call with budget_exceeded |
 | [`16_subagents.py`](scripts/16_subagents.py) | children fanned out from one parent under its limits, a tainted input staying tainted across the run boundary, and a spawn refused at depth 3 |
+| [`17_orchestrator.py`](scripts/17_orchestrator.py) | a four-node plan whose check fails its acceptance criterion, the replan as a second version, and the side-effecting node carried rather than run again |
 
 ```bash
 python scripts/02_custom_tools.py --offline

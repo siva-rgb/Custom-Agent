@@ -162,15 +162,15 @@
 
 ### M19-orchestrator — An Orchestrator executes a PlanVersion over its DAG with deterministic acceptance criteria, guarded automatic replanning that never reruns a completed side-effecting node, and tools that reach their run through RunScope
 
-- state/risk: active / high
+- state/risk: done / high
 - requirements: FR-73, FR-74, FR-75, FR-76, AC-58, AC-59, AC-60, AC-63, NFR-21, NFR-22
 - scope: not bounded
-- gates: unit: .venv\Scripts\python.exe -m pytest tests/test_orchestrator.py -q, regression: .venv\Scripts\python.exe -m pytest -q, independent-review: pending
+- gates: unit: .venv\Scripts\python.exe -m pytest tests/test_orchestrator.py -q, regression: .venv\Scripts\python.exe -m pytest -q, independent-review: pass
 - next: Run the task pre-flight.
 
 ### M20-context-policy-and-compaction — An agent sees only the tools it may execute, recorded in the manifest, and long histories compact at a threshold with taint and provenance kept and every compaction recorded
 
-- state/risk: queued / medium
+- state/risk: active / medium
 - requirements: FR-77, FR-78, AC-61, AC-62
 - scope: not bounded
 - gates: unit: .venv\Scripts\python.exe -m pytest tests/test_context_policy.py -q, regression: .venv\Scripts\python.exe -m pytest -q, independent-review: pending

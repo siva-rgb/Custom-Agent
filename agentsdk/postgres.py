@@ -57,6 +57,7 @@ from .plan import (
     checked_status,
     emit_transition,
     plan_from_document,
+    refuse_foreign_sink,
     refuse_transition,
 )
 from .primitives import (
@@ -505,6 +506,12 @@ class PostgresEventStore:
         self._project_id = project_id
         self._run_id = run_id
         self._buffer: list[RunEvent] = []
+
+    @property
+    def scope(self) -> tuple[str, str, str]:
+        """The tenant, project and run this sink writes to, so a writer can check it
+        is writing to the run it means (M19, F2)."""
+        return (self._tenant_id, self._project_id, self._run_id)
 
     def emit(
         self, event_type: EventType, payload: dict[str, Any] | None = None, **identifiers: Any
@@ -1083,6 +1090,7 @@ class PostgresArtifactStore:
         source_run: str | None = None,
         classification: str | None = None,
         expires_at: datetime | None = None,
+        source_task: str | None = None,
     ) -> ArtifactRef:
         ref, data = prepare_put(
             content,
@@ -1096,6 +1104,7 @@ class PostgresArtifactStore:
             expires_at=expires_at,
             now=self._clock(),
             max_content_bytes=self._cap,
+            source_task=source_task,
         )
         try:
             await _write_then_honour_cancellation(self._insert, ref, data)
@@ -1125,7 +1134,7 @@ class PostgresArtifactStore:
                     created_by_agent, source_run, source_task, provenance, classification,
                     created_at, expires_at, content
                 )
-                SELECT %s, %s, %s, %s, %s, %s, %s, %s, %s::uuid, NULL, %s, %s, %s, %s, %s
+                SELECT %s, %s, %s, %s, %s, %s, %s, %s, %s::uuid, %s, %s, %s, %s, %s, %s
                 -- A source run must belong to this artifact's own tenant and project,
                 -- checked in the same statement as the insert, as start_run checks a
                 -- parent run (FR-21, FR-55).
@@ -1145,6 +1154,7 @@ class PostgresArtifactStore:
                     ref.size,
                     ref.created_by_agent,
                     ref.source_run,
+                    ref.source_task,
                     Jsonb(_provenance_to_json(ref.provenance)),
                     ref.classification,
                     ref.created_at,
@@ -1349,26 +1359,36 @@ class PostgresRunStateStore:
                 (plan_id, version, *self._scope()),
             ).fetchall()
 
-    async def transition(self, plan_id: str, version: int, node_id: str, status: str, *, sink: EventSink) -> None:
+    async def transition(
+        self, plan_id: str, version: int, node_id: str, status: str, *, sink: EventSink, reason: str | None = None
+    ) -> None:
         checked_status(status)
-        await _write_then_honour_cancellation(self._transition, plan_id, version, node_id, status, sink)
+        await _write_then_honour_cancellation(self._transition, plan_id, version, node_id, status, sink, reason)
 
-    def _transition(self, plan_id: Any, version: Any, node_id: Any, status: str, sink: EventSink) -> None:
+    def _transition(
+        self, plan_id: Any, version: Any, node_id: Any, status: str, sink: EventSink, reason: str | None = None
+    ) -> None:
         if not self._addressable(plan_id, version) or type(node_id) is not str:
             raise PlanNotFound(f"no node {node_id!r} in plan {plan_id} version {version} in this scope")
         with _checkout(self._dsn) as conn, conn.transaction():
             row = conn.execute(
-                "SELECT status FROM plan_node_states"
+                "SELECT status, run_id FROM plan_node_states"
                 " WHERE plan_id = %s AND version = %s AND node_id = %s AND tenant_id = %s AND project_id = %s"
                 " FOR UPDATE",
                 (plan_id, version, node_id, *self._scope()),
             ).fetchone()
             if row is None:
                 raise PlanNotFound(f"no node {node_id!r} in plan {plan_id} version {version} in this scope")
+            refuse_foreign_sink(sink, *self._scope(), str(row[1]))
             refuse_transition(node_id, row[0], status)
             conn.execute(
                 "UPDATE plan_node_states SET status = %s, updated_at = now()"
                 " WHERE plan_id = %s AND version = %s AND node_id = %s AND tenant_id = %s AND project_id = %s",
                 (status, plan_id, version, node_id, *self._scope()),
             )
-        emit_transition(sink, plan_id, version, node_id, status)
+            # Before the commit, while the row lock is held: a racing transition of the
+            # same node waits for this event, so the run's events are in the order of the
+            # node's rows. After the commit, two racing transitions could record
+            # Finished before Started (M16 round 1, F4). An emit that fails rolls the
+            # status back with it.
+            emit_transition(sink, plan_id, version, node_id, status, reason)
