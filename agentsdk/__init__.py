@@ -25,6 +25,8 @@ from .scheduler import SchedulerLimits
 from .subagents import Briefing, SubagentPool, SubagentResult
 from .orchestrator import Orchestrator
 from .scope import ToolScope
+from .context_policy import ContextPolicy
+from .compaction import ContextCompactor
 from .errors import (
     AgentSDKError,
     ArtifactIntegrityError,
@@ -113,6 +115,9 @@ __all__ = [
     # The orchestrator (FR-73 to FR-75) and the scope a tool reaches its run through (FR-76).
     "Orchestrator",
     "ToolScope",
+    # What an agent sees and when its history compacts (FR-77, FR-78): a field of RunConfig.
+    "ContextPolicy",
+    "ContextCompactor",
     "AcceptanceCriterion",
     "BudgetReservation",
     "NodeRetryPolicy",

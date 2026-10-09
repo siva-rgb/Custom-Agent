@@ -45,6 +45,7 @@ EXPECTED_EXAMPLES = {
     "16_subagents.py",
     # FR-75 (M19): the orchestrator, a failed criterion and the replan.
     "17_orchestrator.py",
+    "18_context.py",
 }
 
 

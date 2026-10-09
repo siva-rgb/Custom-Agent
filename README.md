@@ -83,7 +83,7 @@ Stated plainly, because an SDK that overstates itself costs you a week:
 | Human approval workflows | Phase 4. The approval step exists and auto-allows |
 | Sandboxed tool execution | Phase 5 |
 | Pause and resume; durable interruptions (cancel is built) | Phase 6 |
-| Context compaction (the full history is sent every turn) | Phase 7 |
+| Context compaction for a run without a `ContextPolicy`: a plain run still sends its full history every turn. A run carrying one, as every orchestrated run does since M20, compacts at 0.75 of its context window | Opt in with `RunConfig.context_policy` |
 | Budget enforcement (cost is measured and recorded, never limited); retention and partitioning of stored rows | Phase 2 / Phase 8 |
 | A second wire format (for example Anthropic's native Messages API) | Deferred by choice; the contract was checked against it |
 | Enforcing structured output | Phase 2. The slot exists and is unused |
@@ -189,7 +189,10 @@ asyncio.run(main())
 
 `tool_profile` is an allowlist, and an empty one allows nothing. A tool that is
 registered but not in the profile is refused, and the model receives the refusal
-as an error result it can respond to.
+as an error result it can respond to. By default the model is still sent every
+registered tool's schema; a run with a `ContextPolicy` (`RunConfig.context_policy`,
+which every orchestrated run carries) is sent only the tools its profile allows, and a
+call to any other is refused as an unknown tool is.
 
 ## Test an agent without a network
 
@@ -439,6 +442,7 @@ credentials -- which is also how the test suite checks them.
 | [`15_budget.py`](scripts/15_budget.py) | a run ceiling split over a plan, a node's unspent reservation reclaimed, and a run refused its next call with budget_exceeded |
 | [`16_subagents.py`](scripts/16_subagents.py) | children fanned out from one parent under its limits, a tainted input staying tainted across the run boundary, and a spawn refused at depth 3 |
 | [`17_orchestrator.py`](scripts/17_orchestrator.py) | a four-node plan whose check fails its acceptance criterion, the replan as a second version, and the side-effecting node carried rather than run again |
+| [`18_context.py`](scripts/18_context.py) | an agent sent only the one tool its profile names, a long run compacting past 0.75 of its window, and the artifact holding what was replaced, read back against its hash |
 
 ```bash
 python scripts/02_custom_tools.py --offline

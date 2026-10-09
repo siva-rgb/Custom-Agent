@@ -142,6 +142,9 @@ class AgentLoop:
         provider: str | None = None,
         provider_name: str | None = None,
         recorded_model: str | None = None,
+        compactor: Any | None = None,
+        artifacts: Any | None = None,
+        agent_id: str | None = None,
     ) -> None:
         self._model = model_client
         self._sessions = session_store
@@ -170,6 +173,11 @@ class AgentLoop:
         # The run's cancellation state and progress (FR-50). A loop built without
         # one is never cancelled.
         self._control = control if control is not None else RunControl()
+        # FR-78 (M20): set when the run's ContextPolicy compacts. The artifact store is
+        # where a compaction records what it replaced, under the agent's id.
+        self._compactor = compactor
+        self._artifacts = artifacts
+        self._agent_id = agent_id
 
     async def run(
         self,
@@ -209,6 +217,22 @@ class AgentLoop:
             control.turns = turn
             control.checkpoint()
             history = await store(self._sessions.history, run_id)
+            compactor = self._compactor
+            if compactor is not None:
+                # FR-78 (M20): measured before the request is built, so a large tool
+                # result is caught before it is sent. The stored history is never
+                # rewritten: the request is built from the compactor's view of it.
+                view = compactor.view(history)
+                tokens = compactor.estimate(view, instructions, self._registry.schemas())
+                if compactor.due(tokens):
+                    failure = await self._compact(
+                        run_id, turn, history, view, tokens, instructions, dict(model_settings or {}), meter
+                    )
+                    if failure is not None:
+                        return _outcome(meter, None, turn, error=failure)
+                    history = await store(self._sessions.history, run_id)
+                    view = compactor.view(history)
+                history = [message for _, message in view]
             request = self._assembler.build(
                 history,
                 self._registry.schemas(),
@@ -216,6 +240,7 @@ class AgentLoop:
                 model_settings=model_settings,
                 output_schema=self._output_schema,
                 briefed_inputs=self._briefed_inputs,
+                summaries=compactor.summaries() if compactor is not None else (),
             )
 
             before = self._hook.before_model(request)
@@ -275,28 +300,12 @@ class AgentLoop:
             meter.record(spent, call_cost)
             if self._budget is not None:
                 self._budget.charge(spent, call_cost)
+            if compactor is not None:
+                compactor.reported(spent.prompt_tokens, len(history))
             await store(
                 self._events.emit,
                 EventType.MODEL_CALLED,
-                {
-                    "turn": turn,
-                    # What the provider returned. A hook may replace the response
-                    # below: the history and the FR-26 decision use the
-                    # replacement, and the audit trail keeps what the model said.
-                    "stop_reason": response.stop_reason.value,
-                    "tool_calls": [call.name for call in response.tool_calls],
-                    # Every field of Usage, walked rather than listed (FR-29).
-                    "usage": {f.name: getattr(spent, f.name) for f in dataclasses.fields(Usage)},
-                    # A string: JSON has no decimal, and a float would drift.
-                    "cost_usd": None if call_cost is None else str(call_cost),
-                    "provider_response_id": response.provider_response_id,
-                    "started_at": started_at,
-                    "duration_ms": duration_ms,
-                    "queued_ms": queued_ms,
-                    "model": _recordable(sent_model(request, self._recorded_model)),
-                    "provider": self._provider,
-                    "provider_name": self._provider_name,
-                },
+                self._model_called(turn, request, response, started_at, duration_ms, queued_ms, call_cost),
             )
 
             after = self._hook.after_model(response)
@@ -351,6 +360,129 @@ class AgentLoop:
             )
 
         return _outcome(meter, None, max_turns, exhausted_turns=True)
+
+    def _model_called(
+        self, turn: int, request: ModelRequest, response: ModelResponse, started_at: Any,
+        duration_ms: float, queued_ms: float, call_cost: Decimal | None,
+    ) -> dict[str, Any]:
+        """A ModelCalled payload: one shape for every call the run makes, the
+        summarising call of a compaction included (FR-78)."""
+        spent = response.usage
+        return {
+            "turn": turn,
+            # What the provider returned. A hook may replace the response
+            # below: the history and the FR-26 decision use the
+            # replacement, and the audit trail keeps what the model said.
+            "stop_reason": response.stop_reason.value,
+            "tool_calls": [call.name for call in response.tool_calls],
+            # Every field of Usage, walked rather than listed (FR-29).
+            "usage": {f.name: getattr(spent, f.name) for f in dataclasses.fields(Usage)},
+            # A string: JSON has no decimal, and a float would drift.
+            "cost_usd": None if call_cost is None else str(call_cost),
+            "provider_response_id": response.provider_response_id,
+            "started_at": started_at,
+            "duration_ms": duration_ms,
+            "queued_ms": queued_ms,
+            "model": _recordable(sent_model(request, self._recorded_model)),
+            "provider": self._provider,
+            "provider_name": self._provider_name,
+        }
+
+    async def _compact(
+        self, run_id: str, turn: int, history: list[Message], view: list[Any], tokens: int,
+        instructions: str | None, model_settings: dict[str, Any], meter: RunMeter,
+    ) -> str | None:
+        """FR-78: replace the middle of the history with a summary, or say why the run
+        cannot go on. None when it compacted, or when nothing older than the turns kept
+        is left to replace, in which case the provider's own limit is what the run meets.
+
+        The summarising call is the agent's own: the same model, the same budget check
+        before it, charged to the same reservation, recorded as a ModelCalled, so a run's
+        usage is still the sum of its ModelCalled events (NFR-17). A compaction that
+        cannot complete ends the run failed rather than letting it run on toward an
+        overflow (KNOWLEDGE-1545435a).
+        """
+        compactor, control = self._compactor, self._control
+        replaced = compactor.split(view)
+        if replaced is None:
+            return None
+        provenance = compactor.provenance(replaced, self._briefed_inputs)
+        request = compactor.request(replaced, model_settings)
+        control.checkpoint()
+        if self._budget is not None and not self._budget.may_call():
+            return "budget_exceeded"
+        sending = False
+        try:
+            waiting = now_ns()
+            async with self._model_slot():
+                queued_ms = elapsed_ms(waiting)
+                sending = True
+                control.in_flight = True
+                started_at, sent = wall_clock(), now_ns()
+                try:
+                    response = await self._model.send(request)
+                finally:
+                    control.in_flight = False
+                duration_ms = elapsed_ms(sent)
+        except ModelError as exc:
+            return f"compaction_failed: {describe_exception(exc)}"
+        except asyncio.CancelledError:
+            if sending:
+                control.cancelled_in_flight = True
+                if self._budget is not None:
+                    self._budget.charge(None, None)
+            raise
+        spent = response.usage
+        call_cost = self._price(request, spent)
+        meter.record(spent, call_cost)
+        if self._budget is not None:
+            self._budget.charge(spent, call_cost)
+        called = self._model_called(turn, request, response, started_at, duration_ms, queued_ms, call_cost)
+        called["purpose"] = "compaction"
+        await control.store(self._events.emit, EventType.MODEL_CALLED, called)
+        summary = response.message.content
+        if not summary or not summary.strip():
+            return "compaction_failed: the summarising call returned no summary"
+        if self._artifacts is None:
+            return "compaction_failed: this run has no artifact store to record what was replaced"
+        try:
+            ref = await self._artifacts.put(
+                compactor.artifact(replaced), mime_type="application/json", provenance=provenance,
+                created_by_agent=self._agent_id or "agent",
+            )
+        except Exception as exc:  # noqa: BLE001 - the run is told why it cannot go on
+            return f"compaction_failed: the replaced turns could not be stored: {describe_exception(exc)}"
+        message = compactor.message(summary)
+        await control.store(self._sessions.append, run_id, message)
+        sources = compactor.sources(replaced)
+        compactor.compacted(replaced, len(history), provenance, ref.uri)
+        after = compactor.estimate(compactor.view([*history, message]), instructions, self._registry.schemas())
+        await control.store(
+            self._events.emit,
+            EventType.CONTEXT_COMPACTED,
+            {
+                "compaction": compactor.count,
+                "turn": turn,
+                "artifact": ref.uri,
+                "content_hash": ref.content_hash,
+                "replaced_messages": len(replaced),
+                # Estimated by the measure that decided it: the provider's count for the
+                # last request plus what was added since, then the new view's estimate.
+                "tokens_before": tokens,
+                "tokens_after": after,
+                "context_window": compactor.window,
+                "compact_at": compactor.policy.compact_at,
+                "summary_call": {"turn": turn, "provider_response_id": response.provider_response_id},
+                "summary_provenance": {
+                    "origin": provenance.origin.value,
+                    "instruction_authority": provenance.instruction_authority.value,
+                    "trust_zone": provenance.trust_zone.value,
+                    "taint_flags": sorted(flag.value for flag in provenance.taint_flags),
+                },
+                "sources": sources,
+            },
+        )
+        return None
 
     async def _execute_tool_calls(
         self, run_id: str, tool_calls: Sequence[ToolCall], principal_context: PrincipalContext | None

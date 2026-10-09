@@ -22,7 +22,9 @@ import uuid
 from dataclasses import dataclass, field
 from enum import Enum
 
+from .compaction import ContextCompactor
 from .context import ContextAssembler
+from .context_policy import ContextPolicy
 from .errors import UnpricedModel, describe_exception
 from .events import EventSink, EventType, InMemoryEventSink, RunEvent
 from .executor import ToolExecutor
@@ -207,6 +209,11 @@ class RunConfig:
     # a plan version -- whose model gives up, or never calls run_plan -- cannot end
     # completed (FR-75). None for every other run.
     pending_failure: str | None = None
+    # FR-77, FR-78 (M20): what this run's agent sees -- only the tools its profile may
+    # execute -- and when its history is compacted. Set by Orchestrator.config() and
+    # carried by the SubagentPool to every child; None sends every registered tool and
+    # never compacts, exactly as before M20 (DECISION-468e2bfa, NFR-12).
+    context_policy: ContextPolicy | None = None
 
     def __post_init__(self) -> None:
         # Before the range checks: a bool passes every one of them (True >= 1,
@@ -274,6 +281,8 @@ class RunConfig:
             or unstorable_reason(self.pending_failure) is not None
         ):
             raise ValueError(f"pending_failure must be None or a non-empty storable str, got {self.pending_failure!r}")
+        if self.context_policy is not None and not isinstance(self.context_policy, ContextPolicy):
+            raise ValueError(f"context_policy must be a ContextPolicy or None, got {type(self.context_policy).__name__}")
         if self.scheduler_limits is not None and self.scheduler_limits.provider_concurrency_limits:
             # A provider limit is shared by every run of a Runner, so one run
             # cannot set it.
@@ -486,6 +495,9 @@ class Runner:
         # it is raised here, at the call site, with the rest of them -- not inside the
         # run, where every exception becomes a FAILED result.
         self._budget_record(config.budget_lease, recorded_model)
+        # FR-78: so is a compacting policy on a model whose window nothing gives
+        # (DECISION-468e2bfa).
+        self._context_window(config, recorded_model)
         provider_name = self._provider_name(client_key)
         return _OpenedRun(
             scope=scope,
@@ -731,6 +743,11 @@ class Runner:
         limits = self._limits_for(config)
         # FR-69: refused before anything runs, with or without persistence.
         budget_record = self._budget_record(config.budget_lease, recorded_model)
+        # FR-77 (M20): the tools this run's agent is sent, and so the only ones its
+        # executor resolves. Every registered tool when the run carries no policy.
+        policy = config.context_policy
+        registry = self._registry if policy is None else policy.visible(self._registry, spec.tool_profile)
+        window = self._context_window(config, recorded_model)
         sessions = self._sessions
         if self._persistence is not None:
             sessions = self._persistence.session_store_for(scope)
@@ -753,6 +770,7 @@ class Runner:
                     instructions=spec.instructions,
                     tool_profile=spec.tool_profile,
                     tool_spec_hashes=[s.schema_hash() for s in self._registry.specs()],
+                    tools_sent=[{"name": s.name, "schema_hash": s.schema_hash()} for s in registry.specs()],
                     model_id=recorded_model or "unspecified",
                     **self._model_versions(recorded_model, client_key),
                     policy_version=type(spec.checker()).__name__,
@@ -806,8 +824,11 @@ class Runner:
                     tool_call_id=call_id if isinstance(call_id, str) else None,
                 )
 
+        artifacts = AttributedArtifacts(
+            partial(self._artifacts_for, scope.tenant_id, scope.project_id), run_id, config.node_id
+        )
         executor = ToolExecutor(
-            registry=self._registry,
+            registry=registry,
             permission_checker=spec.checker(),
             hook=self._hook,
             # A coroutine, which the executor awaits: see ToolExecutor._safe_emit.
@@ -816,9 +837,7 @@ class Runner:
             scope=ToolScope(
                 run_id=run_id, tenant_id=scope.tenant_id, project_id=scope.project_id,
                 node_id=config.node_id,
-                artifacts=AttributedArtifacts(
-                    partial(self._artifacts_for, scope.tenant_id, scope.project_id), run_id, config.node_id
-                ),
+                artifacts=artifacts,
                 _events=events, _control=control, _runner=self, _lease=config.budget_lease,
             ),
         )
@@ -842,7 +861,7 @@ class Runner:
             model_client=self._clients[client_key],
             session_store=sessions,
             tool_executor=executor,
-            tool_registry=self._registry,
+            tool_registry=registry,
             event_sink=events,
             assembler=self._assembler,
             hook=self._hook,
@@ -857,6 +876,10 @@ class Runner:
             provider=client_key,
             provider_name=provider_name,
             recorded_model=recorded_model,
+            # FR-78: a compaction records what it replaced as this run's artifact.
+            compactor=None if window is None else ContextCompactor(policy, window),
+            artifacts=artifacts,
+            agent_id=spec.id,
         )
 
         # Only what the caller set: a run that sets none of M9's options sends
@@ -1035,6 +1058,18 @@ class Runner:
         if type(candidate) is not str or not candidate:
             return None
         return candidate if column_rejection_reason(candidate, "TEXT") is None else None
+
+    def _context_window(self, config: RunConfig, model_id: str | None) -> int | None:
+        """FR-78: the window a run's policy compacts against, None when it never does.
+
+        The policy's own, else the ModelRegistry's for the run's model; a compacting
+        policy on a model with neither raises, naming the model (DECISION-468e2bfa).
+        """
+        if config.context_policy is None:
+            return None
+        entry = self._models.resolve(model_id) if model_id else None
+        registered = entry.capabilities.max_context_tokens if entry is not None else None
+        return config.context_policy.window_for(model_id, registered)
 
     def _model_versions(self, model_id: str | None, client_key: str) -> dict[str, str]:
         """Version fields for the manifest (FR-11, AC-6).

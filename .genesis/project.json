@@ -9,7 +9,7 @@
     "non_goals": [],
     "trust_boundary": "local repository",
     "created_at": "2026-09-05T14:48:57.894Z",
-    "updated_at": "2026-10-09T13:39:27.442Z"
+    "updated_at": "2026-10-09T17:11:24.729Z"
   },
   "policy": {
     "ponytail": "full",
@@ -23,11 +23,11 @@
     }
   },
   "lifecycle": {
-    "phase": "build",
-    "status": "active",
-    "active_task": "M20-context-policy-and-compaction",
+    "phase": "verify",
+    "status": "ready",
+    "active_task": null,
     "blocker": null,
-    "next_action": "Run the task pre-flight."
+    "next_action": "Review completed work and choose the next bounded outcome."
   },
   "commands": {},
   "workflow": {
@@ -1290,6 +1290,14 @@
       "status": "accepted",
       "source": null,
       "recorded_at": "2026-10-09T12:02:27.175Z"
+    },
+    {
+      "id": "DECISION-468e2bfa",
+      "title": "M20 clarifications of FR-77 and FR-78: a policy on RunConfig, reported plus estimated tokens, a known window, append-only compaction",
+      "text": "Owner, M20 pre-flight 2026-10-09. (1) Which runs: RunConfig gains context_policy, None by default. Orchestrator.config() and the subagent pool set one, so orchestrated runs see only their profile's tools and compact; a plain run sends exactly what it sends today (NFR-12, NFR-15) and DECISION-ca1ad3e0 keeps governing it; an application may opt in. (2) Measuring the threshold: the provider's prompt_tokens from the run's last call plus a characters/4 estimate of the messages added since, so a large tool result is caught before it is sent; no tokenizer (NFR-21). (3) An unknown context window: ContextPolicy takes an explicit context_window, else the ModelRegistry's max_context_tokens; a compacting policy on a model with neither is a configuration error where the run is configured, naming the model, following P2-D20's USD precedent. (4) What compaction replaces: the instructions, the original task and the most recent turns stay whole, a tool call never separated from its results; the middle is replaced by one summary. Stored messages are never rewritten: the summary is appended as a marked message and assembly starts from the latest one, so the messages table stays the full record NFR-3 relies on. The replaced messages also go into the artifact FR-78 names, and the summary's taint rides in the provenance manifest as a briefed input's does (FR-83).",
+      "status": "accepted",
+      "source": null,
+      "recorded_at": "2026-10-09T14:28:34.734Z"
     }
   ],
   "knowledge": [
@@ -2076,6 +2084,22 @@
       "source": null,
       "tags": [],
       "recorded_at": "2026-10-09T13:39:22.895Z"
+    },
+    {
+      "id": "KNOWLEDGE-1545435a",
+      "title": "M20 pre-flight: baseline, what context policy and compaction touch, and the readings taken",
+      "text": "Baseline on HEAD bf7d0d5 (M19): full suite 1590 passed in 307.46s, nothing else running. What M20 touches: loop.py sends self._registry.schemas() every turn (all registered tools, DECISION-ca1ad3e0) and the executor resolves against the whole registry, ToolNotFound at the resolve step; api.py builds the manifest with tool_spec_hashes of every registered spec; manifest.py has no field for what was sent; migrations end at 0008; ModelRegistry knows max_context_tokens for openai.gpt-4o-mini (128000) and bedrock claude-haiku-4-5 (200000) only; Message has no provenance field (only ToolResult does), so a summary's taint cannot ride on the message itself; ContextAssembler already lists briefed inputs and tool results in request metadata provenance (FR-83). Readings taken, not put to the owner: (a) a call to a tool outside a policy run's visible set is refused ToolNotFound, because that run's executor resolves against the filtered view, exactly as an unknown tool is; (b) migration 0009 adds execution_manifests.tools_sent (JSONB, NULL before it): the sorted name and schema_hash of each tool the policy sends, with the registered name as the qualified name until Phase 4 brings namespaces; tool_spec_hashes is unchanged; a before_model hook that rewrites a request's tools is outside what the manifest records, declared; (c) the briefing rules of _brief move into ContextPolicy unchanged, so FR-70's selection is read in one type; (d) the summarising call uses the run's own model and passes the same budget check, is charged to the agent's lease and emits ModelCalled, so a run's usage still equals the sum of its ModelCalled events (NFR-17); ContextCompacted carries the replaced-content artifact, the summary's provenance, the token counts before and after and that call's turn and provider_response_id; (e) the summary's provenance is ContentProvenance.taking_in over every replaced tool result and briefed input, so it never lowers taint; (f) a compaction whose summarising call fails or is refused by the budget ends the run failed, with the reason, rather than continuing toward an overflow; (g) example 18 is added to EXPECTED_EXAMPLES in test_distribution, as every example milestone has.",
+      "source": null,
+      "tags": [],
+      "recorded_at": "2026-10-09T14:28:34.867Z"
+    },
+    {
+      "id": "KNOWLEDGE-cc4d686c",
+      "title": "M20 round 1 approved; caveats carried forward",
+      "text": "Approved 15:53:59Z by Opus 5 (fallback for Fable 5.1) on source hash eae1be3a: unit 42 passed, regression 1632 passed, the gate evidence recomputed by the reviewer; author mutation run 33 of 33. All seven attack items probed first-hand. A plain run's requests, events and stored messages were byte-identical to HEAD bf7d0d5's in an exported tree (NFR-12). A schedule-independent taint fuzzer found 0 failures in 394 compactions across 104 runs on both stores, and killed 10 of 10 of its own mutants. An invisible tool's refusal is byte-identical to an unknown tool's, ToolCalled payload included, and a before_model hook restoring the schemas cannot restore execution. Caveats carried, not repaired: (C1) ContextCompacted tokens_before is the deciding measure (reported prompt_tokens plus an estimate of what was added) while tokens_after is a fresh whole-view estimate, so the pair can read backwards (108 of 330 fuzzed compactions) although the prompt shrank every time; record both on one basis or label the bases. (C3) a compaction is written before it is recorded (artifact, then summary message, then the event), so a failed emit leaves a summary in messages with no ContextCompacted; the run still ends terminal with the reason; M19 F4 moved the plan-transition emit inside the transaction for the same reason. (C4) tools_sent is written at run start, so a run refused before its first request records a set it never sent. (C5) visibility follows tool_profile, not a custom permission_policy. (C6) under the Orchestrator's default ContextPolicy, a child on a model outside the ModelRegistry is refused at spawn, surfacing as node_error at execution rather than at configuration: a behaviour change for any application using Orchestrator with unregistered models. M20 closes Phase 2's second increment.",
+      "source": null,
+      "tags": [],
+      "recorded_at": "2026-10-09T17:11:24.388Z"
     }
   ],
   "tasks": [
@@ -3341,7 +3365,7 @@
     {
       "id": "M20-context-policy-and-compaction",
       "outcome": "An agent sees only the tools it may execute, recorded in the manifest, and long histories compact at a threshold with taint and provenance kept and every compaction recorded",
-      "state": "active",
+      "state": "done",
       "risk": "medium",
       "owner": null,
       "scope": [],
@@ -3357,22 +3381,37 @@
           "id": "unit",
           "command": ".venv\\Scripts\\python.exe -m pytest tests/test_context_policy.py -q",
           "mandatory": true,
-          "status": "pending",
-          "evidence": null
+          "status": "pass",
+          "evidence": {
+            "path": ".genesis/evidence/M20-context-policy-and-compaction-unit.json",
+            "source_hash": "eae1be3ad8fa6ffbc2d6ec4441ef09ea59d26cff4a3bfa9b86d22cc044fcd903",
+            "hash": "e88af6f94c0260860cf471694ed2cdac99bf7fed227eaaf546346b2a389a0e11",
+            "observed_at": "2026-10-09T15:47:23.785Z"
+          }
         },
         {
           "id": "regression",
           "command": ".venv\\Scripts\\python.exe -m pytest -q",
           "mandatory": true,
-          "status": "pending",
-          "evidence": null
+          "status": "pass",
+          "evidence": {
+            "path": ".genesis/evidence/M20-context-policy-and-compaction-regression.json",
+            "source_hash": "eae1be3ad8fa6ffbc2d6ec4441ef09ea59d26cff4a3bfa9b86d22cc044fcd903",
+            "hash": "338d45b2c2bb931ba56bb824c03bdefc5730687ec11a06da156ca85fe2af62a6",
+            "observed_at": "2026-10-09T15:51:53.177Z"
+          }
         },
         {
           "id": "independent-review",
           "command": "",
           "mandatory": true,
-          "status": "pending",
-          "evidence": null
+          "status": "pass",
+          "evidence": {
+            "human": "Opus 5 (independent L4 reviewer, M20 round 1, fallback for Fable 5.1 which was out of quota)",
+            "reason": "Opus 5 reviewed round 1 as the fallback for Fable 5.1, which failed its first API call. Re-derived FR-77, FR-78, AC-61, AC-62, NFR-3, NFR-12, NFR-17 and NFR-21 from SPEC.md and probed all seven attack items first-hand. Gates re-run by me with timeout 590000 on source hash eae1be3a: unit 42 passed in 4.08s, regression 1632 passed in 267.96s, both exit 0, no stray python, and the store back at its baseline of 10351 runs, 6 artifacts, 19 example-tenant runs, 8 migrations, 0 running and 0 orphans. Item 1, 14 of 14: under a policy an agent is sent exactly its profile tools, and a call to any other gives a byte-identical ToolNotFound result and ToolCalled payload to a genuinely unregistered tool, including through a before_model hook that puts every schema back, an empty profile, a profile naming an unregistered tool, and the orchestrator with two children on both stores. Item 2: the same scripted plain run driven against HEAD bf7d0d5 and against M20 produced byte-identical requests, events and history with the same SHA-256, so NFR-12 holds; and equal tools_sent really does imply equal schemas, because schema_hash covers name, description and input schema. Item 3: a fuzzer that never chooses what is replaced ran 90 in-memory and 14 Postgres runs over 334 compactions, varying script, window, kept turns, parallel calls and reported counts, checking the schedule-independent property that compaction k carries the union of the taint and the least trust of everything replaced in compactions 1 to k. Zero failures, and a separate probe showed a child whose only tainted input is its brief still gets an untrusted summary on both stores. The negative is meaningful: the same fuzzer killed 10 of 10 deliberate mutants, among them the first-run survivor the author discloses, which drops the replaced summary taint. Items 4 and 5, both stores: every artifact read back against its hash, replaced indices partitioned with the task never replaced, artifact bodies equal to the stored messages, every stored message surviving, one summary per compaction, usage equal to the sum of ModelCalled and to the lease, sequence_no unique and contiguous, and every request well formed with results after their calls, the task first and at most one summary, through re-asks, parallel calls, a turn larger than the window and up to eleven compactions in one run. Every estimate call of a real run matched the specified formula recomputed by hand on both arms, and the threshold fired on exactly the turns at or above compact_at times the window. Item 6, 14 of 14: model error, three empty-summary shapes, budget refusal with no call sent, provider slot, turn limit, artifact refusal, and cancellation held inside the summarising call 12 of 12 in memory and 3 of 3 on Postgres plus 30 random-timing attempts of which 26 cancelled, all with cost unknown per P2-D7, one RunCancelled last and the stored run cancelled; a mutant dropping the in-flight mark was killed. Item 7: example 18 offline 6 of 6, example 17 offline 5 of 5, example 18 live 6 of 6 read back from Postgres as completed with 17 contiguous events, 2 ContextCompacted, 8 ModelCalled of which 2 summarising, 14 messages holding 2 summaries, tools_sent naming only read_page and both artifacts hash-matched and attributed to the run, then removed by its own run id and artifact ids. The rewritten taint test does pin its premise: it asserts the premise and prints the real sources on failure, its selector is a correct key test, and the mutant it was rewritten for is independently detectable. Non-blocking caveats. C1: tokens_after can be recorded larger than tokens_before, because the two use different bases, a reported count plus a delta against a full estimate; 108 of 330 fuzzed compactions showed it, only where the reported count sits far below characters over four, and the assembled prompt was smaller on all 330 when measured on one basis, so the substance of AC-62 holds while the recorded pair can read backwards, and such under-reporting also makes a run compact on nearly every turn. C2: visibility comes from tool_profile alone, so a spec with a custom permission_policy can be sent a tool its checker denies, or sent nothing while its checker permits tools; this matches the letter of FR-77 and fails closed or to a permission denial, and no shipped example combines the two. C3: the artifact and the summary message are written before the ContextCompacted emit, so a store failure at that point ends the run failed with the reason but leaves a summary in the history with no event; I reproduced it and nothing escaped Runner.run. C4: as declared, tools_sent records what the policy sends and not what a before_model hook substitutes, which I reproduced. C5: the unknown-window refusal reaches a child as node_error at execution time rather than where the run is configured, although the message names the model and the remedy and siblings are unaffected. C6: the M19 caveats carry forward unprobed, since M20 does not touch that code. Approved.",
+            "source_hash": "eae1be3ad8fa6ffbc2d6ec4441ef09ea59d26cff4a3bfa9b86d22cc044fcd903",
+            "observed_at": "2026-10-09T15:53:59.216Z"
+          }
         }
       ],
       "next_action": "Run the task pre-flight.",
@@ -3381,7 +3420,7 @@
       "failures": [],
       "limitations": [],
       "created_at": "2026-09-19T12:27:44.803Z",
-      "updated_at": "2026-09-19T12:27:44.803Z"
+      "updated_at": "2026-10-09T17:11:24.544Z"
     }
   ],
   "learning_proposals": [],
@@ -4061,18 +4100,27 @@
       "human": "Sonnet 5 (independent L4 reviewer, M19 round 5, fallback for Fable 5.1 which was out of quota)",
       "reason": "Sonnet 5 reviewed as the fallback because Fable 5.1 failed to start. D7 repair judged on mechanism: after a fault every running node task is awaited to its own end and harvested before anything is cancelled; only a real CancelledError cancels. Gate re-run with timeout 590000: unit 51 and regression 1590 pass, source hash 6871154d unchanged, no stray python. Own randomized fault injection (random transition, random delays, siblings in every state, no hold chosen) 475 of 475 attempts memory and 55 of 55 Postgres made each tool call exactly once and completed, including skipped and carried transitions; 60 random cancellations on Postgres left no non-terminal run and contiguous sequences. Mutants without the wait, with a swallowed cancellation and with the fault re-raised in place of the cancellation all fail the new tests for the right reason and the same probe fails 22 of 60 on the no-wait mutant. Caveats: live demo and USD ceiling not re-probed first-hand, relied on round 4 and the suite; the no-hold test is probabilistic but the deterministic held-sibling test carries the property; after a fault the version waits for running nodes bounded only by their own budget and cancellation; declared limitations unchanged.",
       "revision": null
+    },
+    {
+      "id": "562929e8-9293-4c2f-8316-96ef16820ae0",
+      "at": "2026-10-09T15:53:59.216Z",
+      "action": "approve",
+      "task": "M20-context-policy-and-compaction",
+      "human": "Opus 5 (independent L4 reviewer, M20 round 1, fallback for Fable 5.1 which was out of quota)",
+      "reason": "Opus 5 reviewed round 1 as the fallback for Fable 5.1, which failed its first API call. Re-derived FR-77, FR-78, AC-61, AC-62, NFR-3, NFR-12, NFR-17 and NFR-21 from SPEC.md and probed all seven attack items first-hand. Gates re-run by me with timeout 590000 on source hash eae1be3a: unit 42 passed in 4.08s, regression 1632 passed in 267.96s, both exit 0, no stray python, and the store back at its baseline of 10351 runs, 6 artifacts, 19 example-tenant runs, 8 migrations, 0 running and 0 orphans. Item 1, 14 of 14: under a policy an agent is sent exactly its profile tools, and a call to any other gives a byte-identical ToolNotFound result and ToolCalled payload to a genuinely unregistered tool, including through a before_model hook that puts every schema back, an empty profile, a profile naming an unregistered tool, and the orchestrator with two children on both stores. Item 2: the same scripted plain run driven against HEAD bf7d0d5 and against M20 produced byte-identical requests, events and history with the same SHA-256, so NFR-12 holds; and equal tools_sent really does imply equal schemas, because schema_hash covers name, description and input schema. Item 3: a fuzzer that never chooses what is replaced ran 90 in-memory and 14 Postgres runs over 334 compactions, varying script, window, kept turns, parallel calls and reported counts, checking the schedule-independent property that compaction k carries the union of the taint and the least trust of everything replaced in compactions 1 to k. Zero failures, and a separate probe showed a child whose only tainted input is its brief still gets an untrusted summary on both stores. The negative is meaningful: the same fuzzer killed 10 of 10 deliberate mutants, among them the first-run survivor the author discloses, which drops the replaced summary taint. Items 4 and 5, both stores: every artifact read back against its hash, replaced indices partitioned with the task never replaced, artifact bodies equal to the stored messages, every stored message surviving, one summary per compaction, usage equal to the sum of ModelCalled and to the lease, sequence_no unique and contiguous, and every request well formed with results after their calls, the task first and at most one summary, through re-asks, parallel calls, a turn larger than the window and up to eleven compactions in one run. Every estimate call of a real run matched the specified formula recomputed by hand on both arms, and the threshold fired on exactly the turns at or above compact_at times the window. Item 6, 14 of 14: model error, three empty-summary shapes, budget refusal with no call sent, provider slot, turn limit, artifact refusal, and cancellation held inside the summarising call 12 of 12 in memory and 3 of 3 on Postgres plus 30 random-timing attempts of which 26 cancelled, all with cost unknown per P2-D7, one RunCancelled last and the stored run cancelled; a mutant dropping the in-flight mark was killed. Item 7: example 18 offline 6 of 6, example 17 offline 5 of 5, example 18 live 6 of 6 read back from Postgres as completed with 17 contiguous events, 2 ContextCompacted, 8 ModelCalled of which 2 summarising, 14 messages holding 2 summaries, tools_sent naming only read_page and both artifacts hash-matched and attributed to the run, then removed by its own run id and artifact ids. The rewritten taint test does pin its premise: it asserts the premise and prints the real sources on failure, its selector is a correct key test, and the mutant it was rewritten for is independently detectable. Non-blocking caveats. C1: tokens_after can be recorded larger than tokens_before, because the two use different bases, a reported count plus a delta against a full estimate; 108 of 330 fuzzed compactions showed it, only where the reported count sits far below characters over four, and the assembled prompt was smaller on all 330 when measured on one basis, so the substance of AC-62 holds while the recorded pair can read backwards, and such under-reporting also makes a run compact on nearly every turn. C2: visibility comes from tool_profile alone, so a spec with a custom permission_policy can be sent a tool its checker denies, or sent nothing while its checker permits tools; this matches the letter of FR-77 and fails closed or to a permission denial, and no shipped example combines the two. C3: the artifact and the summary message are written before the ContextCompacted emit, so a store failure at that point ends the run failed with the reason but leaves a summary in the history with no event; I reproduced it and nothing escaped Runner.run. C4: as declared, tools_sent records what the policy sends and not what a before_model hook substitutes, which I reproduced. C5: the unknown-window refusal reaches a child as node_error at execution time rather than where the run is configured, although the message names the model and the remedy and siblings are unaffected. C6: the M19 caveats carry forward unprobed, since M20 does not touch that code. Approved.",
+      "revision": null
     }
   ],
   "discovery": null,
   "checkpoint": {
-    "at": "2026-10-09T13:39:27.390Z",
+    "at": "2026-10-09T17:11:24.678Z",
     "revision": {
-      "commit": "7af820299637117baff62901e15ec07cb5f7cc05",
+      "commit": "bf7d0d5b5d53e5ef7d186efbb1de82ea4ae9452e",
       "dirty": true,
-      "source_hash": "6871154d6723fd305db4ba66473f9cec4a9430ccafb85a788e035c3a56d52f96"
+      "source_hash": "eae1be3ad8fa6ffbc2d6ec4441ef09ea59d26cff4a3bfa9b86d22cc044fcd903"
     },
-    "active_task": "M20-context-policy-and-compaction",
-    "next_action": "Run the task pre-flight."
+    "active_task": null,
+    "next_action": "Review completed work and choose the next bounded outcome."
   },
   "legacy": null
 }

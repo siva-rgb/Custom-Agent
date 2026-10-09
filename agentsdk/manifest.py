@@ -39,6 +39,7 @@ def build_manifest(
     budget_policy: dict[str, Any] | None = None,
     budget_reservations: dict[str, Any] | None = None,
     price_table_date: str | None = None,
+    tools_sent: list[dict[str, str]] | None = None,
 ) -> dict[str, Any]:
     # The spec hash covers what actually changes behaviour: identity,
     # instructions and the tool profile. A spec whose display name changed is
@@ -67,4 +68,7 @@ def build_manifest(
         "budget_policy": budget_policy,
         "budget_reservations": budget_reservations,
         "price_table_date": price_table_date,
+        # FR-77 (M20): the tools the run's requests carried, by name and schema hash,
+        # sorted by name so two runs that saw the same tools record the same value.
+        "tools_sent": None if tools_sent is None else sorted(tools_sent, key=lambda t: t["name"]),
     }

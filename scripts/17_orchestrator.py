@@ -26,7 +26,7 @@ import json
 import os
 import sys
 
-from agentsdk import AgentSpec, BudgetPolicy, Message, Role, RunStatus, Runner
+from agentsdk import AgentSpec, BudgetPolicy, ContextPolicy, Message, Role, RunStatus, Runner
 from agentsdk.events import EventType
 from agentsdk.model import ModelResponse, StopReason, Usage
 from agentsdk.orchestrator import PLAN_TOOL, Orchestrator
@@ -144,12 +144,15 @@ def an_orchestrator(worker_model):
                                 tool_profile=("save_note",)),
             # A criterion's tool runs with its node's own permissions (FR-74): this role may run
             # gate_open and not gate_closed, so the first plan's check fails however the model
-            # behaves. Every agent still sees every tool's schema until M20 (FR-77), hence the
-            # instruction: the orchestrator checks the gate, not the child.
+            # behaves. Since M20 the child is sent only gate_open's schema (FR-77); the
+            # instruction still says the orchestrator checks the gate, not the child.
             "worker": AgentSpec(id="worker", instructions=instructions + " Do not call any tool.",
                                 preferred_model=worker_model, tool_profile=("gate_open",)),
         },
         policy=BudgetPolicy(run_ceiling_tokens=200_000),
+        # The scripted offline model is in no ModelRegistry, so the policy names the window
+        # it compacts against (FR-78, DECISION-468e2bfa).
+        context_policy=ContextPolicy(context_window=128_000),
     )
 
 

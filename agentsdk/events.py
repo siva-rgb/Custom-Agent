@@ -35,6 +35,8 @@ class EventType(str, Enum):
     # travels in the envelope's task_id (DECISION-8f8cc54c).
     PLAN_NODE_STARTED = "PlanNodeStarted"
     PLAN_NODE_FINISHED = "PlanNodeFinished"
+    # FR-78 (M20): a history compacted, naming the artifact holding what was replaced.
+    CONTEXT_COMPACTED = "ContextCompacted"
 
 
 @dataclass(frozen=True)

@@ -30,6 +30,7 @@ from .plan import PLAN_SCHEMA, PlanVersion, _node_document, _thawed, plan_from_d
 from .postgres import RunScope
 from .primitives import ContentProvenance, ToolCall
 from .scheduler import SchedulerLimits
+from .context_policy import ContextPolicy
 from .scope import ToolScope
 from .subagents import Briefing, SubagentPool
 from .tools import Tool, ToolOutput, ToolSpec
@@ -87,6 +88,7 @@ class Orchestrator:
         policy: BudgetPolicy,
         limits: SchedulerLimits | None = None,
         instructions: str = _INSTRUCTIONS,
+        context_policy: ContextPolicy | None = None,
     ) -> None:
         if not isinstance(roles, Mapping) or not roles or not all(
             type(name) is str and name and isinstance(spec, AgentSpec) for name, spec in roles.items()
@@ -96,7 +98,14 @@ class Orchestrator:
             raise ValueError(f"policy must be a BudgetPolicy, got {type(policy).__name__}")
         if limits is not None and not isinstance(limits, SchedulerLimits):
             raise ValueError(f"limits must be a SchedulerLimits or None, got {type(limits).__name__}")
+        if context_policy is not None and not isinstance(context_policy, ContextPolicy):
+            raise ValueError(f"context_policy must be a ContextPolicy or None, got {type(context_policy).__name__}")
         self._roles = dict(roles)
+        # FR-77, FR-78 (M20): what the orchestrator and every child see, and when their
+        # histories compact. The default compacts at 0.75 of the model's window, so a
+        # model the ModelRegistry does not know needs a policy naming its window
+        # (DECISION-468e2bfa).
+        self.context_policy = context_policy if context_policy is not None else ContextPolicy()
         self._policy = policy
         self._limits = limits if limits is not None else SchedulerLimits()
         self._runs: dict[str, _Run] = {}
@@ -125,7 +134,7 @@ class Orchestrator:
             tenant_id=tenant_id, project_id=project_id, budget_lease=governor.orchestrator_lease(),
             # Unresolved from the start: only a plan version that completes clears it, so
             # a run that never gets one through ends failed (FR-75, round 1 D1).
-            pending_failure="no plan version completed", **options,
+            pending_failure="no plan version completed", context_policy=self.context_policy, **options,
         )
 
     def plans(self, run_id: str) -> tuple[PlanVersion, ...]:
@@ -144,7 +153,10 @@ class Orchestrator:
         if run is None:
             run = _Run(
                 plan_id=str(uuid.uuid4()),
-                pool=SubagentPool(scope._runner, limits=self._limits, artifact_store=scope.artifacts),
+                pool=SubagentPool(
+                    scope._runner, limits=self._limits, artifact_store=scope.artifacts,
+                    context_policy=self.context_policy,
+                ),
             )
             self._runs[scope.run_id] = run
         if run.ended is not None:

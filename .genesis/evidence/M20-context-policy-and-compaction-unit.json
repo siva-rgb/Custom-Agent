@@ -1,0 +1,22 @@
+{
+  "task": "M20-context-policy-and-compaction",
+  "gate": "unit",
+  "command": ".venv\\Scripts\\python.exe -m pytest tests/test_context_policy.py -q",
+  "started_at": "2026-10-09T15:47:18.850Z",
+  "observed_at": "2026-10-09T15:47:23.785Z",
+  "exit_code": 0,
+  "signal": null,
+  "stdout": "..........................................                               [100%]\r\n42 passed in 4.08s\r\n",
+  "stderr": "",
+  "revision": {
+    "commit": "bf7d0d5b5d53e5ef7d186efbb1de82ea4ae9452e",
+    "dirty": true
+  },
+  "source_hash": "eae1be3ad8fa6ffbc2d6ec4441ef09ea59d26cff4a3bfa9b86d22cc044fcd903",
+  "environment": {
+    "node": "v20.10.0",
+    "platform": "win32",
+    "arch": "x64"
+  },
+  "hash": "e88af6f94c0260860cf471694ed2cdac99bf7fed227eaaf546346b2a389a0e11"
+}

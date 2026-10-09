@@ -886,6 +886,8 @@ class PostgresRunStore:
         # applies, as for every manifest written before 0008.
         budget_policy = manifest.get("budget_policy")
         budget_reservations = manifest.get("budget_reservations")
+        # FR-77 (0009): the tools the run was sent; NULL for every manifest before it.
+        tools_sent = manifest.get("tools_sent")
         conn.execute(
             """
                 INSERT INTO execution_manifests (
@@ -893,12 +895,12 @@ class PostgresRunStore:
                     instructions_hash, model_id, model_version,
                     model_adapter_version, tool_spec_hashes, policy_version,
                     max_output_tokens, reasoning_effort, pricing, scheduler_limits,
-                    budget_policy, budget_reservations, price_table_date
+                    budget_policy, budget_reservations, price_table_date, tools_sent
                 )
                 -- Tenancy from the run row, as everywhere else. Inside
                 -- start_run the row is written in this same transaction, so
                 -- the SELECT sees it.
-                SELECT r.run_id, r.tenant_id, r.project_id, %s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s
+                SELECT r.run_id, r.tenant_id, r.project_id, %s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s
                 FROM runs r
                 WHERE r.run_id = %s AND r.tenant_id = %s AND r.project_id = %s
             """,
@@ -918,6 +920,7 @@ class PostgresRunStore:
                 Jsonb(budget_policy) if budget_policy is not None else None,
                 Jsonb(budget_reservations) if budget_reservations is not None else None,
                 manifest.get("price_table_date"),
+                Jsonb(tools_sent) if tools_sent is not None else None,
                 scope.run_id,
                 scope.tenant_id,
                 scope.project_id,

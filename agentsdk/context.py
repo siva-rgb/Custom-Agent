@@ -49,6 +49,15 @@ def _briefed_entry(uri: str, p: ContentProvenance) -> dict[str, Any]:
     }
 
 
+def _summary_entry(uri: str, p: ContentProvenance) -> dict[str, Any]:
+    """FR-78 (M20): a compaction summary in the request, by its artifact's uri and its
+    labels. The summary inherits the maximum taint of what it replaced, and this entry
+    is where that taint rides, as a briefed input's does (DECISION-468e2bfa)."""
+    entry = _briefed_entry(uri, p)
+    entry["compaction_summary"] = entry.pop("briefed_input")
+    return entry
+
+
 class ContextAssembler:
     def build(
         self,
@@ -60,6 +69,7 @@ class ContextAssembler:
         metadata: dict[str, Any] | None = None,
         output_schema: dict[str, Any] | None = None,
         briefed_inputs: tuple[tuple[str, ContentProvenance], ...] = (),
+        summaries: tuple[tuple[str, ContentProvenance], ...] = (),
     ) -> ModelRequest:
         if output_schema is not None:
             # NFR-1: every provider reads the instructions, and not every provider has
@@ -71,6 +81,7 @@ class ContextAssembler:
             )
         request_metadata = dict(metadata or {})
         provenance = [_briefed_entry(uri, p) for uri, p in briefed_inputs]
+        provenance += [_summary_entry(uri, p) for uri, p in summaries]
         provenance += self._provenance_manifest(history)
         if provenance:
             request_metadata["provenance"] = provenance

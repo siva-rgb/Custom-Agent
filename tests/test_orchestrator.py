@@ -29,7 +29,7 @@ import psycopg
 import pytest
 from dotenv import load_dotenv
 
-from agentsdk import AgentSpec, BudgetGovernor, BudgetPolicy, Persistence, RunStatus, Runner, SchedulerLimits
+from agentsdk import AgentSpec, BudgetGovernor, BudgetPolicy, ContextPolicy, Persistence, RunStatus, Runner, SchedulerLimits
 from agentsdk.config import normalise_database_url
 from agentsdk.errors import InvalidPlan
 from agentsdk.events import EventType, InMemoryEventSink
@@ -179,6 +179,9 @@ def setup(worker=None, *plans, persistence=None, policy=None, limits=None, roles
         roles=roles or {"worker": WORKER},
         policy=policy or BudgetPolicy(run_ceiling_tokens=1_000_000),
         limits=limits,
+        # M20: these fake models are in no ModelRegistry, so a compacting policy must
+        # name its window (DECISION-468e2bfa); one no test here comes near.
+        context_policy=ContextPolicy(context_window=1_000_000),
     )
     runner = Runner(
         {"planner": planner, "worker": worker},
