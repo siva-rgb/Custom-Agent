@@ -1,0 +1,22 @@
+{
+  "task": "M21a-carried-caveats",
+  "gate": "unit",
+  "command": ".venv\\Scripts\\python.exe -m pytest tests/test_carried_caveats.py -q",
+  "started_at": "2026-10-10T12:33:42.470Z",
+  "observed_at": "2026-10-10T12:33:43.977Z",
+  "exit_code": 0,
+  "signal": null,
+  "stdout": "..........                                                               [100%]\r\n10 passed in 0.80s\r\n",
+  "stderr": "",
+  "revision": {
+    "commit": "de0de3793cb996f0394d33a0ae6431bc5714c50f",
+    "dirty": true
+  },
+  "source_hash": "8ade09770ea76d230226ebc3488139fd2ba718c16b6c3546ef3cc31fa4c2aed7",
+  "environment": {
+    "node": "v20.10.0",
+    "platform": "win32",
+    "arch": "x64"
+  },
+  "hash": "6180acaf20e10623ee1b90e47afa80834524a2909f7281fa140ae86b69f1ab30"
+}

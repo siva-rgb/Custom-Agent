@@ -51,7 +51,9 @@ class InMemorySessionStore:
     """FR-9 in memory. A run's history is keyed by its tenant, project and run id
     (FR-87): the Runner binds the store to each run, as the Postgres store is bound,
     so two tenants' runs never share a history. Called unbound -- by a test or an
-    application driving the loop itself -- it is keyed by run id alone, as before."""
+    application driving the loop itself -- it is keyed by run id alone, as before, and
+    the first tenant and project to bind that run id adopt what was written to it
+    unbound (FR-97, M21a), as the store merged them before M21."""
 
     def __init__(self) -> None:
         self._runs: dict[_Key, list[Message]] = {}
@@ -68,34 +70,47 @@ class InMemorySessionStore:
 
     def _messages(self, key: _Key) -> list[Message]:
         with self._lock:
-            messages = self._runs.get(key)
-            if messages is None:
-                messages = self._runs[key] = []
-                self._by_run.setdefault(key[2], []).append(key)
-            return messages
+            return self._runs[self._held(key, create=True)]
+
+    def _held(self, key: _Key, *, create: bool) -> _Key:
+        """The key a run's history is stored under, the lock held. An unbound key means
+        the one run of its id; a bound key not yet stored adopts the id's unbound
+        history (FR-97), moving the list itself, so a write already holding it lands in
+        the adopted history. Resolved here, under the lock, so no write in between can
+        file one run id under two keys."""
+        run_id = key[2]
+        found = self._by_run.get(run_id, [])
+        unbound = (None, None, run_id)
+        if key == unbound:
+            if len(found) > 1:
+                raise ValueError(f"run {run_id!r} exists in more than one tenant or project; bind the store to read it")
+            if found:
+                return found[0]
+        elif key not in self._runs and unbound in self._runs:
+            self._runs[key] = self._runs.pop(unbound)
+            found[found.index(unbound)] = key
+            return key
+        if create and key not in self._runs:
+            self._runs[key] = []
+            self._by_run.setdefault(run_id, []).append(key)
+        return key
 
     def _key(self, run_id: str) -> _Key:
+        """The run a call means: the bound one, or the one run of that id, whichever
+        tenant it belongs to, or a run nothing bound. Two tenants' runs sharing an id
+        cannot be told apart without a scope, so that is refused rather than guessed."""
         bound = _BINDING.get()
         if bound is not None:
             if bound[2] != run_id:
                 raise ValueError(f"this session store is bound to run {bound[2]!r}, not {run_id!r}")
             return bound
-        return self._unbound(run_id)
-
-    def _unbound(self, run_id: str) -> _Key:
-        """The key an unbound call means: the one run of that id, whichever tenant it
-        belongs to, or a run nothing bound. Two tenants' runs sharing an id cannot be
-        told apart without a scope, so that is refused rather than guessed."""
         with self._lock:
-            found = list(self._by_run.get(run_id, ()))
-        if len(found) > 1:
-            raise ValueError(f"run {run_id!r} exists in more than one tenant or project; bind the store to read it")
-        return found[0] if found else (None, None, run_id)
+            return self._held((None, None, run_id), create=False)
 
     def append(self, run_id: str, message: Message) -> None:
-        messages = self._messages(self._key(run_id))
+        key = self._key(run_id)
         with self._lock:
-            messages.append(message)
+            self._runs[self._held(key, create=True)].append(message)
 
     def append_with_event(
         self, run_id: str, message: Message, sink: Any, event_type: Any, payload: dict[str, Any]
@@ -105,8 +120,15 @@ class InMemorySessionStore:
         recorded takes the message back out, whatever the sink (FR-87)."""
         key = self._key(run_id)
         _refuse_foreign(sink, key)
-        self.append(run_id, message)
+        # FR-97 (M21a): the run's history taken once, before the write, and the write
+        # bound to that key, so the append and the take-back act on one list however a
+        # first bound write of this run interleaves. Still through append, for its wrappers.
         messages = self._messages(key)
+        token = _BINDING.set(key)
+        try:
+            self.append(run_id, message)
+        finally:
+            _BINDING.reset(token)
         try:
             return sink.emit(event_type, payload)
         except BaseException:
@@ -122,7 +144,7 @@ class InMemorySessionStore:
         # the list, which would make the append-only invariant a lie.
         key = self._key(run_id)
         with self._lock:
-            return list(self._runs.get(key, ()))
+            return list(self._runs.get(self._held(key, create=False), ()))
 
 
 class _BoundInMemorySessions:

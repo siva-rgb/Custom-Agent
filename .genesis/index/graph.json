@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "project": "agent-sdk",
-  "revision": "c244f23e6f7b5d4d54a8edbccfd91d15dd47ea6f",
-  "sourceHash": "b760f37cdd42babf2db42ea526465c870cdddbaec43617cc4f9059a9582c5af2",
+  "revision": "de0de3793cb996f0394d33a0ae6431bc5714c50f",
+  "sourceHash": "d5b6502acc911b68ded5573a861c002b457d4353784a153b60c6a06fd6f9e291",
   "provenance": {
     "tool": "genesis-graphizer",
     "method": "static-analysis",
@@ -436,7 +436,7 @@
         "extractor": "filesystem",
         "source": "agentsdk/session.py"
       },
-      "contentHash": "d2649494a39ed6307a3d3319f6d7fa9e9cc975c51143b100fb3783880bd2934a"
+      "contentHash": "61416490115cf5c6e931093eb81c2f8ca25b92d669e95f911d39c1851c2885d8"
     },
     {
       "id": "file:agentsdk/subagents.py",
@@ -957,6 +957,19 @@
         "source": "tests/test_builtin_tools.py"
       },
       "contentHash": "419394890a16cde38cea3436c4b88b593d7bf1ed938ae897dc9acea562e41bd0"
+    },
+    {
+      "id": "file:tests/test_carried_caveats.py",
+      "type": "file",
+      "label": "tests/test_carried_caveats.py",
+      "path": "tests/test_carried_caveats.py",
+      "language": "python",
+      "confidence": 1,
+      "provenance": {
+        "extractor": "filesystem",
+        "source": "tests/test_carried_caveats.py"
+      },
+      "contentHash": "1628409ab1d6b52b985a676b8c1476126a81e8c6bf602bf4a7162389c3f458c8"
     },
     {
       "id": "file:tests/test_carried_items.py",
@@ -12058,7 +12071,7 @@
       "name": "_BoundInMemorySessions",
       "qualifiedName": "_BoundInMemorySessions",
       "kind": "class",
-      "line": 128,
+      "line": 150,
       "label": "_BoundInMemorySessions",
       "path": "agentsdk/session.py",
       "confidence": 1,
@@ -12106,7 +12119,7 @@
       "name": "__init__",
       "qualifiedName": "_BoundInMemorySessions.__init__",
       "kind": "function",
-      "line": 132,
+      "line": 154,
       "label": "_BoundInMemorySessions.__init__",
       "path": "agentsdk/session.py",
       "confidence": 1,
@@ -12122,7 +12135,7 @@
       "name": "_as_run",
       "qualifiedName": "_BoundInMemorySessions._as_run",
       "kind": "function",
-      "line": 135,
+      "line": 157,
       "label": "_BoundInMemorySessions._as_run",
       "path": "agentsdk/session.py",
       "confidence": 1,
@@ -12138,7 +12151,7 @@
       "name": "append",
       "qualifiedName": "_BoundInMemorySessions.append",
       "kind": "function",
-      "line": 142,
+      "line": 164,
       "label": "_BoundInMemorySessions.append",
       "path": "agentsdk/session.py",
       "confidence": 1,
@@ -12154,7 +12167,7 @@
       "name": "append_with_event",
       "qualifiedName": "_BoundInMemorySessions.append_with_event",
       "kind": "function",
-      "line": 145,
+      "line": 167,
       "label": "_BoundInMemorySessions.append_with_event",
       "path": "agentsdk/session.py",
       "confidence": 1,
@@ -12170,7 +12183,7 @@
       "name": "history",
       "qualifiedName": "_BoundInMemorySessions.history",
       "kind": "function",
-      "line": 150,
+      "line": 172,
       "label": "_BoundInMemorySessions.history",
       "path": "agentsdk/session.py",
       "confidence": 1,
@@ -12202,7 +12215,7 @@
       "name": "__init__",
       "qualifiedName": "InMemorySessionStore.__init__",
       "kind": "function",
-      "line": 56,
+      "line": 58,
       "label": "InMemorySessionStore.__init__",
       "path": "agentsdk/session.py",
       "confidence": 1,
@@ -12213,12 +12226,28 @@
       "contentHash": "c3c86be02bbfbcf6ad3babbde3deedd494c9b92517a949dde74ca04682b5f970"
     },
     {
+      "id": "symbol:agentsdk/session.py#function:InMemorySessionStore._held",
+      "type": "symbol",
+      "name": "_held",
+      "qualifiedName": "InMemorySessionStore._held",
+      "kind": "function",
+      "line": 75,
+      "label": "InMemorySessionStore._held",
+      "path": "agentsdk/session.py",
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "agentsdk/session.py"
+      },
+      "contentHash": "d4cbd641e7b997e6cf9b15615ddc4eff51b133bc29e8f494009a375597e8a8c7"
+    },
+    {
       "id": "symbol:agentsdk/session.py#function:InMemorySessionStore._key",
       "type": "symbol",
       "name": "_key",
       "qualifiedName": "InMemorySessionStore._key",
       "kind": "function",
-      "line": 77,
+      "line": 98,
       "label": "InMemorySessionStore._key",
       "path": "agentsdk/session.py",
       "confidence": 1,
@@ -12234,7 +12263,7 @@
       "name": "_messages",
       "qualifiedName": "InMemorySessionStore._messages",
       "kind": "function",
-      "line": 69,
+      "line": 71,
       "label": "InMemorySessionStore._messages",
       "path": "agentsdk/session.py",
       "confidence": 1,
@@ -12245,28 +12274,12 @@
       "contentHash": "c4fef41677f651f913bcf080206c7481b857974001647c951e2def7f6b638f2f"
     },
     {
-      "id": "symbol:agentsdk/session.py#function:InMemorySessionStore._unbound",
-      "type": "symbol",
-      "name": "_unbound",
-      "qualifiedName": "InMemorySessionStore._unbound",
-      "kind": "function",
-      "line": 85,
-      "label": "InMemorySessionStore._unbound",
-      "path": "agentsdk/session.py",
-      "confidence": 1,
-      "provenance": {
-        "extractor": "python-stdlib-ast",
-        "source": "agentsdk/session.py"
-      },
-      "contentHash": "923eae9c7654795c9d1cc532333c9e88236a365c8db07d802339bea547a96636"
-    },
-    {
       "id": "symbol:agentsdk/session.py#function:InMemorySessionStore.append",
       "type": "symbol",
       "name": "append",
       "qualifiedName": "InMemorySessionStore.append",
       "kind": "function",
-      "line": 95,
+      "line": 110,
       "label": "InMemorySessionStore.append",
       "path": "agentsdk/session.py",
       "confidence": 1,
@@ -12282,7 +12295,7 @@
       "name": "append_with_event",
       "qualifiedName": "InMemorySessionStore.append_with_event",
       "kind": "function",
-      "line": 100,
+      "line": 115,
       "label": "InMemorySessionStore.append_with_event",
       "path": "agentsdk/session.py",
       "confidence": 1,
@@ -12298,7 +12311,7 @@
       "name": "bind",
       "qualifiedName": "InMemorySessionStore.bind",
       "kind": "function",
-      "line": 65,
+      "line": 67,
       "label": "InMemorySessionStore.bind",
       "path": "agentsdk/session.py",
       "confidence": 1,
@@ -12314,7 +12327,7 @@
       "name": "history",
       "qualifiedName": "InMemorySessionStore.history",
       "kind": "function",
-      "line": 120,
+      "line": 142,
       "label": "InMemorySessionStore.history",
       "path": "agentsdk/session.py",
       "confidence": 1,
@@ -24643,6 +24656,470 @@
         "source": "tests/test_builtin_tools.py"
       },
       "contentHash": "b5b3d171c8ca7f265c85d46f62ddb84d677441142e35ff42eba807846980f271"
+    },
+    {
+      "id": "symbol:tests/test_carried_caveats.py#class:Answers",
+      "type": "symbol",
+      "name": "Answers",
+      "qualifiedName": "Answers",
+      "kind": "class",
+      "line": 212,
+      "label": "Answers",
+      "path": "tests/test_carried_caveats.py",
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_carried_caveats.py"
+      },
+      "contentHash": "13d799b77298c8b62e94dc7233ab97de79b5dbe1bcee12002b069d1ccf0e5de6"
+    },
+    {
+      "id": "symbol:tests/test_carried_caveats.py#class:Fails",
+      "type": "symbol",
+      "name": "Fails",
+      "qualifiedName": "Fails",
+      "kind": "class",
+      "line": 59,
+      "label": "Fails",
+      "path": "tests/test_carried_caveats.py",
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_carried_caveats.py"
+      },
+      "contentHash": "881141dc9adf5d4a750ff709acdc1a0054ba47fbd859738d683808447b5047e5"
+    },
+    {
+      "id": "symbol:tests/test_carried_caveats.py#class:Planner",
+      "type": "symbol",
+      "name": "Planner",
+      "qualifiedName": "Planner",
+      "kind": "class",
+      "line": 195,
+      "label": "Planner",
+      "path": "tests/test_carried_caveats.py",
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_carried_caveats.py"
+      },
+      "contentHash": "f0614f60bbae8fe730394a49a0200208112c2a53d7af479c25f7eb9bca0f3dcb"
+    },
+    {
+      "id": "symbol:tests/test_carried_caveats.py#class:test_caveat3_every_sink_the_runner_builds_names_its_own_run.Recording",
+      "type": "symbol",
+      "name": "Recording",
+      "qualifiedName": "test_caveat3_every_sink_the_runner_builds_names_its_own_run.Recording",
+      "kind": "class",
+      "line": 237,
+      "label": "test_caveat3_every_sink_the_runner_builds_names_its_own_run.Recording",
+      "path": "tests/test_carried_caveats.py",
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_carried_caveats.py"
+      },
+      "contentHash": "80da5ae8735ba7dd9bae16909396719a7aa54de2fcda107cc9b9655d95cd3292"
+    },
+    {
+      "id": "symbol:tests/test_carried_caveats.py#class:test_caveat4_declared_on_postgres_a_failing_scopeless_sink_leaves_the_summary_without_its_event.Scopeless",
+      "type": "symbol",
+      "name": "Scopeless",
+      "qualifiedName": "test_caveat4_declared_on_postgres_a_failing_scopeless_sink_leaves_the_summary_without_its_event.Scopeless",
+      "kind": "class",
+      "line": 271,
+      "label": "test_caveat4_declared_on_postgres_a_failing_scopeless_sink_leaves_the_summary_without_its_event.Scopeless",
+      "path": "tests/test_carried_caveats.py",
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_carried_caveats.py"
+      },
+      "contentHash": "5671764973e588883ad58ccfb4ad32c25b4a180d76e55958444cd656a5901961"
+    },
+    {
+      "id": "symbol:tests/test_carried_caveats.py#function:_first_bound_write_between_key_and_append",
+      "type": "symbol",
+      "name": "_first_bound_write_between_key_and_append",
+      "qualifiedName": "_first_bound_write_between_key_and_append",
+      "kind": "function",
+      "line": 69,
+      "label": "_first_bound_write_between_key_and_append",
+      "path": "tests/test_carried_caveats.py",
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_carried_caveats.py"
+      },
+      "contentHash": "fd11562d1b1ba169c44265e76d84e1cea202110e4314c9234464299b46172c16"
+    },
+    {
+      "id": "symbol:tests/test_carried_caveats.py#function:_first_bound_write_between_key_and_append.append",
+      "type": "symbol",
+      "name": "append",
+      "qualifiedName": "_first_bound_write_between_key_and_append.append",
+      "kind": "function",
+      "line": 76,
+      "label": "_first_bound_write_between_key_and_append.append",
+      "path": "tests/test_carried_caveats.py",
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_carried_caveats.py"
+      },
+      "contentHash": "3c3f5b0128d53c24ba8109aca96c0e2c51a8b04ff8222d6b238834c0282a3dc0"
+    },
+    {
+      "id": "symbol:tests/test_carried_caveats.py#function:_registry",
+      "type": "symbol",
+      "name": "_registry",
+      "qualifiedName": "_registry",
+      "kind": "function",
+      "line": 218,
+      "label": "_registry",
+      "path": "tests/test_carried_caveats.py",
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_carried_caveats.py"
+      },
+      "contentHash": "92100b4bbad8a8e3dafcf15061531ad6d6fe23c5a389263f1b5a8fb8d6166ed2"
+    },
+    {
+      "id": "symbol:tests/test_carried_caveats.py#function:Answers.send",
+      "type": "symbol",
+      "name": "send",
+      "qualifiedName": "Answers.send",
+      "kind": "function",
+      "line": 213,
+      "label": "Answers.send",
+      "path": "tests/test_carried_caveats.py",
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_carried_caveats.py"
+      },
+      "contentHash": "4c3ae8d0e5e02329161c8108794c78a9306208d3de9fac31e4c34f7616b96786"
+    },
+    {
+      "id": "symbol:tests/test_carried_caveats.py#function:Fails.emit",
+      "type": "symbol",
+      "name": "emit",
+      "qualifiedName": "Fails.emit",
+      "kind": "function",
+      "line": 60,
+      "label": "Fails.emit",
+      "path": "tests/test_carried_caveats.py",
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_carried_caveats.py"
+      },
+      "contentHash": "e7c5ee17a2462091c284d72f02f8d68aadf7b1c01eec8feb2f848dbc140d10a5"
+    },
+    {
+      "id": "symbol:tests/test_carried_caveats.py#function:Planner.__init__",
+      "type": "symbol",
+      "name": "__init__",
+      "qualifiedName": "Planner.__init__",
+      "kind": "function",
+      "line": 198,
+      "label": "Planner.__init__",
+      "path": "tests/test_carried_caveats.py",
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_carried_caveats.py"
+      },
+      "contentHash": "eacba44d60a67abf538f81a364cfa6a9e72a67c9429f513ed7f9b10df3f2e9bd"
+    },
+    {
+      "id": "symbol:tests/test_carried_caveats.py#function:Planner.send",
+      "type": "symbol",
+      "name": "send",
+      "qualifiedName": "Planner.send",
+      "kind": "function",
+      "line": 201,
+      "label": "Planner.send",
+      "path": "tests/test_carried_caveats.py",
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_carried_caveats.py"
+      },
+      "contentHash": "7dab4c8a218ab8d739071276ac852cc84f41c72fab11dfc2c8916c0e75765061"
+    },
+    {
+      "id": "symbol:tests/test_carried_caveats.py#function:query",
+      "type": "symbol",
+      "name": "query",
+      "qualifiedName": "query",
+      "kind": "function",
+      "line": 43,
+      "label": "query",
+      "path": "tests/test_carried_caveats.py",
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_carried_caveats.py"
+      },
+      "contentHash": "7f1af29eaa75bd3dc7caf12b72aa82fee4a1199a375b95363588f8253c3082f2"
+    },
+    {
+      "id": "symbol:tests/test_carried_caveats.py#function:remove_what_the_test_wrote",
+      "type": "symbol",
+      "name": "remove_what_the_test_wrote",
+      "qualifiedName": "remove_what_the_test_wrote",
+      "kind": "function",
+      "line": 49,
+      "label": "remove_what_the_test_wrote",
+      "path": "tests/test_carried_caveats.py",
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_carried_caveats.py"
+      },
+      "contentHash": "7fea9c6392333222f07d3a8074b41616c8d84a1842785815354b75947854fed5"
+    },
+    {
+      "id": "symbol:tests/test_carried_caveats.py#function:said",
+      "type": "symbol",
+      "name": "said",
+      "qualifiedName": "said",
+      "kind": "function",
+      "line": 39,
+      "label": "said",
+      "path": "tests/test_carried_caveats.py",
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_carried_caveats.py"
+      },
+      "contentHash": "c46a67426293eab11591968b1d552bd6ee8193d255365113f8122155fe580d11"
+    },
+    {
+      "id": "symbol:tests/test_carried_caveats.py#function:scope",
+      "type": "symbol",
+      "name": "scope",
+      "qualifiedName": "scope",
+      "kind": "function",
+      "line": 35,
+      "label": "scope",
+      "path": "tests/test_carried_caveats.py",
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_carried_caveats.py"
+      },
+      "contentHash": "1922c858fbea0a5e805ed608d1854e6bfbc0ecbab88dc267d188923377c72824"
+    },
+    {
+      "id": "symbol:tests/test_carried_caveats.py#function:test_caveat1_a_combined_write_racing_the_first_bound_write_files_the_run_under_one_key",
+      "type": "symbol",
+      "name": "test_caveat1_a_combined_write_racing_the_first_bound_write_files_the_run_under_one_key",
+      "qualifiedName": "test_caveat1_a_combined_write_racing_the_first_bound_write_files_the_run_under_one_key",
+      "kind": "function",
+      "line": 86,
+      "label": "test_caveat1_a_combined_write_racing_the_first_bound_write_files_the_run_under_one_key",
+      "path": "tests/test_carried_caveats.py",
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_carried_caveats.py"
+      },
+      "contentHash": "74408ac7ae83ef6d657d18aa1c992803e1129f788273ce22b68c7dd5cb68449d"
+    },
+    {
+      "id": "symbol:tests/test_carried_caveats.py#function:test_caveat1_the_take_back_finds_the_summary_after_two_tenants_bind_the_id",
+      "type": "symbol",
+      "name": "test_caveat1_the_take_back_finds_the_summary_after_two_tenants_bind_the_id",
+      "qualifiedName": "test_caveat1_the_take_back_finds_the_summary_after_two_tenants_bind_the_id",
+      "kind": "function",
+      "line": 123,
+      "label": "test_caveat1_the_take_back_finds_the_summary_after_two_tenants_bind_the_id",
+      "path": "tests/test_carried_caveats.py",
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_carried_caveats.py"
+      },
+      "contentHash": "a8ca3223a2af3451828945880a20c419e25205b14d4676f758e710f4d03a2d87"
+    },
+    {
+      "id": "symbol:tests/test_carried_caveats.py#function:test_caveat1_the_take_back_finds_the_summary_after_two_tenants_bind_the_id.append",
+      "type": "symbol",
+      "name": "append",
+      "qualifiedName": "test_caveat1_the_take_back_finds_the_summary_after_two_tenants_bind_the_id.append",
+      "kind": "function",
+      "line": 130,
+      "label": "test_caveat1_the_take_back_finds_the_summary_after_two_tenants_bind_the_id.append",
+      "path": "tests/test_carried_caveats.py",
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_carried_caveats.py"
+      },
+      "contentHash": "ec383ac81277316fcd3dac895e49fbee5a4aa6831ce2e3f8d28b32b2d604741a"
+    },
+    {
+      "id": "symbol:tests/test_carried_caveats.py#function:test_caveat1_the_write_lands_on_the_run_it_began_on_when_a_second_tenant_binds_the_id",
+      "type": "symbol",
+      "name": "test_caveat1_the_write_lands_on_the_run_it_began_on_when_a_second_tenant_binds_the_id",
+      "qualifiedName": "test_caveat1_the_write_lands_on_the_run_it_began_on_when_a_second_tenant_binds_the_id",
+      "kind": "function",
+      "line": 104,
+      "label": "test_caveat1_the_write_lands_on_the_run_it_began_on_when_a_second_tenant_binds_the_id",
+      "path": "tests/test_carried_caveats.py",
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_carried_caveats.py"
+      },
+      "contentHash": "f5961ef4788d41d67991f2176b61a739317ae3931b5399895a73769401ef5af4"
+    },
+    {
+      "id": "symbol:tests/test_carried_caveats.py#function:test_caveat1_the_write_lands_on_the_run_it_began_on_when_a_second_tenant_binds_the_id.append",
+      "type": "symbol",
+      "name": "append",
+      "qualifiedName": "test_caveat1_the_write_lands_on_the_run_it_began_on_when_a_second_tenant_binds_the_id.append",
+      "kind": "function",
+      "line": 111,
+      "label": "test_caveat1_the_write_lands_on_the_run_it_began_on_when_a_second_tenant_binds_the_id.append",
+      "path": "tests/test_carried_caveats.py",
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_carried_caveats.py"
+      },
+      "contentHash": "70c330c83c61731efe8b2ddaa7ea55145176d6bf59d467bd2cf1c0e9b643944b"
+    },
+    {
+      "id": "symbol:tests/test_carried_caveats.py#function:test_caveat2_a_first_bound_read_adopts_it_too",
+      "type": "symbol",
+      "name": "test_caveat2_a_first_bound_read_adopts_it_too",
+      "qualifiedName": "test_caveat2_a_first_bound_read_adopts_it_too",
+      "kind": "function",
+      "line": 160,
+      "label": "test_caveat2_a_first_bound_read_adopts_it_too",
+      "path": "tests/test_carried_caveats.py",
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_carried_caveats.py"
+      },
+      "contentHash": "1f3703bdebf8b00dab171d6ee0f59e8887ed09f84a955ac1ac1827b40196cd72"
+    },
+    {
+      "id": "symbol:tests/test_carried_caveats.py#function:test_caveat2_a_second_tenant_with_the_same_run_id_still_keeps_its_own_history",
+      "type": "symbol",
+      "name": "test_caveat2_a_second_tenant_with_the_same_run_id_still_keeps_its_own_history",
+      "qualifiedName": "test_caveat2_a_second_tenant_with_the_same_run_id_still_keeps_its_own_history",
+      "kind": "function",
+      "line": 168,
+      "label": "test_caveat2_a_second_tenant_with_the_same_run_id_still_keeps_its_own_history",
+      "path": "tests/test_carried_caveats.py",
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_carried_caveats.py"
+      },
+      "contentHash": "47ba1063e4ba3f91487a5d4e3b9f1aeea12ee6073a590c3033c1db438dc139e4"
+    },
+    {
+      "id": "symbol:tests/test_carried_caveats.py#function:test_caveat2_the_first_binding_adopts_what_was_written_to_the_run_id_unbound",
+      "type": "symbol",
+      "name": "test_caveat2_the_first_binding_adopts_what_was_written_to_the_run_id_unbound",
+      "qualifiedName": "test_caveat2_the_first_binding_adopts_what_was_written_to_the_run_id_unbound",
+      "kind": "function",
+      "line": 151,
+      "label": "test_caveat2_the_first_binding_adopts_what_was_written_to_the_run_id_unbound",
+      "path": "tests/test_carried_caveats.py",
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_carried_caveats.py"
+      },
+      "contentHash": "b37076ad4b3911cdc95cd985e8566089b19492d33286db3c46770b950debeb84"
+    },
+    {
+      "id": "symbol:tests/test_carried_caveats.py#function:test_caveat3_declared_a_bound_combined_write_refuses_a_sink_for_another_run",
+      "type": "symbol",
+      "name": "test_caveat3_declared_a_bound_combined_write_refuses_a_sink_for_another_run",
+      "qualifiedName": "test_caveat3_declared_a_bound_combined_write_refuses_a_sink_for_another_run",
+      "kind": "function",
+      "line": 186,
+      "label": "test_caveat3_declared_a_bound_combined_write_refuses_a_sink_for_another_run",
+      "path": "tests/test_carried_caveats.py",
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_carried_caveats.py"
+      },
+      "contentHash": "cd68efc681a89d99dd51df6bd51452aca622332b7e4737819f56ac87a7cd1bd2"
+    },
+    {
+      "id": "symbol:tests/test_carried_caveats.py#function:test_caveat3_every_sink_the_runner_builds_names_its_own_run",
+      "type": "symbol",
+      "name": "test_caveat3_every_sink_the_runner_builds_names_its_own_run",
+      "qualifiedName": "test_caveat3_every_sink_the_runner_builds_names_its_own_run",
+      "kind": "function",
+      "line": 228,
+      "label": "test_caveat3_every_sink_the_runner_builds_names_its_own_run",
+      "path": "tests/test_carried_caveats.py",
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_carried_caveats.py"
+      },
+      "contentHash": "2a224b2a55599a731bae10204532d80714c7f221bfcd15638786285f5998cc2c"
+    },
+    {
+      "id": "symbol:tests/test_carried_caveats.py#function:test_caveat3_every_sink_the_runner_builds_names_its_own_run.Recording.run",
+      "type": "symbol",
+      "name": "run",
+      "qualifiedName": "test_caveat3_every_sink_the_runner_builds_names_its_own_run.Recording.run",
+      "kind": "function",
+      "line": 238,
+      "label": "test_caveat3_every_sink_the_runner_builds_names_its_own_run.Recording.run",
+      "path": "tests/test_carried_caveats.py",
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_carried_caveats.py"
+      },
+      "contentHash": "ad2fe56fdcc0a131d96f87be3e4ba3d56cf6e2c504173c8b097e7cce2f750820"
+    },
+    {
+      "id": "symbol:tests/test_carried_caveats.py#function:test_caveat4_declared_on_postgres_a_failing_scopeless_sink_leaves_the_summary_without_its_event",
+      "type": "symbol",
+      "name": "test_caveat4_declared_on_postgres_a_failing_scopeless_sink_leaves_the_summary_without_its_event",
+      "qualifiedName": "test_caveat4_declared_on_postgres_a_failing_scopeless_sink_leaves_the_summary_without_its_event",
+      "kind": "function",
+      "line": 270,
+      "label": "test_caveat4_declared_on_postgres_a_failing_scopeless_sink_leaves_the_summary_without_its_event",
+      "path": "tests/test_carried_caveats.py",
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_carried_caveats.py"
+      },
+      "contentHash": "6c532ea62b1465b4dfac741731b19e9c68ad6e524797c3e7fc05ea3898722966"
+    },
+    {
+      "id": "symbol:tests/test_carried_caveats.py#function:test_caveat4_declared_on_postgres_a_failing_scopeless_sink_leaves_the_summary_without_its_event.Scopeless.emit",
+      "type": "symbol",
+      "name": "emit",
+      "qualifiedName": "test_caveat4_declared_on_postgres_a_failing_scopeless_sink_leaves_the_summary_without_its_event.Scopeless.emit",
+      "kind": "function",
+      "line": 272,
+      "label": "test_caveat4_declared_on_postgres_a_failing_scopeless_sink_leaves_the_summary_without_its_event.Scopeless.emit",
+      "path": "tests/test_carried_caveats.py",
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_carried_caveats.py"
+      },
+      "contentHash": "db01b3cdc959d9b0eae0bd45cefff46973c37813b9c3740e8ab0c7a34b34fda7"
     },
     {
       "id": "symbol:tests/test_carried_items.py#class:Model",
@@ -54791,7 +55268,7 @@
       "type": "defines",
       "source": "file:agentsdk/session.py",
       "target": "symbol:agentsdk/session.py#class:_BoundInMemorySessions",
-      "line": 128,
+      "line": 150,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -54833,7 +55310,7 @@
       "type": "defines",
       "source": "file:agentsdk/session.py",
       "target": "symbol:agentsdk/session.py#function:_BoundInMemorySessions.__init__",
-      "line": 132,
+      "line": 154,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -54847,7 +55324,7 @@
       "type": "defines",
       "source": "file:agentsdk/session.py",
       "target": "symbol:agentsdk/session.py#function:_BoundInMemorySessions._as_run",
-      "line": 135,
+      "line": 157,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -54861,7 +55338,7 @@
       "type": "defines",
       "source": "file:agentsdk/session.py",
       "target": "symbol:agentsdk/session.py#function:_BoundInMemorySessions.append_with_event",
-      "line": 145,
+      "line": 167,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -54875,7 +55352,7 @@
       "type": "defines",
       "source": "file:agentsdk/session.py",
       "target": "symbol:agentsdk/session.py#function:_BoundInMemorySessions.append",
-      "line": 142,
+      "line": 164,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -54889,7 +55366,7 @@
       "type": "defines",
       "source": "file:agentsdk/session.py",
       "target": "symbol:agentsdk/session.py#function:_BoundInMemorySessions.history",
-      "line": 150,
+      "line": 172,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -54917,7 +55394,7 @@
       "type": "defines",
       "source": "file:agentsdk/session.py",
       "target": "symbol:agentsdk/session.py#function:InMemorySessionStore.__init__",
-      "line": 56,
+      "line": 58,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -54927,11 +55404,25 @@
       "contentHash": "46703633dfbe0aaa1e0df8839b558d27998197dc2eeffb60ddcb7ce6ceb2ff00"
     },
     {
+      "id": "defines:file:agentsdk/session.py->symbol:agentsdk/session.py#function:InMemorySessionStore._held:",
+      "type": "defines",
+      "source": "file:agentsdk/session.py",
+      "target": "symbol:agentsdk/session.py#function:InMemorySessionStore._held",
+      "line": 75,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "agentsdk/session.py"
+      },
+      "contentHash": "11b6c40e63a16bbe19748d56b3cc5e9a3778e4ef21252b2e7f6cc2d7fcb6b12a"
+    },
+    {
       "id": "defines:file:agentsdk/session.py->symbol:agentsdk/session.py#function:InMemorySessionStore._key:",
       "type": "defines",
       "source": "file:agentsdk/session.py",
       "target": "symbol:agentsdk/session.py#function:InMemorySessionStore._key",
-      "line": 77,
+      "line": 98,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -54945,7 +55436,7 @@
       "type": "defines",
       "source": "file:agentsdk/session.py",
       "target": "symbol:agentsdk/session.py#function:InMemorySessionStore._messages",
-      "line": 69,
+      "line": 71,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -54955,25 +55446,11 @@
       "contentHash": "1ed8f73bde6f7e106febff3d585e1d8b8ea432f79eb073a6dd30591814c504ee"
     },
     {
-      "id": "defines:file:agentsdk/session.py->symbol:agentsdk/session.py#function:InMemorySessionStore._unbound:",
-      "type": "defines",
-      "source": "file:agentsdk/session.py",
-      "target": "symbol:agentsdk/session.py#function:InMemorySessionStore._unbound",
-      "line": 85,
-      "resolved": true,
-      "confidence": 1,
-      "provenance": {
-        "extractor": "python-stdlib-ast",
-        "source": "agentsdk/session.py"
-      },
-      "contentHash": "e374f0d6999c846accc1768caf95e1496db5ab4a1801e5860720d0c6749033b3"
-    },
-    {
       "id": "defines:file:agentsdk/session.py->symbol:agentsdk/session.py#function:InMemorySessionStore.append_with_event:",
       "type": "defines",
       "source": "file:agentsdk/session.py",
       "target": "symbol:agentsdk/session.py#function:InMemorySessionStore.append_with_event",
-      "line": 100,
+      "line": 115,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -54987,7 +55464,7 @@
       "type": "defines",
       "source": "file:agentsdk/session.py",
       "target": "symbol:agentsdk/session.py#function:InMemorySessionStore.append",
-      "line": 95,
+      "line": 110,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -55001,7 +55478,7 @@
       "type": "defines",
       "source": "file:agentsdk/session.py",
       "target": "symbol:agentsdk/session.py#function:InMemorySessionStore.bind",
-      "line": 65,
+      "line": 67,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -55015,7 +55492,7 @@
       "type": "defines",
       "source": "file:agentsdk/session.py",
       "target": "symbol:agentsdk/session.py#function:InMemorySessionStore.history",
-      "line": 120,
+      "line": 142,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -65803,6 +66280,412 @@
         "source": "tests/test_builtin_tools.py"
       },
       "contentHash": "57f09bf2210ae0d41aa16e4dd6fff36a76f49c9d5e50eb3bfa29b9f738e33176"
+    },
+    {
+      "id": "defines:file:tests/test_carried_caveats.py->symbol:tests/test_carried_caveats.py#class:Answers:",
+      "type": "defines",
+      "source": "file:tests/test_carried_caveats.py",
+      "target": "symbol:tests/test_carried_caveats.py#class:Answers",
+      "line": 212,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_carried_caveats.py"
+      },
+      "contentHash": "15740d46e4843f1e8dc149d739d2db4539b0d40bf2a5ad725d884b62fc2f5f9e"
+    },
+    {
+      "id": "defines:file:tests/test_carried_caveats.py->symbol:tests/test_carried_caveats.py#class:Fails:",
+      "type": "defines",
+      "source": "file:tests/test_carried_caveats.py",
+      "target": "symbol:tests/test_carried_caveats.py#class:Fails",
+      "line": 59,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_carried_caveats.py"
+      },
+      "contentHash": "e81e4f86b98029f075ce861f17bce3fc877694ec2663eb24dfb8b4988daf2912"
+    },
+    {
+      "id": "defines:file:tests/test_carried_caveats.py->symbol:tests/test_carried_caveats.py#class:Planner:",
+      "type": "defines",
+      "source": "file:tests/test_carried_caveats.py",
+      "target": "symbol:tests/test_carried_caveats.py#class:Planner",
+      "line": 195,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_carried_caveats.py"
+      },
+      "contentHash": "9260fbd3fab83958e119bf23b0a80dc7a16a776a785dc80de695c9d7aad62f80"
+    },
+    {
+      "id": "defines:file:tests/test_carried_caveats.py->symbol:tests/test_carried_caveats.py#class:test_caveat3_every_sink_the_runner_builds_names_its_own_run.Recording:",
+      "type": "defines",
+      "source": "file:tests/test_carried_caveats.py",
+      "target": "symbol:tests/test_carried_caveats.py#class:test_caveat3_every_sink_the_runner_builds_names_its_own_run.Recording",
+      "line": 237,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_carried_caveats.py"
+      },
+      "contentHash": "1bf43e1d18d043d6e708a32dc61ca961063aa58b6ec92123f0c687b4ff0f395d"
+    },
+    {
+      "id": "defines:file:tests/test_carried_caveats.py->symbol:tests/test_carried_caveats.py#class:test_caveat4_declared_on_postgres_a_failing_scopeless_sink_leaves_the_summary_without_its_event.Scopeless:",
+      "type": "defines",
+      "source": "file:tests/test_carried_caveats.py",
+      "target": "symbol:tests/test_carried_caveats.py#class:test_caveat4_declared_on_postgres_a_failing_scopeless_sink_leaves_the_summary_without_its_event.Scopeless",
+      "line": 271,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_carried_caveats.py"
+      },
+      "contentHash": "f55eaceb7b9c46c1acf900d537e2477f8286fe759f5e94380cc30a30c043af2f"
+    },
+    {
+      "id": "defines:file:tests/test_carried_caveats.py->symbol:tests/test_carried_caveats.py#function:_first_bound_write_between_key_and_append:",
+      "type": "defines",
+      "source": "file:tests/test_carried_caveats.py",
+      "target": "symbol:tests/test_carried_caveats.py#function:_first_bound_write_between_key_and_append",
+      "line": 69,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_carried_caveats.py"
+      },
+      "contentHash": "665b51d2b7ce3c36da0868efd24fc2956e405826ce2077ad348abf9802e28584"
+    },
+    {
+      "id": "defines:file:tests/test_carried_caveats.py->symbol:tests/test_carried_caveats.py#function:_first_bound_write_between_key_and_append.append:",
+      "type": "defines",
+      "source": "file:tests/test_carried_caveats.py",
+      "target": "symbol:tests/test_carried_caveats.py#function:_first_bound_write_between_key_and_append.append",
+      "line": 76,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_carried_caveats.py"
+      },
+      "contentHash": "12c7e7de6c699d50be6c93468663a8c0a8dfb5ecd5d4000019d012f9b56ec43f"
+    },
+    {
+      "id": "defines:file:tests/test_carried_caveats.py->symbol:tests/test_carried_caveats.py#function:_registry:",
+      "type": "defines",
+      "source": "file:tests/test_carried_caveats.py",
+      "target": "symbol:tests/test_carried_caveats.py#function:_registry",
+      "line": 218,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_carried_caveats.py"
+      },
+      "contentHash": "274055cf31f48f7b8bcd69ff03d2f7601d9f9f75ee244ca819828916d395f0f5"
+    },
+    {
+      "id": "defines:file:tests/test_carried_caveats.py->symbol:tests/test_carried_caveats.py#function:Answers.send:",
+      "type": "defines",
+      "source": "file:tests/test_carried_caveats.py",
+      "target": "symbol:tests/test_carried_caveats.py#function:Answers.send",
+      "line": 213,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_carried_caveats.py"
+      },
+      "contentHash": "8b376b55ea39506657380ca33ed87257e9ca89bee0f9ea3d90070cbafae768a2"
+    },
+    {
+      "id": "defines:file:tests/test_carried_caveats.py->symbol:tests/test_carried_caveats.py#function:Fails.emit:",
+      "type": "defines",
+      "source": "file:tests/test_carried_caveats.py",
+      "target": "symbol:tests/test_carried_caveats.py#function:Fails.emit",
+      "line": 60,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_carried_caveats.py"
+      },
+      "contentHash": "469390da3544282d5f4d4d88c0196a1af41f46d3c902ad3ee861e4fdc4b799ba"
+    },
+    {
+      "id": "defines:file:tests/test_carried_caveats.py->symbol:tests/test_carried_caveats.py#function:Planner.__init__:",
+      "type": "defines",
+      "source": "file:tests/test_carried_caveats.py",
+      "target": "symbol:tests/test_carried_caveats.py#function:Planner.__init__",
+      "line": 198,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_carried_caveats.py"
+      },
+      "contentHash": "c11469c2a88cdff1ac7eec855bd7bb792d3da86ae04319d630e1e6c702b121ff"
+    },
+    {
+      "id": "defines:file:tests/test_carried_caveats.py->symbol:tests/test_carried_caveats.py#function:Planner.send:",
+      "type": "defines",
+      "source": "file:tests/test_carried_caveats.py",
+      "target": "symbol:tests/test_carried_caveats.py#function:Planner.send",
+      "line": 201,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_carried_caveats.py"
+      },
+      "contentHash": "ed200412b86c65d64885ef39dc123d28f4e3fd57db5d212d85e39414e7ce3879"
+    },
+    {
+      "id": "defines:file:tests/test_carried_caveats.py->symbol:tests/test_carried_caveats.py#function:query:",
+      "type": "defines",
+      "source": "file:tests/test_carried_caveats.py",
+      "target": "symbol:tests/test_carried_caveats.py#function:query",
+      "line": 43,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_carried_caveats.py"
+      },
+      "contentHash": "3b0452ee27ea878153ede3a0867afce8bc05c485afe9181c3958b2410d41f17b"
+    },
+    {
+      "id": "defines:file:tests/test_carried_caveats.py->symbol:tests/test_carried_caveats.py#function:remove_what_the_test_wrote:",
+      "type": "defines",
+      "source": "file:tests/test_carried_caveats.py",
+      "target": "symbol:tests/test_carried_caveats.py#function:remove_what_the_test_wrote",
+      "line": 49,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_carried_caveats.py"
+      },
+      "contentHash": "2a61ec9ecde8924457901a06941201c7d6e93ae23346e3c1842f1f3adf6eb517"
+    },
+    {
+      "id": "defines:file:tests/test_carried_caveats.py->symbol:tests/test_carried_caveats.py#function:said:",
+      "type": "defines",
+      "source": "file:tests/test_carried_caveats.py",
+      "target": "symbol:tests/test_carried_caveats.py#function:said",
+      "line": 39,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_carried_caveats.py"
+      },
+      "contentHash": "c3f836c299921c756a21f7a540aee5c6bcc3c159ec18196e7ed85838af922d94"
+    },
+    {
+      "id": "defines:file:tests/test_carried_caveats.py->symbol:tests/test_carried_caveats.py#function:scope:",
+      "type": "defines",
+      "source": "file:tests/test_carried_caveats.py",
+      "target": "symbol:tests/test_carried_caveats.py#function:scope",
+      "line": 35,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_carried_caveats.py"
+      },
+      "contentHash": "694c02e3f416170d7feca82bb522e34209c89062e8483f03b37f2fe6d64a9dc2"
+    },
+    {
+      "id": "defines:file:tests/test_carried_caveats.py->symbol:tests/test_carried_caveats.py#function:test_caveat1_a_combined_write_racing_the_first_bound_write_files_the_run_under_one_key:",
+      "type": "defines",
+      "source": "file:tests/test_carried_caveats.py",
+      "target": "symbol:tests/test_carried_caveats.py#function:test_caveat1_a_combined_write_racing_the_first_bound_write_files_the_run_under_one_key",
+      "line": 86,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_carried_caveats.py"
+      },
+      "contentHash": "7abcf49b3b4fa4ee5baa80793a3a54431fa37c9bd40392c0c3cb1c8a7885f168"
+    },
+    {
+      "id": "defines:file:tests/test_carried_caveats.py->symbol:tests/test_carried_caveats.py#function:test_caveat1_the_take_back_finds_the_summary_after_two_tenants_bind_the_id:",
+      "type": "defines",
+      "source": "file:tests/test_carried_caveats.py",
+      "target": "symbol:tests/test_carried_caveats.py#function:test_caveat1_the_take_back_finds_the_summary_after_two_tenants_bind_the_id",
+      "line": 123,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_carried_caveats.py"
+      },
+      "contentHash": "1737bbd17108691b64258b98a2102c70ab194932f531087acf8b8786c9e0a406"
+    },
+    {
+      "id": "defines:file:tests/test_carried_caveats.py->symbol:tests/test_carried_caveats.py#function:test_caveat1_the_take_back_finds_the_summary_after_two_tenants_bind_the_id.append:",
+      "type": "defines",
+      "source": "file:tests/test_carried_caveats.py",
+      "target": "symbol:tests/test_carried_caveats.py#function:test_caveat1_the_take_back_finds_the_summary_after_two_tenants_bind_the_id.append",
+      "line": 130,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_carried_caveats.py"
+      },
+      "contentHash": "5fe53f93d6ec9a2b289295492be80aa072ff463b4a380786dd99896e3d9b6d21"
+    },
+    {
+      "id": "defines:file:tests/test_carried_caveats.py->symbol:tests/test_carried_caveats.py#function:test_caveat1_the_write_lands_on_the_run_it_began_on_when_a_second_tenant_binds_the_id:",
+      "type": "defines",
+      "source": "file:tests/test_carried_caveats.py",
+      "target": "symbol:tests/test_carried_caveats.py#function:test_caveat1_the_write_lands_on_the_run_it_began_on_when_a_second_tenant_binds_the_id",
+      "line": 104,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_carried_caveats.py"
+      },
+      "contentHash": "501453ce3f30b39c9eee38cb67a8a36cd1c06409417344792b4a50240e2b1665"
+    },
+    {
+      "id": "defines:file:tests/test_carried_caveats.py->symbol:tests/test_carried_caveats.py#function:test_caveat1_the_write_lands_on_the_run_it_began_on_when_a_second_tenant_binds_the_id.append:",
+      "type": "defines",
+      "source": "file:tests/test_carried_caveats.py",
+      "target": "symbol:tests/test_carried_caveats.py#function:test_caveat1_the_write_lands_on_the_run_it_began_on_when_a_second_tenant_binds_the_id.append",
+      "line": 111,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_carried_caveats.py"
+      },
+      "contentHash": "48c17dac5aef4b7543629506d80ee90a44b18f544e051d75c8193d5005f565b4"
+    },
+    {
+      "id": "defines:file:tests/test_carried_caveats.py->symbol:tests/test_carried_caveats.py#function:test_caveat2_a_first_bound_read_adopts_it_too:",
+      "type": "defines",
+      "source": "file:tests/test_carried_caveats.py",
+      "target": "symbol:tests/test_carried_caveats.py#function:test_caveat2_a_first_bound_read_adopts_it_too",
+      "line": 160,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_carried_caveats.py"
+      },
+      "contentHash": "c1011a71b3b61035df61556bf80f6647a58e52dbc83fb791c3f56cb96c0e6f5d"
+    },
+    {
+      "id": "defines:file:tests/test_carried_caveats.py->symbol:tests/test_carried_caveats.py#function:test_caveat2_a_second_tenant_with_the_same_run_id_still_keeps_its_own_history:",
+      "type": "defines",
+      "source": "file:tests/test_carried_caveats.py",
+      "target": "symbol:tests/test_carried_caveats.py#function:test_caveat2_a_second_tenant_with_the_same_run_id_still_keeps_its_own_history",
+      "line": 168,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_carried_caveats.py"
+      },
+      "contentHash": "19d3b2d9504f78dd83a4283f006247a262280b3d8a544c35b8f59d226e8109e2"
+    },
+    {
+      "id": "defines:file:tests/test_carried_caveats.py->symbol:tests/test_carried_caveats.py#function:test_caveat2_the_first_binding_adopts_what_was_written_to_the_run_id_unbound:",
+      "type": "defines",
+      "source": "file:tests/test_carried_caveats.py",
+      "target": "symbol:tests/test_carried_caveats.py#function:test_caveat2_the_first_binding_adopts_what_was_written_to_the_run_id_unbound",
+      "line": 151,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_carried_caveats.py"
+      },
+      "contentHash": "ab4822e50ca3837ae4b1a24acdbc97da50183312eb30c70f5e33eab4935357d3"
+    },
+    {
+      "id": "defines:file:tests/test_carried_caveats.py->symbol:tests/test_carried_caveats.py#function:test_caveat3_declared_a_bound_combined_write_refuses_a_sink_for_another_run:",
+      "type": "defines",
+      "source": "file:tests/test_carried_caveats.py",
+      "target": "symbol:tests/test_carried_caveats.py#function:test_caveat3_declared_a_bound_combined_write_refuses_a_sink_for_another_run",
+      "line": 186,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_carried_caveats.py"
+      },
+      "contentHash": "abf78c8d541bcdd1b81a476073863f121e5e0592b12eab04a0935cf2dd17684a"
+    },
+    {
+      "id": "defines:file:tests/test_carried_caveats.py->symbol:tests/test_carried_caveats.py#function:test_caveat3_every_sink_the_runner_builds_names_its_own_run:",
+      "type": "defines",
+      "source": "file:tests/test_carried_caveats.py",
+      "target": "symbol:tests/test_carried_caveats.py#function:test_caveat3_every_sink_the_runner_builds_names_its_own_run",
+      "line": 228,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_carried_caveats.py"
+      },
+      "contentHash": "2fb1fd15e7744ccb5ba4d52d8416c9123a9614f9ee182763a838d2725fe32ea5"
+    },
+    {
+      "id": "defines:file:tests/test_carried_caveats.py->symbol:tests/test_carried_caveats.py#function:test_caveat3_every_sink_the_runner_builds_names_its_own_run.Recording.run:",
+      "type": "defines",
+      "source": "file:tests/test_carried_caveats.py",
+      "target": "symbol:tests/test_carried_caveats.py#function:test_caveat3_every_sink_the_runner_builds_names_its_own_run.Recording.run",
+      "line": 238,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_carried_caveats.py"
+      },
+      "contentHash": "d7b0760cbf311b1ac2d618fa8d6df10d3f123c72fa78cc084421894c30608bd7"
+    },
+    {
+      "id": "defines:file:tests/test_carried_caveats.py->symbol:tests/test_carried_caveats.py#function:test_caveat4_declared_on_postgres_a_failing_scopeless_sink_leaves_the_summary_without_its_event:",
+      "type": "defines",
+      "source": "file:tests/test_carried_caveats.py",
+      "target": "symbol:tests/test_carried_caveats.py#function:test_caveat4_declared_on_postgres_a_failing_scopeless_sink_leaves_the_summary_without_its_event",
+      "line": 270,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_carried_caveats.py"
+      },
+      "contentHash": "6a8984d39b19e716d3b3597bb5ad67296ced2dbaa1b63fa3bc98ba37a450dd58"
+    },
+    {
+      "id": "defines:file:tests/test_carried_caveats.py->symbol:tests/test_carried_caveats.py#function:test_caveat4_declared_on_postgres_a_failing_scopeless_sink_leaves_the_summary_without_its_event.Scopeless.emit:",
+      "type": "defines",
+      "source": "file:tests/test_carried_caveats.py",
+      "target": "symbol:tests/test_carried_caveats.py#function:test_caveat4_declared_on_postgres_a_failing_scopeless_sink_leaves_the_summary_without_its_event.Scopeless.emit",
+      "line": 272,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_carried_caveats.py"
+      },
+      "contentHash": "463328a9e2ee1f5183abe6009e2068b8952d7cd3672ae87d659e1b4f9371c745"
     },
     {
       "id": "defines:file:tests/test_carried_items.py->symbol:tests/test_carried_items.py#class:Model:",
@@ -96695,6 +97578,261 @@
         "source": "tests/test_builtin_tools.py"
       },
       "contentHash": "cb90ebbf976a267a30f369fb4cc6ff4d204cf708cc960a0ecf5266012ce62e18"
+    },
+    {
+      "id": "imports:file:tests/test_carried_caveats.py->file:agentsdk/__init__.py:agentsdk",
+      "type": "imports",
+      "source": "file:tests/test_carried_caveats.py",
+      "target": "file:agentsdk/__init__.py",
+      "specifier": "agentsdk",
+      "line": 23,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-imports",
+        "source": "tests/test_carried_caveats.py"
+      },
+      "contentHash": "12a887f2ffda0e50b4ffce3bba796644545a4319d1778e833973b66b41b7aeb1"
+    },
+    {
+      "id": "imports:file:tests/test_carried_caveats.py->file:agentsdk/config.py:agentsdk.config",
+      "type": "imports",
+      "source": "file:tests/test_carried_caveats.py",
+      "target": "file:agentsdk/config.py",
+      "specifier": "agentsdk.config",
+      "line": 24,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-imports",
+        "source": "tests/test_carried_caveats.py"
+      },
+      "contentHash": "e84ca448c3ffb7483bd7fc445accb0baffebbb7deb77265dc7ce02587396a40b"
+    },
+    {
+      "id": "imports:file:tests/test_carried_caveats.py->file:agentsdk/events.py:agentsdk.events",
+      "type": "imports",
+      "source": "file:tests/test_carried_caveats.py",
+      "target": "file:agentsdk/events.py",
+      "specifier": "agentsdk.events",
+      "line": 25,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-imports",
+        "source": "tests/test_carried_caveats.py"
+      },
+      "contentHash": "8ba805ae785885b74aaebcf055c24732879d6711acf061483450128123bad4a4"
+    },
+    {
+      "id": "imports:file:tests/test_carried_caveats.py->file:agentsdk/model.py:agentsdk.model",
+      "type": "imports",
+      "source": "file:tests/test_carried_caveats.py",
+      "target": "file:agentsdk/model.py",
+      "specifier": "agentsdk.model",
+      "line": 26,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-imports",
+        "source": "tests/test_carried_caveats.py"
+      },
+      "contentHash": "5472ef163746c32958fb1464a3cdf39a5157bb2326c8c3562def2c7fda0ec3e6"
+    },
+    {
+      "id": "imports:file:tests/test_carried_caveats.py->file:agentsdk/orchestrator.py:agentsdk.orchestrator",
+      "type": "imports",
+      "source": "file:tests/test_carried_caveats.py",
+      "target": "file:agentsdk/orchestrator.py",
+      "specifier": "agentsdk.orchestrator",
+      "line": 232,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-imports",
+        "source": "tests/test_carried_caveats.py"
+      },
+      "contentHash": "de0fb4c0d7dcd135f3c29a9556d674b57a0edb178cb5501e606178fc1e4aaac0"
+    },
+    {
+      "id": "imports:file:tests/test_carried_caveats.py->file:agentsdk/postgres.py:agentsdk.postgres",
+      "type": "imports",
+      "source": "file:tests/test_carried_caveats.py",
+      "target": "file:agentsdk/postgres.py",
+      "specifier": "agentsdk.postgres",
+      "line": 27,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-imports",
+        "source": "tests/test_carried_caveats.py"
+      },
+      "contentHash": "8f986007562ddc6966a9bb37fa4513c552233fd9667f34fe8c2950da25c2c508"
+    },
+    {
+      "id": "imports:file:tests/test_carried_caveats.py->file:agentsdk/primitives.py:agentsdk.primitives",
+      "type": "imports",
+      "source": "file:tests/test_carried_caveats.py",
+      "target": "file:agentsdk/primitives.py",
+      "specifier": "agentsdk.primitives",
+      "line": 28,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-imports",
+        "source": "tests/test_carried_caveats.py"
+      },
+      "contentHash": "403ba8d6a47812af73d3fbd655619b09344f592a8025e80b3ceadf0720a397d1"
+    },
+    {
+      "id": "imports:file:tests/test_carried_caveats.py->file:agentsdk/registry.py:agentsdk.registry",
+      "type": "imports",
+      "source": "file:tests/test_carried_caveats.py",
+      "target": "file:agentsdk/registry.py",
+      "specifier": "agentsdk.registry",
+      "line": 219,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-imports",
+        "source": "tests/test_carried_caveats.py"
+      },
+      "contentHash": "11b3f32b239402591d03129f6b12bafa12fa7451cea7d1628c2bba0888394e5c"
+    },
+    {
+      "id": "imports:file:tests/test_carried_caveats.py->file:agentsdk/session.py:agentsdk.session",
+      "type": "imports",
+      "source": "file:tests/test_carried_caveats.py",
+      "target": "file:agentsdk/session.py",
+      "specifier": "agentsdk.session",
+      "line": 29,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-imports",
+        "source": "tests/test_carried_caveats.py"
+      },
+      "contentHash": "1e7f4e1635f66a7872c5306832617a1b5527cbc7bed4f9bf797b328d79d9cee7"
+    },
+    {
+      "id": "imports:file:tests/test_carried_caveats.py->file:agentsdk/subagents.py:agentsdk.subagents",
+      "type": "imports",
+      "source": "file:tests/test_carried_caveats.py",
+      "target": "file:agentsdk/subagents.py",
+      "specifier": "agentsdk.subagents",
+      "line": 233,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-imports",
+        "source": "tests/test_carried_caveats.py"
+      },
+      "contentHash": "426adb2da3676ec532672dd57b45a6095c78e490f1f88f306758bea2d114d66f"
+    },
+    {
+      "id": "imports:file:tests/test_carried_caveats.py->package:pypi:psycopg:psycopg",
+      "type": "imports",
+      "source": "file:tests/test_carried_caveats.py",
+      "target": "package:pypi:psycopg",
+      "specifier": "psycopg",
+      "line": 19,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-imports",
+        "source": "tests/test_carried_caveats.py"
+      },
+      "contentHash": "c8b48a731f9624770a78452349a501798ca5b4b2ac203083bbe7af6bcf78295e"
+    },
+    {
+      "id": "imports:file:tests/test_carried_caveats.py->package:pypi:pytest:pytest",
+      "type": "imports",
+      "source": "file:tests/test_carried_caveats.py",
+      "target": "package:pypi:pytest",
+      "specifier": "pytest",
+      "line": 20,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-imports",
+        "source": "tests/test_carried_caveats.py"
+      },
+      "contentHash": "71a32f78ddc0ac4c0546b7c94287ef2f558b288155d64a168c976316bc0687ee"
+    },
+    {
+      "id": "imports:file:tests/test_carried_caveats.py->runtime:python:__future__:__future__",
+      "type": "imports",
+      "source": "file:tests/test_carried_caveats.py",
+      "target": "runtime:python:__future__",
+      "specifier": "__future__",
+      "line": 12,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-imports",
+        "source": "tests/test_carried_caveats.py"
+      },
+      "contentHash": "42da83848d3f645a629313ae99437ce7b0f56100f503999510283b234fd233e3"
+    },
+    {
+      "id": "imports:file:tests/test_carried_caveats.py->runtime:python:asyncio:asyncio",
+      "type": "imports",
+      "source": "file:tests/test_carried_caveats.py",
+      "target": "runtime:python:asyncio",
+      "specifier": "asyncio",
+      "line": 14,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-imports",
+        "source": "tests/test_carried_caveats.py"
+      },
+      "contentHash": "b7e08a11ca872f423d3f315d31960daa0e8d618183c3ae0255b182813c8ef489"
+    },
+    {
+      "id": "imports:file:tests/test_carried_caveats.py->runtime:python:decimal:decimal",
+      "type": "imports",
+      "source": "file:tests/test_carried_caveats.py",
+      "target": "runtime:python:decimal",
+      "specifier": "decimal",
+      "line": 17,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-imports",
+        "source": "tests/test_carried_caveats.py"
+      },
+      "contentHash": "56fcd972db585cc73b4b0ce2ad70a90d7cc5b090fa31d3a0cfc8ad8080d0b237"
+    },
+    {
+      "id": "imports:file:tests/test_carried_caveats.py->runtime:python:os:os",
+      "type": "imports",
+      "source": "file:tests/test_carried_caveats.py",
+      "target": "runtime:python:os",
+      "specifier": "os",
+      "line": 15,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-imports",
+        "source": "tests/test_carried_caveats.py"
+      },
+      "contentHash": "9778c232d02dd323c3cf65b318296a4838ab21f8a5bdb82159d75c18f59725f1"
+    },
+    {
+      "id": "imports:file:tests/test_carried_caveats.py->runtime:python:uuid:uuid",
+      "type": "imports",
+      "source": "file:tests/test_carried_caveats.py",
+      "target": "runtime:python:uuid",
+      "specifier": "uuid",
+      "line": 16,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-imports",
+        "source": "tests/test_carried_caveats.py"
+      },
+      "contentHash": "9ad696581f43e9be4008bc51ce8ac31ada9fb5a35ba3f6ed327b689f1db432b7"
     },
     {
       "id": "imports:file:tests/test_carried_items.py->file:agentsdk/__init__.py:agentsdk",

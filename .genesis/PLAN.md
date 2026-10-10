@@ -4,7 +4,7 @@
 
 - workflow: new-product
 - phase: build
-- plan approval: siva-rgb (owner) at 2026-10-10T07:01:18.936Z
+- plan approval: siva-rgb (owner) at 2026-10-10T11:50:29.611Z
 
 ## Tasks
 
@@ -190,6 +190,14 @@
 - requirements: FR-87, FR-88, AC-70
 - scope: not bounded
 - gates: unit: .venv\Scripts\python.exe -m pytest tests/test_carried_items.py -q, regression: .venv\Scripts\python.exe -m pytest -q, independent-review: pass
+- next: Run the task pre-flight.
+
+### M21a-carried-caveats — An in-memory combined write files a run under one key, the first binding adopts the run id's unbound history, and the sink and Postgres take-back limits are declared with tests
+
+- state/risk: done / medium
+- requirements: FR-97, AC-75
+- scope: not bounded
+- gates: unit: .venv\Scripts\python.exe -m pytest tests/test_carried_caveats.py -q, regression: .venv\Scripts\python.exe -m pytest -q, independent-review: pass
 - next: Run the task pre-flight.
 
 ### M22-source-versions — Every fetch records an immutable source version and the tenant-scoped resource cache serves fresh versions within their reach, copying across tenancy rather than sharing

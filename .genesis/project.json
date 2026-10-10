@@ -9,7 +9,7 @@
     "non_goals": [],
     "trust_boundary": "local repository",
     "created_at": "2026-09-05T14:48:57.894Z",
-    "updated_at": "2026-10-10T10:56:00.077Z"
+    "updated_at": "2026-10-10T13:05:02.121Z"
   },
   "policy": {
     "ponytail": "full",
@@ -34,8 +34,8 @@
     "type": "new-product",
     "started_at": "2026-09-05T14:48:57.897Z",
     "spec_check": {
-      "at": "2026-10-10T06:56:54.145Z",
-      "source_hash": "3eb22aa828ba06ac2ba6d0af9cac97bf39cceaaf95f4907ac54e97f17cc44a4b",
+      "at": "2026-10-10T11:50:19.878Z",
+      "source_hash": "247860d5a6f71ca4027e10c876371e9e3928a4fec0158db24e9604d62735c3c1",
       "requirements": [
         "AC-1",
         "AC-10",
@@ -109,6 +109,7 @@
         "AC-72",
         "AC-73",
         "AC-74",
+        "AC-75",
         "AC-8",
         "AC-9",
         "FR-1",
@@ -207,6 +208,7 @@
         "FR-94",
         "FR-95",
         "FR-96",
+        "FR-97",
         "NFR-1",
         "NFR-10",
         "NFR-11",
@@ -236,14 +238,14 @@
       ]
     },
     "plan_check": {
-      "at": "2026-10-10T07:01:18.801Z",
-      "source_hash": "5b0d598afced0d7c39fe26ca43ee702c82a38e0418de7746949f3b527377e116"
+      "at": "2026-10-10T11:50:29.416Z",
+      "source_hash": "e620682b4cf585c1aa0bf9399b9e19eb6ae3040f81e84d51da8ce684f901c420"
     },
     "plan_approval": {
       "human": "siva-rgb (owner)",
-      "reason": "Owner instruction 2026-10-10: Phase 3 increment 1 planned as M21 to M24 (P3-D12, DECISION-10494890)",
-      "at": "2026-10-10T07:01:18.936Z",
-      "source_hash": "5b0d598afced0d7c39fe26ca43ee702c82a38e0418de7746949f3b527377e116"
+      "reason": "M21a added ahead of M22 for the four M21 caveats (DECISION-23ae5809)",
+      "at": "2026-10-10T11:50:29.611Z",
+      "source_hash": "e620682b4cf585c1aa0bf9399b9e19eb6ae3040f81e84d51da8ce684f901c420"
     }
   },
   "artifacts": [
@@ -325,6 +327,7 @@
         "AC-72",
         "AC-73",
         "AC-74",
+        "AC-75",
         "AC-8",
         "AC-9",
         "FR-1",
@@ -423,6 +426,7 @@
         "FR-94",
         "FR-95",
         "FR-96",
+        "FR-97",
         "NFR-1",
         "NFR-10",
         "NFR-11",
@@ -450,12 +454,12 @@
         "NFR-8",
         "NFR-9"
       ],
-      "source_hash": "3eb22aa828ba06ac2ba6d0af9cac97bf39cceaaf95f4907ac54e97f17cc44a4b",
+      "source_hash": "247860d5a6f71ca4027e10c876371e9e3928a4fec0158db24e9604d62735c3c1",
       "approval": {
         "human": "siva-rgb (owner)",
-        "reason": "Owner approved 2026-10-10: Phase 3 increment 1, FR-87 to FR-96, NFR-24 to NFR-26 and AC-70 to AC-74, from P3-D1 to P3-D12 (DECISION-39f28e48, DECISION-423f3e23) and the reviewed draft's choices (DECISION-10494890)",
-        "at": "2026-10-10T07:01:17.930Z",
-        "source_hash": "3eb22aa828ba06ac2ba6d0af9cac97bf39cceaaf95f4907ac54e97f17cc44a4b"
+        "reason": "FR-97 and AC-75 added for M21a, the four M21 caveats settled before M22 (DECISION-23ae5809)",
+        "at": "2026-10-10T11:50:20.099Z",
+        "source_hash": "247860d5a6f71ca4027e10c876371e9e3928a4fec0158db24e9604d62735c3c1"
       }
     }
   ],
@@ -1390,6 +1394,14 @@
       "status": "accepted",
       "source": null,
       "recorded_at": "2026-10-10T09:48:46.487Z"
+    },
+    {
+      "id": "DECISION-23ae5809",
+      "title": "M21a: the four M21 caveats repaired or declared before M22 (owner)",
+      "text": "Owner decisions 2026-10-10, before M22's pre-flight, on the four caveats carried by KNOWLEDGE-8e29cfe3. (1) Repaired: InMemorySessionStore.append_with_event derives the run's key once and the write and the take-back both act on that key, so an unbound combined write racing a run's first bound write cannot file the run id under two keys; rejected: declaring it. (2) Repaired: the first tenant and project to bind a run id adopt the history written to that id unbound before it, as HEAD before M21 merged them; a second tenant binding the same id still gets a history of its own and unbound reads across two tenants are still refused; rejected: declaring the loud refusal. (3) Declared, with proof of unreachability: inside a bound combined write a sink that writes a different run is refused, as FR-87 requires; the Runner always passes the run's own sink, so a test asserts every sink the Runner builds (top-level runs, subagents, orchestrator children) names its own run; rejected: two writes for a foreign sink, which would weaken the F2 repair. (4) Kept declared (M20a): on Postgres a scope-less custom sink whose emit fails leaves the summary without its event; rejected: emitting inside the transaction (holds the run's messages lock across custom code, which hangs if that sink writes the same run) and a compensating delete (breaks FR-9's insert-only store); a test asserts the declared behaviour. Governance: the owner chose a separate task, M21a, ahead of M22. Genesis cannot reopen the plan while a task is active and has no command to clear the active task, so the owner approved one manual edit of .genesis/project.json: M22's active pointer cleared and M22 returned to queued, and after task add, M21a moved ahead of M22 in the task list so plan approval activates it first. Nothing else in the state file is edited by hand.",
+      "status": "accepted",
+      "source": null,
+      "recorded_at": "2026-10-10T11:49:52.156Z"
     }
   ],
   "knowledge": [
@@ -2224,6 +2236,14 @@
       "source": null,
       "tags": [],
       "recorded_at": "2026-10-10T10:55:59.508Z"
+    },
+    {
+      "id": "KNOWLEDGE-bbd190e1",
+      "title": "M21a round 1 approved; three wording and reach caveats carried to M22's pre-flight",
+      "text": "Approved by Opus 5 on source hash 8ade0977, the gates recomputed by the reviewer (regression 1675 passed in 279.87s, observed 12:38:24Z, now the recorded evidence); author mutation run 9 of 9. The reviewer reproduced caveat 2 on the repaired tree (adoption, a second tenant keeping its own history, the ambiguous unbound read still refused), ran 2800 contended attempts at a 1 microsecond switch interval checking the _runs and _by_run invariant after each, with adopters split 141 to 259 and the declared refusal hit, and showed the switch-interval trap on this repair (54 violations at 1 microsecond against the take-back mutant, 0 at 5 ms). Caveat 3 verified by instrumenting AgentLoop.__init__ (4 loops built, 4 seen, scopes agreeing). The manual project.json edit was audited as limited to DECISION-23ae5809. Carried to M22's pre-flight, not repaired: (C1) the README row for caveat 4 says a custom sink that names no scope, but Postgres takes the two-write path for any sink lacking write and stored, including one naming this run correctly; the postgres.py docstring is accurate, the README row narrower; (C2) an unbound in-memory combined write compares only the run id against a scoped sink, so with adoption the summary can land in one tenant's history while the event goes to the sink's tenant, reachable only by code driving AgentLoop directly; (C4) AC-75 says an unbound append before a Runner's first write, which the API cannot deliver because _open draws the run id from uuid4; the gate models it with store.bind(scope).append, which is what api.py hands the loop, verified equivalent by the reviewer.",
+      "source": null,
+      "tags": [],
+      "recorded_at": "2026-10-10T13:05:01.794Z"
     }
   ],
   "tasks": [
@@ -2246,9 +2266,9 @@
           "status": "pass",
           "evidence": {
             "human": "siva-rgb (owner)",
-            "reason": "Owner approved 2026-10-10: Phase 3 increment 1, FR-87 to FR-96, NFR-24 to NFR-26 and AC-70 to AC-74, from P3-D1 to P3-D12 (DECISION-39f28e48, DECISION-423f3e23) and the reviewed draft's choices (DECISION-10494890)",
-            "source_hash": "4b26f61f8bd71de905166dbe5e7357af0af0dbaf5b911e3c68fe0e4c3a96fb10",
-            "observed_at": "2026-10-10T07:01:17.930Z"
+            "reason": "FR-97 and AC-75 added for M21a, the four M21 caveats settled before M22 (DECISION-23ae5809)",
+            "source_hash": "4ae3487f8550af67bf986b6e17fcd88b8b5191986b7e51dcb3a25e41aed8f850",
+            "observed_at": "2026-10-10T11:50:20.099Z"
           }
         }
       ],
@@ -2258,7 +2278,7 @@
       "failures": [],
       "limitations": [],
       "created_at": "2026-09-05T14:48:57.897Z",
-      "updated_at": "2026-10-10T07:01:17.930Z"
+      "updated_at": "2026-10-10T11:50:20.099Z"
     },
     {
       "id": "M1-primitives",
@@ -3666,6 +3686,64 @@
       "updated_at": "2026-10-10T10:55:59.813Z"
     },
     {
+      "id": "M21a-carried-caveats",
+      "outcome": "An in-memory combined write files a run under one key, the first binding adopts the run id's unbound history, and the sink and Postgres take-back limits are declared with tests",
+      "state": "done",
+      "risk": "medium",
+      "owner": null,
+      "scope": [],
+      "dependencies": [],
+      "requirements": [
+        "FR-97",
+        "AC-75"
+      ],
+      "gates": [
+        {
+          "id": "unit",
+          "command": ".venv\\Scripts\\python.exe -m pytest tests/test_carried_caveats.py -q",
+          "mandatory": true,
+          "status": "pass",
+          "evidence": {
+            "path": ".genesis/evidence/M21a-carried-caveats-unit.json",
+            "source_hash": "8ade09770ea76d230226ebc3488139fd2ba718c16b6c3546ef3cc31fa4c2aed7",
+            "hash": "6180acaf20e10623ee1b90e47afa80834524a2909f7281fa140ae86b69f1ab30",
+            "observed_at": "2026-10-10T12:33:43.977Z"
+          }
+        },
+        {
+          "id": "regression",
+          "command": ".venv\\Scripts\\python.exe -m pytest -q",
+          "mandatory": true,
+          "status": "pass",
+          "evidence": {
+            "path": ".genesis/evidence/M21a-carried-caveats-regression.json",
+            "source_hash": "8ade09770ea76d230226ebc3488139fd2ba718c16b6c3546ef3cc31fa4c2aed7",
+            "hash": "48a5c5cbf6a0361877d7992bc43c4af4aacef46ca2488750b4225923c46ea204",
+            "observed_at": "2026-10-10T12:38:24.816Z"
+          }
+        },
+        {
+          "id": "independent-review",
+          "command": "",
+          "mandatory": true,
+          "status": "pass",
+          "evidence": {
+            "human": "Opus 5 (independent L4 reviewer, M21a round 1)",
+            "reason": "Re-derived FR-97 and AC-75 from SPEC.md and ran both gates myself: unit 10 passed, regression 1675 passed in 279.87s, exit 0, source hash 8ade0977 matching the live tree. Caveats 1 and 2 probed first-hand rather than accepted: 2800 contended attempts at a 1 microsecond switch interval over six races (two tenants binding one id, a bound read racing an unbound write, an adoption racing a take-back, unbound combined writes with recorded and with failing sinks racing the first bound write, and a combined write while two tenants bind) found no run id filed under two keys, no summary left without its event, and no disagreement between the two indexes, checked after every attempt. All fourteen deterministic interleavings, with a second tenant writing at each of the four seams of the combined write, also held. Nine mutants, each restored byte for byte with its SHA-256 verified in a finally: the gate file killed all nine, my probe killed four of the seven aimed at the store, and the same probe at the default 5 millisecond interval found nothing where it found 54 violations at a microsecond, so the negatives are measured. The two indexes cannot disagree because every mutation of both happens in one critical section and adoption replaces the unbound entry in place. Adoption on a read is sound: it creates nothing for an unwritten run, still returns a copy, and only decides which tenant adopts, which is the declared rule. The lock is a plain lock, never nested and never held across emit; a sink whose emit calls the store on the same thread, or waits on another thread that does, completes. Caveat 3 is faithful: instrumenting AgentLoop at the class saw exactly the four loops the test sees, there is one construction site, and a mutant that builds a foreign sink is detected. Caveat 4 is faithful and its test detects an inverted write order. The manual edit of project.json is exactly what DECISION-23ae5809 discloses and nothing more, re-derived with a structural diff. Three caveats, none blocking: the README row for caveat 4 names only a scope-less sink while a custom sink that names the run but has no write and stored takes the same two-write path; an unbound combined write compares only the run id against a scoped sink, so with adoption its summary can land in the history of whichever tenant binds the id first while the event goes to the sink it named, reachable only by code driving the loop with an unbound store; and a bound read now moves a key, a read with a side effect. Database and tree restored to the baseline.",
+            "source_hash": "8ade09770ea76d230226ebc3488139fd2ba718c16b6c3546ef3cc31fa4c2aed7",
+            "observed_at": "2026-10-10T12:43:35.468Z"
+          }
+        }
+      ],
+      "next_action": "Run the task pre-flight.",
+      "blocker": null,
+      "notes": [],
+      "failures": [],
+      "limitations": [],
+      "created_at": "2026-10-10T11:50:20.280Z",
+      "updated_at": "2026-10-10T13:05:01.943Z"
+    },
+    {
       "id": "M22-source-versions",
       "outcome": "Every fetch records an immutable source version and the tenant-scoped resource cache serves fresh versions within their reach, copying across tenancy rather than sharing",
       "state": "active",
@@ -4517,15 +4595,24 @@
       "human": "Fable 5.1 (independent L4 reviewer, M21 round 2)",
       "reason": "Round 2 verified first-hand on source hash 1c386e0f: unit 18 passed and regression 1665 passed from my own genesis gate run with --timeout 590000, the full suite also run directly with no cacheprovider (1665 passed), the live contentHash recomputed and equal to the evidence, no stray python. Round 1 defect: the round-1 shape (6 binders, 6 unbound appenders and readers, 1us switch interval) 0 of 10 attempts on the repair, and a mixed shape with bound and unbound appends, reads and take-backs racing on the same run ids 0 of 10; detectors: the scan restored outside the lock reproduced 8 of 8 at 1us and only 1 of 8 at the default 5ms (the author disclosure holds), 4 of 4 in the mixed shape; the index not kept detected 4 of 4; emit moved under the lock deadlocked the re-entrant probe within 10s; every mutant restored byte for byte and SHA-256 verified, no debris. Lock: one non-reentrant lock, never nested, never held across emit; a sink whose emit calls the store on the same thread, or on another thread and waits for it, completes; the take-back runs under the lock and releases it; the by_run index is written only in the one locked insert and nothing deletes, so it cannot drift from the dict, checked after every attempt. F1 and F2: 11 sink shapes bound and unbound in memory and 14 on Postgres; scope-less and PublishingSink shapes get both writes with the take-back kept; a foreign run, tenant or project is refused before anything is written; Postgres sequence numbers contiguous after. C6: Runner._open with persistence makes no row, no connection checkout and no started record; an unknown window, reasoning without max_output_tokens and an unpriced model under a USD ceiling are each refused at submission naming the role; a runnable role is not refused; a replan naming a role the first plan did not name is refused on both stores, version 2 never stored and no child spawned for it; carried nodes skipped correctly. C4 and C5 declarations faithful, the C5 qualifier checked without a policy. Regressions: 6 concurrent in-memory runs compacting under 4 unbound reader threads and a binder, 3 of 3 attempts clean with each history filed under its own tenant only; a handle consumer and a tool reading the store unbound while runs proceed, the binding None outside store calls; orchestrations with a replan completed on both stores with a whole Postgres record; the 5 example scripts holding unbound history reads ran offline with exit 0 and the 42 test call sites ran in the suite. Caveats, latent, not blockers: on the unbound path append_with_event derives the key twice, so an unbound combined write racing the first bound write of the same new run id can leave the message behind on a failed emit and double-index the id; an unbound append to a Runner run id before the Runner first writes splits the id so later unbound reads are refused (171 of 200 in a race) where HEAD merged them; both need a caller writing into a Runner-bound run from outside, which no product path or call site does. The binding stays set during sink.emit inside a bound combined write, so a sink that itself writes another run to the same store on that thread is refused; no shipped sink touches the session store. All rows removed by recorded run ids; the store is at its baseline.",
       "revision": null
+    },
+    {
+      "id": "e193a1f2-674d-4bed-aa78-fe3362c5dcab",
+      "at": "2026-10-10T12:43:35.468Z",
+      "action": "approve",
+      "task": "M21a-carried-caveats",
+      "human": "Opus 5 (independent L4 reviewer, M21a round 1)",
+      "reason": "Re-derived FR-97 and AC-75 from SPEC.md and ran both gates myself: unit 10 passed, regression 1675 passed in 279.87s, exit 0, source hash 8ade0977 matching the live tree. Caveats 1 and 2 probed first-hand rather than accepted: 2800 contended attempts at a 1 microsecond switch interval over six races (two tenants binding one id, a bound read racing an unbound write, an adoption racing a take-back, unbound combined writes with recorded and with failing sinks racing the first bound write, and a combined write while two tenants bind) found no run id filed under two keys, no summary left without its event, and no disagreement between the two indexes, checked after every attempt. All fourteen deterministic interleavings, with a second tenant writing at each of the four seams of the combined write, also held. Nine mutants, each restored byte for byte with its SHA-256 verified in a finally: the gate file killed all nine, my probe killed four of the seven aimed at the store, and the same probe at the default 5 millisecond interval found nothing where it found 54 violations at a microsecond, so the negatives are measured. The two indexes cannot disagree because every mutation of both happens in one critical section and adoption replaces the unbound entry in place. Adoption on a read is sound: it creates nothing for an unwritten run, still returns a copy, and only decides which tenant adopts, which is the declared rule. The lock is a plain lock, never nested and never held across emit; a sink whose emit calls the store on the same thread, or waits on another thread that does, completes. Caveat 3 is faithful: instrumenting AgentLoop at the class saw exactly the four loops the test sees, there is one construction site, and a mutant that builds a foreign sink is detected. Caveat 4 is faithful and its test detects an inverted write order. The manual edit of project.json is exactly what DECISION-23ae5809 discloses and nothing more, re-derived with a structural diff. Three caveats, none blocking: the README row for caveat 4 names only a scope-less sink while a custom sink that names the run but has no write and stored takes the same two-write path; an unbound combined write compares only the run id against a scoped sink, so with adoption its summary can land in the history of whichever tenant binds the id first while the event goes to the sink it named, reachable only by code driving the loop with an unbound store; and a bound read now moves a key, a read with a side effect. Database and tree restored to the baseline.",
+      "revision": null
     }
   ],
   "discovery": null,
   "checkpoint": {
-    "at": "2026-10-10T10:56:00.000Z",
+    "at": "2026-10-10T13:05:02.066Z",
     "revision": {
-      "commit": "c244f23e6f7b5d4d54a8edbccfd91d15dd47ea6f",
+      "commit": "de0de3793cb996f0394d33a0ae6431bc5714c50f",
       "dirty": true,
-      "source_hash": "1c386e0f8602d3e8fe28102e9abc8c58dd6250d2217805c6eb8b2ccf168b5be0"
+      "source_hash": "8ade09770ea76d230226ebc3488139fd2ba718c16b6c3546ef3cc31fa4c2aed7"
     },
     "active_task": "M22-source-versions",
     "next_action": "Run the task pre-flight."
