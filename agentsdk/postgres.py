@@ -450,15 +450,18 @@ class PostgresSessionStore:
         ContextCompacted. The messages lock, then the events lock: the one order any
         writer takes both in.
 
-        A sink that cannot write inside this transaction falls back to the two writes
-        in turn, as before M20a; that is a custom sink's limit, declared.
+        A sink that names no scope, or cannot write inside this transaction, gets the
+        two writes in turn, as before M20a; that is a custom sink's limit, declared. A
+        sink that names a scope must name this run, by tenant and project as well, or
+        it is refused before anything is written (FR-87, M21).
         """
         scope = self._bound(run_id)
-        if not (hasattr(sink, "write") and hasattr(sink, "stored")):
+        named = getattr(sink, "scope", None)
+        if named is not None and tuple(named) != (scope.tenant_id, scope.project_id, run_id):
+            raise ValueError("the event sink does not write to this run; message and event must be one run's")
+        if named is None or not (hasattr(sink, "write") and hasattr(sink, "stored")):
             self.append(run_id, message)
             return sink.emit(event_type, payload)
-        if getattr(sink, "scope", None) != (scope.tenant_id, scope.project_id, run_id):
-            raise ValueError("the event sink does not write to this run; message and event must be one run's")
         with _checkout(self._dsn) as conn:
             with conn.transaction():
                 _serialise_writers(conn, run_id, _LOCK_MESSAGES)

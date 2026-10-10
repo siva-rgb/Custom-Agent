@@ -131,11 +131,13 @@ class AgentSpec:
     # mean "everything"; an empty allowlist that opened the gates would fail
     # silently open, which is the wrong direction for a permission default.
     #
-    # Note the profile currently gates EXECUTION but not VISIBILITY: the model
-    # is still offered every registered tool's schema. That is deliberate for
-    # Phase 0 (it keeps AC-2's permission-denial path reachable) and belongs to
-    # ContextPolicy in Phase 2, which is the component that decides what an
-    # agent may see rather than what it may do.
+    # The profile gates EXECUTION, and under a ContextPolicy (M20, FR-77) also
+    # VISIBILITY: the agent is sent only its profile's tools. Without a policy the
+    # model is still offered every registered tool's schema, as in Phase 0, which
+    # keeps AC-2's permission-denial path reachable. Declared (M21, C5): a
+    # permission_policy below decides execution, but under a ContextPolicy what is
+    # sent is still the profile, so a tool the policy permits and the profile does
+    # not name is invisible and refused as an unknown tool.
     tool_profile: tuple[str, ...] = ()
     permission_policy: PermissionChecker | None = None
     # FR-27 / FR-28. None leaves the model client's own default in place. A
@@ -748,7 +750,7 @@ class Runner:
         policy = config.context_policy
         registry = self._registry if policy is None else policy.visible(self._registry, spec.tool_profile)
         window = self._context_window(config, recorded_model)
-        sessions = self._sessions
+        sessions = self._sessions_for(scope)
         if self._persistence is not None:
             sessions = self._persistence.session_store_for(scope)
             # FR-11: exactly one manifest row, written at start -- in the same
@@ -944,10 +946,17 @@ class Runner:
         Not application API: `SubagentPool` uses it to find out what a child took in
         through its own tools, which decides the provenance its answer carries (FR-70).
         """
-        store = (
-            self._persistence.session_store_for(scope) if self._persistence is not None else self._sessions
-        )
-        return list(store.history(scope.run_id))
+        return list(self._sessions_for(scope).history(scope.run_id))
+
+    def _sessions_for(self, scope: RunScope) -> Any:
+        """The session store bound to one run. FR-87 (M21): the in-memory store is
+        bound as the Postgres one is, so it knows the run's tenant and project; a
+        caller's own store, which the Runner cannot bind, is used as it was given."""
+        if self._persistence is not None:
+            return self._persistence.session_store_for(scope)
+        if isinstance(self._sessions, InMemorySessionStore):
+            return self._sessions.bind(scope)
+        return self._sessions
 
     def _limits_for(self, config: RunConfig) -> SchedulerLimits:
         """The limits a run executes under (FR-43): its own per-run and per-tool

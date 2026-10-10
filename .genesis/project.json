@@ -9,7 +9,7 @@
     "non_goals": [],
     "trust_boundary": "local repository",
     "created_at": "2026-09-05T14:48:57.894Z",
-    "updated_at": "2026-10-10T07:01:19.112Z"
+    "updated_at": "2026-10-10T10:56:00.077Z"
   },
   "policy": {
     "ponytail": "full",
@@ -25,7 +25,7 @@
   "lifecycle": {
     "phase": "build",
     "status": "active",
-    "active_task": "M21-carried-items",
+    "active_task": "M22-source-versions",
     "blocker": null,
     "next_action": "Run the task pre-flight."
   },
@@ -1374,6 +1374,22 @@
       "status": "accepted",
       "source": null,
       "recorded_at": "2026-10-10T07:01:17.802Z"
+    },
+    {
+      "id": "DECISION-153046de",
+      "title": "M21: F1 and F2 repaired first; C4 and C5 declared, C6 repaired at plan submission (FR-88)",
+      "text": "Owner, 2026-10-10. F1 and F2 were repaired before the rest of M21, as FR-87: a sink naming no scope gets the two writes it got before M20a on both stores; a sink naming a scope must name the run's tenant, project and run id; the Runner binds its in-memory session store per run, keying history by tenant, project and run id, through a context variable so every write still goes through InMemorySessionStore's own public methods (a first version that wrote past append broke three approved tests that patch it, and was replaced); unbound reads by run id keep working. Baseline before M21: 1647 passed on f19dc611, the code unchanged since M20a's gate. FR-88: C4 declared -- the manifest records configuration, written in one piece at run start (FR-11), so tools_sent means the tools the run's agent is sent, stated in the README limits and the manifest docstring and asserted by a test; repair (writing it with the first request) was rejected because the manifest would stop being written at start. C5 declared -- an AgentSpec may carry its own permission_policy; under a ContextPolicy the agent is still sent only its tool_profile's tools, so a tool the policy permits but the profile does not name is invisible and refused ToolNotFound; stated and tested; a checker able to list what it permits comes with Phase 4's policy engine, and a per-tool query was rejected because an argument-dependent checker cannot answer it. C6 repaired -- when run_plan receives a plan, every role a node to be run names is checked against the Runner (its model resolves, its context window is known under the policy, its other configuration passes) before anything is adopted, stored or spawned; a role that cannot run ends the plan failed and unreplannable with the configuration error naming the role and model, and nothing is spent; reporting it as spawn_refused mid-run, or declaring it, were rejected.",
+      "status": "accepted",
+      "source": null,
+      "recorded_at": "2026-10-10T07:24:31.740Z"
+    },
+    {
+      "id": "DECISION-f12abafb",
+      "title": "M21 round 1 rejected: unbound in-memory calls raised under concurrency; a lock and a run index",
+      "text": "Round 1 (Sonnet 5) rejected M21: InMemorySessionStore._unbound iterated the store's dict with a bare comprehension while other threads added runs, so an unbound append or read raised 'dictionary changed size during iteration' -- 8 of 8 attempts in the reviewer's probe, 0 of 8 on HEAD c244f23 under the same load; a regression M21 introduced, mostly on the write path, contradicting FR-87's promise that an unbound caller keeps its behaviour; each unbound call was also an O(runs) scan. Everything else held, each negative with a mutant behind it: F1 and F2 across 14 sink shapes on both stores, C6 with no side effect and no false refusal, and C4 and C5 as declared. Repair: one lock over the store's dict and a new run id to keys index, so an unbound call finds its run without a scan; the take-back, append and history copy under the same lock, and no lock is held across a sink's emit. A list() copy alone was rejected because it keeps the scan. Test written first and failing on the round 1 code (1599 errors on its first attempt): six threads bind new runs while six make unbound appends and reads, eight attempts, nothing patched, with the thread switch interval at a microsecond -- the first mutation run showed that at the default 5 ms a restored scan could finish between switches and survive. Two mutants added; 13 of 13 killed. Round 2 rotation: Fable 5.1, falling back to Opus 5.",
+      "status": "accepted",
+      "source": null,
+      "recorded_at": "2026-10-10T09:48:46.487Z"
     }
   ],
   "knowledge": [
@@ -2200,6 +2216,14 @@
       "source": null,
       "tags": [],
       "recorded_at": "2026-10-10T06:57:12.736Z"
+    },
+    {
+      "id": "KNOWLEDGE-8e29cfe3",
+      "title": "M21 round 2 approved; four in-memory and sink caveats carried",
+      "text": "Approved 10:42:58Z by Fable 5.1 on source hash 1c386e0f: unit 18 passed, regression 1665 passed, the gate evidence recomputed by the reviewer; author mutation run 13 of 13. Round 1 (Sonnet 5) had rejected on unbound in-memory calls raising under concurrency (DECISION-f12abafb); the lock and run index repair held 0 of 8 at a 1 microsecond switch interval, with a control (the pre-repair scan restored) raising 8 of 8, and the reviewer showed its own detector caught the restored scan 8 of 8 at 1 microsecond but 1 of 8 at the default 5 ms. One non-reentrant lock, every acquisition a leaf, no lock held across a sink's emit, the run index written in one place with zero drift. Round 1's declared gaps were covered: Postgres-backed orchestration with a replan, the C6 replan refusal on Postgres, and all 47 unbound call sites (42 in the suite, 5 in scripts 02, 03, 04, 06 and 10, run offline). Carried, not repaired: (1) InMemorySessionStore.append_with_event derives the key twice on the unbound path, so an unbound combined write racing a run's first bound write can file the message under the bound key while the take-back searches the other, leaving the run id under two keys -- silent wrong state, reachable only by that race, which nothing performs; (2) an unbound append into a Runner's own run id before the Runner's first bound write files it under (None, None, run_id), and later unbound reads of that id are refused as existing in more than one tenant, where HEAD merged them -- loud, names the remedy, the reverse order works, and all 47 unbound call sites are reads; (3) inside a bound combined write, a sink that writes a different run is refused; (4) Postgres keeps no take-back for a failing scope-less sink, as declared. The owner may fold (1) and (2) into M22, which adds stores of its own.",
+      "source": null,
+      "tags": [],
+      "recorded_at": "2026-10-10T10:55:59.508Z"
     }
   ],
   "tasks": [
@@ -3585,7 +3609,7 @@
     {
       "id": "M21-carried-items",
       "outcome": "A scope-less sink works with the combined write as before M20a, a sink for another tenant, project or run is refused on both stores, and M20's C4 to C6 are each repaired or declared",
-      "state": "active",
+      "state": "done",
       "risk": "medium",
       "owner": null,
       "scope": [],
@@ -3600,22 +3624,37 @@
           "id": "unit",
           "command": ".venv\\Scripts\\python.exe -m pytest tests/test_carried_items.py -q",
           "mandatory": true,
-          "status": "pending",
-          "evidence": null
+          "status": "pass",
+          "evidence": {
+            "path": ".genesis/evidence/M21-carried-items-unit.json",
+            "source_hash": "1c386e0f8602d3e8fe28102e9abc8c58dd6250d2217805c6eb8b2ccf168b5be0",
+            "hash": "9c8cab4857bedfb497965ed3eddad37fb9fdb247144c16f55cac621cefd0ed69",
+            "observed_at": "2026-10-10T10:35:07.535Z"
+          }
         },
         {
           "id": "regression",
           "command": ".venv\\Scripts\\python.exe -m pytest -q",
           "mandatory": true,
-          "status": "pending",
-          "evidence": null
+          "status": "pass",
+          "evidence": {
+            "path": ".genesis/evidence/M21-carried-items-regression.json",
+            "source_hash": "1c386e0f8602d3e8fe28102e9abc8c58dd6250d2217805c6eb8b2ccf168b5be0",
+            "hash": "11d8d4aaf6de11ab423d053937fd5985c6cf0d4757d56985290365fdbe39fc8e",
+            "observed_at": "2026-10-10T10:41:07.518Z"
+          }
         },
         {
           "id": "independent-review",
           "command": "",
           "mandatory": true,
-          "status": "pending",
-          "evidence": null
+          "status": "pass",
+          "evidence": {
+            "human": "Fable 5.1 (independent L4 reviewer, M21 round 2)",
+            "reason": "Round 2 verified first-hand on source hash 1c386e0f: unit 18 passed and regression 1665 passed from my own genesis gate run with --timeout 590000, the full suite also run directly with no cacheprovider (1665 passed), the live contentHash recomputed and equal to the evidence, no stray python. Round 1 defect: the round-1 shape (6 binders, 6 unbound appenders and readers, 1us switch interval) 0 of 10 attempts on the repair, and a mixed shape with bound and unbound appends, reads and take-backs racing on the same run ids 0 of 10; detectors: the scan restored outside the lock reproduced 8 of 8 at 1us and only 1 of 8 at the default 5ms (the author disclosure holds), 4 of 4 in the mixed shape; the index not kept detected 4 of 4; emit moved under the lock deadlocked the re-entrant probe within 10s; every mutant restored byte for byte and SHA-256 verified, no debris. Lock: one non-reentrant lock, never nested, never held across emit; a sink whose emit calls the store on the same thread, or on another thread and waits for it, completes; the take-back runs under the lock and releases it; the by_run index is written only in the one locked insert and nothing deletes, so it cannot drift from the dict, checked after every attempt. F1 and F2: 11 sink shapes bound and unbound in memory and 14 on Postgres; scope-less and PublishingSink shapes get both writes with the take-back kept; a foreign run, tenant or project is refused before anything is written; Postgres sequence numbers contiguous after. C6: Runner._open with persistence makes no row, no connection checkout and no started record; an unknown window, reasoning without max_output_tokens and an unpriced model under a USD ceiling are each refused at submission naming the role; a runnable role is not refused; a replan naming a role the first plan did not name is refused on both stores, version 2 never stored and no child spawned for it; carried nodes skipped correctly. C4 and C5 declarations faithful, the C5 qualifier checked without a policy. Regressions: 6 concurrent in-memory runs compacting under 4 unbound reader threads and a binder, 3 of 3 attempts clean with each history filed under its own tenant only; a handle consumer and a tool reading the store unbound while runs proceed, the binding None outside store calls; orchestrations with a replan completed on both stores with a whole Postgres record; the 5 example scripts holding unbound history reads ran offline with exit 0 and the 42 test call sites ran in the suite. Caveats, latent, not blockers: on the unbound path append_with_event derives the key twice, so an unbound combined write racing the first bound write of the same new run id can leave the message behind on a failed emit and double-index the id; an unbound append to a Runner run id before the Runner first writes splits the id so later unbound reads are refused (171 of 200 in a race) where HEAD merged them; both need a caller writing into a Runner-bound run from outside, which no product path or call site does. The binding stays set during sink.emit inside a bound combined write, so a sink that itself writes another run to the same store on that thread is refused; no shipped sink touches the session store. All rows removed by recorded run ids; the store is at its baseline.",
+            "source_hash": "1c386e0f8602d3e8fe28102e9abc8c58dd6250d2217805c6eb8b2ccf168b5be0",
+            "observed_at": "2026-10-10T10:42:58.369Z"
+          }
         }
       ],
       "next_action": "Run the task pre-flight.",
@@ -3624,12 +3663,12 @@
       "failures": [],
       "limitations": [],
       "created_at": "2026-10-10T07:01:18.204Z",
-      "updated_at": "2026-10-10T07:01:18.204Z"
+      "updated_at": "2026-10-10T10:55:59.813Z"
     },
     {
       "id": "M22-source-versions",
       "outcome": "Every fetch records an immutable source version and the tenant-scoped resource cache serves fresh versions within their reach, copying across tenancy rather than sharing",
-      "state": "queued",
+      "state": "active",
       "risk": "high",
       "owner": null,
       "scope": [],
@@ -4460,17 +4499,35 @@
       "human": "Fable 5.1 (independent L4 reviewer, M20a round 1)",
       "reason": "Re-derived FR-85, FR-86, AC-68, AC-69 from SPEC.md and read the diff against a576adc. Recomputed both gates: genesis gate --timeout 590000 gave unit 15 passed and regression 1647 passed on live source hash f19dc611, which I recomputed with the Genesis file walk after the run; the full suite also passed on its own, 1647 in 324s. All six attack items probed first-hand with scripts under SYN-m20ar1 tenants, every run removed by id, store back at baseline (10351 runs, 6 artifacts, 0 SYN, 19 example-tenant, 0 running). Item 1: on Postgres I failed the messages lock, the message insert before and after its row, the events lock, the event insert after its row, the COMMIT itself (backend terminated from another connection) and stored() after the commit; every case left no summary without its event and no event without its summary, run status failed with the store error, both sequences contiguous, the artifact untrusted and named by nothing; a runtime two-transaction mutant was detected. In memory, append and emit failures left neither. Item 2: 10 rounds of nine concurrent appenders, emitters and combined writers plus a run-row updater on one run, 900 messages and 900 events, 0 errors, contiguous; a deliberate opposite-order writer produced DeadlockDetected 5 of 5, so the probe can see a deadlock; append_with_event is the only SDK transaction taking two run locks, so no cycle exists. Item 3: 12 runs with parallel tool calls and 96 compactions, the handle stream equal to RunResult.events equal to the stored rows on both stores. Item 4: 530 compactions over 92 random schedules on both stores, the pair recomputed from the requests the model received plus the artifacts and the decider from the previous report, 0 mismatches; three mutants (a lying basis, an estimator off by one, the M20 shape) all caught. Item 5: custom store fallback on both stores with the declared gap shown; foreign-run and foreign-tenant sinks refused on Postgres; PublishingSink offers write and stored only over a sink that has both. Item 6: demo offline 6 of 6 and live 6 of 6, the live run read back from Postgres (two summaries, two events, contiguous, printed pair and decider equal to the stored payload) and removed by id. Readings (a) to (f) judged sound. Caveats, low, not blockers, for the next task: (C7) InMemorySessionStore.append_with_event does None[2] when the sink is a PublishingSink over a custom sink without scope, failing the run with a TypeError where Postgres falls back and M20 completed; reachable only through a custom persistence pairing an in-memory session store with a scopeless sink. (C8) the in-memory check compares only the run id, so a sink for another tenant with the same run id is accepted; Postgres and refuse_foreign_sink compare the whole triple; reachable only by direct misuse. (C9) a failed combined write also leaves the ModelCalled event with purpose compaction, a true record of a charged call, so the artifact is not literally the only leftover. (C10) a stored() failure after the commit leaves both rows and an in-process RunResult lacking the event; not reachable in practice. Enlarging compactions: 11 of 530, all when a constant large provider count decided on a tiny replaceable middle; surfacing it is sufficient, and a compaction that would replace nothing is skipped so no loop is possible.",
       "revision": null
+    },
+    {
+      "id": "48e8efde-4c37-4102-820f-3a759c3749a0",
+      "at": "2026-10-10T07:56:36.803Z",
+      "action": "reject",
+      "task": "M21-carried-items",
+      "human": "Sonnet 5 (independent L4 reviewer, M21 round 1)",
+      "reason": "One reachable regression in the in-memory binding seam. InMemorySessionStore._unbound iterates self._runs in a list comprehension (session.py) on every unbound append, history and append_with_event. Worker threads insert keys concurrently (setdefault in bound appends), so the iteration raises RuntimeError: dictionary changed size during iteration. Before M21 these calls were a single dict lookup and could not raise. Reproduced: a real Runner holding about 1300 finished runs, an unbound runner._sessions.history(run_id) polled while 300 other runs wrote: 4 of 15 attempts raised; 3000 runs: 6 of 15; 20000 runs: 7 of 10; 300 runs: 0 of 10. Unbound appends, the retained path for an application driving the loop itself: 8 threads, 2400 runs in the store, 7 of 10 attempts raised appends (0 of 13 on the pre-M21 session.py at the same sizes); each unbound call is also an O(runs) scan (12000 runs, 36000 appends, 8 to 17 s). Fix: keep a run_id to keys index under a lock, or snapshot with list(self._runs) which is atomic, and add a concurrent test. Everything else probed held: F1/F2 matrix on both stores (14 sink shapes, nothing written before any refusal, take-back kept, mutant that disables the check detected), 25 of 25 concurrent 16-run iterations keep per-tenant histories separate (unbound-key mutant detected), 15 of 15 nested orchestrator runs correct, C6 (no side effect in _open, nothing stored before refusal on Postgres, replan refused, unused bad role not refused, mutant detected), C4 and C5 declarations faithful. Caveats: the binding is visible inside the PublishingSink publish callback on the loop (copied context), benign today; gate on source hash 01e7b5ba re-run green, 1664 passed.",
+      "revision": null
+    },
+    {
+      "id": "9db54f91-0bc6-4272-ba7d-9a7f0d573631",
+      "at": "2026-10-10T10:42:58.369Z",
+      "action": "approve",
+      "task": "M21-carried-items",
+      "human": "Fable 5.1 (independent L4 reviewer, M21 round 2)",
+      "reason": "Round 2 verified first-hand on source hash 1c386e0f: unit 18 passed and regression 1665 passed from my own genesis gate run with --timeout 590000, the full suite also run directly with no cacheprovider (1665 passed), the live contentHash recomputed and equal to the evidence, no stray python. Round 1 defect: the round-1 shape (6 binders, 6 unbound appenders and readers, 1us switch interval) 0 of 10 attempts on the repair, and a mixed shape with bound and unbound appends, reads and take-backs racing on the same run ids 0 of 10; detectors: the scan restored outside the lock reproduced 8 of 8 at 1us and only 1 of 8 at the default 5ms (the author disclosure holds), 4 of 4 in the mixed shape; the index not kept detected 4 of 4; emit moved under the lock deadlocked the re-entrant probe within 10s; every mutant restored byte for byte and SHA-256 verified, no debris. Lock: one non-reentrant lock, never nested, never held across emit; a sink whose emit calls the store on the same thread, or on another thread and waits for it, completes; the take-back runs under the lock and releases it; the by_run index is written only in the one locked insert and nothing deletes, so it cannot drift from the dict, checked after every attempt. F1 and F2: 11 sink shapes bound and unbound in memory and 14 on Postgres; scope-less and PublishingSink shapes get both writes with the take-back kept; a foreign run, tenant or project is refused before anything is written; Postgres sequence numbers contiguous after. C6: Runner._open with persistence makes no row, no connection checkout and no started record; an unknown window, reasoning without max_output_tokens and an unpriced model under a USD ceiling are each refused at submission naming the role; a runnable role is not refused; a replan naming a role the first plan did not name is refused on both stores, version 2 never stored and no child spawned for it; carried nodes skipped correctly. C4 and C5 declarations faithful, the C5 qualifier checked without a policy. Regressions: 6 concurrent in-memory runs compacting under 4 unbound reader threads and a binder, 3 of 3 attempts clean with each history filed under its own tenant only; a handle consumer and a tool reading the store unbound while runs proceed, the binding None outside store calls; orchestrations with a replan completed on both stores with a whole Postgres record; the 5 example scripts holding unbound history reads ran offline with exit 0 and the 42 test call sites ran in the suite. Caveats, latent, not blockers: on the unbound path append_with_event derives the key twice, so an unbound combined write racing the first bound write of the same new run id can leave the message behind on a failed emit and double-index the id; an unbound append to a Runner run id before the Runner first writes splits the id so later unbound reads are refused (171 of 200 in a race) where HEAD merged them; both need a caller writing into a Runner-bound run from outside, which no product path or call site does. The binding stays set during sink.emit inside a bound combined write, so a sink that itself writes another run to the same store on that thread is refused; no shipped sink touches the session store. All rows removed by recorded run ids; the store is at its baseline.",
+      "revision": null
     }
   ],
   "discovery": null,
   "checkpoint": {
-    "at": "2026-10-10T07:01:19.060Z",
+    "at": "2026-10-10T10:56:00.000Z",
     "revision": {
-      "commit": "95b071bc2013aa6880cc5395e905e3b371bc3261",
+      "commit": "c244f23e6f7b5d4d54a8edbccfd91d15dd47ea6f",
       "dirty": true,
-      "source_hash": "4b26f61f8bd71de905166dbe5e7357af0af0dbaf5b911e3c68fe0e4c3a96fb10"
+      "source_hash": "1c386e0f8602d3e8fe28102e9abc8c58dd6250d2217805c6eb8b2ccf168b5be0"
     },
-    "active_task": "M21-carried-items",
+    "active_task": "M22-source-versions",
     "next_action": "Run the task pre-flight."
   },
   "legacy": null

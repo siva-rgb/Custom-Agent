@@ -192,6 +192,7 @@ class Orchestrator:
             parent_plan=None if previous is None else (previous.plan_id, previous.version),
         )
         carried = self._carried(run, plan)
+        self._refuse_unrunnable_roles(run, plan, carried, scope)
         governor.adopt(plan, carried=carried)
         states = scope._runner._run_states_for(scope.tenant_id, scope.project_id)
         await states.put_plan(plan)
@@ -219,6 +220,35 @@ class Orchestrator:
                 if statuses[node.node_id] == "done" and node.node_id not in carried:
                     run.done[node.node_id] = (plan.version, _node_document(node), node.side_effecting)
         return self._report(run, plan, scope, governor, statuses, reasons, labels)
+
+    def _refuse_unrunnable_roles(
+        self, run: _Run, plan: PlanVersion, carried: tuple[str, ...], scope: ToolScope
+    ) -> None:
+        """FR-88, C6 (M21): every role a node to be run names is checked against the
+        Runner -- its model resolves, its context window is known under this policy, a
+        USD ceiling can price it -- before anything is adopted, stored or spawned. A
+        role that cannot run is a configuration error, not a node's failure: the plan
+        ends failed and cannot be replanned, naming the role and why, and nothing is
+        spent. Before M21 it surfaced mid-run as a node_error at spawn. An unknown role
+        still fails its own node (unknown_role), as M19 built it."""
+        names = sorted({node.assigned_role for node in plan.nodes if node.node_id not in carried})
+        for name in names:
+            role = self._roles.get(name)
+            if role is None:
+                continue
+            config = RunConfig(
+                tenant_id=scope.tenant_id, project_id=scope.project_id,
+                context_policy=self.context_policy, budget_lease=scope._lease,
+            )
+            try:
+                scope._runner._open(role, config)
+            except Exception as exc:  # noqa: BLE001 - every configuration error alike
+                run.ended = (
+                    f"plan {plan.plan_id} version {plan.version} cannot run and cannot be replanned: "
+                    f"role {name!r} cannot run: {describe_exception(exc)}"
+                )
+                self._unresolved(scope, run.ended)
+                raise ValueError(run.ended) from None
 
     def _carried(self, run: _Run, plan: PlanVersion) -> tuple[str, ...]:
         """FR-75: the nodes of the new version that were done in any earlier version of

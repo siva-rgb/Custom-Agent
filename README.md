@@ -83,6 +83,8 @@ Stated plainly, because an SDK that overstates itself costs you a week:
 | Human approval workflows | Phase 4. The approval step exists and auto-allows |
 | Sandboxed tool execution | Phase 5 |
 | Pause and resume; durable interruptions (cancel is built) | Phase 6 |
+| The execution manifest's `tools_sent` records the tools a run's agent is sent, written at run start with the rest of its configuration, so a run that ends before its first request records a set it never sent | Declared (M21) |
+| Under a `ContextPolicy` an agent is sent its `tool_profile`'s tools even when its own `permission_policy` permits others; a call to one of those is refused as an unknown tool | Phase 4's policy engine, which can list what a checker permits |
 | Context compaction for a run without a `ContextPolicy`: a plain run still sends its full history every turn. A run carrying one, as every orchestrated run does since M20, compacts at 0.75 of its context window | Opt in with `RunConfig.context_policy` |
 | Budget enforcement (cost is measured and recorded, never limited); retention and partitioning of stored rows | Phase 2 / Phase 8 |
 | A second wire format (for example Anthropic's native Messages API) | Deferred by choice; the contract was checked against it |

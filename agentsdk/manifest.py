@@ -68,7 +68,10 @@ def build_manifest(
         "budget_policy": budget_policy,
         "budget_reservations": budget_reservations,
         "price_table_date": price_table_date,
-        # FR-77 (M20): the tools the run's requests carried, by name and schema hash,
+        # FR-77 (M20): the tools the run's agent is sent, by name and schema hash,
         # sorted by name so two runs that saw the same tools record the same value.
+        # Configuration, like every field here, written in one piece at run start
+        # (FR-11): a run that ends before its first request records the set it would
+        # have been sent (M21, C4, declared).
         "tools_sent": None if tools_sent is None else sorted(tools_sent, key=lambda t: t["name"]),
     }

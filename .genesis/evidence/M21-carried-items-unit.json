@@ -1,0 +1,22 @@
+{
+  "task": "M21-carried-items",
+  "gate": "unit",
+  "command": ".venv\\Scripts\\python.exe -m pytest tests/test_carried_items.py -q",
+  "started_at": "2026-10-10T10:34:39.170Z",
+  "observed_at": "2026-10-10T10:35:07.535Z",
+  "exit_code": 0,
+  "signal": null,
+  "stdout": "..................                                                       [100%]\r\n18 passed in 27.23s\r\n",
+  "stderr": "",
+  "revision": {
+    "commit": "c244f23e6f7b5d4d54a8edbccfd91d15dd47ea6f",
+    "dirty": true
+  },
+  "source_hash": "1c386e0f8602d3e8fe28102e9abc8c58dd6250d2217805c6eb8b2ccf168b5be0",
+  "environment": {
+    "node": "v20.10.0",
+    "platform": "win32",
+    "arch": "x64"
+  },
+  "hash": "9c8cab4857bedfb497965ed3eddad37fb9fdb247144c16f55cac621cefd0ed69"
+}

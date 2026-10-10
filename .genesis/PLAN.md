@@ -186,15 +186,15 @@
 
 ### M21-carried-items — A scope-less sink works with the combined write as before M20a, a sink for another tenant, project or run is refused on both stores, and M20's C4 to C6 are each repaired or declared
 
-- state/risk: active / medium
+- state/risk: done / medium
 - requirements: FR-87, FR-88, AC-70
 - scope: not bounded
-- gates: unit: .venv\Scripts\python.exe -m pytest tests/test_carried_items.py -q, regression: .venv\Scripts\python.exe -m pytest -q, independent-review: pending
+- gates: unit: .venv\Scripts\python.exe -m pytest tests/test_carried_items.py -q, regression: .venv\Scripts\python.exe -m pytest -q, independent-review: pass
 - next: Run the task pre-flight.
 
 ### M22-source-versions — Every fetch records an immutable source version and the tenant-scoped resource cache serves fresh versions within their reach, copying across tenancy rather than sharing
 
-- state/risk: queued / high
+- state/risk: active / high
 - requirements: FR-89, FR-90, FR-91, NFR-25, AC-71, AC-72
 - scope: not bounded
 - gates: unit: .venv\Scripts\python.exe -m pytest tests/test_sources.py -q, regression: .venv\Scripts\python.exe -m pytest -q, independent-review: pending
