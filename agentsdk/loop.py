@@ -407,6 +407,10 @@ class AgentLoop:
         if replaced is None:
             return None
         provenance = compactor.provenance(replaced, self._briefed_inputs)
+        # FR-85 (M20a): the deciding measure keeps its own basis; the before and after
+        # recorded beside it are both whole-request estimates, so they compare.
+        basis = compactor.basis()
+        before = compactor.whole(view, instructions, self._registry.schemas())
         request = compactor.request(replaced, model_settings)
         control.checkpoint()
         if self._budget is not None and not self._budget.may_call():
@@ -453,35 +457,42 @@ class AgentLoop:
         except Exception as exc:  # noqa: BLE001 - the run is told why it cannot go on
             return f"compaction_failed: the replaced turns could not be stored: {describe_exception(exc)}"
         message = compactor.message(summary)
-        await control.store(self._sessions.append, run_id, message)
         sources = compactor.sources(replaced)
         compactor.compacted(replaced, len(history), provenance, ref.uri)
-        after = compactor.estimate(compactor.view([*history, message]), instructions, self._registry.schemas())
-        await control.store(
-            self._events.emit,
-            EventType.CONTEXT_COMPACTED,
-            {
-                "compaction": compactor.count,
-                "turn": turn,
-                "artifact": ref.uri,
-                "content_hash": ref.content_hash,
-                "replaced_messages": len(replaced),
-                # Estimated by the measure that decided it: the provider's count for the
-                # last request plus what was added since, then the new view's estimate.
-                "tokens_before": tokens,
-                "tokens_after": after,
-                "context_window": compactor.window,
-                "compact_at": compactor.policy.compact_at,
-                "summary_call": {"turn": turn, "provider_response_id": response.provider_response_id},
-                "summary_provenance": {
-                    "origin": provenance.origin.value,
-                    "instruction_authority": provenance.instruction_authority.value,
-                    "trust_zone": provenance.trust_zone.value,
-                    "taint_flags": sorted(flag.value for flag in provenance.taint_flags),
-                },
-                "sources": sources,
+        after = compactor.whole(compactor.view([*history, message]), instructions, self._registry.schemas())
+        payload = {
+            "compaction": compactor.count,
+            "turn": turn,
+            "artifact": ref.uri,
+            "content_hash": ref.content_hash,
+            "replaced_messages": len(replaced),
+            # FR-85 (M20a): one basis for the pair -- the whole request's estimate
+            # from the view before and after -- and the number that decided it,
+            # named with its own basis, beside them.
+            "tokens_before": before,
+            "tokens_after": after,
+            "threshold_measure": tokens,
+            "threshold_basis": basis,
+            "context_window": compactor.window,
+            "compact_at": compactor.policy.compact_at,
+            "summary_call": {"turn": turn, "provider_response_id": response.provider_response_id},
+            "summary_provenance": {
+                "origin": provenance.origin.value,
+                "instruction_authority": provenance.instruction_authority.value,
+                "trust_zone": provenance.trust_zone.value,
+                "taint_flags": sorted(flag.value for flag in provenance.taint_flags),
             },
-        )
+            "sources": sources,
+        }
+        # FR-86 (M20a): the summary and the event that explains it, both or neither --
+        # one transaction on Postgres. A session store without the combined write makes
+        # the two writes in turn, as before M20a.
+        combined = getattr(self._sessions, "append_with_event", None)
+        if combined is not None:
+            await control.store(combined, run_id, message, self._events, EventType.CONTEXT_COMPACTED, payload)
+        else:
+            await control.store(self._sessions.append, run_id, message)
+            await control.store(self._events.emit, EventType.CONTEXT_COMPACTED, payload)
         return None
 
     async def _execute_tool_calls(

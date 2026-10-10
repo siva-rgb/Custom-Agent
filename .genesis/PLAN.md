@@ -4,7 +4,7 @@
 
 - workflow: new-product
 - phase: verify
-- plan approval: owner at 2026-10-07T05:19:05.540Z
+- plan approval: siva-rgb (owner) at 2026-10-09T17:49:59.979Z
 
 ## Tasks
 
@@ -174,5 +174,13 @@
 - requirements: FR-77, FR-78, AC-61, AC-62
 - scope: not bounded
 - gates: unit: .venv\Scripts\python.exe -m pytest tests/test_context_policy.py -q, regression: .venv\Scripts\python.exe -m pytest -q, independent-review: pass
+- next: Run the task pre-flight.
+
+### M20a-compaction-record — ContextCompacted records its token counts on one basis with the deciding measure named beside them, and a compaction's summary and its event are written together or not at all
+
+- state/risk: done / medium
+- requirements: FR-85, FR-86, AC-68, AC-69
+- scope: not bounded
+- gates: unit: .venv\Scripts\python.exe -m pytest tests/test_compaction_record.py -q, regression: .venv\Scripts\python.exe -m pytest -q, independent-review: pass
 - next: Run the task pre-flight.
 

@@ -521,7 +521,8 @@ async def test_a_single_large_result_is_caught_before_it_is_sent():
     result = await runner.run(agent, "go", config(context_policy=POLICY))
     [compacted] = compactions(result)
     assert compacted["turn"] == 4, compacted
-    assert compacted["tokens_before"] >= 750
+    # M20a (FR-85): the deciding number is threshold_measure, on its own basis.
+    assert compacted["threshold_measure"] >= 750 and compacted["threshold_basis"] == "reported_plus_estimate"
 
 
 async def test_the_reported_prompt_tokens_decide_when_the_text_alone_would_not():
@@ -533,7 +534,10 @@ async def test_the_reported_prompt_tokens_decide_when_the_text_alone_would_not()
     agent = AgentSpec(id="a", instructions="i", tool_profile=("clean",))
     result = await runner.run(agent, "go", config(context_policy=POLICY))
     [first, *_] = compactions(result)
-    assert first["turn"] == 4 and first["tokens_before"] >= 900
+    # M20a (FR-85): the deciding number is threshold_measure; tokens_before is the
+    # whole-request estimate, which here is far smaller than the provider's count.
+    assert first["turn"] == 4 and first["threshold_measure"] >= 900
+    assert first["threshold_basis"] == "reported_plus_estimate" and first["tokens_before"] < 900
 
 
 async def test_nothing_older_than_the_kept_turns_means_no_compaction_and_the_run_goes_on():

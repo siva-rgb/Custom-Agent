@@ -121,9 +121,22 @@ class ContextCompactor:
     # --- the threshold -------------------------------------------------------------------------
 
     def estimate(self, view: list[tuple[int, Message]], instructions: str | None, tools: list[Any]) -> int:
+        """The measure that decides a compaction: the provider's count for the last
+        request plus an estimate of what was added since, or the whole-request estimate
+        when no report applies (DECISION-468e2bfa). Its basis is `basis()`."""
         if self._reported is not None:
             tokens, sent = self._reported
             return tokens + sum(_chars(m) for _, m in view[sent:]) // 4
+        return self.whole(view, instructions, tools)
+
+    def basis(self) -> str:
+        """How `estimate` is measuring now (FR-85)."""
+        return "reported_plus_estimate" if self._reported is not None else "estimate"
+
+    @staticmethod
+    def whole(view: list[tuple[int, Message]], instructions: str | None, tools: list[Any]) -> int:
+        """The estimate of the whole request built from `view`, characters/4: the one
+        basis a compaction's before and after are both recorded on (FR-85)."""
         chars = len(instructions or "") + len(json.dumps(list(tools), default=str))
         return (chars + sum(_chars(m) for _, m in view)) // 4
 

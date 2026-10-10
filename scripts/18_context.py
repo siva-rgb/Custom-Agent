@@ -133,6 +133,7 @@ async def demonstrate(runner, watching, model, artifacts):
         print(f"ContextCompacted: turn {first['turn']}, {first['replaced_messages']} messages replaced, "
               f"about {first['tokens_before']} tokens before and {first['tokens_after']} after "
               f"(window {first['context_window']}, compacting at {first['compact_at']})")
+        print(f"  decided at {first['threshold_measure']} tokens, measured as {first['threshold_basis']}")
         print(f"  the replaced turns are artifact {first['artifact']}")
         print(f"  the summary's labels: {first['summary_provenance']}")
         artifact_id = first["artifact"].rsplit(":", 1)[-1]

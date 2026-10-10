@@ -174,6 +174,25 @@ class PublishingSink:
     def scope(self) -> Any:
         return getattr(self._sink, "scope", None)
 
+    def __getattr__(self, name: str) -> Any:
+        """M20a: `write` and `stored`, only when the wrapped sink has them, so a message
+        and its event can be written in one transaction; the event reaches the handle
+        once stored, as an emitted one does."""
+        if name == "write":
+            return self._sink.write
+        if name == "stored":
+            inner = self._sink.stored
+
+            def stored(event: RunEvent) -> None:
+                inner(event)
+                try:
+                    self._loop.call_soon_threadsafe(self._publish, event)
+                except RuntimeError:  # the loop has closed; nobody is left to stream to
+                    pass
+
+            return stored
+        raise AttributeError(name)
+
 
 class RunHandle:
     """A run under way (FR-48, FR-49, FR-50). Returned by `Runner.start`."""

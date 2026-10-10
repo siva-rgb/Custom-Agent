@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "project": "agent-sdk",
-  "revision": "bf7d0d5b5d53e5ef7d186efbb1de82ea4ae9452e",
-  "sourceHash": "6508e29d3b80aaa12ac1e8f47109c456fe423654e309ee98d60cbe9e37ba1418",
+  "revision": "a576adc9e3de30cba091a75579b1a7f1625bb0c6",
+  "sourceHash": "4f43d306d3a3bc647e7a8a2f6c4b4e90631e80faf9fffe588aee2fcffd15ff77",
   "provenance": {
     "tool": "genesis-graphizer",
     "method": "static-analysis",
@@ -85,7 +85,7 @@
         "extractor": "filesystem",
         "source": "agentsdk/compaction.py"
       },
-      "contentHash": "5af470b5404bad966064730e9f219c71ad188bb3e1c845eba8e0d3d6a0d5171d"
+      "contentHash": "31de8088bb145d4444763ea75916414ecd5e52256d44e85ab32ca6b812c210b8"
     },
     {
       "id": "file:agentsdk/config.py",
@@ -176,7 +176,7 @@
         "extractor": "filesystem",
         "source": "agentsdk/handle.py"
       },
-      "contentHash": "3bbc544b65798dbfbae6aea19355cf4d6782e538a1b15f9dcf31d96e51551d40"
+      "contentHash": "976008cd2db565a25bdee3fefc1f1d5c258e23662d0ecb00bc460ad3507ce0e1"
     },
     {
       "id": "file:agentsdk/hooks.py",
@@ -215,7 +215,7 @@
         "extractor": "filesystem",
         "source": "agentsdk/loop.py"
       },
-      "contentHash": "dee077ef54f633c4788c76cf0abd5b8183ed4a7c6a68a685834c30d7befa9f3d"
+      "contentHash": "896300d5af770bb9c47cfd812f818f9cd71ca4569f301cf8bda60207f2b8f973"
     },
     {
       "id": "file:agentsdk/manifest.py",
@@ -332,7 +332,7 @@
         "extractor": "filesystem",
         "source": "agentsdk/postgres.py"
       },
-      "contentHash": "6250638b681326b4f02101ffacaa6f76a31f3f65c5f555f5cbdc329f51f7d99c"
+      "contentHash": "0f8d410d075a32bb3f5183246ee06e38b89eb1d9abadd46f1146106371eb815c"
     },
     {
       "id": "file:agentsdk/prices.py",
@@ -436,7 +436,7 @@
         "extractor": "filesystem",
         "source": "agentsdk/session.py"
       },
-      "contentHash": "62ca8c6ca9f6bf131f746b5e85ec036f846dc56b8d3112934cd97b2ac0f976ab"
+      "contentHash": "269e4f60649a89a4e143379cce88d7ab923a9d730cd7dc3528e0275633446186"
     },
     {
       "id": "file:agentsdk/subagents.py",
@@ -878,7 +878,7 @@
         "extractor": "filesystem",
         "source": "scripts/18_context.py"
       },
-      "contentHash": "647e478eb2394427a5268e33469f106e0efd6e88557d97267f321b1c19d10fb9"
+      "contentHash": "d68854843d487b1d8e54510ab5cb1d172889561aafd01f77029da54b3f4955a5"
     },
     {
       "id": "file:tests/conftest.py",
@@ -959,6 +959,19 @@
       "contentHash": "419394890a16cde38cea3436c4b88b593d7bf1ed938ae897dc9acea562e41bd0"
     },
     {
+      "id": "file:tests/test_compaction_record.py",
+      "type": "file",
+      "label": "tests/test_compaction_record.py",
+      "path": "tests/test_compaction_record.py",
+      "language": "python",
+      "confidence": 1,
+      "provenance": {
+        "extractor": "filesystem",
+        "source": "tests/test_compaction_record.py"
+      },
+      "contentHash": "dca458d3e08393da10896946738d2f75f7692b68cd062ac855e540e3e4dc6ac2"
+    },
+    {
       "id": "file:tests/test_concurrency.py",
       "type": "file",
       "label": "tests/test_concurrency.py",
@@ -982,7 +995,7 @@
         "extractor": "filesystem",
         "source": "tests/test_context_policy.py"
       },
-      "contentHash": "cb13a17ab36746328c0990c14b1f5961d73ccb97bd4239bda3b01ba0c71d740c"
+      "contentHash": "42a491b6c490fb68f09fe39293555c6cd5ea8c7e3d6a118d066407f3d46a63d0"
     },
     {
       "id": "file:tests/test_distribution.py",
@@ -1897,6 +1910,18 @@
         "source": "agentsdk/telemetry.py"
       },
       "contentHash": "692cd6555901bc2b908d5526369c91e03dbb3f6898ff7948d2b51269f4d1c6c1"
+    },
+    {
+      "id": "runtime:python:random",
+      "type": "runtime",
+      "label": "random",
+      "language": "python",
+      "confidence": 1,
+      "provenance": {
+        "extractor": "standard-library",
+        "source": "tests/test_compaction_record.py"
+      },
+      "contentHash": "b29e818eeed4b48e562dbbd57d9e373fa69711299d0fdbf4dc8977526793b3d9"
     },
     {
       "id": "runtime:python:re",
@@ -5028,7 +5053,7 @@
       "name": "artifact",
       "qualifiedName": "ContextCompactor.artifact",
       "kind": "function",
-      "line": 196,
+      "line": 209,
       "label": "ContextCompactor.artifact",
       "path": "agentsdk/compaction.py",
       "confidence": 1,
@@ -5039,12 +5064,28 @@
       "contentHash": "2422ce8a060987bf803f234a42aaa70966cb7f7b612522782f71b52a2282b7c4"
     },
     {
+      "id": "symbol:agentsdk/compaction.py#function:ContextCompactor.basis",
+      "type": "symbol",
+      "name": "basis",
+      "qualifiedName": "ContextCompactor.basis",
+      "kind": "function",
+      "line": 132,
+      "label": "ContextCompactor.basis",
+      "path": "agentsdk/compaction.py",
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "agentsdk/compaction.py"
+      },
+      "contentHash": "e1fccb07a106d2d0d6db0c52b2b201eeadfb9e65c51e8c71ee1acd1597ac1d02"
+    },
+    {
       "id": "symbol:agentsdk/compaction.py#function:ContextCompactor.compacted",
       "type": "symbol",
       "name": "compacted",
       "qualifiedName": "ContextCompactor.compacted",
       "kind": "function",
-      "line": 209,
+      "line": 222,
       "label": "ContextCompactor.compacted",
       "path": "agentsdk/compaction.py",
       "confidence": 1,
@@ -5060,7 +5101,7 @@
       "name": "due",
       "qualifiedName": "ContextCompactor.due",
       "kind": "function",
-      "line": 135,
+      "line": 148,
       "label": "ContextCompactor.due",
       "path": "agentsdk/compaction.py",
       "confidence": 1,
@@ -5092,7 +5133,7 @@
       "name": "message",
       "qualifiedName": "ContextCompactor.message",
       "kind": "function",
-      "line": 201,
+      "line": 214,
       "label": "ContextCompactor.message",
       "path": "agentsdk/compaction.py",
       "confidence": 1,
@@ -5108,7 +5149,7 @@
       "name": "provenance",
       "qualifiedName": "ContextCompactor.provenance",
       "kind": "function",
-      "line": 156,
+      "line": 169,
       "label": "ContextCompactor.provenance",
       "path": "agentsdk/compaction.py",
       "confidence": 1,
@@ -5124,7 +5165,7 @@
       "name": "reported",
       "qualifiedName": "ContextCompactor.reported",
       "kind": "function",
-      "line": 130,
+      "line": 143,
       "label": "ContextCompactor.reported",
       "path": "agentsdk/compaction.py",
       "confidence": 1,
@@ -5140,7 +5181,7 @@
       "name": "request",
       "qualifiedName": "ContextCompactor.request",
       "kind": "function",
-      "line": 178,
+      "line": 191,
       "label": "ContextCompactor.request",
       "path": "agentsdk/compaction.py",
       "confidence": 1,
@@ -5156,7 +5197,7 @@
       "name": "sources",
       "qualifiedName": "ContextCompactor.sources",
       "kind": "function",
-      "line": 168,
+      "line": 181,
       "label": "ContextCompactor.sources",
       "path": "agentsdk/compaction.py",
       "confidence": 1,
@@ -5172,7 +5213,7 @@
       "name": "split",
       "qualifiedName": "ContextCompactor.split",
       "kind": "function",
-      "line": 140,
+      "line": 153,
       "label": "ContextCompactor.split",
       "path": "agentsdk/compaction.py",
       "confidence": 1,
@@ -5213,6 +5254,22 @@
         "source": "agentsdk/compaction.py"
       },
       "contentHash": "009c5a2ad7ad69c60231bede77e84d095b7b27e9224cc5c97b8ea12e0a62021b"
+    },
+    {
+      "id": "symbol:agentsdk/compaction.py#function:ContextCompactor.whole",
+      "type": "symbol",
+      "name": "whole",
+      "qualifiedName": "ContextCompactor.whole",
+      "kind": "function",
+      "line": 137,
+      "label": "ContextCompactor.whole",
+      "path": "agentsdk/compaction.py",
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "agentsdk/compaction.py"
+      },
+      "contentHash": "4799e2ec55f12f852becc9b0f9b8d739d5806fdde9902bc18d8e83d6df547274"
     },
     {
       "id": "symbol:agentsdk/config.py#class:Secret",
@@ -6644,7 +6701,7 @@
       "name": "RunHandle",
       "qualifiedName": "RunHandle",
       "kind": "class",
-      "line": 178,
+      "line": 197,
       "label": "RunHandle",
       "path": "agentsdk/handle.py",
       "confidence": 1,
@@ -6676,7 +6733,7 @@
       "name": "_resolve",
       "qualifiedName": "_resolve",
       "kind": "function",
-      "line": 289,
+      "line": 308,
       "label": "_resolve",
       "path": "agentsdk/handle.py",
       "confidence": 1,
@@ -6685,6 +6742,38 @@
         "source": "agentsdk/handle.py"
       },
       "contentHash": "63ee25ae5f88f437841178116a58b0f7a7a50f4a8d93487df634c71ddb3be94e"
+    },
+    {
+      "id": "symbol:agentsdk/handle.py#function:PublishingSink.__getattr__",
+      "type": "symbol",
+      "name": "__getattr__",
+      "qualifiedName": "PublishingSink.__getattr__",
+      "kind": "function",
+      "line": 177,
+      "label": "PublishingSink.__getattr__",
+      "path": "agentsdk/handle.py",
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "agentsdk/handle.py"
+      },
+      "contentHash": "02f166d07668330d3fe02eb5060a0be6f3f41dfb6e2f1a128d41b15640ffa960"
+    },
+    {
+      "id": "symbol:agentsdk/handle.py#function:PublishingSink.__getattr__.stored",
+      "type": "symbol",
+      "name": "stored",
+      "qualifiedName": "PublishingSink.__getattr__.stored",
+      "kind": "function",
+      "line": 186,
+      "label": "PublishingSink.__getattr__.stored",
+      "path": "agentsdk/handle.py",
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "agentsdk/handle.py"
+      },
+      "contentHash": "26c0d07a8eb9b56d36cf6576494ab8049cbfc4dec44a61d0aad6a87cb845d3b0"
     },
     {
       "id": "symbol:agentsdk/handle.py#function:PublishingSink.__init__",
@@ -6836,7 +6925,7 @@
       "name": "__init__",
       "qualifiedName": "RunHandle.__init__",
       "kind": "function",
-      "line": 181,
+      "line": 200,
       "label": "RunHandle.__init__",
       "path": "agentsdk/handle.py",
       "confidence": 1,
@@ -6852,7 +6941,7 @@
       "name": "_finished",
       "qualifiedName": "RunHandle._finished",
       "kind": "function",
-      "line": 258,
+      "line": 277,
       "label": "RunHandle._finished",
       "path": "agentsdk/handle.py",
       "confidence": 1,
@@ -6868,7 +6957,7 @@
       "name": "_publish",
       "qualifiedName": "RunHandle._publish",
       "kind": "function",
-      "line": 252,
+      "line": 271,
       "label": "RunHandle._publish",
       "path": "agentsdk/handle.py",
       "confidence": 1,
@@ -6884,7 +6973,7 @@
       "name": "_settled",
       "qualifiedName": "RunHandle._settled",
       "kind": "function",
-      "line": 240,
+      "line": 259,
       "label": "RunHandle._settled",
       "path": "agentsdk/handle.py",
       "confidence": 1,
@@ -6900,7 +6989,7 @@
       "name": "_stream",
       "qualifiedName": "RunHandle._stream",
       "kind": "function",
-      "line": 196,
+      "line": 215,
       "label": "RunHandle._stream",
       "path": "agentsdk/handle.py",
       "confidence": 1,
@@ -6916,7 +7005,7 @@
       "name": "_wake",
       "qualifiedName": "RunHandle._wake",
       "kind": "function",
-      "line": 262,
+      "line": 281,
       "label": "RunHandle._wake",
       "path": "agentsdk/handle.py",
       "confidence": 1,
@@ -6932,7 +7021,7 @@
       "name": "cancel",
       "qualifiedName": "RunHandle.cancel",
       "kind": "function",
-      "line": 231,
+      "line": 250,
       "label": "RunHandle.cancel",
       "path": "agentsdk/handle.py",
       "confidence": 1,
@@ -6948,7 +7037,7 @@
       "name": "events",
       "qualifiedName": "RunHandle.events",
       "kind": "function",
-      "line": 189,
+      "line": 208,
       "label": "RunHandle.events",
       "path": "agentsdk/handle.py",
       "confidence": 1,
@@ -6964,7 +7053,7 @@
       "name": "result",
       "qualifiedName": "RunHandle.result",
       "kind": "function",
-      "line": 214,
+      "line": 233,
       "label": "RunHandle.result",
       "path": "agentsdk/handle.py",
       "confidence": 1,
@@ -6980,7 +7069,7 @@
       "name": "state",
       "qualifiedName": "RunHandle.state",
       "kind": "function",
-      "line": 220,
+      "line": 239,
       "label": "RunHandle.state",
       "path": "agentsdk/handle.py",
       "confidence": 1,
@@ -7220,7 +7309,7 @@
       "name": "_cancel_and_wait",
       "qualifiedName": "_cancel_and_wait",
       "kind": "function",
-      "line": 680,
+      "line": 691,
       "label": "_cancel_and_wait",
       "path": "agentsdk/loop.py",
       "confidence": 1,
@@ -7236,7 +7325,7 @@
       "name": "_outcome",
       "qualifiedName": "_outcome",
       "kind": "function",
-      "line": 720,
+      "line": 731,
       "label": "_outcome",
       "path": "agentsdk/loop.py",
       "confidence": 1,
@@ -7252,7 +7341,7 @@
       "name": "_recordable",
       "qualifiedName": "_recordable",
       "kind": "function",
-      "line": 633,
+      "line": 644,
       "label": "_recordable",
       "path": "agentsdk/loop.py",
       "confidence": 1,
@@ -7268,7 +7357,7 @@
       "name": "_results",
       "qualifiedName": "_results",
       "kind": "function",
-      "line": 639,
+      "line": 650,
       "label": "_results",
       "path": "agentsdk/loop.py",
       "confidence": 1,
@@ -7284,7 +7373,7 @@
       "name": "_wait_all_or_cancel",
       "qualifiedName": "_wait_all_or_cancel",
       "kind": "function",
-      "line": 653,
+      "line": 664,
       "label": "_wait_all_or_cancel",
       "path": "agentsdk/loop.py",
       "confidence": 1,
@@ -7316,7 +7405,7 @@
       "name": "_batches",
       "qualifiedName": "AgentLoop._batches",
       "kind": "function",
-      "line": 518,
+      "line": 529,
       "label": "AgentLoop._batches",
       "path": "agentsdk/loop.py",
       "confidence": 1,
@@ -7348,7 +7437,7 @@
       "name": "_execute_tool_calls",
       "qualifiedName": "AgentLoop._execute_tool_calls",
       "kind": "function",
-      "line": 487,
+      "line": 498,
       "label": "AgentLoop._execute_tool_calls",
       "path": "agentsdk/loop.py",
       "confidence": 1,
@@ -7364,7 +7453,7 @@
       "name": "_is_concurrency_safe",
       "qualifiedName": "AgentLoop._is_concurrency_safe",
       "kind": "function",
-      "line": 540,
+      "line": 551,
       "label": "AgentLoop._is_concurrency_safe",
       "path": "agentsdk/loop.py",
       "confidence": 1,
@@ -7396,7 +7485,7 @@
       "name": "_price",
       "qualifiedName": "AgentLoop._price",
       "kind": "function",
-      "line": 591,
+      "line": 602,
       "label": "AgentLoop._price",
       "path": "agentsdk/loop.py",
       "confidence": 1,
@@ -7412,7 +7501,7 @@
       "name": "_run_batch",
       "qualifiedName": "AgentLoop._run_batch",
       "kind": "function",
-      "line": 548,
+      "line": 559,
       "label": "AgentLoop._run_batch",
       "path": "agentsdk/loop.py",
       "confidence": 1,
@@ -7476,7 +7565,7 @@
       "name": "schema_problem",
       "qualifiedName": "schema_problem",
       "kind": "function",
-      "line": 698,
+      "line": 709,
       "label": "schema_problem",
       "path": "agentsdk/loop.py",
       "confidence": 1,
@@ -7492,7 +7581,7 @@
       "name": "sent_model",
       "qualifiedName": "sent_model",
       "kind": "function",
-      "line": 614,
+      "line": 625,
       "label": "sent_model",
       "path": "agentsdk/loop.py",
       "confidence": 1,
@@ -9332,7 +9421,7 @@
       "name": "PostgresArtifactStore",
       "qualifiedName": "PostgresArtifactStore",
       "kind": "class",
-      "line": 1053,
+      "line": 1103,
       "label": "PostgresArtifactStore",
       "path": "agentsdk/postgres.py",
       "confidence": 1,
@@ -9348,7 +9437,7 @@
       "name": "PostgresEventStore",
       "qualifiedName": "PostgresEventStore",
       "kind": "class",
-      "line": 500,
+      "line": 538,
       "label": "PostgresEventStore",
       "path": "agentsdk/postgres.py",
       "confidence": 1,
@@ -9364,7 +9453,7 @@
       "name": "PostgresRunStateStore",
       "qualifiedName": "PostgresRunStateStore",
       "kind": "class",
-      "line": 1228,
+      "line": 1278,
       "label": "PostgresRunStateStore",
       "path": "agentsdk/postgres.py",
       "confidence": 1,
@@ -9380,7 +9469,7 @@
       "name": "PostgresRunStore",
       "qualifiedName": "PostgresRunStore",
       "kind": "class",
-      "line": 646,
+      "line": 696,
       "label": "PostgresRunStore",
       "path": "agentsdk/postgres.py",
       "confidence": 1,
@@ -9396,7 +9485,7 @@
       "name": "PostgresSessionStore",
       "qualifiedName": "PostgresSessionStore",
       "kind": "class",
-      "line": 366,
+      "line": 418,
       "label": "PostgresSessionStore",
       "path": "agentsdk/postgres.py",
       "confidence": 1,
@@ -9412,7 +9501,7 @@
       "name": "PostgresTrace",
       "qualifiedName": "PostgresTrace",
       "kind": "class",
-      "line": 949,
+      "line": 999,
       "label": "PostgresTrace",
       "path": "agentsdk/postgres.py",
       "confidence": 1,
@@ -9444,7 +9533,7 @@
       "name": "_artifact_from_row",
       "qualifiedName": "_artifact_from_row",
       "kind": "function",
-      "line": 1034,
+      "line": 1084,
       "label": "_artifact_from_row",
       "path": "agentsdk/postgres.py",
       "confidence": 1,
@@ -9471,12 +9560,28 @@
       "contentHash": "45dc9aac1253d706e294f038c21e3a82780441855929e022b78da8c43df7c30b"
     },
     {
+      "id": "symbol:agentsdk/postgres.py#function:_insert_message",
+      "type": "symbol",
+      "name": "_insert_message",
+      "qualifiedName": "_insert_message",
+      "kind": "function",
+      "line": 366,
+      "label": "_insert_message",
+      "path": "agentsdk/postgres.py",
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "agentsdk/postgres.py"
+      },
+      "contentHash": "39ad535d82e5df7e3c44b45376b2c2a1487debaac59fbb7b5bf1a1b895f25b1e"
+    },
+    {
       "id": "symbol:agentsdk/postgres.py#function:_json_safe",
       "type": "symbol",
       "name": "_json_safe",
       "qualifiedName": "_json_safe",
       "kind": "function",
-      "line": 619,
+      "line": 669,
       "label": "_json_safe",
       "path": "agentsdk/postgres.py",
       "confidence": 1,
@@ -9572,7 +9677,7 @@
       "name": "_serialise_writers",
       "qualifiedName": "_serialise_writers",
       "kind": "function",
-      "line": 470,
+      "line": 508,
       "label": "_serialise_writers",
       "path": "agentsdk/postgres.py",
       "confidence": 1,
@@ -9588,7 +9693,7 @@
       "name": "_write_then_honour_cancellation",
       "qualifiedName": "_write_then_honour_cancellation",
       "kind": "function",
-      "line": 1003,
+      "line": 1053,
       "label": "_write_then_honour_cancellation",
       "path": "agentsdk/postgres.py",
       "confidence": 1,
@@ -9652,7 +9757,7 @@
       "name": "__init__",
       "qualifiedName": "PostgresArtifactStore.__init__",
       "kind": "function",
-      "line": 1064,
+      "line": 1114,
       "label": "PostgresArtifactStore.__init__",
       "path": "agentsdk/postgres.py",
       "confidence": 1,
@@ -9668,7 +9773,7 @@
       "name": "_delete",
       "qualifiedName": "PostgresArtifactStore._delete",
       "kind": "function",
-      "line": 1203,
+      "line": 1253,
       "label": "PostgresArtifactStore._delete",
       "path": "agentsdk/postgres.py",
       "confidence": 1,
@@ -9684,7 +9789,7 @@
       "name": "_expire",
       "qualifiedName": "PostgresArtifactStore._expire",
       "kind": "function",
-      "line": 1217,
+      "line": 1267,
       "label": "PostgresArtifactStore._expire",
       "path": "agentsdk/postgres.py",
       "confidence": 1,
@@ -9700,7 +9805,7 @@
       "name": "_insert",
       "qualifiedName": "PostgresArtifactStore._insert",
       "kind": "function",
-      "line": 1131,
+      "line": 1181,
       "label": "PostgresArtifactStore._insert",
       "path": "agentsdk/postgres.py",
       "confidence": 1,
@@ -9716,7 +9821,7 @@
       "name": "_remove",
       "qualifiedName": "PostgresArtifactStore._remove",
       "kind": "function",
-      "line": 1124,
+      "line": 1174,
       "label": "PostgresArtifactStore._remove",
       "path": "agentsdk/postgres.py",
       "confidence": 1,
@@ -9732,7 +9837,7 @@
       "name": "_select",
       "qualifiedName": "PostgresArtifactStore._select",
       "kind": "function",
-      "line": 1175,
+      "line": 1225,
       "label": "PostgresArtifactStore._select",
       "path": "agentsdk/postgres.py",
       "confidence": 1,
@@ -9748,7 +9853,7 @@
       "name": "_visible",
       "qualifiedName": "PostgresArtifactStore._visible",
       "kind": "function",
-      "line": 1186,
+      "line": 1236,
       "label": "PostgresArtifactStore._visible",
       "path": "agentsdk/postgres.py",
       "confidence": 1,
@@ -9764,7 +9869,7 @@
       "name": "delete",
       "qualifiedName": "PostgresArtifactStore.delete",
       "kind": "function",
-      "line": 1211,
+      "line": 1261,
       "label": "PostgresArtifactStore.delete",
       "path": "agentsdk/postgres.py",
       "confidence": 1,
@@ -9780,7 +9885,7 @@
       "name": "expire",
       "qualifiedName": "PostgresArtifactStore.expire",
       "kind": "function",
-      "line": 1224,
+      "line": 1274,
       "label": "PostgresArtifactStore.expire",
       "path": "agentsdk/postgres.py",
       "confidence": 1,
@@ -9796,7 +9901,7 @@
       "name": "for_scope",
       "qualifiedName": "PostgresArtifactStore.for_scope",
       "kind": "function",
-      "line": 1080,
+      "line": 1130,
       "label": "PostgresArtifactStore.for_scope",
       "path": "agentsdk/postgres.py",
       "confidence": 1,
@@ -9812,7 +9917,7 @@
       "name": "get",
       "qualifiedName": "PostgresArtifactStore.get",
       "kind": "function",
-      "line": 1193,
+      "line": 1243,
       "label": "PostgresArtifactStore.get",
       "path": "agentsdk/postgres.py",
       "confidence": 1,
@@ -9828,7 +9933,7 @@
       "name": "metadata",
       "qualifiedName": "PostgresArtifactStore.metadata",
       "kind": "function",
-      "line": 1200,
+      "line": 1250,
       "label": "PostgresArtifactStore.metadata",
       "path": "agentsdk/postgres.py",
       "confidence": 1,
@@ -9844,7 +9949,7 @@
       "name": "put",
       "qualifiedName": "PostgresArtifactStore.put",
       "kind": "function",
-      "line": 1086,
+      "line": 1136,
       "label": "PostgresArtifactStore.put",
       "path": "agentsdk/postgres.py",
       "confidence": 1,
@@ -9860,7 +9965,7 @@
       "name": "__init__",
       "qualifiedName": "PostgresEventStore.__init__",
       "kind": "function",
-      "line": 503,
+      "line": 541,
       "label": "PostgresEventStore.__init__",
       "path": "agentsdk/postgres.py",
       "confidence": 1,
@@ -9876,7 +9981,7 @@
       "name": "emit",
       "qualifiedName": "PostgresEventStore.emit",
       "kind": "function",
-      "line": 516,
+      "line": 554,
       "label": "PostgresEventStore.emit",
       "path": "agentsdk/postgres.py",
       "confidence": 1,
@@ -9892,7 +9997,7 @@
       "name": "events",
       "qualifiedName": "PostgresEventStore.events",
       "kind": "function",
-      "line": 610,
+      "line": 660,
       "label": "PostgresEventStore.events",
       "path": "agentsdk/postgres.py",
       "confidence": 1,
@@ -9908,7 +10013,7 @@
       "name": "scope",
       "qualifiedName": "PostgresEventStore.scope",
       "kind": "function",
-      "line": 511,
+      "line": 549,
       "label": "PostgresEventStore.scope",
       "path": "agentsdk/postgres.py",
       "confidence": 1,
@@ -9919,12 +10024,44 @@
       "contentHash": "df3416bd0c8e2e8adb4fd6e1f17cf771f491f29d8662bb6b20de0db71fcea9a8"
     },
     {
+      "id": "symbol:agentsdk/postgres.py#function:PostgresEventStore.stored",
+      "type": "symbol",
+      "name": "stored",
+      "qualifiedName": "PostgresEventStore.stored",
+      "kind": "function",
+      "line": 647,
+      "label": "PostgresEventStore.stored",
+      "path": "agentsdk/postgres.py",
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "agentsdk/postgres.py"
+      },
+      "contentHash": "d643112de48f5cc0ee2b0c2c40ade4c7fb87650a68f3962382c1a73eb4b7d10c"
+    },
+    {
+      "id": "symbol:agentsdk/postgres.py#function:PostgresEventStore.write",
+      "type": "symbol",
+      "name": "write",
+      "qualifiedName": "PostgresEventStore.write",
+      "kind": "function",
+      "line": 562,
+      "label": "PostgresEventStore.write",
+      "path": "agentsdk/postgres.py",
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "agentsdk/postgres.py"
+      },
+      "contentHash": "8111fea31d7978ff0d8660e2068557ebdf8a6d8a70a78bf87c94aa195efd73fb"
+    },
+    {
       "id": "symbol:agentsdk/postgres.py#function:PostgresRunStateStore.__init__",
       "type": "symbol",
       "name": "__init__",
       "qualifiedName": "PostgresRunStateStore.__init__",
       "kind": "function",
-      "line": 1243,
+      "line": 1293,
       "label": "PostgresRunStateStore.__init__",
       "path": "agentsdk/postgres.py",
       "confidence": 1,
@@ -9940,7 +10077,7 @@
       "name": "_addressable",
       "qualifiedName": "PostgresRunStateStore._addressable",
       "kind": "function",
-      "line": 1307,
+      "line": 1357,
       "label": "PostgresRunStateStore._addressable",
       "path": "agentsdk/postgres.py",
       "confidence": 1,
@@ -9956,7 +10093,7 @@
       "name": "_insert_plan",
       "qualifiedName": "PostgresRunStateStore._insert_plan",
       "kind": "function",
-      "line": 1261,
+      "line": 1311,
       "label": "PostgresRunStateStore._insert_plan",
       "path": "agentsdk/postgres.py",
       "confidence": 1,
@@ -9972,7 +10109,7 @@
       "name": "_scope",
       "qualifiedName": "PostgresRunStateStore._scope",
       "kind": "function",
-      "line": 1253,
+      "line": 1303,
       "label": "PostgresRunStateStore._scope",
       "path": "agentsdk/postgres.py",
       "confidence": 1,
@@ -9988,7 +10125,7 @@
       "name": "_select_states",
       "qualifiedName": "PostgresRunStateStore._select_states",
       "kind": "function",
-      "line": 1355,
+      "line": 1405,
       "label": "PostgresRunStateStore._select_states",
       "path": "agentsdk/postgres.py",
       "confidence": 1,
@@ -10004,7 +10141,7 @@
       "name": "_select_versions",
       "qualifiedName": "PostgresRunStateStore._select_versions",
       "kind": "function",
-      "line": 1319,
+      "line": 1369,
       "label": "PostgresRunStateStore._select_versions",
       "path": "agentsdk/postgres.py",
       "confidence": 1,
@@ -10020,7 +10157,7 @@
       "name": "_transition",
       "qualifiedName": "PostgresRunStateStore._transition",
       "kind": "function",
-      "line": 1371,
+      "line": 1421,
       "label": "PostgresRunStateStore._transition",
       "path": "agentsdk/postgres.py",
       "confidence": 1,
@@ -10036,7 +10173,7 @@
       "name": "for_scope",
       "qualifiedName": "PostgresRunStateStore.for_scope",
       "kind": "function",
-      "line": 1249,
+      "line": 1299,
       "label": "PostgresRunStateStore.for_scope",
       "path": "agentsdk/postgres.py",
       "confidence": 1,
@@ -10052,7 +10189,7 @@
       "name": "get_plan",
       "qualifiedName": "PostgresRunStateStore.get_plan",
       "kind": "function",
-      "line": 1310,
+      "line": 1360,
       "label": "PostgresRunStateStore.get_plan",
       "path": "agentsdk/postgres.py",
       "confidence": 1,
@@ -10068,7 +10205,7 @@
       "name": "node_states",
       "qualifiedName": "PostgresRunStateStore.node_states",
       "kind": "function",
-      "line": 1348,
+      "line": 1398,
       "label": "PostgresRunStateStore.node_states",
       "path": "agentsdk/postgres.py",
       "confidence": 1,
@@ -10084,7 +10221,7 @@
       "name": "put_plan",
       "qualifiedName": "PostgresRunStateStore.put_plan",
       "kind": "function",
-      "line": 1256,
+      "line": 1306,
       "label": "PostgresRunStateStore.put_plan",
       "path": "agentsdk/postgres.py",
       "confidence": 1,
@@ -10100,7 +10237,7 @@
       "name": "transition",
       "qualifiedName": "PostgresRunStateStore.transition",
       "kind": "function",
-      "line": 1365,
+      "line": 1415,
       "label": "PostgresRunStateStore.transition",
       "path": "agentsdk/postgres.py",
       "confidence": 1,
@@ -10116,7 +10253,7 @@
       "name": "versions",
       "qualifiedName": "PostgresRunStateStore.versions",
       "kind": "function",
-      "line": 1316,
+      "line": 1366,
       "label": "PostgresRunStateStore.versions",
       "path": "agentsdk/postgres.py",
       "confidence": 1,
@@ -10132,7 +10269,7 @@
       "name": "__init__",
       "qualifiedName": "PostgresRunStore.__init__",
       "kind": "function",
-      "line": 649,
+      "line": 699,
       "label": "PostgresRunStore.__init__",
       "path": "agentsdk/postgres.py",
       "confidence": 1,
@@ -10148,7 +10285,7 @@
       "name": "_bigint_or_null",
       "qualifiedName": "PostgresRunStore._bigint_or_null",
       "kind": "function",
-      "line": 836,
+      "line": 886,
       "label": "PostgresRunStore._bigint_or_null",
       "path": "agentsdk/postgres.py",
       "confidence": 1,
@@ -10164,7 +10301,7 @@
       "name": "_insert_manifest",
       "qualifiedName": "PostgresRunStore._insert_manifest",
       "kind": "function",
-      "line": 872,
+      "line": 922,
       "label": "PostgresRunStore._insert_manifest",
       "path": "agentsdk/postgres.py",
       "confidence": 1,
@@ -10180,7 +10317,7 @@
       "name": "_numeric_or_null",
       "qualifiedName": "PostgresRunStore._numeric_or_null",
       "kind": "function",
-      "line": 847,
+      "line": 897,
       "label": "PostgresRunStore._numeric_or_null",
       "path": "agentsdk/postgres.py",
       "confidence": 1,
@@ -10196,7 +10333,7 @@
       "name": "_write_budget_columns",
       "qualifiedName": "PostgresRunStore._write_budget_columns",
       "kind": "function",
-      "line": 813,
+      "line": 863,
       "label": "PostgresRunStore._write_budget_columns",
       "path": "agentsdk/postgres.py",
       "confidence": 1,
@@ -10212,7 +10349,7 @@
       "name": "_write_terminal_row",
       "qualifiedName": "PostgresRunStore._write_terminal_row",
       "kind": "function",
-      "line": 793,
+      "line": 843,
       "label": "PostgresRunStore._write_terminal_row",
       "path": "agentsdk/postgres.py",
       "confidence": 1,
@@ -10228,7 +10365,7 @@
       "name": "finish_run",
       "qualifiedName": "PostgresRunStore.finish_run",
       "kind": "function",
-      "line": 759,
+      "line": 809,
       "label": "PostgresRunStore.finish_run",
       "path": "agentsdk/postgres.py",
       "confidence": 1,
@@ -10244,7 +10381,7 @@
       "name": "get_run",
       "qualifiedName": "PostgresRunStore.get_run",
       "kind": "function",
-      "line": 930,
+      "line": 980,
       "label": "PostgresRunStore.get_run",
       "path": "agentsdk/postgres.py",
       "confidence": 1,
@@ -10260,7 +10397,7 @@
       "name": "start_run",
       "qualifiedName": "PostgresRunStore.start_run",
       "kind": "function",
-      "line": 652,
+      "line": 702,
       "label": "PostgresRunStore.start_run",
       "path": "agentsdk/postgres.py",
       "confidence": 1,
@@ -10276,7 +10413,7 @@
       "name": "write_manifest",
       "qualifiedName": "PostgresRunStore.write_manifest",
       "kind": "function",
-      "line": 860,
+      "line": 910,
       "label": "PostgresRunStore.write_manifest",
       "path": "agentsdk/postgres.py",
       "confidence": 1,
@@ -10292,7 +10429,7 @@
       "name": "__init__",
       "qualifiedName": "PostgresSessionStore.__init__",
       "kind": "function",
-      "line": 369,
+      "line": 421,
       "label": "PostgresSessionStore.__init__",
       "path": "agentsdk/postgres.py",
       "confidence": 1,
@@ -10303,12 +10440,28 @@
       "contentHash": "c227033807e69956c5b9f6ea0f9d529af57804db5536d858379f931b86e9847b"
     },
     {
+      "id": "symbol:agentsdk/postgres.py#function:PostgresSessionStore._bound",
+      "type": "symbol",
+      "name": "_bound",
+      "qualifiedName": "PostgresSessionStore._bound",
+      "kind": "function",
+      "line": 429,
+      "label": "PostgresSessionStore._bound",
+      "path": "agentsdk/postgres.py",
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "agentsdk/postgres.py"
+      },
+      "contentHash": "3a74d07d22ac557a85df7f3b49ce03b31d8d9e987e2ea99a97163164c953ea44"
+    },
+    {
       "id": "symbol:agentsdk/postgres.py#function:PostgresSessionStore.append",
       "type": "symbol",
       "name": "append",
       "qualifiedName": "PostgresSessionStore.append",
       "kind": "function",
-      "line": 377,
+      "line": 438,
       "label": "PostgresSessionStore.append",
       "path": "agentsdk/postgres.py",
       "confidence": 1,
@@ -10319,12 +10472,28 @@
       "contentHash": "04786feca36786d94962f5c4c922556923b78860c8c5ad22f43b0b9845f5e28a"
     },
     {
+      "id": "symbol:agentsdk/postgres.py#function:PostgresSessionStore.append_with_event",
+      "type": "symbol",
+      "name": "append_with_event",
+      "qualifiedName": "PostgresSessionStore.append_with_event",
+      "kind": "function",
+      "line": 445,
+      "label": "PostgresSessionStore.append_with_event",
+      "path": "agentsdk/postgres.py",
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "agentsdk/postgres.py"
+      },
+      "contentHash": "24688fa57c62ff58810ed56cf2ccd1b54971102683405e865b93b23c6de2fc24"
+    },
+    {
       "id": "symbol:agentsdk/postgres.py#function:PostgresSessionStore.bind",
       "type": "symbol",
       "name": "bind",
       "qualifiedName": "PostgresSessionStore.bind",
       "kind": "function",
-      "line": 373,
+      "line": 425,
       "label": "PostgresSessionStore.bind",
       "path": "agentsdk/postgres.py",
       "confidence": 1,
@@ -10340,7 +10509,7 @@
       "name": "history",
       "qualifiedName": "PostgresSessionStore.history",
       "kind": "function",
-      "line": 434,
+      "line": 472,
       "label": "PostgresSessionStore.history",
       "path": "agentsdk/postgres.py",
       "confidence": 1,
@@ -10356,7 +10525,7 @@
       "name": "__init__",
       "qualifiedName": "PostgresTrace.__init__",
       "kind": "function",
-      "line": 956,
+      "line": 1006,
       "label": "PostgresTrace.__init__",
       "path": "agentsdk/postgres.py",
       "confidence": 1,
@@ -10372,7 +10541,7 @@
       "name": "reconstruct",
       "qualifiedName": "PostgresTrace.reconstruct",
       "kind": "function",
-      "line": 960,
+      "line": 1010,
       "label": "PostgresTrace.reconstruct",
       "path": "agentsdk/postgres.py",
       "confidence": 1,
@@ -11903,12 +12072,28 @@
       "contentHash": "ef6c277b7cdd55c35601afd21bd5b40bceaa32b042ce06fcca852ba60d61cc12"
     },
     {
+      "id": "symbol:agentsdk/session.py#function:InMemorySessionStore.append_with_event",
+      "type": "symbol",
+      "name": "append_with_event",
+      "qualifiedName": "InMemorySessionStore.append_with_event",
+      "kind": "function",
+      "line": 30,
+      "label": "InMemorySessionStore.append_with_event",
+      "path": "agentsdk/session.py",
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "agentsdk/session.py"
+      },
+      "contentHash": "406946927d90ebf685f5db648af2db90e302538461a3c7bc7895a12b322630bb"
+    },
+    {
       "id": "symbol:agentsdk/session.py#function:InMemorySessionStore.history",
       "type": "symbol",
       "name": "history",
       "qualifiedName": "InMemorySessionStore.history",
       "kind": "function",
-      "line": 30,
+      "line": 49,
       "label": "InMemorySessionStore.history",
       "path": "agentsdk/session.py",
       "confidence": 1,
@@ -16212,7 +16397,7 @@
       "name": "live",
       "qualifiedName": "live",
       "kind": "function",
-      "line": 160,
+      "line": 161,
       "label": "live",
       "path": "scripts/18_context.py",
       "confidence": 1,
@@ -16228,7 +16413,7 @@
       "name": "go",
       "qualifiedName": "live.go",
       "kind": "function",
-      "line": 172,
+      "line": 173,
       "label": "live.go",
       "path": "scripts/18_context.py",
       "confidence": 1,
@@ -16244,7 +16429,7 @@
       "name": "offline",
       "qualifiedName": "offline",
       "kind": "function",
-      "line": 153,
+      "line": 154,
       "label": "offline",
       "path": "scripts/18_context.py",
       "confidence": 1,
@@ -24239,6 +24424,630 @@
       "contentHash": "b5b3d171c8ca7f265c85d46f62ddb84d677441142e35ff42eba807846980f271"
     },
     {
+      "id": "symbol:tests/test_compaction_record.py#class:Model",
+      "type": "symbol",
+      "name": "Model",
+      "qualifiedName": "Model",
+      "kind": "class",
+      "line": 69,
+      "label": "Model",
+      "path": "tests/test_compaction_record.py",
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_compaction_record.py"
+      },
+      "contentHash": "37a09ef76787a6e847a3522ab50367d9c38e9e85e2293db6b681c313afce658e"
+    },
+    {
+      "id": "symbol:tests/test_compaction_record.py#class:test_a_session_store_without_the_combined_write_still_records_both.Plain",
+      "type": "symbol",
+      "name": "Plain",
+      "qualifiedName": "test_a_session_store_without_the_combined_write_still_records_both.Plain",
+      "kind": "class",
+      "line": 345,
+      "label": "test_a_session_store_without_the_combined_write_still_records_both.Plain",
+      "path": "tests/test_compaction_record.py",
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_compaction_record.py"
+      },
+      "contentHash": "812389ee8376984a9038760916d69d8ed4ee145dd23ce7a2388b5df144d370d2"
+    },
+    {
+      "id": "symbol:tests/test_compaction_record.py#function:_chars",
+      "type": "symbol",
+      "name": "_chars",
+      "qualifiedName": "_chars",
+      "kind": "function",
+      "line": 53,
+      "label": "_chars",
+      "path": "tests/test_compaction_record.py",
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_compaction_record.py"
+      },
+      "contentHash": "fb62952b290a4259e62fb0f21f6baecccc1c78615a2cf7a0ff2cc7687d6ffc98"
+    },
+    {
+      "id": "symbol:tests/test_compaction_record.py#function:_message_chars",
+      "type": "symbol",
+      "name": "_message_chars",
+      "qualifiedName": "_message_chars",
+      "kind": "function",
+      "line": 58,
+      "label": "_message_chars",
+      "path": "tests/test_compaction_record.py",
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_compaction_record.py"
+      },
+      "contentHash": "fd182f655fc7aa666353e000dad3866c25a0e4305ee3d4b6ae98c475dfe0d514"
+    },
+    {
+      "id": "symbol:tests/test_compaction_record.py#function:_no_partial_record",
+      "type": "symbol",
+      "name": "_no_partial_record",
+      "qualifiedName": "_no_partial_record",
+      "kind": "function",
+      "line": 242,
+      "label": "_no_partial_record",
+      "path": "tests/test_compaction_record.py",
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_compaction_record.py"
+      },
+      "contentHash": "7ab28f6bddc3d2c6353e9f7cc3823d3a21a7812fbc4f7a68a06efa4d84fef85a"
+    },
+    {
+      "id": "symbol:tests/test_compaction_record.py#function:_tool",
+      "type": "symbol",
+      "name": "_tool",
+      "qualifiedName": "_tool",
+      "kind": "function",
+      "line": 36,
+      "label": "_tool",
+      "path": "tests/test_compaction_record.py",
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_compaction_record.py"
+      },
+      "contentHash": "e8ef7497d9be24bbaac030766d20fd6b7388e055fd5ac298a571e867e28d3a5d"
+    },
+    {
+      "id": "symbol:tests/test_compaction_record.py#function:_tool.fn",
+      "type": "symbol",
+      "name": "fn",
+      "qualifiedName": "_tool.fn",
+      "kind": "function",
+      "line": 37,
+      "label": "_tool.fn",
+      "path": "tests/test_compaction_record.py",
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_compaction_record.py"
+      },
+      "contentHash": "503b8e098b66b2a41643aff85e9e792e7c4c2cc2aea2740c15ea8cccf9c39dd1"
+    },
+    {
+      "id": "symbol:tests/test_compaction_record.py#function:backend",
+      "type": "symbol",
+      "name": "backend",
+      "qualifiedName": "backend",
+      "kind": "function",
+      "line": 125,
+      "label": "backend",
+      "path": "tests/test_compaction_record.py",
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_compaction_record.py"
+      },
+      "contentHash": "87eaca5ee92fd565725bcbd9a19e3c4f1bcce51d423e097ee83be3e534036ae2"
+    },
+    {
+      "id": "symbol:tests/test_compaction_record.py#function:compactions",
+      "type": "symbol",
+      "name": "compactions",
+      "qualifiedName": "compactions",
+      "kind": "function",
+      "line": 99,
+      "label": "compactions",
+      "path": "tests/test_compaction_record.py",
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_compaction_record.py"
+      },
+      "contentHash": "82305b55f409f07b21e166f8dec27888e2679cff1c6a59844738d771eb81d978"
+    },
+    {
+      "id": "symbol:tests/test_compaction_record.py#function:config",
+      "type": "symbol",
+      "name": "config",
+      "qualifiedName": "config",
+      "kind": "function",
+      "line": 95,
+      "label": "config",
+      "path": "tests/test_compaction_record.py",
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_compaction_record.py"
+      },
+      "contentHash": "2522d70c9ae44f3cc3618f57fb25295f1acbc1bc1a8a5beeb47d9c8779942ecd"
+    },
+    {
+      "id": "symbol:tests/test_compaction_record.py#function:Model.__init__",
+      "type": "symbol",
+      "name": "__init__",
+      "qualifiedName": "Model.__init__",
+      "kind": "function",
+      "line": 74,
+      "label": "Model.__init__",
+      "path": "tests/test_compaction_record.py",
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_compaction_record.py"
+      },
+      "contentHash": "99d1896768b6a1692d63d2c3bacc75285c65a146fd4ccbbcac6c6e3f84bd5099"
+    },
+    {
+      "id": "symbol:tests/test_compaction_record.py#function:Model.send",
+      "type": "symbol",
+      "name": "send",
+      "qualifiedName": "Model.send",
+      "kind": "function",
+      "line": 78,
+      "label": "Model.send",
+      "path": "tests/test_compaction_record.py",
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_compaction_record.py"
+      },
+      "contentHash": "15142df061b2e700cff42fb2c28c97c9acb78d1be033b3fb6480150d4d7aff64"
+    },
+    {
+      "id": "symbol:tests/test_compaction_record.py#function:query",
+      "type": "symbol",
+      "name": "query",
+      "qualifiedName": "query",
+      "kind": "function",
+      "line": 103,
+      "label": "query",
+      "path": "tests/test_compaction_record.py",
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_compaction_record.py"
+      },
+      "contentHash": "7f1af29eaa75bd3dc7caf12b72aa82fee4a1199a375b95363588f8253c3082f2"
+    },
+    {
+      "id": "symbol:tests/test_compaction_record.py#function:recompute",
+      "type": "symbol",
+      "name": "recompute",
+      "qualifiedName": "recompute",
+      "kind": "function",
+      "line": 145,
+      "label": "recompute",
+      "path": "tests/test_compaction_record.py",
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_compaction_record.py"
+      },
+      "contentHash": "b623a5569d79532d7a30d3ef797bf0907c70c3418ea5922b6a1630fc6f16c96d"
+    },
+    {
+      "id": "symbol:tests/test_compaction_record.py#function:recompute.estimate",
+      "type": "symbol",
+      "name": "estimate",
+      "qualifiedName": "recompute.estimate",
+      "kind": "function",
+      "line": 153,
+      "label": "recompute.estimate",
+      "path": "tests/test_compaction_record.py",
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_compaction_record.py"
+      },
+      "contentHash": "ad16811f2260b753eb76b79e73e34f34744b58655e3a050affb946c903d7ec46"
+    },
+    {
+      "id": "symbol:tests/test_compaction_record.py#function:remove_rows",
+      "type": "symbol",
+      "name": "remove_rows",
+      "qualifiedName": "remove_rows",
+      "kind": "function",
+      "line": 108,
+      "label": "remove_rows",
+      "path": "tests/test_compaction_record.py",
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_compaction_record.py"
+      },
+      "contentHash": "cc429c76b99529b1964d1d5ccf8a7bbceb59d06b2120d0a10f2026efb01d9b79"
+    },
+    {
+      "id": "symbol:tests/test_compaction_record.py#function:remove_what_the_test_wrote",
+      "type": "symbol",
+      "name": "remove_what_the_test_wrote",
+      "qualifiedName": "remove_what_the_test_wrote",
+      "kind": "function",
+      "line": 118,
+      "label": "remove_what_the_test_wrote",
+      "path": "tests/test_compaction_record.py",
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_compaction_record.py"
+      },
+      "contentHash": "7fea9c6392333222f07d3a8074b41616c8d84a1842785815354b75947854fed5"
+    },
+    {
+      "id": "symbol:tests/test_compaction_record.py#function:run_and_check",
+      "type": "symbol",
+      "name": "run_and_check",
+      "qualifiedName": "run_and_check",
+      "kind": "function",
+      "line": 168,
+      "label": "run_and_check",
+      "path": "tests/test_compaction_record.py",
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_compaction_record.py"
+      },
+      "contentHash": "2304b94c892888b1214755e28c7e53100d1aea89c5681f089393855f5c2158aa"
+    },
+    {
+      "id": "symbol:tests/test_compaction_record.py#function:stored",
+      "type": "symbol",
+      "name": "stored",
+      "qualifiedName": "stored",
+      "kind": "function",
+      "line": 129,
+      "label": "stored",
+      "path": "tests/test_compaction_record.py",
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_compaction_record.py"
+      },
+      "contentHash": "cacfd6d44105d461dc8eb2146c76e4751608b4a91dd2b6aeec0e0b0a255cd8c2"
+    },
+    {
+      "id": "symbol:tests/test_compaction_record.py#function:test_a_session_store_without_the_combined_write_still_records_both",
+      "type": "symbol",
+      "name": "test_a_session_store_without_the_combined_write_still_records_both",
+      "qualifiedName": "test_a_session_store_without_the_combined_write_still_records_both",
+      "kind": "function",
+      "line": 342,
+      "label": "test_a_session_store_without_the_combined_write_still_records_both",
+      "path": "tests/test_compaction_record.py",
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_compaction_record.py"
+      },
+      "contentHash": "d46168bd5640eb784faaf4b91b09d87fd8c837cb861d9fc49f918b1bc4491b4e"
+    },
+    {
+      "id": "symbol:tests/test_compaction_record.py#function:test_a_session_store_without_the_combined_write_still_records_both.Plain.__init__",
+      "type": "symbol",
+      "name": "__init__",
+      "qualifiedName": "test_a_session_store_without_the_combined_write_still_records_both.Plain.__init__",
+      "kind": "function",
+      "line": 346,
+      "label": "test_a_session_store_without_the_combined_write_still_records_both.Plain.__init__",
+      "path": "tests/test_compaction_record.py",
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_compaction_record.py"
+      },
+      "contentHash": "c4a4678021fcbbc26761eed461c2d43aae4fe086f91f00ae194adb489f17f9b1"
+    },
+    {
+      "id": "symbol:tests/test_compaction_record.py#function:test_a_session_store_without_the_combined_write_still_records_both.Plain.append",
+      "type": "symbol",
+      "name": "append",
+      "qualifiedName": "test_a_session_store_without_the_combined_write_still_records_both.Plain.append",
+      "kind": "function",
+      "line": 349,
+      "label": "test_a_session_store_without_the_combined_write_still_records_both.Plain.append",
+      "path": "tests/test_compaction_record.py",
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_compaction_record.py"
+      },
+      "contentHash": "e0e14e1b8d09983b66f529a6e5557b3bbce496a93e24680f115b7c5f0ffecd59"
+    },
+    {
+      "id": "symbol:tests/test_compaction_record.py#function:test_a_session_store_without_the_combined_write_still_records_both.Plain.history",
+      "type": "symbol",
+      "name": "history",
+      "qualifiedName": "test_a_session_store_without_the_combined_write_still_records_both.Plain.history",
+      "kind": "function",
+      "line": 352,
+      "label": "test_a_session_store_without_the_combined_write_still_records_both.Plain.history",
+      "path": "tests/test_compaction_record.py",
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_compaction_record.py"
+      },
+      "contentHash": "6a9a4cb6979591acc0cd411b98a5f380a9aa82e23b8aa3925ffb0e087ca560bf"
+    },
+    {
+      "id": "symbol:tests/test_compaction_record.py#function:test_ac68_every_compaction_records_its_pair_on_one_basis_and_names_what_decided_it",
+      "type": "symbol",
+      "name": "test_ac68_every_compaction_records_its_pair_on_one_basis_and_names_what_decided_it",
+      "qualifiedName": "test_ac68_every_compaction_records_its_pair_on_one_basis_and_names_what_decided_it",
+      "kind": "function",
+      "line": 190,
+      "label": "test_ac68_every_compaction_records_its_pair_on_one_basis_and_names_what_decided_it",
+      "path": "tests/test_compaction_record.py",
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_compaction_record.py"
+      },
+      "contentHash": "3b8116391cc153d3d7975c0ced2fec8a2c330fec345f5127974d9f32b0cfafb9"
+    },
+    {
+      "id": "symbol:tests/test_compaction_record.py#function:test_ac68_on_postgres_the_pair_matches_the_stored_history",
+      "type": "symbol",
+      "name": "test_ac68_on_postgres_the_pair_matches_the_stored_history",
+      "qualifiedName": "test_ac68_on_postgres_the_pair_matches_the_stored_history",
+      "kind": "function",
+      "line": 208,
+      "label": "test_ac68_on_postgres_the_pair_matches_the_stored_history",
+      "path": "tests/test_compaction_record.py",
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_compaction_record.py"
+      },
+      "contentHash": "0bc52b1925b7bc95c8d2c3e11af8dbb48fcd715c9ef7feb31205238356846565"
+    },
+    {
+      "id": "symbol:tests/test_compaction_record.py#function:test_ac69_a_compaction_that_completes_writes_both",
+      "type": "symbol",
+      "name": "test_ac69_a_compaction_that_completes_writes_both",
+      "qualifiedName": "test_ac69_a_compaction_that_completes_writes_both",
+      "kind": "function",
+      "line": 251,
+      "label": "test_ac69_a_compaction_that_completes_writes_both",
+      "path": "tests/test_compaction_record.py",
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_compaction_record.py"
+      },
+      "contentHash": "9c126d627e822e6d0d72e094f7dc1fda31e160d5bcabd4b8e1982326de90772f"
+    },
+    {
+      "id": "symbol:tests/test_compaction_record.py#function:test_ac69_a_summary_that_cannot_be_written_leaves_no_event_in_memory",
+      "type": "symbol",
+      "name": "test_ac69_a_summary_that_cannot_be_written_leaves_no_event_in_memory",
+      "qualifiedName": "test_ac69_a_summary_that_cannot_be_written_leaves_no_event_in_memory",
+      "kind": "function",
+      "line": 274,
+      "label": "test_ac69_a_summary_that_cannot_be_written_leaves_no_event_in_memory",
+      "path": "tests/test_compaction_record.py",
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_compaction_record.py"
+      },
+      "contentHash": "0bb22642d7bca1eaa0c0c6fe503982571133e19eeafebf17d8de8510a58eed8c"
+    },
+    {
+      "id": "symbol:tests/test_compaction_record.py#function:test_ac69_a_summary_that_cannot_be_written_leaves_no_event_in_memory.refuses",
+      "type": "symbol",
+      "name": "refuses",
+      "qualifiedName": "test_ac69_a_summary_that_cannot_be_written_leaves_no_event_in_memory.refuses",
+      "kind": "function",
+      "line": 277,
+      "label": "test_ac69_a_summary_that_cannot_be_written_leaves_no_event_in_memory.refuses",
+      "path": "tests/test_compaction_record.py",
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_compaction_record.py"
+      },
+      "contentHash": "b74570a9a9183aef3083655b5769adb524cec53e2a5aa257565e84f7a295cbe6"
+    },
+    {
+      "id": "symbol:tests/test_compaction_record.py#function:test_ac69_a_summary_that_cannot_be_written_leaves_no_event_on_postgres",
+      "type": "symbol",
+      "name": "test_ac69_a_summary_that_cannot_be_written_leaves_no_event_on_postgres",
+      "qualifiedName": "test_ac69_a_summary_that_cannot_be_written_leaves_no_event_on_postgres",
+      "kind": "function",
+      "line": 311,
+      "label": "test_ac69_a_summary_that_cannot_be_written_leaves_no_event_on_postgres",
+      "path": "tests/test_compaction_record.py",
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_compaction_record.py"
+      },
+      "contentHash": "dc1c3def96db4fde19396f07e952f62d650ec7d1bd999cf4c56ac0069d11d6c4"
+    },
+    {
+      "id": "symbol:tests/test_compaction_record.py#function:test_ac69_a_summary_that_cannot_be_written_leaves_no_event_on_postgres.refuses",
+      "type": "symbol",
+      "name": "refuses",
+      "qualifiedName": "test_ac69_a_summary_that_cannot_be_written_leaves_no_event_on_postgres.refuses",
+      "kind": "function",
+      "line": 314,
+      "label": "test_ac69_a_summary_that_cannot_be_written_leaves_no_event_on_postgres.refuses",
+      "path": "tests/test_compaction_record.py",
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_compaction_record.py"
+      },
+      "contentHash": "fbeece3862a34291ada39bcbe181e8b61c8d0246123a5846ce589186a385a0ef"
+    },
+    {
+      "id": "symbol:tests/test_compaction_record.py#function:test_ac69_an_event_that_cannot_be_written_leaves_no_summary_in_memory",
+      "type": "symbol",
+      "name": "test_ac69_an_event_that_cannot_be_written_leaves_no_summary_in_memory",
+      "qualifiedName": "test_ac69_an_event_that_cannot_be_written_leaves_no_summary_in_memory",
+      "kind": "function",
+      "line": 258,
+      "label": "test_ac69_an_event_that_cannot_be_written_leaves_no_summary_in_memory",
+      "path": "tests/test_compaction_record.py",
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_compaction_record.py"
+      },
+      "contentHash": "7195683cd97e70e3e9a87c82721a49709b55ddd34d99cb4242c1bff302b24554"
+    },
+    {
+      "id": "symbol:tests/test_compaction_record.py#function:test_ac69_an_event_that_cannot_be_written_leaves_no_summary_in_memory.refuses",
+      "type": "symbol",
+      "name": "refuses",
+      "qualifiedName": "test_ac69_an_event_that_cannot_be_written_leaves_no_summary_in_memory.refuses",
+      "kind": "function",
+      "line": 261,
+      "label": "test_ac69_an_event_that_cannot_be_written_leaves_no_summary_in_memory.refuses",
+      "path": "tests/test_compaction_record.py",
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_compaction_record.py"
+      },
+      "contentHash": "2ed24debe9d97ab056ed1c8b5b95590e6b9aeeab1a5dc80b8d34ed746509ed58"
+    },
+    {
+      "id": "symbol:tests/test_compaction_record.py#function:test_ac69_an_event_that_cannot_be_written_rolls_the_summary_back_on_postgres",
+      "type": "symbol",
+      "name": "test_ac69_an_event_that_cannot_be_written_rolls_the_summary_back_on_postgres",
+      "qualifiedName": "test_ac69_an_event_that_cannot_be_written_rolls_the_summary_back_on_postgres",
+      "kind": "function",
+      "line": 290,
+      "label": "test_ac69_an_event_that_cannot_be_written_rolls_the_summary_back_on_postgres",
+      "path": "tests/test_compaction_record.py",
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_compaction_record.py"
+      },
+      "contentHash": "6d83410e1b17f06cc2398754af5af79aab3ed980cfdb7f60fb37ed0cced20990"
+    },
+    {
+      "id": "symbol:tests/test_compaction_record.py#function:test_ac69_an_event_that_cannot_be_written_rolls_the_summary_back_on_postgres.refuses",
+      "type": "symbol",
+      "name": "refuses",
+      "qualifiedName": "test_ac69_an_event_that_cannot_be_written_rolls_the_summary_back_on_postgres.refuses",
+      "kind": "function",
+      "line": 295,
+      "label": "test_ac69_an_event_that_cannot_be_written_rolls_the_summary_back_on_postgres.refuses",
+      "path": "tests/test_compaction_record.py",
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_compaction_record.py"
+      },
+      "contentHash": "0495ac73fe424276fd6cca66d93da4a8e420886e9f75a4727463ef830efca100"
+    },
+    {
+      "id": "symbol:tests/test_compaction_record.py#function:test_the_combined_write_refuses_a_sink_for_another_run",
+      "type": "symbol",
+      "name": "test_the_combined_write_refuses_a_sink_for_another_run",
+      "qualifiedName": "test_the_combined_write_refuses_a_sink_for_another_run",
+      "kind": "function",
+      "line": 361,
+      "label": "test_the_combined_write_refuses_a_sink_for_another_run",
+      "path": "tests/test_compaction_record.py",
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_compaction_record.py"
+      },
+      "contentHash": "1cc0c6bef7ebe97a6ee1691f649c7c46aac76e9c69a0c8557507b7b59bef618c"
+    },
+    {
+      "id": "symbol:tests/test_compaction_record.py#function:test_the_combined_write_refuses_a_sink_for_another_run_on_postgres",
+      "type": "symbol",
+      "name": "test_the_combined_write_refuses_a_sink_for_another_run_on_postgres",
+      "qualifiedName": "test_the_combined_write_refuses_a_sink_for_another_run_on_postgres",
+      "kind": "function",
+      "line": 370,
+      "label": "test_the_combined_write_refuses_a_sink_for_another_run_on_postgres",
+      "path": "tests/test_compaction_record.py",
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_compaction_record.py"
+      },
+      "contentHash": "8071e1845a8c9e8c7c94fbaade7440d634951a867205473e0694546fc6281f61"
+    },
+    {
+      "id": "symbol:tests/test_compaction_record.py#function:test_the_deciding_measure_is_the_providers_count_when_one_applies",
+      "type": "symbol",
+      "name": "test_the_deciding_measure_is_the_providers_count_when_one_applies",
+      "qualifiedName": "test_the_deciding_measure_is_the_providers_count_when_one_applies",
+      "kind": "function",
+      "line": 214,
+      "label": "test_the_deciding_measure_is_the_providers_count_when_one_applies",
+      "path": "tests/test_compaction_record.py",
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_compaction_record.py"
+      },
+      "contentHash": "e91d7dce8bd5277732b11fbf0116ca262bf3e3f72b4caf95e732eac0912bd972"
+    },
+    {
+      "id": "symbol:tests/test_compaction_record.py#function:test_the_written_event_reaches_the_runs_handle_in_order",
+      "type": "symbol",
+      "name": "test_the_written_event_reaches_the_runs_handle_in_order",
+      "qualifiedName": "test_the_written_event_reaches_the_runs_handle_in_order",
+      "kind": "function",
+      "line": 328,
+      "label": "test_the_written_event_reaches_the_runs_handle_in_order",
+      "path": "tests/test_compaction_record.py",
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_compaction_record.py"
+      },
+      "contentHash": "044804d69b3d5a7ad1df0a1a4d52102dab450a63dc9a334076a7a129b612a199"
+    },
+    {
+      "id": "symbol:tests/test_compaction_record.py#function:test_with_no_usable_report_the_deciding_measure_is_the_estimate_and_equals_before",
+      "type": "symbol",
+      "name": "test_with_no_usable_report_the_deciding_measure_is_the_estimate_and_equals_before",
+      "qualifiedName": "test_with_no_usable_report_the_deciding_measure_is_the_estimate_and_equals_before",
+      "kind": "function",
+      "line": 228,
+      "label": "test_with_no_usable_report_the_deciding_measure_is_the_estimate_and_equals_before",
+      "path": "tests/test_compaction_record.py",
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_compaction_record.py"
+      },
+      "contentHash": "086f80902075afe728dba994962ae3d227d7eb2da2dbae5a2fbdd3ad04d14012"
+    },
+    {
       "id": "symbol:tests/test_concurrency.py#class:_Checkouts",
       "type": "symbol",
       "name": "_Checkouts",
@@ -26212,7 +27021,7 @@
       "name": "Refuses",
       "qualifiedName": "test_a_replaced_record_that_cannot_be_stored_ends_the_run_failed.Refuses",
       "kind": "class",
-      "line": 610,
+      "line": 614,
       "label": "test_a_replaced_record_that_cannot_be_stored_ends_the_run_failed.Refuses",
       "path": "tests/test_context_policy.py",
       "confidence": 1,
@@ -26452,7 +27261,7 @@
       "name": "priced_registry",
       "qualifiedName": "priced_registry",
       "kind": "function",
-      "line": 626,
+      "line": 630,
       "label": "priced_registry",
       "path": "tests/test_context_policy.py",
       "confidence": 1,
@@ -26596,7 +27405,7 @@
       "name": "test_a_policy_that_never_compacts_never_compacts",
       "qualifiedName": "test_a_policy_that_never_compacts_never_compacts",
       "kind": "function",
-      "line": 555,
+      "line": 559,
       "label": "test_a_policy_that_never_compacts_never_compacts",
       "path": "tests/test_context_policy.py",
       "confidence": 1,
@@ -26612,7 +27421,7 @@
       "name": "test_a_priced_run_that_compacts_knows_its_cost_and_takes_its_window_from_the_registry",
       "qualifiedName": "test_a_priced_run_that_compacts_knows_its_cost_and_takes_its_window_from_the_registry",
       "kind": "function",
-      "line": 639,
+      "line": 643,
       "label": "test_a_priced_run_that_compacts_knows_its_cost_and_takes_its_window_from_the_registry",
       "path": "tests/test_context_policy.py",
       "confidence": 1,
@@ -26628,7 +27437,7 @@
       "name": "test_a_replaced_record_that_cannot_be_stored_ends_the_run_failed",
       "qualifiedName": "test_a_replaced_record_that_cannot_be_stored_ends_the_run_failed",
       "kind": "function",
-      "line": 605,
+      "line": 609,
       "label": "test_a_replaced_record_that_cannot_be_stored_ends_the_run_failed",
       "path": "tests/test_context_policy.py",
       "confidence": 1,
@@ -26644,7 +27453,7 @@
       "name": "__getattr__",
       "qualifiedName": "test_a_replaced_record_that_cannot_be_stored_ends_the_run_failed.Refuses.__getattr__",
       "kind": "function",
-      "line": 614,
+      "line": 618,
       "label": "test_a_replaced_record_that_cannot_be_stored_ends_the_run_failed.Refuses.__getattr__",
       "path": "tests/test_context_policy.py",
       "confidence": 1,
@@ -26660,7 +27469,7 @@
       "name": "__init__",
       "qualifiedName": "test_a_replaced_record_that_cannot_be_stored_ends_the_run_failed.Refuses.__init__",
       "kind": "function",
-      "line": 611,
+      "line": 615,
       "label": "test_a_replaced_record_that_cannot_be_stored_ends_the_run_failed.Refuses.__init__",
       "path": "tests/test_context_policy.py",
       "confidence": 1,
@@ -26676,7 +27485,7 @@
       "name": "put",
       "qualifiedName": "test_a_replaced_record_that_cannot_be_stored_ends_the_run_failed.Refuses.put",
       "kind": "function",
-      "line": 617,
+      "line": 621,
       "label": "test_a_replaced_record_that_cannot_be_stored_ends_the_run_failed.Refuses.put",
       "path": "tests/test_context_policy.py",
       "confidence": 1,
@@ -26692,7 +27501,7 @@
       "name": "test_a_reservation_spent_before_the_summary_ends_the_run_budget_exceeded",
       "qualifiedName": "test_a_reservation_spent_before_the_summary_ends_the_run_budget_exceeded",
       "kind": "function",
-      "line": 582,
+      "line": 586,
       "label": "test_a_reservation_spent_before_the_summary_ends_the_run_budget_exceeded",
       "path": "tests/test_context_policy.py",
       "confidence": 1,
@@ -26708,7 +27517,7 @@
       "name": "split",
       "qualifiedName": "test_a_reservation_spent_before_the_summary_ends_the_run_budget_exceeded.split",
       "kind": "function",
-      "line": 591,
+      "line": 595,
       "label": "test_a_reservation_spent_before_the_summary_ends_the_run_budget_exceeded.split",
       "path": "tests/test_context_policy.py",
       "confidence": 1,
@@ -26724,7 +27533,7 @@
       "name": "test_a_run_cancelled_during_its_summarising_call_ends_cancelled_with_its_cost_unknown",
       "qualifiedName": "test_a_run_cancelled_during_its_summarising_call_ends_cancelled_with_its_cost_unknown",
       "kind": "function",
-      "line": 647,
+      "line": 651,
       "label": "test_a_run_cancelled_during_its_summarising_call_ends_cancelled_with_its_cost_unknown",
       "path": "tests/test_context_policy.py",
       "confidence": 1,
@@ -26756,7 +27565,7 @@
       "name": "test_a_run_without_a_policy_never_compacts_and_sends_its_whole_history",
       "qualifiedName": "test_a_run_without_a_policy_never_compacts_and_sends_its_whole_history",
       "kind": "function",
-      "line": 547,
+      "line": 551,
       "label": "test_a_run_without_a_policy_never_compacts_and_sends_its_whole_history",
       "path": "tests/test_context_policy.py",
       "confidence": 1,
@@ -26788,7 +27597,7 @@
       "name": "test_a_summarising_call_that_fails_ends_the_run_failed_naming_it",
       "qualifiedName": "test_a_summarising_call_that_fails_ends_the_run_failed_naming_it",
       "kind": "function",
-      "line": 565,
+      "line": 569,
       "label": "test_a_summarising_call_that_fails_ends_the_run_failed_naming_it",
       "path": "tests/test_context_policy.py",
       "confidence": 1,
@@ -26884,7 +27693,7 @@
       "name": "test_an_empty_summary_ends_the_run_failed",
       "qualifiedName": "test_an_empty_summary_ends_the_run_failed",
       "kind": "function",
-      "line": 573,
+      "line": 577,
       "label": "test_an_empty_summary_ends_the_run_failed",
       "path": "tests/test_context_policy.py",
       "confidence": 1,
@@ -26932,7 +27741,7 @@
       "name": "test_nothing_older_than_the_kept_turns_means_no_compaction_and_the_run_goes_on",
       "qualifiedName": "test_nothing_older_than_the_kept_turns_means_no_compaction_and_the_run_goes_on",
       "kind": "function",
-      "line": 539,
+      "line": 543,
       "label": "test_nothing_older_than_the_kept_turns_means_no_compaction_and_the_run_goes_on",
       "path": "tests/test_context_policy.py",
       "confidence": 1,
@@ -26980,7 +27789,7 @@
       "name": "test_the_example_shows_the_visible_tools_a_compaction_and_its_artifact_offline",
       "qualifiedName": "test_the_example_shows_the_visible_tools_a_compaction_and_its_artifact_offline",
       "kind": "function",
-      "line": 691,
+      "line": 695,
       "label": "test_the_example_shows_the_visible_tools_a_compaction_and_its_artifact_offline",
       "path": "tests/test_context_policy.py",
       "confidence": 1,
@@ -27028,7 +27837,7 @@
       "name": "test_the_reported_prompt_tokens_decide_when_the_text_alone_would_not",
       "qualifiedName": "test_the_reported_prompt_tokens_decide_when_the_text_alone_would_not",
       "kind": "function",
-      "line": 527,
+      "line": 528,
       "label": "test_the_reported_prompt_tokens_decide_when_the_text_alone_would_not",
       "path": "tests/test_context_policy.py",
       "confidence": 1,
@@ -27044,7 +27853,7 @@
       "name": "test_the_view_is_the_task_the_latest_summary_and_what_followed",
       "qualifiedName": "test_the_view_is_the_task_the_latest_summary_and_what_followed",
       "kind": "function",
-      "line": 671,
+      "line": 675,
       "label": "test_the_view_is_the_task_the_latest_summary_and_what_followed",
       "path": "tests/test_context_policy.py",
       "confidence": 1,
@@ -47003,7 +47812,7 @@
       "type": "defines",
       "source": "file:agentsdk/compaction.py",
       "target": "symbol:agentsdk/compaction.py#function:ContextCompactor.artifact",
-      "line": 196,
+      "line": 209,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -47013,11 +47822,25 @@
       "contentHash": "19585d6ecb7b786383a0285d4dcb180dc585e33c100a23e292b8a1b886a8cf06"
     },
     {
+      "id": "defines:file:agentsdk/compaction.py->symbol:agentsdk/compaction.py#function:ContextCompactor.basis:",
+      "type": "defines",
+      "source": "file:agentsdk/compaction.py",
+      "target": "symbol:agentsdk/compaction.py#function:ContextCompactor.basis",
+      "line": 132,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "agentsdk/compaction.py"
+      },
+      "contentHash": "044465944162e176ad292236638dc52add475119e3bbb3a34483e54285c83bf9"
+    },
+    {
       "id": "defines:file:agentsdk/compaction.py->symbol:agentsdk/compaction.py#function:ContextCompactor.compacted:",
       "type": "defines",
       "source": "file:agentsdk/compaction.py",
       "target": "symbol:agentsdk/compaction.py#function:ContextCompactor.compacted",
-      "line": 209,
+      "line": 222,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -47031,7 +47854,7 @@
       "type": "defines",
       "source": "file:agentsdk/compaction.py",
       "target": "symbol:agentsdk/compaction.py#function:ContextCompactor.due",
-      "line": 135,
+      "line": 148,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -47059,7 +47882,7 @@
       "type": "defines",
       "source": "file:agentsdk/compaction.py",
       "target": "symbol:agentsdk/compaction.py#function:ContextCompactor.message",
-      "line": 201,
+      "line": 214,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -47073,7 +47896,7 @@
       "type": "defines",
       "source": "file:agentsdk/compaction.py",
       "target": "symbol:agentsdk/compaction.py#function:ContextCompactor.provenance",
-      "line": 156,
+      "line": 169,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -47087,7 +47910,7 @@
       "type": "defines",
       "source": "file:agentsdk/compaction.py",
       "target": "symbol:agentsdk/compaction.py#function:ContextCompactor.reported",
-      "line": 130,
+      "line": 143,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -47101,7 +47924,7 @@
       "type": "defines",
       "source": "file:agentsdk/compaction.py",
       "target": "symbol:agentsdk/compaction.py#function:ContextCompactor.request",
-      "line": 178,
+      "line": 191,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -47115,7 +47938,7 @@
       "type": "defines",
       "source": "file:agentsdk/compaction.py",
       "target": "symbol:agentsdk/compaction.py#function:ContextCompactor.sources",
-      "line": 168,
+      "line": 181,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -47129,7 +47952,7 @@
       "type": "defines",
       "source": "file:agentsdk/compaction.py",
       "target": "symbol:agentsdk/compaction.py#function:ContextCompactor.split",
-      "line": 140,
+      "line": 153,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -47165,6 +47988,20 @@
         "source": "agentsdk/compaction.py"
       },
       "contentHash": "5d910c88a57d4c342c81b1e75e9c0014a89b35565c4e896cacc93ff550be1bc6"
+    },
+    {
+      "id": "defines:file:agentsdk/compaction.py->symbol:agentsdk/compaction.py#function:ContextCompactor.whole:",
+      "type": "defines",
+      "source": "file:agentsdk/compaction.py",
+      "target": "symbol:agentsdk/compaction.py#function:ContextCompactor.whole",
+      "line": 137,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "agentsdk/compaction.py"
+      },
+      "contentHash": "b1165cb5b8cb4c246b5b2a2a0b0511a13f8f609fb4b044e50214291ee4c6a94e"
     },
     {
       "id": "defines:file:agentsdk/config.py->symbol:agentsdk/config.py#class:Secret:",
@@ -48417,7 +49254,7 @@
       "type": "defines",
       "source": "file:agentsdk/handle.py",
       "target": "symbol:agentsdk/handle.py#class:RunHandle",
-      "line": 178,
+      "line": 197,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -48445,7 +49282,7 @@
       "type": "defines",
       "source": "file:agentsdk/handle.py",
       "target": "symbol:agentsdk/handle.py#function:_resolve",
-      "line": 289,
+      "line": 308,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -48453,6 +49290,34 @@
         "source": "agentsdk/handle.py"
       },
       "contentHash": "e92d022d903b848e65673c18e826b0d818647e92a0f85065b333cbcd0fed06aa"
+    },
+    {
+      "id": "defines:file:agentsdk/handle.py->symbol:agentsdk/handle.py#function:PublishingSink.__getattr__:",
+      "type": "defines",
+      "source": "file:agentsdk/handle.py",
+      "target": "symbol:agentsdk/handle.py#function:PublishingSink.__getattr__",
+      "line": 177,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "agentsdk/handle.py"
+      },
+      "contentHash": "56f869d21bd48d700be71fc35e837f83d92ea1e9ba059bce34e42c91c1b7f8f7"
+    },
+    {
+      "id": "defines:file:agentsdk/handle.py->symbol:agentsdk/handle.py#function:PublishingSink.__getattr__.stored:",
+      "type": "defines",
+      "source": "file:agentsdk/handle.py",
+      "target": "symbol:agentsdk/handle.py#function:PublishingSink.__getattr__.stored",
+      "line": 186,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "agentsdk/handle.py"
+      },
+      "contentHash": "2d3f5a7521721a20d65f53097db50ee67f4646079631a495acff8702756473e2"
     },
     {
       "id": "defines:file:agentsdk/handle.py->symbol:agentsdk/handle.py#function:PublishingSink.__init__:",
@@ -48585,7 +49450,7 @@
       "type": "defines",
       "source": "file:agentsdk/handle.py",
       "target": "symbol:agentsdk/handle.py#function:RunHandle.__init__",
-      "line": 181,
+      "line": 200,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -48599,7 +49464,7 @@
       "type": "defines",
       "source": "file:agentsdk/handle.py",
       "target": "symbol:agentsdk/handle.py#function:RunHandle._finished",
-      "line": 258,
+      "line": 277,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -48613,7 +49478,7 @@
       "type": "defines",
       "source": "file:agentsdk/handle.py",
       "target": "symbol:agentsdk/handle.py#function:RunHandle._publish",
-      "line": 252,
+      "line": 271,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -48627,7 +49492,7 @@
       "type": "defines",
       "source": "file:agentsdk/handle.py",
       "target": "symbol:agentsdk/handle.py#function:RunHandle._settled",
-      "line": 240,
+      "line": 259,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -48641,7 +49506,7 @@
       "type": "defines",
       "source": "file:agentsdk/handle.py",
       "target": "symbol:agentsdk/handle.py#function:RunHandle._stream",
-      "line": 196,
+      "line": 215,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -48655,7 +49520,7 @@
       "type": "defines",
       "source": "file:agentsdk/handle.py",
       "target": "symbol:agentsdk/handle.py#function:RunHandle._wake",
-      "line": 262,
+      "line": 281,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -48669,7 +49534,7 @@
       "type": "defines",
       "source": "file:agentsdk/handle.py",
       "target": "symbol:agentsdk/handle.py#function:RunHandle.cancel",
-      "line": 231,
+      "line": 250,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -48683,7 +49548,7 @@
       "type": "defines",
       "source": "file:agentsdk/handle.py",
       "target": "symbol:agentsdk/handle.py#function:RunHandle.events",
-      "line": 189,
+      "line": 208,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -48697,7 +49562,7 @@
       "type": "defines",
       "source": "file:agentsdk/handle.py",
       "target": "symbol:agentsdk/handle.py#function:RunHandle.result",
-      "line": 214,
+      "line": 233,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -48711,7 +49576,7 @@
       "type": "defines",
       "source": "file:agentsdk/handle.py",
       "target": "symbol:agentsdk/handle.py#function:RunHandle.state",
-      "line": 220,
+      "line": 239,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -48921,7 +49786,7 @@
       "type": "defines",
       "source": "file:agentsdk/loop.py",
       "target": "symbol:agentsdk/loop.py#function:_cancel_and_wait",
-      "line": 680,
+      "line": 691,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -48935,7 +49800,7 @@
       "type": "defines",
       "source": "file:agentsdk/loop.py",
       "target": "symbol:agentsdk/loop.py#function:_outcome",
-      "line": 720,
+      "line": 731,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -48949,7 +49814,7 @@
       "type": "defines",
       "source": "file:agentsdk/loop.py",
       "target": "symbol:agentsdk/loop.py#function:_recordable",
-      "line": 633,
+      "line": 644,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -48963,7 +49828,7 @@
       "type": "defines",
       "source": "file:agentsdk/loop.py",
       "target": "symbol:agentsdk/loop.py#function:_results",
-      "line": 639,
+      "line": 650,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -48977,7 +49842,7 @@
       "type": "defines",
       "source": "file:agentsdk/loop.py",
       "target": "symbol:agentsdk/loop.py#function:_wait_all_or_cancel",
-      "line": 653,
+      "line": 664,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -49005,7 +49870,7 @@
       "type": "defines",
       "source": "file:agentsdk/loop.py",
       "target": "symbol:agentsdk/loop.py#function:AgentLoop._batches",
-      "line": 518,
+      "line": 529,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -49033,7 +49898,7 @@
       "type": "defines",
       "source": "file:agentsdk/loop.py",
       "target": "symbol:agentsdk/loop.py#function:AgentLoop._execute_tool_calls",
-      "line": 487,
+      "line": 498,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -49047,7 +49912,7 @@
       "type": "defines",
       "source": "file:agentsdk/loop.py",
       "target": "symbol:agentsdk/loop.py#function:AgentLoop._is_concurrency_safe",
-      "line": 540,
+      "line": 551,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -49075,7 +49940,7 @@
       "type": "defines",
       "source": "file:agentsdk/loop.py",
       "target": "symbol:agentsdk/loop.py#function:AgentLoop._price",
-      "line": 591,
+      "line": 602,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -49089,7 +49954,7 @@
       "type": "defines",
       "source": "file:agentsdk/loop.py",
       "target": "symbol:agentsdk/loop.py#function:AgentLoop._run_batch",
-      "line": 548,
+      "line": 559,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -49145,7 +50010,7 @@
       "type": "defines",
       "source": "file:agentsdk/loop.py",
       "target": "symbol:agentsdk/loop.py#function:schema_problem",
-      "line": 698,
+      "line": 709,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -49159,7 +50024,7 @@
       "type": "defines",
       "source": "file:agentsdk/loop.py",
       "target": "symbol:agentsdk/loop.py#function:sent_model",
-      "line": 614,
+      "line": 625,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -50769,7 +51634,7 @@
       "type": "defines",
       "source": "file:agentsdk/postgres.py",
       "target": "symbol:agentsdk/postgres.py#class:PostgresArtifactStore",
-      "line": 1053,
+      "line": 1103,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -50783,7 +51648,7 @@
       "type": "defines",
       "source": "file:agentsdk/postgres.py",
       "target": "symbol:agentsdk/postgres.py#class:PostgresEventStore",
-      "line": 500,
+      "line": 538,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -50797,7 +51662,7 @@
       "type": "defines",
       "source": "file:agentsdk/postgres.py",
       "target": "symbol:agentsdk/postgres.py#class:PostgresRunStateStore",
-      "line": 1228,
+      "line": 1278,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -50811,7 +51676,7 @@
       "type": "defines",
       "source": "file:agentsdk/postgres.py",
       "target": "symbol:agentsdk/postgres.py#class:PostgresRunStore",
-      "line": 646,
+      "line": 696,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -50825,7 +51690,7 @@
       "type": "defines",
       "source": "file:agentsdk/postgres.py",
       "target": "symbol:agentsdk/postgres.py#class:PostgresSessionStore",
-      "line": 366,
+      "line": 418,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -50839,7 +51704,7 @@
       "type": "defines",
       "source": "file:agentsdk/postgres.py",
       "target": "symbol:agentsdk/postgres.py#class:PostgresTrace",
-      "line": 949,
+      "line": 999,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -50867,7 +51732,7 @@
       "type": "defines",
       "source": "file:agentsdk/postgres.py",
       "target": "symbol:agentsdk/postgres.py#function:_artifact_from_row",
-      "line": 1034,
+      "line": 1084,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -50891,11 +51756,25 @@
       "contentHash": "f27251d75de4e735f38d407ded4d49447cfea9efb585af562f0d55aa15194716"
     },
     {
+      "id": "defines:file:agentsdk/postgres.py->symbol:agentsdk/postgres.py#function:_insert_message:",
+      "type": "defines",
+      "source": "file:agentsdk/postgres.py",
+      "target": "symbol:agentsdk/postgres.py#function:_insert_message",
+      "line": 366,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "agentsdk/postgres.py"
+      },
+      "contentHash": "aae6fc6b4391fdd268ac8176aac8351f8e6e1db7c43a3dab6b4d0f788479a777"
+    },
+    {
       "id": "defines:file:agentsdk/postgres.py->symbol:agentsdk/postgres.py#function:_json_safe:",
       "type": "defines",
       "source": "file:agentsdk/postgres.py",
       "target": "symbol:agentsdk/postgres.py#function:_json_safe",
-      "line": 619,
+      "line": 669,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -50979,7 +51858,7 @@
       "type": "defines",
       "source": "file:agentsdk/postgres.py",
       "target": "symbol:agentsdk/postgres.py#function:_serialise_writers",
-      "line": 470,
+      "line": 508,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -50993,7 +51872,7 @@
       "type": "defines",
       "source": "file:agentsdk/postgres.py",
       "target": "symbol:agentsdk/postgres.py#function:_write_then_honour_cancellation",
-      "line": 1003,
+      "line": 1053,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -51049,7 +51928,7 @@
       "type": "defines",
       "source": "file:agentsdk/postgres.py",
       "target": "symbol:agentsdk/postgres.py#function:PostgresArtifactStore.__init__",
-      "line": 1064,
+      "line": 1114,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -51063,7 +51942,7 @@
       "type": "defines",
       "source": "file:agentsdk/postgres.py",
       "target": "symbol:agentsdk/postgres.py#function:PostgresArtifactStore._delete",
-      "line": 1203,
+      "line": 1253,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -51077,7 +51956,7 @@
       "type": "defines",
       "source": "file:agentsdk/postgres.py",
       "target": "symbol:agentsdk/postgres.py#function:PostgresArtifactStore._expire",
-      "line": 1217,
+      "line": 1267,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -51091,7 +51970,7 @@
       "type": "defines",
       "source": "file:agentsdk/postgres.py",
       "target": "symbol:agentsdk/postgres.py#function:PostgresArtifactStore._insert",
-      "line": 1131,
+      "line": 1181,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -51105,7 +51984,7 @@
       "type": "defines",
       "source": "file:agentsdk/postgres.py",
       "target": "symbol:agentsdk/postgres.py#function:PostgresArtifactStore._remove",
-      "line": 1124,
+      "line": 1174,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -51119,7 +51998,7 @@
       "type": "defines",
       "source": "file:agentsdk/postgres.py",
       "target": "symbol:agentsdk/postgres.py#function:PostgresArtifactStore._select",
-      "line": 1175,
+      "line": 1225,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -51133,7 +52012,7 @@
       "type": "defines",
       "source": "file:agentsdk/postgres.py",
       "target": "symbol:agentsdk/postgres.py#function:PostgresArtifactStore._visible",
-      "line": 1186,
+      "line": 1236,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -51147,7 +52026,7 @@
       "type": "defines",
       "source": "file:agentsdk/postgres.py",
       "target": "symbol:agentsdk/postgres.py#function:PostgresArtifactStore.delete",
-      "line": 1211,
+      "line": 1261,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -51161,7 +52040,7 @@
       "type": "defines",
       "source": "file:agentsdk/postgres.py",
       "target": "symbol:agentsdk/postgres.py#function:PostgresArtifactStore.expire",
-      "line": 1224,
+      "line": 1274,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -51175,7 +52054,7 @@
       "type": "defines",
       "source": "file:agentsdk/postgres.py",
       "target": "symbol:agentsdk/postgres.py#function:PostgresArtifactStore.for_scope",
-      "line": 1080,
+      "line": 1130,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -51189,7 +52068,7 @@
       "type": "defines",
       "source": "file:agentsdk/postgres.py",
       "target": "symbol:agentsdk/postgres.py#function:PostgresArtifactStore.get",
-      "line": 1193,
+      "line": 1243,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -51203,7 +52082,7 @@
       "type": "defines",
       "source": "file:agentsdk/postgres.py",
       "target": "symbol:agentsdk/postgres.py#function:PostgresArtifactStore.metadata",
-      "line": 1200,
+      "line": 1250,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -51217,7 +52096,7 @@
       "type": "defines",
       "source": "file:agentsdk/postgres.py",
       "target": "symbol:agentsdk/postgres.py#function:PostgresArtifactStore.put",
-      "line": 1086,
+      "line": 1136,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -51231,7 +52110,7 @@
       "type": "defines",
       "source": "file:agentsdk/postgres.py",
       "target": "symbol:agentsdk/postgres.py#function:PostgresEventStore.__init__",
-      "line": 503,
+      "line": 541,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -51245,7 +52124,7 @@
       "type": "defines",
       "source": "file:agentsdk/postgres.py",
       "target": "symbol:agentsdk/postgres.py#function:PostgresEventStore.emit",
-      "line": 516,
+      "line": 554,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -51259,7 +52138,7 @@
       "type": "defines",
       "source": "file:agentsdk/postgres.py",
       "target": "symbol:agentsdk/postgres.py#function:PostgresEventStore.events",
-      "line": 610,
+      "line": 660,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -51273,7 +52152,7 @@
       "type": "defines",
       "source": "file:agentsdk/postgres.py",
       "target": "symbol:agentsdk/postgres.py#function:PostgresEventStore.scope",
-      "line": 511,
+      "line": 549,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -51283,11 +52162,39 @@
       "contentHash": "e3129bc48e7dd6830d0e6e1932a10169710a8308d7bda440b740b6bf79da67c3"
     },
     {
+      "id": "defines:file:agentsdk/postgres.py->symbol:agentsdk/postgres.py#function:PostgresEventStore.stored:",
+      "type": "defines",
+      "source": "file:agentsdk/postgres.py",
+      "target": "symbol:agentsdk/postgres.py#function:PostgresEventStore.stored",
+      "line": 647,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "agentsdk/postgres.py"
+      },
+      "contentHash": "0aec4e4fad81b854d07f0dc3be5c219de97a3743190b44be88fe1c50caf5a61b"
+    },
+    {
+      "id": "defines:file:agentsdk/postgres.py->symbol:agentsdk/postgres.py#function:PostgresEventStore.write:",
+      "type": "defines",
+      "source": "file:agentsdk/postgres.py",
+      "target": "symbol:agentsdk/postgres.py#function:PostgresEventStore.write",
+      "line": 562,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "agentsdk/postgres.py"
+      },
+      "contentHash": "e52f9cd751e396d78024a67d80bfc7ae256b76364594cf123bf8d3bee06f73da"
+    },
+    {
       "id": "defines:file:agentsdk/postgres.py->symbol:agentsdk/postgres.py#function:PostgresRunStateStore.__init__:",
       "type": "defines",
       "source": "file:agentsdk/postgres.py",
       "target": "symbol:agentsdk/postgres.py#function:PostgresRunStateStore.__init__",
-      "line": 1243,
+      "line": 1293,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -51301,7 +52208,7 @@
       "type": "defines",
       "source": "file:agentsdk/postgres.py",
       "target": "symbol:agentsdk/postgres.py#function:PostgresRunStateStore._addressable",
-      "line": 1307,
+      "line": 1357,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -51315,7 +52222,7 @@
       "type": "defines",
       "source": "file:agentsdk/postgres.py",
       "target": "symbol:agentsdk/postgres.py#function:PostgresRunStateStore._insert_plan",
-      "line": 1261,
+      "line": 1311,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -51329,7 +52236,7 @@
       "type": "defines",
       "source": "file:agentsdk/postgres.py",
       "target": "symbol:agentsdk/postgres.py#function:PostgresRunStateStore._scope",
-      "line": 1253,
+      "line": 1303,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -51343,7 +52250,7 @@
       "type": "defines",
       "source": "file:agentsdk/postgres.py",
       "target": "symbol:agentsdk/postgres.py#function:PostgresRunStateStore._select_states",
-      "line": 1355,
+      "line": 1405,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -51357,7 +52264,7 @@
       "type": "defines",
       "source": "file:agentsdk/postgres.py",
       "target": "symbol:agentsdk/postgres.py#function:PostgresRunStateStore._select_versions",
-      "line": 1319,
+      "line": 1369,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -51371,7 +52278,7 @@
       "type": "defines",
       "source": "file:agentsdk/postgres.py",
       "target": "symbol:agentsdk/postgres.py#function:PostgresRunStateStore._transition",
-      "line": 1371,
+      "line": 1421,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -51385,7 +52292,7 @@
       "type": "defines",
       "source": "file:agentsdk/postgres.py",
       "target": "symbol:agentsdk/postgres.py#function:PostgresRunStateStore.for_scope",
-      "line": 1249,
+      "line": 1299,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -51399,7 +52306,7 @@
       "type": "defines",
       "source": "file:agentsdk/postgres.py",
       "target": "symbol:agentsdk/postgres.py#function:PostgresRunStateStore.get_plan",
-      "line": 1310,
+      "line": 1360,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -51413,7 +52320,7 @@
       "type": "defines",
       "source": "file:agentsdk/postgres.py",
       "target": "symbol:agentsdk/postgres.py#function:PostgresRunStateStore.node_states",
-      "line": 1348,
+      "line": 1398,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -51427,7 +52334,7 @@
       "type": "defines",
       "source": "file:agentsdk/postgres.py",
       "target": "symbol:agentsdk/postgres.py#function:PostgresRunStateStore.put_plan",
-      "line": 1256,
+      "line": 1306,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -51441,7 +52348,7 @@
       "type": "defines",
       "source": "file:agentsdk/postgres.py",
       "target": "symbol:agentsdk/postgres.py#function:PostgresRunStateStore.transition",
-      "line": 1365,
+      "line": 1415,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -51455,7 +52362,7 @@
       "type": "defines",
       "source": "file:agentsdk/postgres.py",
       "target": "symbol:agentsdk/postgres.py#function:PostgresRunStateStore.versions",
-      "line": 1316,
+      "line": 1366,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -51469,7 +52376,7 @@
       "type": "defines",
       "source": "file:agentsdk/postgres.py",
       "target": "symbol:agentsdk/postgres.py#function:PostgresRunStore.__init__",
-      "line": 649,
+      "line": 699,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -51483,7 +52390,7 @@
       "type": "defines",
       "source": "file:agentsdk/postgres.py",
       "target": "symbol:agentsdk/postgres.py#function:PostgresRunStore._bigint_or_null",
-      "line": 836,
+      "line": 886,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -51497,7 +52404,7 @@
       "type": "defines",
       "source": "file:agentsdk/postgres.py",
       "target": "symbol:agentsdk/postgres.py#function:PostgresRunStore._insert_manifest",
-      "line": 872,
+      "line": 922,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -51511,7 +52418,7 @@
       "type": "defines",
       "source": "file:agentsdk/postgres.py",
       "target": "symbol:agentsdk/postgres.py#function:PostgresRunStore._numeric_or_null",
-      "line": 847,
+      "line": 897,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -51525,7 +52432,7 @@
       "type": "defines",
       "source": "file:agentsdk/postgres.py",
       "target": "symbol:agentsdk/postgres.py#function:PostgresRunStore._write_budget_columns",
-      "line": 813,
+      "line": 863,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -51539,7 +52446,7 @@
       "type": "defines",
       "source": "file:agentsdk/postgres.py",
       "target": "symbol:agentsdk/postgres.py#function:PostgresRunStore._write_terminal_row",
-      "line": 793,
+      "line": 843,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -51553,7 +52460,7 @@
       "type": "defines",
       "source": "file:agentsdk/postgres.py",
       "target": "symbol:agentsdk/postgres.py#function:PostgresRunStore.finish_run",
-      "line": 759,
+      "line": 809,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -51567,7 +52474,7 @@
       "type": "defines",
       "source": "file:agentsdk/postgres.py",
       "target": "symbol:agentsdk/postgres.py#function:PostgresRunStore.get_run",
-      "line": 930,
+      "line": 980,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -51581,7 +52488,7 @@
       "type": "defines",
       "source": "file:agentsdk/postgres.py",
       "target": "symbol:agentsdk/postgres.py#function:PostgresRunStore.start_run",
-      "line": 652,
+      "line": 702,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -51595,7 +52502,7 @@
       "type": "defines",
       "source": "file:agentsdk/postgres.py",
       "target": "symbol:agentsdk/postgres.py#function:PostgresRunStore.write_manifest",
-      "line": 860,
+      "line": 910,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -51609,7 +52516,7 @@
       "type": "defines",
       "source": "file:agentsdk/postgres.py",
       "target": "symbol:agentsdk/postgres.py#function:PostgresSessionStore.__init__",
-      "line": 369,
+      "line": 421,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -51619,11 +52526,39 @@
       "contentHash": "d33687fd0afe88e1f2a6cb1a59628e692eb04aef740fad31c9cdebd9c4f3679c"
     },
     {
+      "id": "defines:file:agentsdk/postgres.py->symbol:agentsdk/postgres.py#function:PostgresSessionStore._bound:",
+      "type": "defines",
+      "source": "file:agentsdk/postgres.py",
+      "target": "symbol:agentsdk/postgres.py#function:PostgresSessionStore._bound",
+      "line": 429,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "agentsdk/postgres.py"
+      },
+      "contentHash": "0039b1c4cc180a88f0472b880ca818f54ec926ce813dd84bb75bc77fd6f092d3"
+    },
+    {
+      "id": "defines:file:agentsdk/postgres.py->symbol:agentsdk/postgres.py#function:PostgresSessionStore.append_with_event:",
+      "type": "defines",
+      "source": "file:agentsdk/postgres.py",
+      "target": "symbol:agentsdk/postgres.py#function:PostgresSessionStore.append_with_event",
+      "line": 445,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "agentsdk/postgres.py"
+      },
+      "contentHash": "39390bf7dae9e3ada6d6dc2fc6ea4c917c0255b5ce212e73c24483c9d6247012"
+    },
+    {
       "id": "defines:file:agentsdk/postgres.py->symbol:agentsdk/postgres.py#function:PostgresSessionStore.append:",
       "type": "defines",
       "source": "file:agentsdk/postgres.py",
       "target": "symbol:agentsdk/postgres.py#function:PostgresSessionStore.append",
-      "line": 377,
+      "line": 438,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -51637,7 +52572,7 @@
       "type": "defines",
       "source": "file:agentsdk/postgres.py",
       "target": "symbol:agentsdk/postgres.py#function:PostgresSessionStore.bind",
-      "line": 373,
+      "line": 425,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -51651,7 +52586,7 @@
       "type": "defines",
       "source": "file:agentsdk/postgres.py",
       "target": "symbol:agentsdk/postgres.py#function:PostgresSessionStore.history",
-      "line": 434,
+      "line": 472,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -51665,7 +52600,7 @@
       "type": "defines",
       "source": "file:agentsdk/postgres.py",
       "target": "symbol:agentsdk/postgres.py#function:PostgresTrace.__init__",
-      "line": 956,
+      "line": 1006,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -51679,7 +52614,7 @@
       "type": "defines",
       "source": "file:agentsdk/postgres.py",
       "target": "symbol:agentsdk/postgres.py#function:PostgresTrace.reconstruct",
-      "line": 960,
+      "line": 1010,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -53005,6 +53940,20 @@
       "contentHash": "46703633dfbe0aaa1e0df8839b558d27998197dc2eeffb60ddcb7ce6ceb2ff00"
     },
     {
+      "id": "defines:file:agentsdk/session.py->symbol:agentsdk/session.py#function:InMemorySessionStore.append_with_event:",
+      "type": "defines",
+      "source": "file:agentsdk/session.py",
+      "target": "symbol:agentsdk/session.py#function:InMemorySessionStore.append_with_event",
+      "line": 30,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "agentsdk/session.py"
+      },
+      "contentHash": "f91ae5a1cc375674f1aef0021c5be53ce29341d0e66bfc7cec4e5dbf125280bc"
+    },
+    {
       "id": "defines:file:agentsdk/session.py->symbol:agentsdk/session.py#function:InMemorySessionStore.append:",
       "type": "defines",
       "source": "file:agentsdk/session.py",
@@ -53023,7 +53972,7 @@
       "type": "defines",
       "source": "file:agentsdk/session.py",
       "target": "symbol:agentsdk/session.py#function:InMemorySessionStore.history",
-      "line": 30,
+      "line": 49,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -56789,7 +57738,7 @@
       "type": "defines",
       "source": "file:scripts/18_context.py",
       "target": "symbol:scripts/18_context.py#function:live",
-      "line": 160,
+      "line": 161,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -56803,7 +57752,7 @@
       "type": "defines",
       "source": "file:scripts/18_context.py",
       "target": "symbol:scripts/18_context.py#function:live.go",
-      "line": 172,
+      "line": 173,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -56817,7 +57766,7 @@
       "type": "defines",
       "source": "file:scripts/18_context.py",
       "target": "symbol:scripts/18_context.py#function:offline",
-      "line": 153,
+      "line": 154,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -63813,6 +64762,552 @@
       "contentHash": "57f09bf2210ae0d41aa16e4dd6fff36a76f49c9d5e50eb3bfa29b9f738e33176"
     },
     {
+      "id": "defines:file:tests/test_compaction_record.py->symbol:tests/test_compaction_record.py#class:Model:",
+      "type": "defines",
+      "source": "file:tests/test_compaction_record.py",
+      "target": "symbol:tests/test_compaction_record.py#class:Model",
+      "line": 69,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_compaction_record.py"
+      },
+      "contentHash": "3d13f2b8160b62e702cdf30060676422a30a4c795166e51bb7d5294ab8231f2e"
+    },
+    {
+      "id": "defines:file:tests/test_compaction_record.py->symbol:tests/test_compaction_record.py#class:test_a_session_store_without_the_combined_write_still_records_both.Plain:",
+      "type": "defines",
+      "source": "file:tests/test_compaction_record.py",
+      "target": "symbol:tests/test_compaction_record.py#class:test_a_session_store_without_the_combined_write_still_records_both.Plain",
+      "line": 345,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_compaction_record.py"
+      },
+      "contentHash": "66810faa5f4c071bad23c7d08439e218ff6cb2f0b323d82bc3e9eb9103b8991b"
+    },
+    {
+      "id": "defines:file:tests/test_compaction_record.py->symbol:tests/test_compaction_record.py#function:_chars:",
+      "type": "defines",
+      "source": "file:tests/test_compaction_record.py",
+      "target": "symbol:tests/test_compaction_record.py#function:_chars",
+      "line": 53,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_compaction_record.py"
+      },
+      "contentHash": "253dc30a46dc0577a490a4e2978824d95e3d6d5b360c726741de0d0c406266da"
+    },
+    {
+      "id": "defines:file:tests/test_compaction_record.py->symbol:tests/test_compaction_record.py#function:_message_chars:",
+      "type": "defines",
+      "source": "file:tests/test_compaction_record.py",
+      "target": "symbol:tests/test_compaction_record.py#function:_message_chars",
+      "line": 58,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_compaction_record.py"
+      },
+      "contentHash": "6053f49d29b0da4863ba5ebd4dc34880aa442bfd0496a26e331632698bd04101"
+    },
+    {
+      "id": "defines:file:tests/test_compaction_record.py->symbol:tests/test_compaction_record.py#function:_no_partial_record:",
+      "type": "defines",
+      "source": "file:tests/test_compaction_record.py",
+      "target": "symbol:tests/test_compaction_record.py#function:_no_partial_record",
+      "line": 242,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_compaction_record.py"
+      },
+      "contentHash": "59029488da46b7d9acf77fffc3cbae88f0cc99e8aab813ec48a10ba6064abd7b"
+    },
+    {
+      "id": "defines:file:tests/test_compaction_record.py->symbol:tests/test_compaction_record.py#function:_tool:",
+      "type": "defines",
+      "source": "file:tests/test_compaction_record.py",
+      "target": "symbol:tests/test_compaction_record.py#function:_tool",
+      "line": 36,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_compaction_record.py"
+      },
+      "contentHash": "9d3ac43bd0a5c682114f5c46c95c37d514816f97db0fde68233591f1867510bd"
+    },
+    {
+      "id": "defines:file:tests/test_compaction_record.py->symbol:tests/test_compaction_record.py#function:_tool.fn:",
+      "type": "defines",
+      "source": "file:tests/test_compaction_record.py",
+      "target": "symbol:tests/test_compaction_record.py#function:_tool.fn",
+      "line": 37,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_compaction_record.py"
+      },
+      "contentHash": "0246a57de6e9ece8858c070a46f64eb40613b2f30d000bcbb056a1f34fa3ab47"
+    },
+    {
+      "id": "defines:file:tests/test_compaction_record.py->symbol:tests/test_compaction_record.py#function:backend:",
+      "type": "defines",
+      "source": "file:tests/test_compaction_record.py",
+      "target": "symbol:tests/test_compaction_record.py#function:backend",
+      "line": 125,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_compaction_record.py"
+      },
+      "contentHash": "63198bfb4534f1944cfe5124eb01259579d41f402148bf061b7346a5ea3c08d6"
+    },
+    {
+      "id": "defines:file:tests/test_compaction_record.py->symbol:tests/test_compaction_record.py#function:compactions:",
+      "type": "defines",
+      "source": "file:tests/test_compaction_record.py",
+      "target": "symbol:tests/test_compaction_record.py#function:compactions",
+      "line": 99,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_compaction_record.py"
+      },
+      "contentHash": "2ac75d870282d39ffd97317dafb83797550baf0a12a296bb5350eae9c5d4ef1f"
+    },
+    {
+      "id": "defines:file:tests/test_compaction_record.py->symbol:tests/test_compaction_record.py#function:config:",
+      "type": "defines",
+      "source": "file:tests/test_compaction_record.py",
+      "target": "symbol:tests/test_compaction_record.py#function:config",
+      "line": 95,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_compaction_record.py"
+      },
+      "contentHash": "797cf0acf60b2e4d9bdbdcee7ec3c078ad7ac8a004390a27c4c5fb855f0c33aa"
+    },
+    {
+      "id": "defines:file:tests/test_compaction_record.py->symbol:tests/test_compaction_record.py#function:Model.__init__:",
+      "type": "defines",
+      "source": "file:tests/test_compaction_record.py",
+      "target": "symbol:tests/test_compaction_record.py#function:Model.__init__",
+      "line": 74,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_compaction_record.py"
+      },
+      "contentHash": "0c484dea068036fc10f65932f76cb28084b1f28fc2f4893a29aab3ce9f171f72"
+    },
+    {
+      "id": "defines:file:tests/test_compaction_record.py->symbol:tests/test_compaction_record.py#function:Model.send:",
+      "type": "defines",
+      "source": "file:tests/test_compaction_record.py",
+      "target": "symbol:tests/test_compaction_record.py#function:Model.send",
+      "line": 78,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_compaction_record.py"
+      },
+      "contentHash": "514e425d8150038280ba622d99ddab6ae112942a1ba9dca2b4ee22a49d7071d2"
+    },
+    {
+      "id": "defines:file:tests/test_compaction_record.py->symbol:tests/test_compaction_record.py#function:query:",
+      "type": "defines",
+      "source": "file:tests/test_compaction_record.py",
+      "target": "symbol:tests/test_compaction_record.py#function:query",
+      "line": 103,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_compaction_record.py"
+      },
+      "contentHash": "90342decf5882574785e8ad6c54fa18d95b0d91a2b08fabcf8a859e86d2983a8"
+    },
+    {
+      "id": "defines:file:tests/test_compaction_record.py->symbol:tests/test_compaction_record.py#function:recompute:",
+      "type": "defines",
+      "source": "file:tests/test_compaction_record.py",
+      "target": "symbol:tests/test_compaction_record.py#function:recompute",
+      "line": 145,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_compaction_record.py"
+      },
+      "contentHash": "7ad5b1f593918a22f0e4fd41d9ffaa2cebc4606b761ffea9eaf991036a1969bd"
+    },
+    {
+      "id": "defines:file:tests/test_compaction_record.py->symbol:tests/test_compaction_record.py#function:recompute.estimate:",
+      "type": "defines",
+      "source": "file:tests/test_compaction_record.py",
+      "target": "symbol:tests/test_compaction_record.py#function:recompute.estimate",
+      "line": 153,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_compaction_record.py"
+      },
+      "contentHash": "02c405b6e1057872ddd1ff15ae306f110390902b3dc8c91bdf689a142d49770a"
+    },
+    {
+      "id": "defines:file:tests/test_compaction_record.py->symbol:tests/test_compaction_record.py#function:remove_rows:",
+      "type": "defines",
+      "source": "file:tests/test_compaction_record.py",
+      "target": "symbol:tests/test_compaction_record.py#function:remove_rows",
+      "line": 108,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_compaction_record.py"
+      },
+      "contentHash": "ba4c2f94b6d45bef3c7b0ff1d9d71d55988970e9ee1dca9431972cf6b967c1e1"
+    },
+    {
+      "id": "defines:file:tests/test_compaction_record.py->symbol:tests/test_compaction_record.py#function:remove_what_the_test_wrote:",
+      "type": "defines",
+      "source": "file:tests/test_compaction_record.py",
+      "target": "symbol:tests/test_compaction_record.py#function:remove_what_the_test_wrote",
+      "line": 118,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_compaction_record.py"
+      },
+      "contentHash": "53995ff851146fe17d5ff6817d158a0966aa34777c5f862521dbf5b76c923c91"
+    },
+    {
+      "id": "defines:file:tests/test_compaction_record.py->symbol:tests/test_compaction_record.py#function:run_and_check:",
+      "type": "defines",
+      "source": "file:tests/test_compaction_record.py",
+      "target": "symbol:tests/test_compaction_record.py#function:run_and_check",
+      "line": 168,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_compaction_record.py"
+      },
+      "contentHash": "3e92e057721cba77acd136f79b560dcb851939ed892be9307df0b0b1671bc2b7"
+    },
+    {
+      "id": "defines:file:tests/test_compaction_record.py->symbol:tests/test_compaction_record.py#function:stored:",
+      "type": "defines",
+      "source": "file:tests/test_compaction_record.py",
+      "target": "symbol:tests/test_compaction_record.py#function:stored",
+      "line": 129,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_compaction_record.py"
+      },
+      "contentHash": "d4ad601fac577640b50b87e3b6a3bd71bb0e7df2af160ff3821b8b18651285f0"
+    },
+    {
+      "id": "defines:file:tests/test_compaction_record.py->symbol:tests/test_compaction_record.py#function:test_a_session_store_without_the_combined_write_still_records_both:",
+      "type": "defines",
+      "source": "file:tests/test_compaction_record.py",
+      "target": "symbol:tests/test_compaction_record.py#function:test_a_session_store_without_the_combined_write_still_records_both",
+      "line": 342,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_compaction_record.py"
+      },
+      "contentHash": "c8b4238d3cee5c991be2209c4fd0aab4e6bc160275eafa44586da482bb899733"
+    },
+    {
+      "id": "defines:file:tests/test_compaction_record.py->symbol:tests/test_compaction_record.py#function:test_a_session_store_without_the_combined_write_still_records_both.Plain.__init__:",
+      "type": "defines",
+      "source": "file:tests/test_compaction_record.py",
+      "target": "symbol:tests/test_compaction_record.py#function:test_a_session_store_without_the_combined_write_still_records_both.Plain.__init__",
+      "line": 346,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_compaction_record.py"
+      },
+      "contentHash": "124bb092ca6e8da5b3db6da4d76042202a725a662fb05f2494921c0e5e2edd02"
+    },
+    {
+      "id": "defines:file:tests/test_compaction_record.py->symbol:tests/test_compaction_record.py#function:test_a_session_store_without_the_combined_write_still_records_both.Plain.append:",
+      "type": "defines",
+      "source": "file:tests/test_compaction_record.py",
+      "target": "symbol:tests/test_compaction_record.py#function:test_a_session_store_without_the_combined_write_still_records_both.Plain.append",
+      "line": 349,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_compaction_record.py"
+      },
+      "contentHash": "21299f8945a1cd65b1d3b5e8279b045862e9cd6c21a32b9f71a93c64680d07db"
+    },
+    {
+      "id": "defines:file:tests/test_compaction_record.py->symbol:tests/test_compaction_record.py#function:test_a_session_store_without_the_combined_write_still_records_both.Plain.history:",
+      "type": "defines",
+      "source": "file:tests/test_compaction_record.py",
+      "target": "symbol:tests/test_compaction_record.py#function:test_a_session_store_without_the_combined_write_still_records_both.Plain.history",
+      "line": 352,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_compaction_record.py"
+      },
+      "contentHash": "b87a979503e531df5eb12891b2fdecf565e3f61d70e74b13fde6f7c4f13c692c"
+    },
+    {
+      "id": "defines:file:tests/test_compaction_record.py->symbol:tests/test_compaction_record.py#function:test_ac68_every_compaction_records_its_pair_on_one_basis_and_names_what_decided_it:",
+      "type": "defines",
+      "source": "file:tests/test_compaction_record.py",
+      "target": "symbol:tests/test_compaction_record.py#function:test_ac68_every_compaction_records_its_pair_on_one_basis_and_names_what_decided_it",
+      "line": 190,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_compaction_record.py"
+      },
+      "contentHash": "08008098ce7c16297f20b18c821d1be3ea89122dbc21ba72dabc9651f9b82db3"
+    },
+    {
+      "id": "defines:file:tests/test_compaction_record.py->symbol:tests/test_compaction_record.py#function:test_ac68_on_postgres_the_pair_matches_the_stored_history:",
+      "type": "defines",
+      "source": "file:tests/test_compaction_record.py",
+      "target": "symbol:tests/test_compaction_record.py#function:test_ac68_on_postgres_the_pair_matches_the_stored_history",
+      "line": 208,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_compaction_record.py"
+      },
+      "contentHash": "81de7b19a78d9d820e521a3b46e263d9a08ddecddd9b13f42a158a4c74b764da"
+    },
+    {
+      "id": "defines:file:tests/test_compaction_record.py->symbol:tests/test_compaction_record.py#function:test_ac69_a_compaction_that_completes_writes_both:",
+      "type": "defines",
+      "source": "file:tests/test_compaction_record.py",
+      "target": "symbol:tests/test_compaction_record.py#function:test_ac69_a_compaction_that_completes_writes_both",
+      "line": 251,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_compaction_record.py"
+      },
+      "contentHash": "b988c5856a7b4b6c9e08c85659093314e063bec4185339e1dc407474287a8b13"
+    },
+    {
+      "id": "defines:file:tests/test_compaction_record.py->symbol:tests/test_compaction_record.py#function:test_ac69_a_summary_that_cannot_be_written_leaves_no_event_in_memory:",
+      "type": "defines",
+      "source": "file:tests/test_compaction_record.py",
+      "target": "symbol:tests/test_compaction_record.py#function:test_ac69_a_summary_that_cannot_be_written_leaves_no_event_in_memory",
+      "line": 274,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_compaction_record.py"
+      },
+      "contentHash": "96bfd6b6432ed5408ddd2fe4a7a1950d01e6d47a7ab7dc2b66fc03e10130a172"
+    },
+    {
+      "id": "defines:file:tests/test_compaction_record.py->symbol:tests/test_compaction_record.py#function:test_ac69_a_summary_that_cannot_be_written_leaves_no_event_in_memory.refuses:",
+      "type": "defines",
+      "source": "file:tests/test_compaction_record.py",
+      "target": "symbol:tests/test_compaction_record.py#function:test_ac69_a_summary_that_cannot_be_written_leaves_no_event_in_memory.refuses",
+      "line": 277,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_compaction_record.py"
+      },
+      "contentHash": "0af17b69b352071248ed85f579a46a4f37a6789af6826acae5b99471ba814ead"
+    },
+    {
+      "id": "defines:file:tests/test_compaction_record.py->symbol:tests/test_compaction_record.py#function:test_ac69_a_summary_that_cannot_be_written_leaves_no_event_on_postgres:",
+      "type": "defines",
+      "source": "file:tests/test_compaction_record.py",
+      "target": "symbol:tests/test_compaction_record.py#function:test_ac69_a_summary_that_cannot_be_written_leaves_no_event_on_postgres",
+      "line": 311,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_compaction_record.py"
+      },
+      "contentHash": "6536193c89bb0f9c6dfe0c64cd5fbcea880c4f15ba2232110c0e00588cb2295e"
+    },
+    {
+      "id": "defines:file:tests/test_compaction_record.py->symbol:tests/test_compaction_record.py#function:test_ac69_a_summary_that_cannot_be_written_leaves_no_event_on_postgres.refuses:",
+      "type": "defines",
+      "source": "file:tests/test_compaction_record.py",
+      "target": "symbol:tests/test_compaction_record.py#function:test_ac69_a_summary_that_cannot_be_written_leaves_no_event_on_postgres.refuses",
+      "line": 314,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_compaction_record.py"
+      },
+      "contentHash": "54c054933d7b9c5275064b1acc14bde6d6cf963bc8ce557d5887b007d9b5172d"
+    },
+    {
+      "id": "defines:file:tests/test_compaction_record.py->symbol:tests/test_compaction_record.py#function:test_ac69_an_event_that_cannot_be_written_leaves_no_summary_in_memory:",
+      "type": "defines",
+      "source": "file:tests/test_compaction_record.py",
+      "target": "symbol:tests/test_compaction_record.py#function:test_ac69_an_event_that_cannot_be_written_leaves_no_summary_in_memory",
+      "line": 258,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_compaction_record.py"
+      },
+      "contentHash": "4a9c0d7981b4cb737aa9d435a5b1a0de48e23d87370d048cee9b538b1839018f"
+    },
+    {
+      "id": "defines:file:tests/test_compaction_record.py->symbol:tests/test_compaction_record.py#function:test_ac69_an_event_that_cannot_be_written_leaves_no_summary_in_memory.refuses:",
+      "type": "defines",
+      "source": "file:tests/test_compaction_record.py",
+      "target": "symbol:tests/test_compaction_record.py#function:test_ac69_an_event_that_cannot_be_written_leaves_no_summary_in_memory.refuses",
+      "line": 261,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_compaction_record.py"
+      },
+      "contentHash": "5648ec799c28d941ae004431f48602d88416b0c9d112b1416fb6e92cfa9e053e"
+    },
+    {
+      "id": "defines:file:tests/test_compaction_record.py->symbol:tests/test_compaction_record.py#function:test_ac69_an_event_that_cannot_be_written_rolls_the_summary_back_on_postgres:",
+      "type": "defines",
+      "source": "file:tests/test_compaction_record.py",
+      "target": "symbol:tests/test_compaction_record.py#function:test_ac69_an_event_that_cannot_be_written_rolls_the_summary_back_on_postgres",
+      "line": 290,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_compaction_record.py"
+      },
+      "contentHash": "7eb2410a55bc960956901ddd98499233cc6e2e5a1e239d8b5feb94ca33619278"
+    },
+    {
+      "id": "defines:file:tests/test_compaction_record.py->symbol:tests/test_compaction_record.py#function:test_ac69_an_event_that_cannot_be_written_rolls_the_summary_back_on_postgres.refuses:",
+      "type": "defines",
+      "source": "file:tests/test_compaction_record.py",
+      "target": "symbol:tests/test_compaction_record.py#function:test_ac69_an_event_that_cannot_be_written_rolls_the_summary_back_on_postgres.refuses",
+      "line": 295,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_compaction_record.py"
+      },
+      "contentHash": "efecf2641af9ba3fcb573ca1f94d0c9692c713b9d18c509a4cd226df2ba7ae05"
+    },
+    {
+      "id": "defines:file:tests/test_compaction_record.py->symbol:tests/test_compaction_record.py#function:test_the_combined_write_refuses_a_sink_for_another_run_on_postgres:",
+      "type": "defines",
+      "source": "file:tests/test_compaction_record.py",
+      "target": "symbol:tests/test_compaction_record.py#function:test_the_combined_write_refuses_a_sink_for_another_run_on_postgres",
+      "line": 370,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_compaction_record.py"
+      },
+      "contentHash": "010eb0975c035108461c76c0aec1acec2582b257919312d57d3a4ed7f45c9cb8"
+    },
+    {
+      "id": "defines:file:tests/test_compaction_record.py->symbol:tests/test_compaction_record.py#function:test_the_combined_write_refuses_a_sink_for_another_run:",
+      "type": "defines",
+      "source": "file:tests/test_compaction_record.py",
+      "target": "symbol:tests/test_compaction_record.py#function:test_the_combined_write_refuses_a_sink_for_another_run",
+      "line": 361,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_compaction_record.py"
+      },
+      "contentHash": "a9ee5a1357a296ad5e85f377e785d9d706ab1940cc3ccbdaae5bfc845dbe2367"
+    },
+    {
+      "id": "defines:file:tests/test_compaction_record.py->symbol:tests/test_compaction_record.py#function:test_the_deciding_measure_is_the_providers_count_when_one_applies:",
+      "type": "defines",
+      "source": "file:tests/test_compaction_record.py",
+      "target": "symbol:tests/test_compaction_record.py#function:test_the_deciding_measure_is_the_providers_count_when_one_applies",
+      "line": 214,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_compaction_record.py"
+      },
+      "contentHash": "7c3a04383f1e44a5a1a0866b6e04374c04e52a772cdbd06dc6ea94f530d127ae"
+    },
+    {
+      "id": "defines:file:tests/test_compaction_record.py->symbol:tests/test_compaction_record.py#function:test_the_written_event_reaches_the_runs_handle_in_order:",
+      "type": "defines",
+      "source": "file:tests/test_compaction_record.py",
+      "target": "symbol:tests/test_compaction_record.py#function:test_the_written_event_reaches_the_runs_handle_in_order",
+      "line": 328,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_compaction_record.py"
+      },
+      "contentHash": "c8cc3b187d79386bedbdedebe784e9e1e43acd5440f76decda8339639f90b316"
+    },
+    {
+      "id": "defines:file:tests/test_compaction_record.py->symbol:tests/test_compaction_record.py#function:test_with_no_usable_report_the_deciding_measure_is_the_estimate_and_equals_before:",
+      "type": "defines",
+      "source": "file:tests/test_compaction_record.py",
+      "target": "symbol:tests/test_compaction_record.py#function:test_with_no_usable_report_the_deciding_measure_is_the_estimate_and_equals_before",
+      "line": 228,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_compaction_record.py"
+      },
+      "contentHash": "e5b076aa4f5fb310edd8dda9aa958ceec578a7a9893387c7fe978b474ed82d45"
+    },
+    {
       "id": "defines:file:tests/test_concurrency.py->symbol:tests/test_concurrency.py#class:_Checkouts:",
       "type": "defines",
       "source": "file:tests/test_concurrency.py",
@@ -65539,7 +67034,7 @@
       "type": "defines",
       "source": "file:tests/test_context_policy.py",
       "target": "symbol:tests/test_context_policy.py#class:test_a_replaced_record_that_cannot_be_stored_ends_the_run_failed.Refuses",
-      "line": 610,
+      "line": 614,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -65749,7 +67244,7 @@
       "type": "defines",
       "source": "file:tests/test_context_policy.py",
       "target": "symbol:tests/test_context_policy.py#function:priced_registry",
-      "line": 626,
+      "line": 630,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -65875,7 +67370,7 @@
       "type": "defines",
       "source": "file:tests/test_context_policy.py",
       "target": "symbol:tests/test_context_policy.py#function:test_a_policy_that_never_compacts_never_compacts",
-      "line": 555,
+      "line": 559,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -65889,7 +67384,7 @@
       "type": "defines",
       "source": "file:tests/test_context_policy.py",
       "target": "symbol:tests/test_context_policy.py#function:test_a_priced_run_that_compacts_knows_its_cost_and_takes_its_window_from_the_registry",
-      "line": 639,
+      "line": 643,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -65903,7 +67398,7 @@
       "type": "defines",
       "source": "file:tests/test_context_policy.py",
       "target": "symbol:tests/test_context_policy.py#function:test_a_replaced_record_that_cannot_be_stored_ends_the_run_failed",
-      "line": 605,
+      "line": 609,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -65917,7 +67412,7 @@
       "type": "defines",
       "source": "file:tests/test_context_policy.py",
       "target": "symbol:tests/test_context_policy.py#function:test_a_replaced_record_that_cannot_be_stored_ends_the_run_failed.Refuses.__getattr__",
-      "line": 614,
+      "line": 618,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -65931,7 +67426,7 @@
       "type": "defines",
       "source": "file:tests/test_context_policy.py",
       "target": "symbol:tests/test_context_policy.py#function:test_a_replaced_record_that_cannot_be_stored_ends_the_run_failed.Refuses.__init__",
-      "line": 611,
+      "line": 615,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -65945,7 +67440,7 @@
       "type": "defines",
       "source": "file:tests/test_context_policy.py",
       "target": "symbol:tests/test_context_policy.py#function:test_a_replaced_record_that_cannot_be_stored_ends_the_run_failed.Refuses.put",
-      "line": 617,
+      "line": 621,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -65959,7 +67454,7 @@
       "type": "defines",
       "source": "file:tests/test_context_policy.py",
       "target": "symbol:tests/test_context_policy.py#function:test_a_reservation_spent_before_the_summary_ends_the_run_budget_exceeded",
-      "line": 582,
+      "line": 586,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -65973,7 +67468,7 @@
       "type": "defines",
       "source": "file:tests/test_context_policy.py",
       "target": "symbol:tests/test_context_policy.py#function:test_a_reservation_spent_before_the_summary_ends_the_run_budget_exceeded.split",
-      "line": 591,
+      "line": 595,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -65987,7 +67482,7 @@
       "type": "defines",
       "source": "file:tests/test_context_policy.py",
       "target": "symbol:tests/test_context_policy.py#function:test_a_run_cancelled_during_its_summarising_call_ends_cancelled_with_its_cost_unknown",
-      "line": 647,
+      "line": 651,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -66015,7 +67510,7 @@
       "type": "defines",
       "source": "file:tests/test_context_policy.py",
       "target": "symbol:tests/test_context_policy.py#function:test_a_run_without_a_policy_never_compacts_and_sends_its_whole_history",
-      "line": 547,
+      "line": 551,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -66043,7 +67538,7 @@
       "type": "defines",
       "source": "file:tests/test_context_policy.py",
       "target": "symbol:tests/test_context_policy.py#function:test_a_summarising_call_that_fails_ends_the_run_failed_naming_it",
-      "line": 565,
+      "line": 569,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -66127,7 +67622,7 @@
       "type": "defines",
       "source": "file:tests/test_context_policy.py",
       "target": "symbol:tests/test_context_policy.py#function:test_an_empty_summary_ends_the_run_failed",
-      "line": 573,
+      "line": 577,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -66169,7 +67664,7 @@
       "type": "defines",
       "source": "file:tests/test_context_policy.py",
       "target": "symbol:tests/test_context_policy.py#function:test_nothing_older_than_the_kept_turns_means_no_compaction_and_the_run_goes_on",
-      "line": 539,
+      "line": 543,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -66211,7 +67706,7 @@
       "type": "defines",
       "source": "file:tests/test_context_policy.py",
       "target": "symbol:tests/test_context_policy.py#function:test_the_example_shows_the_visible_tools_a_compaction_and_its_artifact_offline",
-      "line": 691,
+      "line": 695,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -66253,7 +67748,7 @@
       "type": "defines",
       "source": "file:tests/test_context_policy.py",
       "target": "symbol:tests/test_context_policy.py#function:test_the_reported_prompt_tokens_decide_when_the_text_alone_would_not",
-      "line": 527,
+      "line": 528,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -66267,7 +67762,7 @@
       "type": "defines",
       "source": "file:tests/test_context_policy.py",
       "target": "symbol:tests/test_context_policy.py#function:test_the_view_is_the_task_the_latest_summary_and_what_followed",
-      "line": 671,
+      "line": 675,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -91219,7 +92714,7 @@
       "source": "file:scripts/18_context.py",
       "target": "file:agentsdk/__init__.py",
       "specifier": "agentsdk",
-      "line": 163,
+      "line": 164,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -91234,7 +92729,7 @@
       "source": "file:scripts/18_context.py",
       "target": "file:agentsdk/config.py",
       "specifier": "agentsdk.config",
-      "line": 164,
+      "line": 165,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -91279,7 +92774,7 @@
       "source": "file:scripts/18_context.py",
       "target": "file:agentsdk/postgres.py",
       "specifier": "agentsdk.postgres",
-      "line": 165,
+      "line": 166,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -91309,7 +92804,7 @@
       "source": "file:scripts/18_context.py",
       "target": "file:agentsdk/providers/__init__.py",
       "specifier": "agentsdk.providers",
-      "line": 166,
+      "line": 167,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -91339,7 +92834,7 @@
       "source": "file:scripts/18_context.py",
       "target": "package:pypi:dotenv",
       "specifier": "dotenv",
-      "line": 161,
+      "line": 162,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -93569,6 +95064,231 @@
       "contentHash": "cb90ebbf976a267a30f369fb4cc6ff4d204cf708cc960a0ecf5266012ce62e18"
     },
     {
+      "id": "imports:file:tests/test_compaction_record.py->file:agentsdk/__init__.py:agentsdk",
+      "type": "imports",
+      "source": "file:tests/test_compaction_record.py",
+      "target": "file:agentsdk/__init__.py",
+      "specifier": "agentsdk",
+      "line": 21,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-imports",
+        "source": "tests/test_compaction_record.py"
+      },
+      "contentHash": "b7c4f9d00c0358e73016f510c487f2de02a97b672e898cf1978668520cddf0c1"
+    },
+    {
+      "id": "imports:file:tests/test_compaction_record.py->file:agentsdk/config.py:agentsdk.config",
+      "type": "imports",
+      "source": "file:tests/test_compaction_record.py",
+      "target": "file:agentsdk/config.py",
+      "specifier": "agentsdk.config",
+      "line": 22,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-imports",
+        "source": "tests/test_compaction_record.py"
+      },
+      "contentHash": "e9e1b270f797898e15685368f1bb17b40baed7481fa0aa6adda79068131936b6"
+    },
+    {
+      "id": "imports:file:tests/test_compaction_record.py->file:agentsdk/events.py:agentsdk.events",
+      "type": "imports",
+      "source": "file:tests/test_compaction_record.py",
+      "target": "file:agentsdk/events.py",
+      "specifier": "agentsdk.events",
+      "line": 23,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-imports",
+        "source": "tests/test_compaction_record.py"
+      },
+      "contentHash": "b57438e317f25fffca64e22cf2f6d032e07354b2fd7655ad124008ad8ba309ba"
+    },
+    {
+      "id": "imports:file:tests/test_compaction_record.py->file:agentsdk/model.py:agentsdk.model",
+      "type": "imports",
+      "source": "file:tests/test_compaction_record.py",
+      "target": "file:agentsdk/model.py",
+      "specifier": "agentsdk.model",
+      "line": 24,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-imports",
+        "source": "tests/test_compaction_record.py"
+      },
+      "contentHash": "37a2879e70719a8046bbe1e2b16b3f647c93e7223ff0f660cb17d8da6a43b3da"
+    },
+    {
+      "id": "imports:file:tests/test_compaction_record.py->file:agentsdk/postgres.py:agentsdk.postgres",
+      "type": "imports",
+      "source": "file:tests/test_compaction_record.py",
+      "target": "file:agentsdk/postgres.py",
+      "specifier": "agentsdk.postgres",
+      "line": 25,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-imports",
+        "source": "tests/test_compaction_record.py"
+      },
+      "contentHash": "9684dcf9b1972a514a7d9bc0c34d3d0c634616ce8e3901cce91001bced793326"
+    },
+    {
+      "id": "imports:file:tests/test_compaction_record.py->file:agentsdk/primitives.py:agentsdk.primitives",
+      "type": "imports",
+      "source": "file:tests/test_compaction_record.py",
+      "target": "file:agentsdk/primitives.py",
+      "specifier": "agentsdk.primitives",
+      "line": 26,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-imports",
+        "source": "tests/test_compaction_record.py"
+      },
+      "contentHash": "efc0817159891055a3376e430c5afdbe8730fb26f046dae32400836e8685f7d4"
+    },
+    {
+      "id": "imports:file:tests/test_compaction_record.py->file:agentsdk/session.py:agentsdk.session",
+      "type": "imports",
+      "source": "file:tests/test_compaction_record.py",
+      "target": "file:agentsdk/session.py",
+      "specifier": "agentsdk.session",
+      "line": 27,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-imports",
+        "source": "tests/test_compaction_record.py"
+      },
+      "contentHash": "ece9a49a8f4cc0db444996e788e5b705a7345d3817610f3b601ba1ea86467e66"
+    },
+    {
+      "id": "imports:file:tests/test_compaction_record.py->file:agentsdk/tools.py:agentsdk.tools",
+      "type": "imports",
+      "source": "file:tests/test_compaction_record.py",
+      "target": "file:agentsdk/tools.py",
+      "specifier": "agentsdk.tools",
+      "line": 28,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-imports",
+        "source": "tests/test_compaction_record.py"
+      },
+      "contentHash": "27d6a0d3fe63699dcb71796ae81daa9e3b782c95e1cd78e340b4857f0460f891"
+    },
+    {
+      "id": "imports:file:tests/test_compaction_record.py->package:pypi:psycopg:psycopg",
+      "type": "imports",
+      "source": "file:tests/test_compaction_record.py",
+      "target": "package:pypi:psycopg",
+      "specifier": "psycopg",
+      "line": 17,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-imports",
+        "source": "tests/test_compaction_record.py"
+      },
+      "contentHash": "9a5ade65690db18155515552819a704b354495e1835dc428fcc039b5f560fdae"
+    },
+    {
+      "id": "imports:file:tests/test_compaction_record.py->package:pypi:pytest:pytest",
+      "type": "imports",
+      "source": "file:tests/test_compaction_record.py",
+      "target": "package:pypi:pytest",
+      "specifier": "pytest",
+      "line": 18,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-imports",
+        "source": "tests/test_compaction_record.py"
+      },
+      "contentHash": "b9490d780d7bbe61d34b251afa127cfe630f2f673941987a8051c1709e0843ff"
+    },
+    {
+      "id": "imports:file:tests/test_compaction_record.py->runtime:python:__future__:__future__",
+      "type": "imports",
+      "source": "file:tests/test_compaction_record.py",
+      "target": "runtime:python:__future__",
+      "specifier": "__future__",
+      "line": 10,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-imports",
+        "source": "tests/test_compaction_record.py"
+      },
+      "contentHash": "d5485f0cd0f01278285cedd988d14ca1fd3f16ace02ff08449c59ddbd0d153f1"
+    },
+    {
+      "id": "imports:file:tests/test_compaction_record.py->runtime:python:asyncio:asyncio",
+      "type": "imports",
+      "source": "file:tests/test_compaction_record.py",
+      "target": "runtime:python:asyncio",
+      "specifier": "asyncio",
+      "line": 12,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-imports",
+        "source": "tests/test_compaction_record.py"
+      },
+      "contentHash": "1204de1ad85062f25cca21ee4d02b6c3a4054fbb71bb119a343e66631c206a93"
+    },
+    {
+      "id": "imports:file:tests/test_compaction_record.py->runtime:python:json:json",
+      "type": "imports",
+      "source": "file:tests/test_compaction_record.py",
+      "target": "runtime:python:json",
+      "specifier": "json",
+      "line": 13,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-imports",
+        "source": "tests/test_compaction_record.py"
+      },
+      "contentHash": "6cc102be675ee37b8739bf763bc2325c7103aaa828a95fde67a6fc75e69a5289"
+    },
+    {
+      "id": "imports:file:tests/test_compaction_record.py->runtime:python:os:os",
+      "type": "imports",
+      "source": "file:tests/test_compaction_record.py",
+      "target": "runtime:python:os",
+      "specifier": "os",
+      "line": 14,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-imports",
+        "source": "tests/test_compaction_record.py"
+      },
+      "contentHash": "c6af02a36b0d26c6e61ae454e3a60def3c581a01777dfffe11809486fbc3027f"
+    },
+    {
+      "id": "imports:file:tests/test_compaction_record.py->runtime:python:random:random",
+      "type": "imports",
+      "source": "file:tests/test_compaction_record.py",
+      "target": "runtime:python:random",
+      "specifier": "random",
+      "line": 15,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-imports",
+        "source": "tests/test_compaction_record.py"
+      },
+      "contentHash": "e6d5d95d3ec8c6bf24da2fab8de8ac28be8903aac976e4ccea8cc18e70a09229"
+    },
+    {
       "id": "imports:file:tests/test_concurrency.py->file:agentsdk/__init__.py:agentsdk",
       "type": "imports",
       "source": "file:tests/test_concurrency.py",
@@ -94249,7 +95969,7 @@
       "source": "file:tests/test_context_policy.py",
       "target": "file:agentsdk/primitives.py",
       "specifier": "agentsdk.primitives",
-      "line": 678,
+      "line": 682,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -94264,7 +95984,7 @@
       "source": "file:tests/test_context_policy.py",
       "target": "file:agentsdk/registry.py",
       "specifier": "agentsdk.registry",
-      "line": 630,
+      "line": 634,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -94369,7 +96089,7 @@
       "source": "file:tests/test_context_policy.py",
       "target": "runtime:python:decimal",
       "specifier": "decimal",
-      "line": 628,
+      "line": 632,
       "resolved": true,
       "confidence": 1,
       "provenance": {

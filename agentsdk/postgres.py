@@ -363,6 +363,58 @@ def column_rejection_reason(value: Any, sql_type: str) -> str | None:
     return None
 
 
+def _insert_message(conn: Any, scope: RunScope, run_id: str, message: Message) -> None:
+    """One message row, on the caller's connection and inside its transaction, with
+    the messages lock already taken (FR-9; M20a lets one transaction hold it with an
+    event)."""
+    tool_calls, tool_results = _message_to_columns(message)
+    # sequence_no is computed INSIDE the insert's transaction, so
+    # two concurrent appends cannot both read the same max and
+    # produce a duplicate. The UNIQUE (run_id, sequence_no)
+    # constraint is what makes the race a visible error instead of
+    # a silently reordered history.
+    #
+    # tenant_id and project_id are taken from the RUN ROW, not from
+    # the caller's scope. Trusting the scope let a caller file a
+    # message under a tenant the run does not belong to, which
+    # silently defeats the reason messages.tenant_id is
+    # denormalised: isolation without a join is only worth having
+    # if the denormalised copy cannot disagree with the original.
+    # The scope is still matched in the WHERE, so a caller that
+    # thinks it is writing for another tenant gets an error rather
+    # than a quietly corrected row.
+    cursor = conn.execute(
+        """
+        INSERT INTO messages (
+            message_id, run_id, tenant_id, project_id, sequence_no,
+            role, content, tool_calls, tool_results
+        )
+        SELECT %s, r.run_id, r.tenant_id, r.project_id,
+               COALESCE(MAX(m.sequence_no), 0) + 1,
+               %s, %s, %s, %s
+        FROM runs r LEFT JOIN messages m ON m.run_id = r.run_id
+        WHERE r.run_id = %s AND r.tenant_id = %s AND r.project_id = %s
+        GROUP BY r.run_id, r.tenant_id, r.project_id
+        """,
+        (
+            uuid.uuid4(),
+            message.role.value,
+            message.content,
+            tool_calls,
+            tool_results,
+            run_id,
+            scope.tenant_id,
+            scope.project_id,
+        ),
+    )
+    if cursor.rowcount != 1:
+        raise ValueError(
+            f"no run {run_id!r} for tenant {scope.tenant_id!r} / project "
+            f"{scope.project_id!r}: a message cannot be filed against a "
+            "run that does not exist or belongs to someone else"
+        )
+
+
 class PostgresSessionStore:
     """FR-9. Insert-only; no update, no delete."""
 
@@ -374,62 +426,48 @@ class PostgresSessionStore:
         """A per-run view. Runner binds this so append() knows the tenant."""
         return PostgresSessionStore(self._dsn, scope)
 
-    def append(self, run_id: str, message: Message) -> None:
+    def _bound(self, run_id: str) -> RunScope:
         scope = self._scope
         if scope is None or scope.run_id != run_id:
             raise ValueError(
                 "PostgresSessionStore must be bound to the run's scope before appending; "
                 "tenant_id and project_id are mandatory on every row (ADR-11)"
             )
-        tool_calls, tool_results = _message_to_columns(message)
+        return scope
+
+    def append(self, run_id: str, message: Message) -> None:
+        scope = self._bound(run_id)
         with _checkout(self._dsn) as conn:
             with conn.transaction():
                 _serialise_writers(conn, run_id, _LOCK_MESSAGES)
-                # sequence_no is computed INSIDE the insert's transaction, so
-                # two concurrent appends cannot both read the same max and
-                # produce a duplicate. The UNIQUE (run_id, sequence_no)
-                # constraint is what makes the race a visible error instead of
-                # a silently reordered history.
-                #
-                # tenant_id and project_id are taken from the RUN ROW, not from
-                # the caller's scope. Trusting the scope let a caller file a
-                # message under a tenant the run does not belong to, which
-                # silently defeats the reason messages.tenant_id is
-                # denormalised: isolation without a join is only worth having
-                # if the denormalised copy cannot disagree with the original.
-                # The scope is still matched in the WHERE, so a caller that
-                # thinks it is writing for another tenant gets an error rather
-                # than a quietly corrected row.
-                cursor = conn.execute(
-                    """
-                    INSERT INTO messages (
-                        message_id, run_id, tenant_id, project_id, sequence_no,
-                        role, content, tool_calls, tool_results
-                    )
-                    SELECT %s, r.run_id, r.tenant_id, r.project_id,
-                           COALESCE(MAX(m.sequence_no), 0) + 1,
-                           %s, %s, %s, %s
-                    FROM runs r LEFT JOIN messages m ON m.run_id = r.run_id
-                    WHERE r.run_id = %s AND r.tenant_id = %s AND r.project_id = %s
-                    GROUP BY r.run_id, r.tenant_id, r.project_id
-                    """,
-                    (
-                        uuid.uuid4(),
-                        message.role.value,
-                        message.content,
-                        tool_calls,
-                        tool_results,
-                        run_id,
-                        scope.tenant_id,
-                        scope.project_id,
-                    ),
-                )
-                if cursor.rowcount != 1:
-                    raise ValueError(
-                        f"no run {run_id!r} for tenant {scope.tenant_id!r} / project "
-                        f"{scope.project_id!r}: a message cannot be filed against a "
-                        "run that does not exist or belongs to someone else"
-                    )
+                _insert_message(conn, scope, run_id, message)
+
+    def append_with_event(
+        self, run_id: str, message: Message, sink: Any, event_type: EventType, payload: dict[str, Any]
+    ) -> RunEvent:
+        """FR-86 (M20a): a message and the event that explains it, in one transaction,
+        so both are stored or neither is -- a compaction's summary and its
+        ContextCompacted. The messages lock, then the events lock: the one order any
+        writer takes both in.
+
+        A sink that cannot write inside this transaction falls back to the two writes
+        in turn, as before M20a; that is a custom sink's limit, declared.
+        """
+        scope = self._bound(run_id)
+        if not (hasattr(sink, "write") and hasattr(sink, "stored")):
+            self.append(run_id, message)
+            return sink.emit(event_type, payload)
+        if getattr(sink, "scope", None) != (scope.tenant_id, scope.project_id, run_id):
+            raise ValueError("the event sink does not write to this run; message and event must be one run's")
+        with _checkout(self._dsn) as conn:
+            with conn.transaction():
+                _serialise_writers(conn, run_id, _LOCK_MESSAGES)
+                _insert_message(conn, scope, run_id, message)
+                event = sink.write(conn, event_type, payload)
+        # After the commit, as emit does: the stored event reaches the run's buffer and
+        # its handle only once it is stored.
+        sink.stored(event)
+        return event
 
     def history(self, run_id: str) -> list[Message]:
         """Tenant-scoped on READ as well as write.
@@ -516,6 +554,17 @@ class PostgresEventStore:
     def emit(
         self, event_type: EventType, payload: dict[str, Any] | None = None, **identifiers: Any
     ) -> RunEvent:
+        with _checkout(self._dsn) as conn:
+            event = self.write(conn, event_type, payload, **identifiers)
+        self.stored(event)
+        return event
+
+    def write(
+        self, conn: Any, event_type: EventType, payload: dict[str, Any] | None = None, **identifiers: Any
+    ) -> RunEvent:
+        """One event row on the caller's connection, inside its transaction, returned
+        with its stored sequence_no; `stored` then records it here. emit is the two
+        together; M20a's append_with_event writes a message in the same transaction."""
         # sequence_no is assigned by the DATABASE below, not here (FR-18).
         # This process's own count is only ever right when this process is the
         # only writer, which stops being true the moment a run has a subagent
@@ -532,69 +581,71 @@ class PostgresEventStore:
             payload=payload or {},
             **identifiers,
         )
-        with _checkout(self._dsn) as conn:
-            _serialise_writers(conn, event.run_id, _LOCK_EVENTS)
-            cursor = conn.execute(
-                """
-                INSERT INTO run_events (
-                    event_id, schema_version, sequence_no, event_type,
-                    tenant_id, project_id, run_id,
-                    agent_id, task_id, tool_call_id, attempt_id,
-                    parent_event_id, correlation_id, timestamp, payload
-                )
-                -- Tenancy from the RUN ROW, as messages already does
-                -- (DECISION-aed7e4d8). Taking it from the caller let an event
-                -- for tenant A's run be filed as tenant B, where it is
-                -- invisible in A's trace -- the same decision made
-                -- inconsistently one function over, for three rounds.
-                --
-                -- And the sequence number from the STORED maximum, computed
-                -- inside this insert's transaction, exactly as
-                -- PostgresSessionStore.append already does (FR-18). Two
-                -- concurrent emits cannot both read the same max, and a second
-                -- sink continues the sequence instead of restarting it.
-                SELECT %s,%s,
-                       COALESCE(MAX(e.sequence_no), 0) + 1,
-                       %s, r.tenant_id, r.project_id, r.run_id,
-                       %s,%s,%s,%s,%s,%s,%s,%s
-                FROM runs r LEFT JOIN run_events e ON e.run_id = r.run_id
-                WHERE r.run_id = %s AND r.tenant_id = %s AND r.project_id = %s
-                GROUP BY r.run_id, r.tenant_id, r.project_id
-                RETURNING sequence_no
-                """,
-                (
-                    event.event_id,
-                    event.schema_version,
-                    event.event_type.value,
-                    event.agent_id,
-                    event.task_id,
-                    event.tool_call_id,
-                    event.attempt_id,
-                    event.parent_event_id,
-                    event.correlation_id,
-                    event.timestamp,
-                    Jsonb(_json_safe(event.payload)),
-                    event.run_id,
-                    self._tenant_id,
-                    self._project_id,
-                ),
+        _serialise_writers(conn, event.run_id, _LOCK_EVENTS)
+        cursor = conn.execute(
+            """
+            INSERT INTO run_events (
+                event_id, schema_version, sequence_no, event_type,
+                tenant_id, project_id, run_id,
+                agent_id, task_id, tool_call_id, attempt_id,
+                parent_event_id, correlation_id, timestamp, payload
             )
-            row = cursor.fetchone()
-            if row is None:
-                # Zero rows means the run does not exist or belongs to another
-                # tenant. Raising rather than returning quietly: an event that
-                # was not written is an entry the audit trail silently lacks,
-                # which is the failure mode this whole milestone is about.
-                raise ValueError(
-                    f"no run {event.run_id!r} for tenant {self._tenant_id!r} / project "
-                    f"{self._project_id!r}: an event cannot be filed against a run that "
-                    "does not exist or belongs to someone else"
-                )
+            -- Tenancy from the RUN ROW, as messages already does
+            -- (DECISION-aed7e4d8). Taking it from the caller let an event
+            -- for tenant A's run be filed as tenant B, where it is
+            -- invisible in A's trace -- the same decision made
+            -- inconsistently one function over, for three rounds.
+            --
+            -- And the sequence number from the STORED maximum, computed
+            -- inside this insert's transaction, exactly as
+            -- PostgresSessionStore.append already does (FR-18). Two
+            -- concurrent emits cannot both read the same max, and a second
+            -- sink continues the sequence instead of restarting it.
+            SELECT %s,%s,
+                   COALESCE(MAX(e.sequence_no), 0) + 1,
+                   %s, r.tenant_id, r.project_id, r.run_id,
+                   %s,%s,%s,%s,%s,%s,%s,%s
+            FROM runs r LEFT JOIN run_events e ON e.run_id = r.run_id
+            WHERE r.run_id = %s AND r.tenant_id = %s AND r.project_id = %s
+            GROUP BY r.run_id, r.tenant_id, r.project_id
+            RETURNING sequence_no
+            """,
+            (
+                event.event_id,
+                event.schema_version,
+                event.event_type.value,
+                event.agent_id,
+                event.task_id,
+                event.tool_call_id,
+                event.attempt_id,
+                event.parent_event_id,
+                event.correlation_id,
+                event.timestamp,
+                Jsonb(_json_safe(event.payload)),
+                event.run_id,
+                self._tenant_id,
+                self._project_id,
+            ),
+        )
+        row = cursor.fetchone()
+        if row is None:
+            # Zero rows means the run does not exist or belongs to another
+            # tenant. Raising rather than returning quietly: an event that
+            # was not written is an entry the audit trail silently lacks,
+            # which is the failure mode this whole milestone is about.
+            raise ValueError(
+                f"no run {event.run_id!r} for tenant {self._tenant_id!r} / project "
+                f"{self._project_id!r}: an event cannot be filed against a run that "
+                "does not exist or belongs to someone else"
+            )
         # The stored number, not the one this process guessed. events() and the
         # returned RunEvent must agree with the row, or an in-memory trace and
         # a reconstructed one disagree about order -- which is the thing NFR-3
         # exists to prevent.
-        event = dataclasses.replace(event, sequence_no=row[0])
+        return dataclasses.replace(event, sequence_no=row[0])
+
+    def stored(self, event: RunEvent) -> None:
+        """An event this store has written and committed, into the run's buffer."""
         # FR-52. Another writer can commit and append between this insert's commit
         # and this append, so arrival order is not sequence order: widened to 6 ms,
         # that window read back [1, 2, 4, 6, 3, 5, ...]. The buffer is kept in
@@ -605,7 +656,6 @@ class PostgresEventStore:
             while position and self._buffer[position - 1].sequence_no > event.sequence_no:
                 position -= 1
             self._buffer.insert(position, event)
-        return event
 
     def events(self) -> tuple[RunEvent, ...]:
         with self._order_lock:

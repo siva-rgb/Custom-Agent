@@ -1,0 +1,22 @@
+{
+  "task": "M20a-compaction-record",
+  "gate": "unit",
+  "command": ".venv\\Scripts\\python.exe -m pytest tests/test_compaction_record.py -q",
+  "started_at": "2026-10-10T05:57:50.369Z",
+  "observed_at": "2026-10-10T05:57:55.393Z",
+  "exit_code": 0,
+  "signal": null,
+  "stdout": "...............                                                          [100%]\r\n15 passed in 4.00s\r\n",
+  "stderr": "",
+  "revision": {
+    "commit": "a576adc9e3de30cba091a75579b1a7f1625bb0c6",
+    "dirty": true
+  },
+  "source_hash": "f19dc611d575ebc24dc714f7beb48f7e788be6a53dd15c78ef920390c8d8f482",
+  "environment": {
+    "node": "v20.10.0",
+    "platform": "win32",
+    "arch": "x64"
+  },
+  "hash": "326204bad3b7e2f2fa31dda4e97af69060ea65b2978a390f7b2d6ccab79fe36f"
+}
