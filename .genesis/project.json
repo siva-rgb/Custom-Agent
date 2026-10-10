@@ -9,7 +9,7 @@
     "non_goals": [],
     "trust_boundary": "local repository",
     "created_at": "2026-09-05T14:48:57.894Z",
-    "updated_at": "2026-10-10T06:22:24.222Z"
+    "updated_at": "2026-10-10T07:01:19.112Z"
   },
   "policy": {
     "ponytail": "full",
@@ -23,19 +23,19 @@
     }
   },
   "lifecycle": {
-    "phase": "verify",
-    "status": "ready",
-    "active_task": null,
+    "phase": "build",
+    "status": "active",
+    "active_task": "M21-carried-items",
     "blocker": null,
-    "next_action": "Review completed work and choose the next bounded outcome."
+    "next_action": "Run the task pre-flight."
   },
   "commands": {},
   "workflow": {
     "type": "new-product",
     "started_at": "2026-09-05T14:48:57.897Z",
     "spec_check": {
-      "at": "2026-10-09T17:45:23.760Z",
-      "source_hash": "0c8955b640b4080e272eeeae680dc3d74b81f6fd154ebdea046e5f59f4db743c",
+      "at": "2026-10-10T06:56:54.145Z",
+      "source_hash": "3eb22aa828ba06ac2ba6d0af9cac97bf39cceaaf95f4907ac54e97f17cc44a4b",
       "requirements": [
         "AC-1",
         "AC-10",
@@ -104,6 +104,11 @@
         "AC-68",
         "AC-69",
         "AC-7",
+        "AC-70",
+        "AC-71",
+        "AC-72",
+        "AC-73",
+        "AC-74",
         "AC-8",
         "AC-9",
         "FR-1",
@@ -191,7 +196,17 @@
         "FR-84",
         "FR-85",
         "FR-86",
+        "FR-87",
+        "FR-88",
+        "FR-89",
         "FR-9",
+        "FR-90",
+        "FR-91",
+        "FR-92",
+        "FR-93",
+        "FR-94",
+        "FR-95",
+        "FR-96",
         "NFR-1",
         "NFR-10",
         "NFR-11",
@@ -208,6 +223,9 @@
         "NFR-21",
         "NFR-22",
         "NFR-23",
+        "NFR-24",
+        "NFR-25",
+        "NFR-26",
         "NFR-3",
         "NFR-4",
         "NFR-5",
@@ -218,14 +236,14 @@
       ]
     },
     "plan_check": {
-      "at": "2026-10-09T17:49:59.854Z",
-      "source_hash": "8a813e8625b440e1ead38bd594ad48e8bd62c8b7cf1981be809b5bb8d4ebcd94"
+      "at": "2026-10-10T07:01:18.801Z",
+      "source_hash": "5b0d598afced0d7c39fe26ca43ee702c82a38e0418de7746949f3b527377e116"
     },
     "plan_approval": {
       "human": "siva-rgb (owner)",
-      "reason": "Owner instruction 2026-10-09: M20a added for M20 round 1 caveats C1 and C3, specified as FR-85, FR-86, AC-68 and AC-69 (DECISION-f56a9415)",
-      "at": "2026-10-09T17:49:59.979Z",
-      "source_hash": "8a813e8625b440e1ead38bd594ad48e8bd62c8b7cf1981be809b5bb8d4ebcd94"
+      "reason": "Owner instruction 2026-10-10: Phase 3 increment 1 planned as M21 to M24 (P3-D12, DECISION-10494890)",
+      "at": "2026-10-10T07:01:18.936Z",
+      "source_hash": "5b0d598afced0d7c39fe26ca43ee702c82a38e0418de7746949f3b527377e116"
     }
   },
   "artifacts": [
@@ -302,6 +320,11 @@
         "AC-68",
         "AC-69",
         "AC-7",
+        "AC-70",
+        "AC-71",
+        "AC-72",
+        "AC-73",
+        "AC-74",
         "AC-8",
         "AC-9",
         "FR-1",
@@ -389,7 +412,17 @@
         "FR-84",
         "FR-85",
         "FR-86",
+        "FR-87",
+        "FR-88",
+        "FR-89",
         "FR-9",
+        "FR-90",
+        "FR-91",
+        "FR-92",
+        "FR-93",
+        "FR-94",
+        "FR-95",
+        "FR-96",
         "NFR-1",
         "NFR-10",
         "NFR-11",
@@ -406,6 +439,9 @@
         "NFR-21",
         "NFR-22",
         "NFR-23",
+        "NFR-24",
+        "NFR-25",
+        "NFR-26",
         "NFR-3",
         "NFR-4",
         "NFR-5",
@@ -414,12 +450,12 @@
         "NFR-8",
         "NFR-9"
       ],
-      "source_hash": "0c8955b640b4080e272eeeae680dc3d74b81f6fd154ebdea046e5f59f4db743c",
+      "source_hash": "3eb22aa828ba06ac2ba6d0af9cac97bf39cceaaf95f4907ac54e97f17cc44a4b",
       "approval": {
         "human": "siva-rgb (owner)",
-        "reason": "Owner approved 2026-10-09: FR-85, FR-86, AC-68 and AC-69 specify M20 round 1 caveats C1 and C3 as M20a (DECISION-f56a9415)",
-        "at": "2026-10-09T17:49:53.793Z",
-        "source_hash": "0c8955b640b4080e272eeeae680dc3d74b81f6fd154ebdea046e5f59f4db743c"
+        "reason": "Owner approved 2026-10-10: Phase 3 increment 1, FR-87 to FR-96, NFR-24 to NFR-26 and AC-70 to AC-74, from P3-D1 to P3-D12 (DECISION-39f28e48, DECISION-423f3e23) and the reviewed draft's choices (DECISION-10494890)",
+        "at": "2026-10-10T07:01:17.930Z",
+        "source_hash": "3eb22aa828ba06ac2ba6d0af9cac97bf39cceaaf95f4907ac54e97f17cc44a4b"
       }
     }
   ],
@@ -1314,6 +1350,30 @@
       "status": "accepted",
       "source": null,
       "recorded_at": "2026-10-09T17:43:26.088Z"
+    },
+    {
+      "id": "DECISION-39f28e48",
+      "title": "Phase 3 P3-D1 to P3-D4: two increments, a ledger per run, a contention exit signal, carried items first",
+      "text": "Owner decision 2026-10-10, at the start of Phase 3, from an inventory of everything the design documents and records say about it (no Phase 3 exit signal, ledger mechanics, cache defaults or critic contract was written anywhere). P3-D1: Phase 3 is specified in two increments, following the rule that split Phase 2 (DECISION-ce3b0e78): increment 1 is the evidence substrate in full requirements -- immutable EvidenceSourceVersion, the tenant- and auth-scoped resource cache (ADR-31), the ledger of claims with supersede history (ADR-07), claim-lock with backoff (ADR-08); increment 2, the confidence gate, the conditional critic and ADR-15 calibration, is outlined with its open decisions and specified once the ledger exists, because the critic verifies claims. P3-D2: a ledger belongs to one top-level run and is shared by its children; source versions are durable and found again through the scoped cache, but claims are not reused across runs until governed learning (I-23, after Phases 3 and 4) decides how. This follows ADR-16's session-scoped ledger and resolves the local notes calling the ledger reusable across runs. P3-D3: the exit signal is contention on a synthetic task, as v0.2 states the goal (dedup and confidence gate hold up under contention) and as Stage 1 requires (no real Research Analyst): overlapping subagents fetch overlapping sources and record overlapping claims in one run; each source version is fetched once per cache scope, each claim is stored once with every contributor and its sources, supersede history is readable, no cache hit crosses a tenant, and taint is carried from source to claim; increment 2 adds that the gate calls the critic only when its signals require it, at most once, and that the critic never clears taint on its own. P3-D4: a small first milestone, M21, opens Phase 3 with M20a's carried F1 and F2 (KNOWLEDGE-afac039f) and decides M20's C4 to C6 (KNOWLEDGE-cc4d686c) or records them as declared limits, so the ledger starts on a clean base.",
+      "status": "accepted",
+      "source": null,
+      "recorded_at": "2026-10-10T06:36:11.434Z"
+    },
+    {
+      "id": "DECISION-423f3e23",
+      "title": "Phase 3 increment 1: sources, cache, claims, lock, taint and milestones (P3-D5 to P3-D12)",
+      "text": "Owner accepted on 2026-10-10, before any increment 1 requirement was written. P3-D5: a source version is captured automatically by the built-in fetch, and any tool may declare itself a source the same way: every fetch records an immutable EvidenceSourceVersion (canonical URI, retrieval time, content hash, cache scope, prior version), its content stored as an M13 artifact, and the tool result's provenance names the version, so a claim cites exactly what was read; an explicit record_source tool was rejected because a model that forgets to call it leaves a claim citing nothing. P3-D6: the resource cache serves: cache-aside at the tool layer (ADR-16), a fetch whose key has a fresh version in a scope the caller may read is served with no network and recorded as a hit, concurrent fetches of one key wait for one fetch (singleflight), freshness is a policy TTL defaulting to one hour, and a stale version is refetched as the new version's prior. P3-D7: the built-in fetch caches at PROJECT scope by default; TENANT and PUBLIC_GLOBAL only by explicit configuration per tool or allowlisted host; SESSION and NO_CACHE available. A mistake costs a refetch, never a cross-tenant leak (ADR-31). P3-D8: claims enter through tools: record_claim(statement, supporting and contradicting source versions, confidence) and supersede_claim(old, new, why), for any agent whose profile includes them, each visible in the event stream; parsing claims from node output was rejected because only orchestrated nodes could contribute. P3-D9: claims deduplicate on a hash of the statement after Unicode NFC, case-folding and whitespace collapse; every contributor and source of a duplicate attaches to the one stored claim; paraphrases stay distinct, and merging them is left to increment 2's critic. P3-D10: claim-lock is singleflight per key -- a resource key for a fetch, a claim key for a record -- with one holder and waiters taking its result; when the holder fails one waiter retries with exponential backoff (base 0.2 s, factor 2, jitter, at most 3 attempts) and the call then fails naming the key; a Postgres advisory lock across processes and an asyncio lock within one; a lease with expiry is left to Phase 6's durability work. P3-D11: a claim's provenance is ContentProvenance.from_model over every supporting and contradicting source version and the contributor's own inputs, so a claim drawn from untrusted pages is untrusted; nothing in increment 1 lowers it, and whether a verification may is increment 2's open decision (ADR-26). P3-D12: increment 1 is M21 the carried items (P3-D4); M22 EvidenceSourceVersion and the scoped resource cache with fetch recording versions (migration 0010, example 19); M23 the ledger -- claims, sources, contributors, supersede history, record_claim and supersede_claim (0011, example 20); M24 claim-lock and backoff under contention and the exit-signal run on both stores (example 21).",
+      "status": "accepted",
+      "source": null,
+      "recorded_at": "2026-10-10T06:49:38.831Z"
+    },
+    {
+      "id": "DECISION-10494890",
+      "title": "Phase 3 increment 1: the spec-level choices of the reviewed draft accepted",
+      "text": "Owner accepted on 2026-10-10, after the read-only spec review (KNOWLEDGE-6585cf8f), seven choices the second draft of FR-87 to FR-96 makes beyond P3-D1 to P3-D12: (1) every cache hit on a version outside the reader's tenant and project, a TENANT version from another project included, is served as a copy carrying none of the origin's identifiers, so every citable version is in the claim's own tenant and project; (2) FR-91 supersedes FR-38's final-URL source: a fetch names its version's uri, the final URL is the version's final_uri, the four tests asserting the old value are edited, and a fetch with no run scope keeps the old behaviour; (3) claims deduplicate against active claims only, a statement matching only a superseded claim records a new active claim, and a supersession onto another active statement is refused; (4) only 2xx responses are cached; (5) claim-lock uses session-level Postgres advisory locks in a lock space of their own, waited on by polling pg_try_advisory_lock behind a per-key asyncio lock, with full jitter, and when the retrying waiter's attempts run out every waiter fails naming the key; (6) the new events SourceFetched, SourceServed, ClaimRecorded and ClaimSuperseded with the fields FR-91, FR-93 and FR-94 state; (7) the in-memory session store keys a run's history by tenant, project and run id.",
+      "status": "accepted",
+      "source": null,
+      "recorded_at": "2026-10-10T07:01:17.802Z"
     }
   ],
   "knowledge": [
@@ -2132,6 +2192,14 @@
       "source": null,
       "tags": [],
       "recorded_at": "2026-10-10T06:22:23.675Z"
+    },
+    {
+      "id": "KNOWLEDGE-6585cf8f",
+      "title": "Facts the Phase 3 increment 1 spec review measured in the code, and what the draft changed",
+      "text": "Read-only review on 2026-10-10 by an independent Sonnet reviewer of the first draft of FR-87 to FR-96. Measured: ToolSpec.schema_hash includes configuration whenever it is non-empty, and the fetch tool's configuration always is (allowlist, max_bytes, timeout_seconds, max_redirects), so a new configuration key moves every fetch tool's hash unless it enters only when non-default; _with_scope injects a scope by annotation and returns the arguments unchanged when there is no scope, so a fetch needs a no-scope path; ToolScope carries no briefed inputs, history, parent or root run id, and history is reachable only through Runner._history_for; ToolOutput.source_uri becomes source_uri_or_hash, and four tests (tests/test_builtin_tools.py lines 391, 1782, 2117, 2265) assert FR-38's final-URL source; _fetch_hops returns non-2xx responses as ordinary results; artifacts can expire or be deleted; existing advisory locks are transaction-scoped in spaces 1 and 2, the pool is capped at 32, and store calls run on shielded worker threads, so a blocking lock wait would ignore cancellation; the in-memory session store keys history by run id alone, so two tenants with one run id share a history; EventType is a closed enum. Blocking findings, each repaired in the second draft: B1 a claim's contributor inputs were unreachable from a tool (now readable through the run scope; same-batch siblings excluded, declared); B2 immutable claim rows could not hold a union of contributions (sources and provenance now derived from append-only contributions); B3 a lock keyed by URL alone let one tenant wait for and take another's version (the key now includes the reach); B4 a TENANT hit from another project was uncitable and the PUBLIC_GLOBAL copy needed a stated cross-tenant read (every hit outside the reader's tenant and project is copied, the copy reveals none of the origin's identifiers, and PUBLIC_GLOBAL requires no auth); B5 the claim that a default fetch's schema is unchanged was false (cache settings enter configuration only when non-default); B6 FR-91 silently changed FR-38 (now stated as superseding it, with the four tests listed, and a fetch with no scope keeps the old source). Spec-level choices the second draft makes beyond P3-D1 to P3-D12, for the owner's approval: copy on every hit outside the reader's tenant and project; dedup against active claims only; a supersession onto another active statement refused; non-2xx responses never cached; session-level advisory locks waited on by polling, full jitter, the waiters failing with the last holder rather than retrying; the event names SourceFetched, SourceServed, ClaimRecorded and ClaimSuperseded with stated fields; the in-memory session store keyed by tenant, project and run.",
+      "source": null,
+      "tags": [],
+      "recorded_at": "2026-10-10T06:57:12.736Z"
     }
   ],
   "tasks": [
@@ -2154,9 +2222,9 @@
           "status": "pass",
           "evidence": {
             "human": "siva-rgb (owner)",
-            "reason": "Owner approved 2026-10-09: FR-85, FR-86, AC-68 and AC-69 specify M20 round 1 caveats C1 and C3 as M20a (DECISION-f56a9415)",
-            "source_hash": "e7a7bd22ea2484a3500791972de7f8524fce762bbdc041a6dd5209549a2592f9",
-            "observed_at": "2026-10-09T17:49:53.793Z"
+            "reason": "Owner approved 2026-10-10: Phase 3 increment 1, FR-87 to FR-96, NFR-24 to NFR-26 and AC-70 to AC-74, from P3-D1 to P3-D12 (DECISION-39f28e48, DECISION-423f3e23) and the reviewed draft's choices (DECISION-10494890)",
+            "source_hash": "4b26f61f8bd71de905166dbe5e7357af0af0dbaf5b911e3c68fe0e4c3a96fb10",
+            "observed_at": "2026-10-10T07:01:17.930Z"
           }
         }
       ],
@@ -2166,7 +2234,7 @@
       "failures": [],
       "limitations": [],
       "created_at": "2026-09-05T14:48:57.897Z",
-      "updated_at": "2026-10-09T17:49:53.793Z"
+      "updated_at": "2026-10-10T07:01:17.930Z"
     },
     {
       "id": "M1-primitives",
@@ -3513,6 +3581,188 @@
       "limitations": [],
       "created_at": "2026-10-09T17:45:11.368Z",
       "updated_at": "2026-10-10T06:22:23.913Z"
+    },
+    {
+      "id": "M21-carried-items",
+      "outcome": "A scope-less sink works with the combined write as before M20a, a sink for another tenant, project or run is refused on both stores, and M20's C4 to C6 are each repaired or declared",
+      "state": "active",
+      "risk": "medium",
+      "owner": null,
+      "scope": [],
+      "dependencies": [],
+      "requirements": [
+        "FR-87",
+        "FR-88",
+        "AC-70"
+      ],
+      "gates": [
+        {
+          "id": "unit",
+          "command": ".venv\\Scripts\\python.exe -m pytest tests/test_carried_items.py -q",
+          "mandatory": true,
+          "status": "pending",
+          "evidence": null
+        },
+        {
+          "id": "regression",
+          "command": ".venv\\Scripts\\python.exe -m pytest -q",
+          "mandatory": true,
+          "status": "pending",
+          "evidence": null
+        },
+        {
+          "id": "independent-review",
+          "command": "",
+          "mandatory": true,
+          "status": "pending",
+          "evidence": null
+        }
+      ],
+      "next_action": "Run the task pre-flight.",
+      "blocker": null,
+      "notes": [],
+      "failures": [],
+      "limitations": [],
+      "created_at": "2026-10-10T07:01:18.204Z",
+      "updated_at": "2026-10-10T07:01:18.204Z"
+    },
+    {
+      "id": "M22-source-versions",
+      "outcome": "Every fetch records an immutable source version and the tenant-scoped resource cache serves fresh versions within their reach, copying across tenancy rather than sharing",
+      "state": "queued",
+      "risk": "high",
+      "owner": null,
+      "scope": [],
+      "dependencies": [],
+      "requirements": [
+        "FR-89",
+        "FR-90",
+        "FR-91",
+        "NFR-25",
+        "AC-71",
+        "AC-72"
+      ],
+      "gates": [
+        {
+          "id": "unit",
+          "command": ".venv\\Scripts\\python.exe -m pytest tests/test_sources.py -q",
+          "mandatory": true,
+          "status": "pending",
+          "evidence": null
+        },
+        {
+          "id": "regression",
+          "command": ".venv\\Scripts\\python.exe -m pytest -q",
+          "mandatory": true,
+          "status": "pending",
+          "evidence": null
+        },
+        {
+          "id": "independent-review",
+          "command": "",
+          "mandatory": true,
+          "status": "pending",
+          "evidence": null
+        }
+      ],
+      "next_action": "Run the task pre-flight.",
+      "blocker": null,
+      "notes": [],
+      "failures": [],
+      "limitations": [],
+      "created_at": "2026-10-10T07:01:18.349Z",
+      "updated_at": "2026-10-10T07:01:18.349Z"
+    },
+    {
+      "id": "M23-evidence-ledger",
+      "outcome": "Agents record and supersede claims in their run's ledger, deduplicated by normalised statement, each contribution kept and its taint carried, the history a chain that never forks",
+      "state": "queued",
+      "risk": "high",
+      "owner": null,
+      "scope": [],
+      "dependencies": [],
+      "requirements": [
+        "FR-92",
+        "FR-93",
+        "FR-94",
+        "NFR-26",
+        "AC-73"
+      ],
+      "gates": [
+        {
+          "id": "unit",
+          "command": ".venv\\Scripts\\python.exe -m pytest tests/test_ledger.py -q",
+          "mandatory": true,
+          "status": "pending",
+          "evidence": null
+        },
+        {
+          "id": "regression",
+          "command": ".venv\\Scripts\\python.exe -m pytest -q",
+          "mandatory": true,
+          "status": "pending",
+          "evidence": null
+        },
+        {
+          "id": "independent-review",
+          "command": "",
+          "mandatory": true,
+          "status": "pending",
+          "evidence": null
+        }
+      ],
+      "next_action": "Run the task pre-flight.",
+      "blocker": null,
+      "notes": [],
+      "failures": [],
+      "limitations": [],
+      "created_at": "2026-10-10T07:01:18.488Z",
+      "updated_at": "2026-10-10T07:01:18.489Z"
+    },
+    {
+      "id": "M24-claim-lock",
+      "outcome": "Overlapping agents fetch each source once and store each claim once under contention across tasks and processes, with backoff on a failed holder, and the Phase 3 increment 1 exit signal holds on both stores",
+      "state": "queued",
+      "risk": "high",
+      "owner": null,
+      "scope": [],
+      "dependencies": [],
+      "requirements": [
+        "FR-95",
+        "FR-96",
+        "NFR-24",
+        "AC-74"
+      ],
+      "gates": [
+        {
+          "id": "unit",
+          "command": ".venv\\Scripts\\python.exe -m pytest tests/test_claim_lock.py -q",
+          "mandatory": true,
+          "status": "pending",
+          "evidence": null
+        },
+        {
+          "id": "regression",
+          "command": ".venv\\Scripts\\python.exe -m pytest -q",
+          "mandatory": true,
+          "status": "pending",
+          "evidence": null
+        },
+        {
+          "id": "independent-review",
+          "command": "",
+          "mandatory": true,
+          "status": "pending",
+          "evidence": null
+        }
+      ],
+      "next_action": "Run the task pre-flight.",
+      "blocker": null,
+      "notes": [],
+      "failures": [],
+      "limitations": [],
+      "created_at": "2026-10-10T07:01:18.649Z",
+      "updated_at": "2026-10-10T07:01:18.649Z"
     }
   ],
   "learning_proposals": [],
@@ -4214,14 +4464,14 @@
   ],
   "discovery": null,
   "checkpoint": {
-    "at": "2026-10-10T06:22:24.115Z",
+    "at": "2026-10-10T07:01:19.060Z",
     "revision": {
-      "commit": "a576adc9e3de30cba091a75579b1a7f1625bb0c6",
+      "commit": "95b071bc2013aa6880cc5395e905e3b371bc3261",
       "dirty": true,
-      "source_hash": "f19dc611d575ebc24dc714f7beb48f7e788be6a53dd15c78ef920390c8d8f482"
+      "source_hash": "4b26f61f8bd71de905166dbe5e7357af0af0dbaf5b911e3c68fe0e4c3a96fb10"
     },
-    "active_task": null,
-    "next_action": "Review completed work and choose the next bounded outcome."
+    "active_task": "M21-carried-items",
+    "next_action": "Run the task pre-flight."
   },
   "legacy": null
 }

@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "project": "agent-sdk",
-  "revision": "a576adc9e3de30cba091a75579b1a7f1625bb0c6",
+  "revision": "95b071bc2013aa6880cc5395e905e3b371bc3261",
   "sourceHash": "4f43d306d3a3bc647e7a8a2f6c4b4e90631e80faf9fffe588aee2fcffd15ff77",
   "provenance": {
     "tool": "genesis-graphizer",
