@@ -4,7 +4,7 @@
 
 - workflow: new-product
 - phase: build
-- plan approval: siva-rgb (owner) at 2026-10-10T11:50:29.611Z
+- plan approval: siva-rgb (owner) at 2026-10-10T13:35:56.256Z
 
 ## Tasks
 
@@ -202,15 +202,15 @@
 
 ### M22-source-versions — Every fetch records an immutable source version and the tenant-scoped resource cache serves fresh versions within their reach, copying across tenancy rather than sharing
 
-- state/risk: active / high
+- state/risk: done / high
 - requirements: FR-89, FR-90, FR-91, NFR-25, AC-71, AC-72
 - scope: not bounded
-- gates: unit: .venv\Scripts\python.exe -m pytest tests/test_sources.py -q, regression: .venv\Scripts\python.exe -m pytest -q, independent-review: pending
+- gates: unit: .venv\Scripts\python.exe -m pytest tests/test_sources.py -q, regression: .venv\Scripts\python.exe -m pytest -q, independent-review: pass
 - next: Run the task pre-flight.
 
 ### M23-evidence-ledger — Agents record and supersede claims in their run's ledger, deduplicated by normalised statement, each contribution kept and its taint carried, the history a chain that never forks
 
-- state/risk: queued / high
+- state/risk: active / high
 - requirements: FR-92, FR-93, FR-94, NFR-26, AC-73
 - scope: not bounded
 - gates: unit: .venv\Scripts\python.exe -m pytest tests/test_ledger.py -q, regression: .venv\Scripts\python.exe -m pytest -q, independent-review: pending

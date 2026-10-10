@@ -1448,3 +1448,84 @@ class PostgresRunStateStore:
             # Finished before Started (M16 round 1, F4). An emit that fails rolls the
             # status back with it.
             emit_transition(sink, plan_id, version, node_id, status, reason)
+
+
+# --- source versions (FR-89, FR-90, M22) ------------------------------------------------------
+
+_VERSION_COLUMNS = (
+    "source_version_id, canonical_uri, final_uri, retrieval_time, content_hash, artifact_id, media_type,"
+    " cache_scope, auth_scope_hash, prior_version, provenance, tenant_id, project_id, source_run"
+)
+
+
+def _version_from_row(row: tuple) -> Any:
+    from .evidence import CacheScope, EvidenceSourceVersion
+
+    return EvidenceSourceVersion(
+        source_version_id=str(row[0]), canonical_uri=row[1], final_uri=row[2], retrieval_time=row[3],
+        content_hash=row[4], artifact_id=str(row[5]), media_type=row[6], cache_scope=CacheScope(row[7]),
+        auth_scope_hash=row[8], prior_version=None if row[9] is None else str(row[9]),
+        provenance=_provenance_from_json(row[10]), tenant_id=row[11], project_id=row[12], source_run=str(row[13]),
+    )
+
+
+class PostgresEvidenceStore:
+    """FR-89's durable store: the source_versions table (migration 0010).
+
+    Insert-only. A read by id is filtered by the reader's tenant and project. The cache
+    lookup is the one statement that reads another tenant's row, and only a
+    PUBLIC_GLOBAL one or a same-tenant TENANT one, for the copy FR-90 makes of it
+    (NFR-25). Synchronous: callers on an event loop use a worker thread (FR-81).
+    """
+
+    def __init__(self, dsn: str) -> None:
+        self._dsn = dsn
+
+    def record(self, version: Any, *, ledger_run_id: str, request_variant: str | None = None) -> None:
+        from .evidence import EvidenceSourceVersion, _uuid
+
+        if not isinstance(version, EvidenceSourceVersion):
+            raise ValueError(f"version must be an EvidenceSourceVersion, got {type(version).__name__}")
+        ledger = _uuid("ledger_run_id", ledger_run_id)
+        v = version
+        with _checkout(self._dsn) as conn:
+            conn.execute(
+                f"INSERT INTO source_versions ({_VERSION_COLUMNS}, ledger_run_id, request_variant)"
+                " VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)",
+                (v.source_version_id, v.canonical_uri, v.final_uri, v.retrieval_time, v.content_hash,
+                 v.artifact_id, v.media_type, v.cache_scope.value, v.auth_scope_hash, v.prior_version,
+                 Jsonb(_provenance_to_json(v.provenance)), v.tenant_id, v.project_id, v.source_run,
+                 ledger, request_variant),
+            )
+
+    def get(self, tenant_id: str, project_id: str, source_version_id: str) -> Any:
+        from .artifacts import canonical_id
+
+        key = canonical_id(source_version_id) if isinstance(source_version_id, str) else None
+        row = None
+        if key is not None:
+            with _checkout(self._dsn) as conn:
+                row = conn.execute(
+                    f"SELECT {_VERSION_COLUMNS} FROM source_versions"
+                    " WHERE source_version_id = %s AND tenant_id = %s AND project_id = %s",
+                    (key, tenant_id, project_id),
+                ).fetchone()
+        if row is None:
+            raise LookupError(f"no source version {source_version_id!r} in this tenant and project")
+        return _version_from_row(row)
+
+    def reachable(self, key: Any, *, tenant_id: str, project_id: str, ledger_run_id: str) -> list[Any]:
+        with _checkout(self._dsn) as conn:
+            rows = conn.execute(
+                f"SELECT {_VERSION_COLUMNS} FROM source_versions"
+                " WHERE canonical_uri = %s AND auth_scope_hash IS NOT DISTINCT FROM %s"
+                " AND request_variant IS NOT DISTINCT FROM %s AND ("
+                "   cache_scope = 'public_global'"
+                "   OR (cache_scope = 'tenant' AND tenant_id = %s)"
+                "   OR (cache_scope = 'project' AND tenant_id = %s AND project_id = %s)"
+                "   OR (cache_scope = 'session' AND tenant_id = %s AND project_id = %s AND ledger_run_id = %s))"
+                " ORDER BY retrieval_time DESC, recorded_at DESC",
+                (key.canonical_uri, key.auth_scope_hash, key.request_variant, tenant_id, tenant_id, project_id,
+                 tenant_id, project_id, ledger_run_id),
+            ).fetchall()
+        return [_version_from_row(row) for row in rows]

@@ -38,15 +38,20 @@ import sys
 import threading
 import time
 import zlib
-from collections.abc import Awaitable, Callable, Iterable, Sequence
+from collections.abc import Awaitable, Callable, Iterable, Mapping, Sequence
 from dataclasses import dataclass
-from typing import Any, Protocol
+from datetime import datetime, timezone
+from typing import TYPE_CHECKING, Any, Protocol
 
 import httpx
 
+from .evidence import DEFAULT_FRESHNESS_SECONDS, CacheScope, ResourceCacheKey, canonical_uri
 from .primitives import unstorable_reason
 from .tools import ResultProvenance, Tool, ToolOutput, ToolSpec
 from .version import __version__
+
+if TYPE_CHECKING:
+    from .scope import ToolScope
 
 
 class _Refused(Exception):
@@ -1008,7 +1013,17 @@ def _default_tls() -> Any:
     return httpx.create_ssl_context(trust_env=False)
 
 
-async def _fetch_hops(options: _FetchOptions, text: str) -> ToolOutput:
+@dataclass(frozen=True)
+class _Fetched:
+    """What a fetch returned: the tool's text, and what FR-89 records of it."""
+
+    text: str
+    status: int
+    final_url: str
+    media: str
+
+
+async def _fetch_hops(options: _FetchOptions, text: str) -> _Fetched:
     client: httpx.AsyncClient | None = None
     try:
         for _ in range(options.max_redirects + 1):  # the first request, then each redirect
@@ -1048,7 +1063,7 @@ async def _fetch_hops(options: _FetchOptions, text: str) -> ToolOutput:
             content = codecs.getincrementaldecoder(charset)(errors="replace").decode(body, final=not cut)
             if cut:
                 content += f"\n[body truncated at {options.max_bytes} bytes]"
-            return ToolOutput(f"[HTTP {status}]\n{content}", source_uri=str(url))
+            return _Fetched(f"[HTTP {status}]\n{content}", status, str(url), media)
     finally:
         if client is not None:
             await client.aclose()
@@ -1059,6 +1074,68 @@ async def _fetch_hops(options: _FetchOptions, text: str) -> ToolOutput:
 
 
 async def _fetch(options: _FetchOptions, text: str) -> ToolOutput:
+    fetched = await _fetched(options, text)
+    return ToolOutput(fetched.text, source_uri=fetched.final_url)
+
+
+@dataclass(frozen=True)
+class _CacheOptions:
+    scope: CacheScope
+    host_scopes: Mapping[str, CacheScope]
+    freshness: float
+    clock: Callable[[], datetime]
+
+
+async def _fetch_recorded(options: _FetchOptions, cached: _CacheOptions, cache: Any, text: str, name: str) -> ToolOutput:
+    """FR-91: a fetch inside a run, served from the run's resource cache when a fresh
+    version is within reach, and otherwise fetched and recorded as a new version. The
+    allowlist is checked first, so a cached page is never served for a URL this tool
+    would refuse. Only a 2xx response is recorded; anything else returns as before."""
+    _, host = _target(text, options.allowlist)
+    key = ResourceCacheKey(canonical_uri(text))
+    scope = cached.host_scopes.get(host, cached.scope)
+    now = cached.clock()
+    prior = None
+    if scope is not CacheScope.NO_CACHE:
+        served, prior = await cache.serve(key, now=now, freshness_seconds=cached.freshness, scope=scope, created_by=name)
+        if served is not None:
+            return ToolOutput(served.content.decode("utf-8"), source_uri=served.version.uri)
+    fetched = await _fetched(options, text)
+    if not 200 <= fetched.status < 300:
+        return ToolOutput(fetched.text, source_uri=fetched.final_url)
+    version = await cache.record(
+        key, fetched.text.encode("utf-8"), final_uri=fetched.final_url, media_type=fetched.media, scope=scope,
+        retrieval_time=now, prior=prior, created_by=name,
+    )
+    return ToolOutput(fetched.text, source_uri=version.uri)
+
+
+def _utc_now() -> datetime:
+    return datetime.now(timezone.utc)
+
+
+def _cache_options(allowlist: frozenset[str], cache_scope: Any, host_scopes: Any, freshness_seconds: Any,
+                   clock: Any) -> _CacheOptions:
+    if not isinstance(cache_scope, CacheScope):
+        raise TypeError(f"cache_scope must be a CacheScope, got {cache_scope!r}")
+    if isinstance(freshness_seconds, bool) or not isinstance(freshness_seconds, (int, float)) \
+            or not math.isfinite(freshness_seconds) or freshness_seconds <= 0:
+        raise ValueError(f"freshness_seconds must be a positive number, got {freshness_seconds!r}")
+    if host_scopes is not None and not isinstance(host_scopes, Mapping):
+        raise TypeError(f"host_scopes must be a mapping of allowlisted host names to CacheScope, got {host_scopes!r}")
+    scopes: dict[str, CacheScope] = {}
+    for given, scope in (host_scopes or {}).items():
+        host = _allow_entry(given)
+        admitted = host in allowlist or any(e.startswith("*.") and host.endswith(e[1:]) for e in allowlist)
+        if host.startswith("*.") or not admitted:
+            raise ValueError(f"host_scopes names {given!r}, which is not an allowlisted host name")
+        if not isinstance(scope, CacheScope):
+            raise TypeError(f"host_scopes maps {given!r} to {scope!r}, not a CacheScope")
+        scopes[host] = scope
+    return _CacheOptions(cache_scope, scopes, float(freshness_seconds), clock or _utc_now)
+
+
+async def _fetched(options: _FetchOptions, text: str) -> _Fetched:
     try:
         async with asyncio.timeout(options.timeout):  # one deadline: DNS, every hop, the body
             return await _fetch_hops(options, text)
@@ -1077,16 +1154,25 @@ def fetch_tool(
     timeout_seconds: float = 15.0,
     max_redirects: int = 5,
     name: str = "fetch_url",
+    cache_scope: CacheScope = CacheScope.PROJECT,
+    host_scopes: Mapping[str, CacheScope] | None = None,
+    freshness_seconds: float = DEFAULT_FRESHNESS_SECONDS,
     _resolve: Callable[[str, int], Awaitable[Sequence[str]]] | None = None,
     _connect: Callable[[str, int], tuple[str, int]] | None = None,
     _ssl_context: Any = None,
+    _clock: Callable[[], datetime] | None = None,
 ) -> Tool:
     """Fetch text from http(s) URLs whose host is on `allowlist`.
 
     Entries are host names; '*.example.com' admits subdomains of example.com.
     An empty allowlist refuses every URL. The underscore arguments are test
-    seams (a resolver, an address mapping, a TLS context); the tool's input
-    schema admits only `url`, so a model cannot reach them.
+    seams (a resolver, an address mapping, a TLS context, a clock); the tool's
+    input schema admits only `url`, so a model cannot reach them.
+
+    Inside a Runner every fetch records a source version and is served from the
+    run's resource cache when a fresh one is within reach (FR-91): at `cache_scope`
+    (PROJECT by default), or the scope `host_scopes` names for the requested host,
+    fresh for `freshness_seconds` (an hour by default).
     """
     if isinstance(allowlist, (str, bytes)) or not isinstance(allowlist, (list, tuple, set, frozenset)):
         raise TypeError("allowlist must be a list of host names; an empty list refuses every URL")
@@ -1104,9 +1190,25 @@ def fetch_tool(
         connect=_connect or (lambda address, port: (address, port)),
         ssl_context=_ssl_context,
     )
+    cached = _cache_options(options.allowlist, cache_scope, host_scopes, freshness_seconds, _clock)
 
-    async def fetch_url(url: str) -> ToolOutput:
-        return await _fetch(options, url)
+    async def fetch_url(url: str, scope: ToolScope = None) -> ToolOutput:
+        # FR-76: the run's scope, which a fetch outside a Runner does not have; that
+        # fetch records nothing and names its final URL, as before M22.
+        cache = getattr(scope, "evidence", None)
+        if cache is None:
+            return await _fetch(options, url)
+        return await _fetch_recorded(options, cached, cache, url, name)
+
+    # FR-91: entered only when not the default, so a fetch_tool built as before keeps
+    # its schema_hash.
+    caching: dict[str, Any] = {}
+    if cached.scope is not CacheScope.PROJECT:
+        caching["cache_scope"] = cached.scope.value
+    if cached.host_scopes:
+        caching["host_scopes"] = {host: scope.value for host, scope in sorted(cached.host_scopes.items())}
+    if cached.freshness != DEFAULT_FRESHNESS_SECONDS:
+        caching["freshness_seconds"] = cached.freshness
 
     return Tool(
         spec=ToolSpec(
@@ -1128,6 +1230,7 @@ def fetch_tool(
                 "max_bytes": options.max_bytes,
                 "timeout_seconds": options.timeout,
                 "max_redirects": options.max_redirects,
+                **caching,
             },
         ),
         fn=fetch_url,

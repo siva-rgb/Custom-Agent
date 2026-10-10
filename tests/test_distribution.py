@@ -46,6 +46,8 @@ EXPECTED_EXAMPLES = {
     # FR-75 (M19): the orchestrator, a failed criterion and the replan.
     "17_orchestrator.py",
     "18_context.py",
+    # FR-91 (M22): source versions and the scoped resource cache.
+    "19_sources.py",
 }
 
 

@@ -211,6 +211,8 @@ class SubagentPool:
             project_id=parent.project_id,
             max_turns=briefing.max_turns,
             parent_run_id=parent.run_id,
+            # FR-90, FR-92 (M22): every child shares its top-level run's ledger.
+            ledger_run_id=getattr(parent, "ledger_run_id", None) or parent.run_id,
             principal_context=principal_context,
             budget_lease=lease,
             depth=depth,

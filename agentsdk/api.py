@@ -40,6 +40,7 @@ from .postgres import RunScope, column_rejection_reason
 from .artifacts import InMemoryArtifactStore
 from .plan import InMemoryRunStateStore
 from .scope import AttributedArtifacts, ToolScope
+from .evidence import InMemoryEvidenceStore, ResourceCache
 from .primitives import ContentProvenance, unstorable_reason
 from .budget import BudgetLease, tokens_of
 from .prices import PRICE_TABLE_DATE, shipped_pricing
@@ -216,6 +217,10 @@ class RunConfig:
     # carried by the SubagentPool to every child; None sends every registered tool and
     # never compacts, exactly as before M20 (DECISION-468e2bfa, NFR-12).
     context_policy: ContextPolicy | None = None
+    # FR-90, FR-92 (M22): the top-level run whose SESSION-scoped sources this run may
+    # be served. Set by the SubagentPool on every child; None for a top-level run,
+    # whose own id it then is.
+    ledger_run_id: str | None = None
 
     def __post_init__(self) -> None:
         # Before the range checks: a bool passes every one of them (True >= 1,
@@ -283,6 +288,10 @@ class RunConfig:
             or unstorable_reason(self.pending_failure) is not None
         ):
             raise ValueError(f"pending_failure must be None or a non-empty storable str, got {self.pending_failure!r}")
+        if self.ledger_run_id is not None and (
+            type(self.ledger_run_id) is not str or column_rejection_reason(self.ledger_run_id, "UUID") is not None
+        ):
+            raise ValueError(f"ledger_run_id must be None or a UUID as text, got {self.ledger_run_id!r}")
         if self.context_policy is not None and not isinstance(self.context_policy, ContextPolicy):
             raise ValueError(f"context_policy must be a ContextPolicy or None, got {type(self.context_policy).__name__}")
         if self.scheduler_limits is not None and self.scheduler_limits.provider_concurrency_limits:
@@ -383,6 +392,7 @@ class Runner:
         self._started: set[tuple[str, str, str]] = set()
         self._memory_artifacts: InMemoryArtifactStore | None = None
         self._memory_states: InMemoryRunStateStore | None = None
+        self._memory_evidence: InMemoryEvidenceStore | None = None
 
     def _admits(self, tenant_id: str, project_id: str, run_id: str) -> bool:
         return (tenant_id, project_id, run_id) in self._started
@@ -394,6 +404,15 @@ class Runner:
         if self._memory_artifacts is None:
             self._memory_artifacts = InMemoryArtifactStore(tenant_id, project_id, runs=self._admits)
         return self._memory_artifacts.for_scope(tenant_id, project_id)
+
+    def _evidence_store(self) -> Any:
+        """Where this Runner's source versions are kept (FR-90): the database, or one
+        in-memory store for the Runner's life."""
+        if self._persistence is not None:
+            return self._persistence.evidence_store()
+        if self._memory_evidence is None:
+            self._memory_evidence = InMemoryEvidenceStore()
+        return self._memory_evidence
 
     def _run_states_for(self, tenant_id: str, project_id: str) -> Any:
         """The RunStateStore for a run's tenant and project (FR-65, M19)."""
@@ -840,6 +859,13 @@ class Runner:
                 run_id=run_id, tenant_id=scope.tenant_id, project_id=scope.project_id,
                 node_id=config.node_id,
                 artifacts=artifacts,
+                ledger_run_id=config.ledger_run_id or run_id,
+                evidence=ResourceCache(
+                    self._evidence_store, self._artifacts_for,
+                    tenant_id=scope.tenant_id, project_id=scope.project_id, run_id=run_id,
+                    ledger_run_id=config.ledger_run_id or run_id, node_id=config.node_id,
+                    call=control.store, emit=partial(control.store, events.emit),
+                ),
                 _events=events, _control=control, _runner=self, _lease=config.budget_lease,
             ),
         )

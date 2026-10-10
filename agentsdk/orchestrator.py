@@ -385,7 +385,8 @@ class Orchestrator:
         lease = governor.lease(node.node_id)
         try:
             result = await run.pool.spawn(
-                parent=RunScope(run_id=scope.run_id, tenant_id=scope.tenant_id, project_id=scope.project_id),
+                parent=ToolScope(run_id=scope.run_id, tenant_id=scope.tenant_id, project_id=scope.project_id,
+                                 ledger_run_id=getattr(scope, "ledger_run_id", None)),
                 briefing=Briefing(
                     objective=node.objective,
                     assigned_role=node.assigned_role,

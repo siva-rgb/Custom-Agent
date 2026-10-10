@@ -2262,9 +2262,14 @@ async def test_fetch_and_search_results_carry_exactly_fr40_labels_into_the_assem
     assert not results["f1"].is_error and not results["s1"].is_error, results
     for call_id in ("f1", "s1"):
         assert labels(results[call_id].provenance) == EXTERNAL
-    assert results["f1"].provenance.source_uri_or_hash == "http://allowed.test/page"
+    # FR-91 (M22) supersedes FR-38 here: inside a run the fetch names its source
+    # version, and the final URL is that version's final_uri.
+    source = results["f1"].provenance.source_uri_or_hash
+    assert source.startswith("urn:agentsdk:source:"), source
+    version = runner._evidence_store().get("t", "p", source.rsplit(":", 1)[1])
+    assert version.final_uri == "http://allowed.test/page"
 
-    metadata = {entry["tool_call_id"]: entry for entry in model.requests[1].metadata["provenance"]}
+    metadata ={entry["tool_call_id"]: entry for entry in model.requests[1].metadata["provenance"]}
     for call_id in ("f1", "s1"):
         assert metadata[call_id]["origin"] == "external_tool"
         assert metadata[call_id]["trust_zone"] == "untrusted"

@@ -177,6 +177,18 @@ def test_caveat2_a_second_tenant_with_the_same_run_id_still_keeps_its_own_histor
         store.history("r")
 
 
+def test_c2_an_unbound_combined_write_is_filed_with_its_sinks_tenant_not_the_first_binder():
+    """M21a review caveat C2 (KNOWLEDGE-bbd190e1): an unbound combined write compared
+    only the run id against a scoped sink, so the summary went to whichever tenant bound
+    the id first while its event went to the sink's tenant. It is now that run's."""
+    store = InMemorySessionStore()
+    sink = InMemoryEventSink(TENANT, PROJECT, "r")
+    store.append_with_event("r", Message(role=Role.USER, content="summary"), sink, EventType.CONTEXT_COMPACTED, {})
+    store.bind(scope(tenant=OTHER)).append("r", Message(role=Role.USER, content="other"))
+    assert said(store.bind(scope(tenant=OTHER)).history("r")) == ["other"]
+    assert said(store.bind(scope()).history("r")) == ["summary"] and len(sink.events()) == 1
+
+
 # =================================================================================================
 # Caveat 3, declared: a bound combined write refuses another run's sink; the Runner never
 # builds one

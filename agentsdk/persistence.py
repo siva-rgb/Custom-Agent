@@ -17,6 +17,7 @@ from .artifacts import DEFAULT_MAX_CONTENT_BYTES
 from .events import EventSink
 from .postgres import (
     PostgresArtifactStore,
+    PostgresEvidenceStore,
     PostgresRunStateStore,
     PostgresEventStore,
     PostgresRunStore,
@@ -111,3 +112,8 @@ class Persistence:
         return PostgresArtifactStore(
             self.dsn, tenant_id, project_id, max_content_bytes=max_content_bytes, clock=clock
         )
+
+    def evidence_store(self) -> PostgresEvidenceStore:
+        """The Postgres store of source versions (FR-89, M22). Every read names the
+        reader's tenant and project."""
+        return PostgresEvidenceStore(self.dsn)

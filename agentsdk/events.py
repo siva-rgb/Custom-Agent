@@ -37,6 +37,10 @@ class EventType(str, Enum):
     PLAN_NODE_FINISHED = "PlanNodeFinished"
     # FR-78 (M20): a history compacted, naming the artifact holding what was replaced.
     CONTEXT_COMPACTED = "ContextCompacted"
+    # FR-91 (M22): a fetch recorded a new source version, or was served one -- a cache
+    # hit, or a copy made into this tenant and project.
+    SOURCE_FETCHED = "SourceFetched"
+    SOURCE_SERVED = "SourceServed"
 
 
 @dataclass(frozen=True)

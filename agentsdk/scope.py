@@ -30,6 +30,11 @@ class ToolScope(RunScope):
 
     node_id: str | None = None
     artifacts: Any = field(default=None, compare=False, repr=False)
+    # FR-90, FR-92 (M22): the top-level run this run belongs to -- its own id for a
+    # top-level run, set by the pool on every child -- and the run's resource cache.
+    # None ledger_run_id means this run's own id.
+    ledger_run_id: str | None = None
+    evidence: Any = field(default=None, compare=False, repr=False)
     _events: Any = field(default=None, compare=False, repr=False)
     _control: Any = field(default=None, compare=False, repr=False)
     _runner: Any = field(default=None, compare=False, repr=False)
@@ -42,6 +47,8 @@ class ToolScope(RunScope):
             type(self.node_id) is not str or not self.node_id or unstorable_reason(self.node_id) is not None
         ):
             raise ValueError(f"node_id must be None or a non-empty storable str, got {self.node_id!r}")
+        if self.ledger_run_id is not None:
+            RunScope(run_id=self.ledger_run_id, tenant_id=self.tenant_id, project_id=self.project_id)
 
 
 class AttributedArtifacts:

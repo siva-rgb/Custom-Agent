@@ -119,6 +119,12 @@ class InMemorySessionStore:
         a compaction's summary and its ContextCompacted. An event that cannot be
         recorded takes the message back out, whatever the sink (FR-87)."""
         key = self._key(run_id)
+        named = getattr(sink, "scope", None)
+        if named is not None and key[:2] == (None, None) and named[2] == run_id:
+            # M21a caveat C2 (KNOWLEDGE-bbd190e1): an unbound write the sink names is
+            # that run's, so the summary is filed with its event's tenant and project
+            # rather than adopted by whichever tenant binds the id first.
+            key = tuple(named)
         _refuse_foreign(sink, key)
         # FR-97 (M21a): the run's history taken once, before the write, and the write
         # bound to that key, so the append and the take-back act on one list however a

@@ -49,6 +49,13 @@ persisted so you can reconstruct exactly what happened afterwards.
   supply. Fetched and searched content is labelled untrusted. Every tool's
   output is capped, 50,000 characters by default. The file tools are
   Windows-only in this release.
+- **Records every page a run fetches as an immutable source version**, its
+  content an artifact checked against its hash, and serves a fresh one again
+  from a cache instead of refetching: within the project by default, an hour's
+  freshness, the scope widened (tenant, everyone) or narrowed (the top-level
+  run, no caching) per tool or per host. A hit stored in another tenant or
+  project is copied into the reader's own, never shared, and each fetch emits
+  `SourceFetched` or `SourceServed` (M22).
 - **Runs a response's tool calls in parallel when the tools say it is safe.** A
   tool that declares `concurrency_safe=True` (the built-in read-only tools do)
   runs beside the other safe calls of the same response, under
@@ -84,8 +91,10 @@ Stated plainly, because an SDK that overstates itself costs you a week:
 | Sandboxed tool execution | Phase 5 |
 | Pause and resume; durable interruptions (cancel is built) | Phase 6 |
 | The execution manifest's `tools_sent` records the tools a run's agent is sent, written at run start with the rest of its configuration, so a run that ends before its first request records a set it never sent | Declared (M21) |
+| Fetches of one page that miss the cache at the same moment each fetch it and each record a version; one fetch per page and scope is M24's claim-lock | Phase 3, M24 |
+| A source version's content is the fetch tool's whole result, status line included, so a served page reads exactly as it did when fetched; a copy made into another tenant or project keeps the original's final URL and media type with its hash and retrieval time | Declared (M22) |
 | A session store's combined write (a compaction's summary and its `ContextCompacted` event) refuses an event sink that names another run, tenant or project. The Runner always passes the run's own sink; only code driving `AgentLoop` itself with another run's sink meets the refusal | Declared (M21a) |
-| On PostgreSQL, a custom event sink that names no scope gets the summary and its event as two writes, so if its `emit` fails the summary stays stored without its event; the SDK's own sinks write both in one transaction | Declared (M20a, M21a) |
+| On PostgreSQL, a custom event sink that names no scope, or that cannot write inside the store's transaction (it lacks `write` and `stored`), gets the summary and its event as two writes, so if its `emit` fails the summary stays stored without its event; the SDK's own sinks write both in one transaction | Declared (M20a, M21a) |
 | Under a `ContextPolicy` an agent is sent its `tool_profile`'s tools even when its own `permission_policy` permits others; a call to one of those is refused as an unknown tool | Phase 4's policy engine, which can list what a checker permits |
 | Context compaction for a run without a `ContextPolicy`: a plain run still sends its full history every turn. A run carrying one, as every orchestrated run does since M20, compacts at 0.75 of its context window | Opt in with `RunConfig.context_policy` |
 | Budget enforcement (cost is measured and recorded, never limited); retention and partitioning of stored rows | Phase 2 / Phase 8 |
@@ -447,6 +456,7 @@ credentials -- which is also how the test suite checks them.
 | [`16_subagents.py`](scripts/16_subagents.py) | children fanned out from one parent under its limits, a tainted input staying tainted across the run boundary, and a spawn refused at depth 3 |
 | [`17_orchestrator.py`](scripts/17_orchestrator.py) | a four-node plan whose check fails its acceptance criterion, the replan as a second version, and the side-effecting node carried rather than run again |
 | [`18_context.py`](scripts/18_context.py) | an agent sent only the one tool its profile names, a long run compacting past 0.75 of its window, and the artifact holding what was replaced, read back against its hash |
+| [`19_sources.py`](scripts/19_sources.py) | a page fetched once and then served from the cache in the same run and the next, a refetch after freshness recording a new version that names the old one, and a second tenant getting no hit |
 
 ```bash
 python scripts/02_custom_tools.py --offline

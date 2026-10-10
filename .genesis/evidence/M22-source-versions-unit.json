@@ -1,0 +1,22 @@
+{
+  "task": "M22-source-versions",
+  "gate": "unit",
+  "command": ".venv\\Scripts\\python.exe -m pytest tests/test_sources.py -q",
+  "started_at": "2026-10-10T16:36:01.409Z",
+  "observed_at": "2026-10-10T16:36:15.763Z",
+  "exit_code": 0,
+  "signal": null,
+  "stdout": "........................................................................ [ 59%]\r\n.................................................                        [100%]\r\n121 passed in 13.49s\r\n",
+  "stderr": "",
+  "revision": {
+    "commit": "fa64753fb3a226edb97067e8a62ad9c3528fd963",
+    "dirty": true
+  },
+  "source_hash": "eeb7c46448c8ff29ac9d53ef06404d2ba0a528ac4ead75730558beddb983cede",
+  "environment": {
+    "node": "v20.10.0",
+    "platform": "win32",
+    "arch": "x64"
+  },
+  "hash": "8da1bd802f09e30269828a5d4291029e83fbb43fca1d087641549544bedf1df2"
+}

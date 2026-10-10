@@ -9,7 +9,7 @@
     "non_goals": [],
     "trust_boundary": "local repository",
     "created_at": "2026-09-05T14:48:57.894Z",
-    "updated_at": "2026-10-10T13:05:02.121Z"
+    "updated_at": "2026-10-10T17:36:29.908Z"
   },
   "policy": {
     "ponytail": "full",
@@ -25,7 +25,7 @@
   "lifecycle": {
     "phase": "build",
     "status": "active",
-    "active_task": "M22-source-versions",
+    "active_task": "M23-evidence-ledger",
     "blocker": null,
     "next_action": "Run the task pre-flight."
   },
@@ -34,8 +34,8 @@
     "type": "new-product",
     "started_at": "2026-09-05T14:48:57.897Z",
     "spec_check": {
-      "at": "2026-10-10T11:50:19.878Z",
-      "source_hash": "247860d5a6f71ca4027e10c876371e9e3928a4fec0158db24e9604d62735c3c1",
+      "at": "2026-10-10T13:35:55.863Z",
+      "source_hash": "a5f04a03c9ad3be03b91baf0194353a9aa2863231c410e7e9751790acb5b4b43",
       "requirements": [
         "AC-1",
         "AC-10",
@@ -238,13 +238,13 @@
       ]
     },
     "plan_check": {
-      "at": "2026-10-10T11:50:29.416Z",
+      "at": "2026-10-10T13:35:56.131Z",
       "source_hash": "e620682b4cf585c1aa0bf9399b9e19eb6ae3040f81e84d51da8ce684f901c420"
     },
     "plan_approval": {
       "human": "siva-rgb (owner)",
-      "reason": "M21a added ahead of M22 for the four M21 caveats (DECISION-23ae5809)",
-      "at": "2026-10-10T11:50:29.611Z",
+      "reason": "Spec re-approved at M22 pre-flight; tasks unchanged",
+      "at": "2026-10-10T13:35:56.256Z",
       "source_hash": "e620682b4cf585c1aa0bf9399b9e19eb6ae3040f81e84d51da8ce684f901c420"
     }
   },
@@ -454,12 +454,12 @@
         "NFR-8",
         "NFR-9"
       ],
-      "source_hash": "247860d5a6f71ca4027e10c876371e9e3928a4fec0158db24e9604d62735c3c1",
+      "source_hash": "a5f04a03c9ad3be03b91baf0194353a9aa2863231c410e7e9751790acb5b4b43",
       "approval": {
         "human": "siva-rgb (owner)",
-        "reason": "FR-97 and AC-75 added for M21a, the four M21 caveats settled before M22 (DECISION-23ae5809)",
-        "at": "2026-10-10T11:50:20.099Z",
-        "source_hash": "247860d5a6f71ca4027e10c876371e9e3928a4fec0158db24e9604d62735c3c1"
+        "reason": "AC-75 reworded and FR-97 extended for the M21a review caveats; ledger_run_id pulled into M22 for SESSION scope (DECISION recorded at M22 pre-flight)",
+        "at": "2026-10-10T13:35:55.992Z",
+        "source_hash": "a5f04a03c9ad3be03b91baf0194353a9aa2863231c410e7e9751790acb5b4b43"
       }
     }
   ],
@@ -1402,6 +1402,14 @@
       "status": "accepted",
       "source": null,
       "recorded_at": "2026-10-10T11:49:52.156Z"
+    },
+    {
+      "id": "DECISION-0d384c8d",
+      "title": "M22 pre-flight: M21a review caveats settled; ledger_run_id pulled forward; example 19 offline and live",
+      "text": "Owner decisions 2026-10-10 at M22's pre-flight. (1) The three caveats carried by KNOWLEDGE-bbd190e1 are settled before M22's own work, inside M22 and disclosed in its review: C1, the README row for caveat 4 corrected to any sink that names no scope or cannot write inside the store's transaction; C2 repaired, an unbound in-memory combined write whose sink names the run is filed under the sink's tenant and project, with a test that fails without it, added to tests/test_carried_caveats.py; C4, AC-75 reworded to the per-run bound view the Runner hands its loop, and FR-97 extended with C1 and C2. The owner permitted signing the spec and plan approvals again as siva-rgb (owner); M22 is requeued through the CLI first so plan approval makes it active again, with no manual state edit. (2) FR-92's ledger_run_id is pulled forward into M22 so SESSION scope reaches the top-level run as FR-90 says: a top-level run's own id, set by the pool on every subagent and orchestrator child; rejected: SESSION as this run only until M23. (3) Example 19 runs offline against a local server with a fake model and live against one allowlisted public page with the real model, read back from Postgres and removed by its run ids; rejected: offline only.",
+      "status": "accepted",
+      "source": null,
+      "recorded_at": "2026-10-10T13:35:55.570Z"
     }
   ],
   "knowledge": [
@@ -2244,6 +2252,14 @@
       "source": null,
       "tags": [],
       "recorded_at": "2026-10-10T13:05:01.794Z"
+    },
+    {
+      "id": "KNOWLEDGE-2763f57b",
+      "title": "M22 round 1 approved; six caveats to settle at M23's pre-flight",
+      "text": "Approved 16:46:05Z by Fable 5.1 on source hash eeb7c464, gates recomputed by the reviewer; author mutation run 24 of 24. The reviewer proved the tenancy rule equivalent across its two implementations: 112 versions over every scope, tenant, project and ledger combination, the SQL reachable, InMemoryEvidenceStore and reaches() compared against an oracle written from FR-90, 48 reader and key checks, zero mismatches, zero leaks, each SQL clause and the Python rule killed by its own mutant. A consistently forged artifact (content and the artifact's own hash rewritten) is still a miss on both stores, so the version's content_hash is checked independently; no UPDATE or DELETE path exists; artifact then version ordering. Concurrency at 1 microsecond with REFUSE_ON_EVENT_LOOP on: 40 memory and 10 Postgres trials clean, the declared pre-M24 concurrent misses confirmed 50 of 50. Default fetch_url schema_hash identical to HEAD fa64753. Governance audit: one decision added (DECISION-0d384c8d), task order unchanged, re-signing through the CLI. Reviewer mutants 13 of 14, the survivor M12 equivalent. Owner decision: settle these at M23's pre-flight. (1) The orchestrator's criterion executor scope (orchestrator.py about 493) omits ledger_run_id and evidence, so a fetch_url criterion is neither cached nor recorded; the second finding in that spot (M19 round 2); M23's ledger completeness would inherit it. (2) Children inherit the ledger through subagents.py falling back to parent.run_id; correct only while an orchestrator is never itself a child, documented but not asserted. (3) A trailing dot, IDN spelling, or http://h versus http://h/ give different cache keys: a refetch, never a leak. (4) An orphan artifact if recording the version fails after the artifact put. (5) ToolScope accepts an uppercase ledger_run_id that the in-memory store would not match, while RunConfig refuses it. (6) Own-first means a tool widened to PUBLIC_GLOBAL keeps serving its own older PROJECT version until it expires.",
+      "source": null,
+      "tags": [],
+      "recorded_at": "2026-10-10T17:36:29.559Z"
     }
   ],
   "tasks": [
@@ -2266,9 +2282,9 @@
           "status": "pass",
           "evidence": {
             "human": "siva-rgb (owner)",
-            "reason": "FR-97 and AC-75 added for M21a, the four M21 caveats settled before M22 (DECISION-23ae5809)",
-            "source_hash": "4ae3487f8550af67bf986b6e17fcd88b8b5191986b7e51dcb3a25e41aed8f850",
-            "observed_at": "2026-10-10T11:50:20.099Z"
+            "reason": "AC-75 reworded and FR-97 extended for the M21a review caveats; ledger_run_id pulled into M22 for SESSION scope (DECISION recorded at M22 pre-flight)",
+            "source_hash": "a82f1d251709dece5a7906cc17112bdc98eb930f8507c05cd1935bd5da9c2034",
+            "observed_at": "2026-10-10T13:35:55.992Z"
           }
         }
       ],
@@ -2278,7 +2294,7 @@
       "failures": [],
       "limitations": [],
       "created_at": "2026-09-05T14:48:57.897Z",
-      "updated_at": "2026-10-10T11:50:20.099Z"
+      "updated_at": "2026-10-10T13:35:55.992Z"
     },
     {
       "id": "M1-primitives",
@@ -3746,7 +3762,7 @@
     {
       "id": "M22-source-versions",
       "outcome": "Every fetch records an immutable source version and the tenant-scoped resource cache serves fresh versions within their reach, copying across tenancy rather than sharing",
-      "state": "active",
+      "state": "done",
       "risk": "high",
       "owner": null,
       "scope": [],
@@ -3764,22 +3780,37 @@
           "id": "unit",
           "command": ".venv\\Scripts\\python.exe -m pytest tests/test_sources.py -q",
           "mandatory": true,
-          "status": "pending",
-          "evidence": null
+          "status": "pass",
+          "evidence": {
+            "path": ".genesis/evidence/M22-source-versions-unit.json",
+            "source_hash": "eeb7c46448c8ff29ac9d53ef06404d2ba0a528ac4ead75730558beddb983cede",
+            "hash": "8da1bd802f09e30269828a5d4291029e83fbb43fca1d087641549544bedf1df2",
+            "observed_at": "2026-10-10T16:36:15.763Z"
+          }
         },
         {
           "id": "regression",
           "command": ".venv\\Scripts\\python.exe -m pytest -q",
           "mandatory": true,
-          "status": "pending",
-          "evidence": null
+          "status": "pass",
+          "evidence": {
+            "path": ".genesis/evidence/M22-source-versions-regression.json",
+            "source_hash": "eeb7c46448c8ff29ac9d53ef06404d2ba0a528ac4ead75730558beddb983cede",
+            "hash": "f0f9d55c6b26e631769500f6aacff79105edb609b51073ea17499df210f59b59",
+            "observed_at": "2026-10-10T16:43:11.759Z"
+          }
         },
         {
           "id": "independent-review",
           "command": "",
           "mandatory": true,
-          "status": "pending",
-          "evidence": null
+          "status": "pass",
+          "evidence": {
+            "human": "Fable 5.1 (independent L4 reviewer, M22 round 1)",
+            "reason": "Requirements re-derived from SPEC.md FR-89 to FR-91, NFR-25, NFR-26, AC-71, AC-72. Verified first-hand: migration 0010 applied with checksum ea111545 matching the file byte for byte; governance diff is one decision added, knowledge 105 to 105, 28 tasks in order, only the SPEC-1 and M22 task records touched, one requeue control. Full suite 1797 passed in 501s with -p no:cacheprovider; genesis gate rerun by the reviewer: unit 121 passed, regression 1797 passed in 414s, both on source hash eeb7c464 matching the checkpoint, no stray process. Probes in scratchpad m22-r1-probes with tenants SYN-m22r1, every row removed by run id: the reach rule compared SQL vs in-memory vs reaches() vs a spec oracle over 112 versions x 48 reader and key combinations with zero mismatch, get() filtered by tenant and project on both stores; SESSION across tenants or projects sharing a ledger id and across top-level runs misses on both stores while a run carrying the top-level ledger is served; a PUBLIC_GLOBAL copy carries only hash, retrieval time, final_uri and media type, origin rows untouched, no foreign id in any column or event; a consistently forged artifact (content and artifact hash both rewritten) is still a miss against the version hash on both stores; no UPDATE or DELETE names source_versions; a store failure after the artifact put leaves no version and an error the model sees; no URL that _target admits makes canonical_uri raise; host_scopes applies by normalised host; future-dated and clock-skewed versions are never served and become the prior; default boundary served at 3599s and refetched at 3600s on Postgres; outside a Runner 29 outcomes and 3 tool specs are byte-identical to HEAD fa64753 and the default schema_hash 1c16f3bc is unchanged; ledger_run_id is the top-level id for a top-level run, a child and a grandchild spawned from really injected ToolScopes, and for orchestrator children before and after a replan; 40 memory and 10 Postgres trials of 8 parallel fetches of one key plus 6 concurrent runs of two tenants at a 1 microsecond switch interval with REFUSE_ON_EVENT_LOOP on: nothing raised, no on-loop store call, accounting consistent, no cross-tenant read; the C2 repair read and its test fails without it; example 19 live 6 of 6 against example.com and the gateway, rows removed by run id. Mutants: 13 of 14 killed, each file restored and verified by SHA-256; M12 (orchestrator passing no ledger) is equivalent because the orchestrator is a depth 0 run. Caveats, not blockers: the tool_succeeds criterion executor builds a ToolScope with no ledger and no cache so a fetch made there records nothing and keeps the final URL; trailing-dot and IDN spellings of one allowlisted host get different cache keys (a refetch, never a leak); a record failure leaves an orphan artifact in the reader tenant; ToolScope accepts an uppercase ledger_run_id that the in-memory reachable does not match while RunConfig refuses it; a tool widened to PUBLIC_GLOBAL served an existing PROJECT version records no wider version until it expires; all 8 concurrent misses fetched in every trial, the declared pre-M24 behaviour.",
+            "source_hash": "eeb7c46448c8ff29ac9d53ef06404d2ba0a528ac4ead75730558beddb983cede",
+            "observed_at": "2026-10-10T16:46:05.778Z"
+          }
         }
       ],
       "next_action": "Run the task pre-flight.",
@@ -3788,12 +3819,12 @@
       "failures": [],
       "limitations": [],
       "created_at": "2026-10-10T07:01:18.349Z",
-      "updated_at": "2026-10-10T07:01:18.349Z"
+      "updated_at": "2026-10-10T17:36:29.729Z"
     },
     {
       "id": "M23-evidence-ledger",
       "outcome": "Agents record and supersede claims in their run's ledger, deduplicated by normalised statement, each contribution kept and its taint carried, the history a chain that never forks",
-      "state": "queued",
+      "state": "active",
       "risk": "high",
       "owner": null,
       "scope": [],
@@ -4604,17 +4635,35 @@
       "human": "Opus 5 (independent L4 reviewer, M21a round 1)",
       "reason": "Re-derived FR-97 and AC-75 from SPEC.md and ran both gates myself: unit 10 passed, regression 1675 passed in 279.87s, exit 0, source hash 8ade0977 matching the live tree. Caveats 1 and 2 probed first-hand rather than accepted: 2800 contended attempts at a 1 microsecond switch interval over six races (two tenants binding one id, a bound read racing an unbound write, an adoption racing a take-back, unbound combined writes with recorded and with failing sinks racing the first bound write, and a combined write while two tenants bind) found no run id filed under two keys, no summary left without its event, and no disagreement between the two indexes, checked after every attempt. All fourteen deterministic interleavings, with a second tenant writing at each of the four seams of the combined write, also held. Nine mutants, each restored byte for byte with its SHA-256 verified in a finally: the gate file killed all nine, my probe killed four of the seven aimed at the store, and the same probe at the default 5 millisecond interval found nothing where it found 54 violations at a microsecond, so the negatives are measured. The two indexes cannot disagree because every mutation of both happens in one critical section and adoption replaces the unbound entry in place. Adoption on a read is sound: it creates nothing for an unwritten run, still returns a copy, and only decides which tenant adopts, which is the declared rule. The lock is a plain lock, never nested and never held across emit; a sink whose emit calls the store on the same thread, or waits on another thread that does, completes. Caveat 3 is faithful: instrumenting AgentLoop at the class saw exactly the four loops the test sees, there is one construction site, and a mutant that builds a foreign sink is detected. Caveat 4 is faithful and its test detects an inverted write order. The manual edit of project.json is exactly what DECISION-23ae5809 discloses and nothing more, re-derived with a structural diff. Three caveats, none blocking: the README row for caveat 4 names only a scope-less sink while a custom sink that names the run but has no write and stored takes the same two-write path; an unbound combined write compares only the run id against a scoped sink, so with adoption its summary can land in the history of whichever tenant binds the id first while the event goes to the sink it named, reachable only by code driving the loop with an unbound store; and a bound read now moves a key, a read with a side effect. Database and tree restored to the baseline.",
       "revision": null
+    },
+    {
+      "id": "36e96a5e-ccd3-472f-b63d-bac2e613b991",
+      "at": "2026-10-10T13:35:55.733Z",
+      "action": "requeue",
+      "task": "M22-source-versions",
+      "human": null,
+      "reason": null,
+      "revision": null
+    },
+    {
+      "id": "1ae50012-2d11-4319-ac65-95d6cce3af82",
+      "at": "2026-10-10T16:46:05.778Z",
+      "action": "approve",
+      "task": "M22-source-versions",
+      "human": "Fable 5.1 (independent L4 reviewer, M22 round 1)",
+      "reason": "Requirements re-derived from SPEC.md FR-89 to FR-91, NFR-25, NFR-26, AC-71, AC-72. Verified first-hand: migration 0010 applied with checksum ea111545 matching the file byte for byte; governance diff is one decision added, knowledge 105 to 105, 28 tasks in order, only the SPEC-1 and M22 task records touched, one requeue control. Full suite 1797 passed in 501s with -p no:cacheprovider; genesis gate rerun by the reviewer: unit 121 passed, regression 1797 passed in 414s, both on source hash eeb7c464 matching the checkpoint, no stray process. Probes in scratchpad m22-r1-probes with tenants SYN-m22r1, every row removed by run id: the reach rule compared SQL vs in-memory vs reaches() vs a spec oracle over 112 versions x 48 reader and key combinations with zero mismatch, get() filtered by tenant and project on both stores; SESSION across tenants or projects sharing a ledger id and across top-level runs misses on both stores while a run carrying the top-level ledger is served; a PUBLIC_GLOBAL copy carries only hash, retrieval time, final_uri and media type, origin rows untouched, no foreign id in any column or event; a consistently forged artifact (content and artifact hash both rewritten) is still a miss against the version hash on both stores; no UPDATE or DELETE names source_versions; a store failure after the artifact put leaves no version and an error the model sees; no URL that _target admits makes canonical_uri raise; host_scopes applies by normalised host; future-dated and clock-skewed versions are never served and become the prior; default boundary served at 3599s and refetched at 3600s on Postgres; outside a Runner 29 outcomes and 3 tool specs are byte-identical to HEAD fa64753 and the default schema_hash 1c16f3bc is unchanged; ledger_run_id is the top-level id for a top-level run, a child and a grandchild spawned from really injected ToolScopes, and for orchestrator children before and after a replan; 40 memory and 10 Postgres trials of 8 parallel fetches of one key plus 6 concurrent runs of two tenants at a 1 microsecond switch interval with REFUSE_ON_EVENT_LOOP on: nothing raised, no on-loop store call, accounting consistent, no cross-tenant read; the C2 repair read and its test fails without it; example 19 live 6 of 6 against example.com and the gateway, rows removed by run id. Mutants: 13 of 14 killed, each file restored and verified by SHA-256; M12 (orchestrator passing no ledger) is equivalent because the orchestrator is a depth 0 run. Caveats, not blockers: the tool_succeeds criterion executor builds a ToolScope with no ledger and no cache so a fetch made there records nothing and keeps the final URL; trailing-dot and IDN spellings of one allowlisted host get different cache keys (a refetch, never a leak); a record failure leaves an orphan artifact in the reader tenant; ToolScope accepts an uppercase ledger_run_id that the in-memory reachable does not match while RunConfig refuses it; a tool widened to PUBLIC_GLOBAL served an existing PROJECT version records no wider version until it expires; all 8 concurrent misses fetched in every trial, the declared pre-M24 behaviour.",
+      "revision": null
     }
   ],
   "discovery": null,
   "checkpoint": {
-    "at": "2026-10-10T13:05:02.066Z",
+    "at": "2026-10-10T17:36:29.847Z",
     "revision": {
-      "commit": "de0de3793cb996f0394d33a0ae6431bc5714c50f",
+      "commit": "fa64753fb3a226edb97067e8a62ad9c3528fd963",
       "dirty": true,
-      "source_hash": "8ade09770ea76d230226ebc3488139fd2ba718c16b6c3546ef3cc31fa4c2aed7"
+      "source_hash": "eeb7c46448c8ff29ac9d53ef06404d2ba0a528ac4ead75730558beddb983cede"
     },
-    "active_task": "M22-source-versions",
+    "active_task": "M23-evidence-ledger",
     "next_action": "Run the task pre-flight."
   },
   "legacy": null

@@ -27,6 +27,14 @@ from .orchestrator import Orchestrator
 from .scope import ToolScope
 from .context_policy import ContextPolicy
 from .compaction import ContextCompactor
+from .evidence import (
+    CacheScope,
+    EvidenceSourceVersion,
+    EvidenceStore,
+    InMemoryEvidenceStore,
+    ResourceCache,
+    ResourceCacheKey,
+)
 from .errors import (
     AgentSDKError,
     ArtifactIntegrityError,
@@ -118,6 +126,12 @@ __all__ = [
     # What an agent sees and when its history compacts (FR-77, FR-78): a field of RunConfig.
     "ContextPolicy",
     "ContextCompactor",
+    "CacheScope",
+    "EvidenceSourceVersion",
+    "EvidenceStore",
+    "InMemoryEvidenceStore",
+    "ResourceCache",
+    "ResourceCacheKey",
     "AcceptanceCriterion",
     "BudgetReservation",
     "NodeRetryPolicy",
