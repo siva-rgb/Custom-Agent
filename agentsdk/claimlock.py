@@ -181,25 +181,34 @@ async def _finished(future: asyncio.Future) -> BaseException | None:
     result must be waited for and dealt with (M24 review caveat C1: the first version gave
     up at the second cancellation, and leaked a held lock and a pooled connection).
 
-    An exception raised here while the future is still running was delivered to the
-    caller, not produced by the work, so it is kept for the caller to raise once the work
-    is dealt with rather than swallowed (M24a review caveat W2); one raised once the
-    future is done is the future's own outcome, which the caller reads from it."""
+    An exception raised here is the future's own outcome only when the future is done
+    with that very outcome; anything else was delivered to the caller -- a cancellation,
+    a timeout, an interrupt -- and is kept for the caller to raise once the work is dealt
+    with, never swallowed (M24a review caveat W2). The future being done is not enough:
+    it can complete in the same loop iteration as a delivery, before the shield passes
+    its result on (M25 review, FR-109)."""
     interrupted: BaseException | None = None
     while not future.done():
         try:
             await asyncio.shield(future)
-        except asyncio.CancelledError as exc:
-            if future.done() and not future.cancelled():
-                continue
-            if interrupted is None:
-                interrupted = exc
         except BaseException as exc:  # noqa: BLE001 - raised by the caller once the work is dealt with
-            if future.done():
+            if _own(future, exc):
                 continue
-            if interrupted is None or isinstance(interrupted, asyncio.CancelledError):
+            # A delivered exception other than cancellation outranks a cancellation.
+            if interrupted is None or (isinstance(interrupted, asyncio.CancelledError)
+                                       and not isinstance(exc, asyncio.CancelledError)):
                 interrupted = exc
     return interrupted
+
+
+def _own(future: asyncio.Future, exc: BaseException) -> bool:
+    """Whether `exc`, raised by awaiting the shield of `future`, is the future's own
+    outcome: its cancellation, or the very exception it failed with (FR-109)."""
+    if not future.done():
+        return False
+    if future.cancelled():
+        return isinstance(exc, asyncio.CancelledError)
+    return future.exception() is exc
 
 
 async def _completed(work: Awaitable[Any], undo: Callable[[Any], Any] | None) -> Any:

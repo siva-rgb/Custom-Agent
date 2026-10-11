@@ -9,7 +9,7 @@
     "non_goals": [],
     "trust_boundary": "local repository",
     "created_at": "2026-09-05T14:48:57.894Z",
-    "updated_at": "2026-10-11T14:16:19.857Z"
+    "updated_at": "2026-10-11T17:07:10.238Z"
   },
   "policy": {
     "ponytail": "full",
@@ -23,19 +23,19 @@
     }
   },
   "lifecycle": {
-    "phase": "build",
-    "status": "active",
-    "active_task": "M26-verifications-and-signals",
+    "phase": "verify",
+    "status": "ready",
+    "active_task": null,
     "blocker": null,
-    "next_action": "Run the task pre-flight."
+    "next_action": "Review completed work and choose the next bounded outcome."
   },
   "commands": {},
   "workflow": {
     "type": "new-product",
     "started_at": "2026-09-05T14:48:57.897Z",
     "spec_check": {
-      "at": "2026-10-11T12:35:06.004Z",
-      "source_hash": "c0005f3b2ed5c126eb1a1f13643bbbf8dde0abd2eef8743e3af6887bd8129653",
+      "at": "2026-10-11T14:17:26.805Z",
+      "source_hash": "fff3eb71822acbdc84041fa2d1eed2a887c0e26a145ec1537bf31efeda835436",
       "requirements": [
         "AC-1",
         "AC-10",
@@ -117,6 +117,7 @@
         "AC-8",
         "AC-80",
         "AC-81",
+        "AC-82",
         "AC-9",
         "FR-1",
         "FR-10",
@@ -129,6 +130,7 @@
         "FR-106",
         "FR-107",
         "FR-108",
+        "FR-109",
         "FR-11",
         "FR-12",
         "FR-13",
@@ -258,14 +260,14 @@
       ]
     },
     "plan_check": {
-      "at": "2026-10-11T14:16:04.717Z",
-      "source_hash": "dd4a74f8f53467e8a5c51b652bc1f52f02cbdf12691b6c3cc7c3c26069f9d1d8"
+      "at": "2026-10-11T14:17:27.412Z",
+      "source_hash": "af9713067d7a4eb25070082e0fae1447ad69ce0cc234264b3eef7f13b2f90def"
     },
     "plan_approval": {
       "human": "siva-rgb (owner)",
-      "reason": "Re-signed: increment 2 tasks M25 to M28 with the regression gate restored (DECISION-11af2ee2)",
-      "at": "2026-10-11T14:16:04.865Z",
-      "source_hash": "dd4a74f8f53467e8a5c51b652bc1f52f02cbdf12691b6c3cc7c3c26069f9d1d8"
+      "reason": "M25a added before M26; M26 to M28 paused until it is done",
+      "at": "2026-10-11T14:17:27.581Z",
+      "source_hash": "af9713067d7a4eb25070082e0fae1447ad69ce0cc234264b3eef7f13b2f90def"
     }
   },
   "artifacts": [
@@ -355,6 +357,7 @@
         "AC-8",
         "AC-80",
         "AC-81",
+        "AC-82",
         "AC-9",
         "FR-1",
         "FR-10",
@@ -367,6 +370,7 @@
         "FR-106",
         "FR-107",
         "FR-108",
+        "FR-109",
         "FR-11",
         "FR-12",
         "FR-13",
@@ -494,12 +498,12 @@
         "NFR-8",
         "NFR-9"
       ],
-      "source_hash": "c0005f3b2ed5c126eb1a1f13643bbbf8dde0abd2eef8743e3af6887bd8129653",
+      "source_hash": "fff3eb71822acbdc84041fa2d1eed2a887c0e26a145ec1537bf31efeda835436",
       "approval": {
         "human": "siva-rgb (owner)",
-        "reason": "Phase 3 increment 2: FR-99 to FR-108, NFR-27 to NFR-29, AC-77 to AC-81 (DECISION-f9888168, DECISION-581a647b, DECISION-2cec3b61)",
-        "at": "2026-10-11T12:35:06.161Z",
-        "source_hash": "c0005f3b2ed5c126eb1a1f13643bbbf8dde0abd2eef8743e3af6887bd8129653"
+        "reason": "FR-109 and AC-82 for M25a (DECISION-4cf55a17)",
+        "at": "2026-10-11T14:17:26.953Z",
+        "source_hash": "fff3eb71822acbdc84041fa2d1eed2a887c0e26a145ec1537bf31efeda835436"
       }
     }
   ],
@@ -1514,6 +1518,14 @@
       "status": "accepted",
       "source": null,
       "recorded_at": "2026-10-11T12:40:37.550Z"
+    },
+    {
+      "id": "DECISION-4cf55a17",
+      "title": "M25a: the W2 window settled before M26, ordered by pausing M26 to M28 (owner)",
+      "text": "Owner decision 2026-10-11 after M25 round 1 (KNOWLEDGE-be223191): complete M25, then M25a before M26 as FR-109 and AC-82: an exception raised at the claim-lock wait on a thread is the thread own outcome only when the future is done with that same outcome; anything else is delivered and raised after the cleanup, even when the future completed in the same loop iteration, so no cancellation or timeout is swallowed; FR-99 false sentence corrected. Ordering by CLI with no hand edit: M26 requeued, M26 to M28 paused, plan reopened, M25a added, spec and plan re-signed by the owner; after M25a, M26 to M28 resumed and requeued and the plan re-signed again. KeyFailed cosmetics (__suppress_context__ forced, pickling) stay carried.",
+      "status": "accepted",
+      "source": null,
+      "recorded_at": "2026-10-11T14:17:15.175Z"
     }
   ],
   "knowledge": [
@@ -2404,6 +2416,14 @@
       "source": null,
       "tags": [],
       "recorded_at": "2026-10-11T14:16:19.697Z"
+    },
+    {
+      "id": "KNOWLEDGE-e366a268",
+      "title": "M25a round 1 approved; the W2 window closed",
+      "text": "Sonnet 5 approved M25a round 1 at 15:34:43Z on source hash 6ebfe367, gates recomputed (unit 9, regression 1923). The M25 escalating reviewer reran its three window probes unchanged: M25a honours all 20 trials (cancellation in the settle window, asyncio.timeout_at at and 0.5 ms after the deadline, wait_for right after the acquire and overrunning), M25 d979634 swallows or gives no signal on all 20, M24a honours all 20, so the regression was introduced in M25 and is undone. Reviewer 30-case matrix (five delivery mechanisms x three future outcomes x both orders): 0 mismatches against 18 for M25; 120 randomised repeated-cancellation trials with no swallowed cancellation and no leak. _own compares by identity. Mutants: the cancelled-future own-cancellation mutant is equivalent (both raise CancelledError with no undo); a reviewer mutant counting any exception as own on a cancelled future (M4) survives as a test gap, not a defect, reachable only with a hand-driven coroutine since nothing cancels the work future and asyncio delivers no non-cancellation exception to a task; carried as a note. Governance verified: spec_check 218 to 220 adding exactly FR-109 and AC-82, only the three intended pauses. Still carried: KeyFailed forced __suppress_context__ and pickling (cosmetic), W1, C6, B2 and a waited fetch that raises recording no wait (declared, FR-99).",
+      "source": null,
+      "tags": [],
+      "recorded_at": "2026-10-11T17:07:10.067Z"
     }
   ],
   "tasks": [
@@ -2426,9 +2446,9 @@
           "status": "pass",
           "evidence": {
             "human": "siva-rgb (owner)",
-            "reason": "Phase 3 increment 2: FR-99 to FR-108, NFR-27 to NFR-29, AC-77 to AC-81 (DECISION-f9888168, DECISION-581a647b, DECISION-2cec3b61)",
-            "source_hash": "4e24d63d08e55e5faa46995511f64c687627d054215d2a9a0464a60d45ac2c94",
-            "observed_at": "2026-10-11T12:35:06.161Z"
+            "reason": "FR-109 and AC-82 for M25a (DECISION-4cf55a17)",
+            "source_hash": "5ba6ed8b05a4b9c21eec9d4f273f82b853b7b1ba27cfde1a8356b1128df3b9f7",
+            "observed_at": "2026-10-11T14:17:26.953Z"
           }
         }
       ],
@@ -2438,7 +2458,7 @@
       "failures": [],
       "limitations": [],
       "created_at": "2026-09-05T14:48:57.897Z",
-      "updated_at": "2026-10-11T12:35:06.161Z"
+      "updated_at": "2026-10-11T14:17:26.953Z"
     },
     {
       "id": "M1-primitives",
@@ -4208,7 +4228,7 @@
     {
       "id": "M26-verifications-and-signals",
       "outcome": "Verifications are recorded append-only within their tenancy, the gate's rule signals clear or flag a node with no model call, and external outcomes are recorded through the Runner",
-      "state": "active",
+      "state": "paused",
       "risk": "medium",
       "owner": null,
       "scope": [],
@@ -4259,7 +4279,7 @@
     {
       "id": "M27-critic",
       "outcome": "The critic runs at most once per gated node execution, its verdict decides the node, corrections supersede claims, and nothing it touches gets cleaner",
-      "state": "queued",
+      "state": "paused",
       "risk": "high",
       "owner": null,
       "scope": [],
@@ -4308,7 +4328,7 @@
     {
       "id": "M28-calibration-and-exit",
       "outcome": "The calibration report suggests and never applies a threshold, and the gate holds under contention on both stores",
-      "state": "queued",
+      "state": "paused",
       "risk": "medium",
       "owner": null,
       "scope": [],
@@ -4353,6 +4373,65 @@
       "limitations": [],
       "created_at": "2026-10-11T12:35:06.784Z",
       "updated_at": "2026-10-11T12:35:06.785Z"
+    },
+    {
+      "id": "M25a-w2-window",
+      "outcome": "No exception delivered while the claim-lock waits on a thread is swallowed, even when the thread finishes in the same instant",
+      "state": "done",
+      "risk": "medium",
+      "owner": null,
+      "scope": [],
+      "dependencies": [],
+      "requirements": [
+        "FR-109",
+        "AC-82",
+        "FR-99"
+      ],
+      "gates": [
+        {
+          "id": "unit",
+          "command": ".venv\\Scripts\\python.exe -m pytest tests/test_w2_window.py -q",
+          "mandatory": true,
+          "status": "pass",
+          "evidence": {
+            "path": ".genesis/evidence/M25a-w2-window-unit.json",
+            "source_hash": "6ebfe3675bd4cad0152b157099aef4213a0baf2cba07fe450806a2ada4f5515b",
+            "hash": "c47fa54ea9510a9ee48617881f66b0836687f8a903581a6e697e2f66f3fec676",
+            "observed_at": "2026-10-11T15:29:21.242Z"
+          }
+        },
+        {
+          "id": "regression",
+          "command": ".venv\\Scripts\\python.exe -m pytest -q",
+          "mandatory": true,
+          "status": "pass",
+          "evidence": {
+            "path": ".genesis/evidence/M25a-w2-window-regression.json",
+            "source_hash": "6ebfe3675bd4cad0152b157099aef4213a0baf2cba07fe450806a2ada4f5515b",
+            "hash": "3240b7d78048fe254d192908b39a7fca7a139e634bd6cfcd19028bb14fa8d54b",
+            "observed_at": "2026-10-11T15:34:23.168Z"
+          }
+        },
+        {
+          "id": "independent-review",
+          "command": "",
+          "mandatory": true,
+          "status": "pass",
+          "evidence": {
+            "human": "Sonnet 5",
+            "reason": "Round 1 independent review. Own matrix of 5 deliveries (cancel, asyncio.timeout, wait_for, KeyboardInterrupt, RuntimeError) x 3 future outcomes x 2 orders: new code 0 of 30 wrong, M25 code 18 of 30 wrong (control catches the old bug). DB windows at acquire and release for cancel and timeout: new raises after undo, M25 returns past it, no lock and no connection left. Executor wait_for with real ClaimLock acquire and release: new TimeoutError, M25 returns FETCHED. Real Runner plus fetch_tool, acquire thread ending around the 6.0s executor deadline: ToolTimeout, no lock held. 120 randomized repeated-cancel trials contended and not: no swallow, no leak, checked at return. Governance diff of project.json vs HEAD: only SPEC-1 and plan re-approval, M25a added, M26 to M28 paused with requeue and pause controls, FR-109 and AC-82 added, nothing else moved. Gate run by me: unit 9 passed, regression 1923 passed, no stray python, 0 advisory locks. Survivor M1 judged equivalent (CancelledError raised either way, no undo). Caveats: mutant M4 (cancelled-future branch treats any exception as own) also survives the 9 tests; it is only reachable if a non-cancellation exception is hand-thrown while the thread future is itself cancelled, which asyncio never does, so latent. Same-object delivered and future exception is also equivalent since the future then raises it anyway.",
+            "source_hash": "6ebfe3675bd4cad0152b157099aef4213a0baf2cba07fe450806a2ada4f5515b",
+            "observed_at": "2026-10-11T15:34:43.932Z"
+          }
+        }
+      ],
+      "next_action": "Run the task pre-flight.",
+      "blocker": null,
+      "notes": [],
+      "failures": [],
+      "limitations": [],
+      "created_at": "2026-10-11T14:17:27.109Z",
+      "updated_at": "2026-10-11T17:07:10.237Z"
     }
   ],
   "learning_proposals": [],
@@ -5167,17 +5246,62 @@
       "human": "siva-rgb (owner)",
       "reason": "Requeued only to re-sign the increment 2 plan, whose approval the plan check after DECISION-11af2ee2 cleared",
       "revision": null
+    },
+    {
+      "id": "10da866e-fcce-45f8-a52f-477a871c37a6",
+      "at": "2026-10-11T14:17:26.120Z",
+      "action": "requeue",
+      "task": "M26-verifications-and-signals",
+      "human": "siva-rgb (owner)",
+      "reason": "M25a goes first (DECISION-4cf55a17)",
+      "revision": null
+    },
+    {
+      "id": "97cb70f3-54a7-402e-915e-3be1a7cdf8d4",
+      "at": "2026-10-11T14:17:26.251Z",
+      "action": "pause",
+      "task": "M26-verifications-and-signals",
+      "human": "siva-rgb (owner)",
+      "reason": "Held while M25a is built first (DECISION-4cf55a17)",
+      "revision": null
+    },
+    {
+      "id": "6460e7d6-e1ff-4fb4-8608-c8dc1261f2d1",
+      "at": "2026-10-11T14:17:26.395Z",
+      "action": "pause",
+      "task": "M27-critic",
+      "human": "siva-rgb (owner)",
+      "reason": "Held while M25a is built first (DECISION-4cf55a17)",
+      "revision": null
+    },
+    {
+      "id": "4e65c832-5989-45ff-80f9-9ea4b16fbce9",
+      "at": "2026-10-11T14:17:26.557Z",
+      "action": "pause",
+      "task": "M28-calibration-and-exit",
+      "human": "siva-rgb (owner)",
+      "reason": "Held while M25a is built first (DECISION-4cf55a17)",
+      "revision": null
+    },
+    {
+      "id": "ca79e60e-3fe3-478f-a0dc-06cc31599a8b",
+      "at": "2026-10-11T15:34:43.932Z",
+      "action": "approve",
+      "task": "M25a-w2-window",
+      "human": "Sonnet 5",
+      "reason": "Round 1 independent review. Own matrix of 5 deliveries (cancel, asyncio.timeout, wait_for, KeyboardInterrupt, RuntimeError) x 3 future outcomes x 2 orders: new code 0 of 30 wrong, M25 code 18 of 30 wrong (control catches the old bug). DB windows at acquire and release for cancel and timeout: new raises after undo, M25 returns past it, no lock and no connection left. Executor wait_for with real ClaimLock acquire and release: new TimeoutError, M25 returns FETCHED. Real Runner plus fetch_tool, acquire thread ending around the 6.0s executor deadline: ToolTimeout, no lock held. 120 randomized repeated-cancel trials contended and not: no swallow, no leak, checked at return. Governance diff of project.json vs HEAD: only SPEC-1 and plan re-approval, M25a added, M26 to M28 paused with requeue and pause controls, FR-109 and AC-82 added, nothing else moved. Gate run by me: unit 9 passed, regression 1923 passed, no stray python, 0 advisory locks. Survivor M1 judged equivalent (CancelledError raised either way, no undo). Caveats: mutant M4 (cancelled-future branch treats any exception as own) also survives the 9 tests; it is only reachable if a non-cancellation exception is hand-thrown while the thread future is itself cancelled, which asyncio never does, so latent. Same-object delivered and future exception is also equivalent since the future then raises it anyway.",
+      "revision": null
     }
   ],
   "discovery": null,
   "checkpoint": {
-    "at": "2026-10-11T14:16:04.988Z",
+    "at": "2026-10-11T14:26:02.851Z",
     "revision": {
-      "commit": "d339d285f8666aeacb165ea98a4a4d43a7181b57",
+      "commit": "d9796348ef03d620558851fe4decc388a3dbb321",
       "dirty": true,
-      "source_hash": "10b16da747999ae92e20a6fc32bd03eb8f4c4c34e7f7590852a8973975f80c27"
+      "source_hash": "6ebfe3675bd4cad0152b157099aef4213a0baf2cba07fe450806a2ada4f5515b"
     },
-    "active_task": "M25-gate-carried-items",
+    "active_task": "M25a-w2-window",
     "next_action": "Run the task pre-flight."
   },
   "legacy": null

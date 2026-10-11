@@ -1,0 +1,22 @@
+{
+  "task": "M25a-w2-window",
+  "gate": "unit",
+  "command": ".venv\\Scripts\\python.exe -m pytest tests/test_w2_window.py -q",
+  "started_at": "2026-10-11T15:29:19.993Z",
+  "observed_at": "2026-10-11T15:29:21.242Z",
+  "exit_code": 0,
+  "signal": null,
+  "stdout": ".........                                                                [100%]\r\n9 passed in 0.51s\r\n",
+  "stderr": "",
+  "revision": {
+    "commit": "d9796348ef03d620558851fe4decc388a3dbb321",
+    "dirty": true
+  },
+  "source_hash": "6ebfe3675bd4cad0152b157099aef4213a0baf2cba07fe450806a2ada4f5515b",
+  "environment": {
+    "node": "v20.10.0",
+    "platform": "win32",
+    "arch": "x64"
+  },
+  "hash": "c47fa54ea9510a9ee48617881f66b0836687f8a903581a6e697e2f66f3fec676"
+}

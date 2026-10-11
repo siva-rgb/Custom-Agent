@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "project": "agent-sdk",
-  "revision": "d339d285f8666aeacb165ea98a4a4d43a7181b57",
-  "sourceHash": "6ea97b7b89b592aad4c8b100ea966399911bb2fd28ed8dad742a5a0e520a9938",
+  "revision": "d9796348ef03d620558851fe4decc388a3dbb321",
+  "sourceHash": "61e5b1243dd11002297d042ead38c687405b7f7173062a85940f454c52ceae0c",
   "provenance": {
     "tool": "genesis-graphizer",
     "method": "static-analysis",
@@ -85,7 +85,7 @@
         "extractor": "filesystem",
         "source": "agentsdk/claimlock.py"
       },
-      "contentHash": "1a4b22cd7dcf2469800e31226f40582e4bebf65110f818afbd1468143b2c6706"
+      "contentHash": "596a488273743428db1e49f538b6fcf56c1be473a4c1271502877485401fc22b"
     },
     {
       "id": "file:agentsdk/compaction.py",
@@ -1349,6 +1349,19 @@
       "contentHash": "f18b144d4d8f51f4a4158523319fc08040a7a8fca6b1a4e87651e46bdcff1a8d"
     },
     {
+      "id": "file:tests/test_w2_window.py",
+      "type": "file",
+      "label": "tests/test_w2_window.py",
+      "path": "tests/test_w2_window.py",
+      "language": "python",
+      "confidence": 1,
+      "provenance": {
+        "extractor": "filesystem",
+        "source": "tests/test_w2_window.py"
+      },
+      "contentHash": "d09160b935e0be3fc59044e49e41ab2521ef048c0181a5fc408769ae9232d829"
+    },
+    {
       "id": "package:pypi:claude_agent_sdk",
       "type": "package",
       "label": "claude_agent_sdk",
@@ -1596,7 +1609,7 @@
       "confidence": 1,
       "provenance": {
         "extractor": "import",
-        "source": "tests/test_validation_and_guard.py"
+        "source": "tests/test_w2_window.py"
       },
       "contentHash": "405511f9ef7ea9ea34df49077eb11296b70ee5e5f1819b269891513207052f85"
     },
@@ -1632,7 +1645,7 @@
       "confidence": 1,
       "provenance": {
         "extractor": "import",
-        "source": "tests/test_validation_and_guard.py"
+        "source": "tests/test_w2_window.py"
       },
       "contentHash": "1a0b1d112a34c7a6c0fcf7af5669a0085e5cd71ddafc3857e11b255445ae4210"
     },
@@ -1644,7 +1657,7 @@
       "confidence": 1,
       "provenance": {
         "extractor": "standard-library",
-        "source": "tests/test_validation_and_guard.py"
+        "source": "tests/test_w2_window.py"
       },
       "contentHash": "72d67008c021530c3206aad5d8f2e0c138920d256ada03ce5ff156d790d85c74"
     },
@@ -1692,7 +1705,7 @@
       "confidence": 1,
       "provenance": {
         "extractor": "standard-library",
-        "source": "tests/test_validation_and_guard.py"
+        "source": "tests/test_w2_window.py"
       },
       "contentHash": "eeb842d37dac0535533b45c3ca614befaaccaf99a0e43f373139b4eb76fd2dd0"
     },
@@ -2028,7 +2041,7 @@
       "confidence": 1,
       "provenance": {
         "extractor": "standard-library",
-        "source": "tests/test_validation_and_guard.py"
+        "source": "tests/test_w2_window.py"
       },
       "contentHash": "3806d26c0342f905b28f23c7de3c2705833ec1628f03e04e4b658f3914ba2b4c"
     },
@@ -2304,7 +2317,7 @@
       "confidence": 1,
       "provenance": {
         "extractor": "standard-library",
-        "source": "tests/test_validation_and_guard.py"
+        "source": "tests/test_w2_window.py"
       },
       "contentHash": "6669c9e7a67c8b11dbd583e6bafa963dd54a301236cadf75f7c404980ee01683"
     },
@@ -5362,7 +5375,7 @@
       "name": "_completed",
       "qualifiedName": "_completed",
       "kind": "function",
-      "line": 205,
+      "line": 214,
       "label": "_completed",
       "path": "agentsdk/claimlock.py",
       "confidence": 1,
@@ -5421,12 +5434,28 @@
       "contentHash": "780e499522dcd27a1355e895cfda41b4b655a4536068680ed2396c6b9a6948c6"
     },
     {
+      "id": "symbol:agentsdk/claimlock.py#function:_own",
+      "type": "symbol",
+      "name": "_own",
+      "qualifiedName": "_own",
+      "kind": "function",
+      "line": 204,
+      "label": "_own",
+      "path": "agentsdk/claimlock.py",
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "agentsdk/claimlock.py"
+      },
+      "contentHash": "9800c8024e24c6ab38bc3ce80fb6fade80d72cd29170b758b4d4eecdee8d7123"
+    },
+    {
       "id": "symbol:agentsdk/claimlock.py#function:_release",
       "type": "symbol",
       "name": "_release",
       "qualifiedName": "_release",
       "kind": "function",
-      "line": 235,
+      "line": 244,
       "label": "_release",
       "path": "agentsdk/claimlock.py",
       "confidence": 1,
@@ -5442,7 +5471,7 @@
       "name": "_try_lock",
       "qualifiedName": "_try_lock",
       "kind": "function",
-      "line": 220,
+      "line": 229,
       "label": "_try_lock",
       "path": "agentsdk/claimlock.py",
       "confidence": 1,
@@ -53755,6 +53784,278 @@
         "source": "tests/test_validation_and_guard.py"
       },
       "contentHash": "0d6b44efa813344e82385810cb4b1347a019b6de122b30b83894f84d4508380f"
+    },
+    {
+      "id": "symbol:tests/test_w2_window.py#class:Undo",
+      "type": "symbol",
+      "name": "Undo",
+      "qualifiedName": "Undo",
+      "kind": "class",
+      "line": 41,
+      "label": "Undo",
+      "path": "tests/test_w2_window.py",
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_w2_window.py"
+      },
+      "contentHash": "59790a9f5146d92a4ab7b7f73de5ed625f97fef1a003ab105eaafe44d5dd6660"
+    },
+    {
+      "id": "symbol:tests/test_w2_window.py#function:_waiting",
+      "type": "symbol",
+      "name": "_waiting",
+      "qualifiedName": "_waiting",
+      "kind": "function",
+      "line": 49,
+      "label": "_waiting",
+      "path": "tests/test_w2_window.py",
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_w2_window.py"
+      },
+      "contentHash": "2627a35e5f9a523f81509c9af06260dac01c9c60349edf1e1e27800db8e68131"
+    },
+    {
+      "id": "symbol:tests/test_w2_window.py#function:held_locks",
+      "type": "symbol",
+      "name": "held_locks",
+      "qualifiedName": "held_locks",
+      "kind": "function",
+      "line": 27,
+      "label": "held_locks",
+      "path": "tests/test_w2_window.py",
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_w2_window.py"
+      },
+      "contentHash": "d33e55d6bc6ddbb8229f307f4bc8e22f17a8f075d699d40f499b266b8774827e"
+    },
+    {
+      "id": "symbol:tests/test_w2_window.py#function:in_use",
+      "type": "symbol",
+      "name": "in_use",
+      "qualifiedName": "in_use",
+      "kind": "function",
+      "line": 32,
+      "label": "in_use",
+      "path": "tests/test_w2_window.py",
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_w2_window.py"
+      },
+      "contentHash": "47e62846e9b86b73bf9500b6c7519fe3feb2fa7701b0574df2c95b8dab7c81dc"
+    },
+    {
+      "id": "symbol:tests/test_w2_window.py#function:test_a_cancellation_delivered_as_the_thread_fails_is_the_one_raised",
+      "type": "symbol",
+      "name": "test_a_cancellation_delivered_as_the_thread_fails_is_the_one_raised",
+      "qualifiedName": "test_a_cancellation_delivered_as_the_thread_fails_is_the_one_raised",
+      "kind": "function",
+      "line": 192,
+      "label": "test_a_cancellation_delivered_as_the_thread_fails_is_the_one_raised",
+      "path": "tests/test_w2_window.py",
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_w2_window.py"
+      },
+      "contentHash": "013fcfa124e6f48171c1a0eeb2a5947646cd11beeab4af8ef54d145d6ab97b80"
+    },
+    {
+      "id": "symbol:tests/test_w2_window.py#function:test_a_cancellation_delivered_as_the_thread_finishes_is_raised_after_the_undo",
+      "type": "symbol",
+      "name": "test_a_cancellation_delivered_as_the_thread_finishes_is_raised_after_the_undo",
+      "qualifiedName": "test_a_cancellation_delivered_as_the_thread_finishes_is_raised_after_the_undo",
+      "kind": "function",
+      "line": 63,
+      "label": "test_a_cancellation_delivered_as_the_thread_finishes_is_raised_after_the_undo",
+      "path": "tests/test_w2_window.py",
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_w2_window.py"
+      },
+      "contentHash": "167c9eb613f74bad78700aa9a1f28633b0a81faa003581bbc7057386e5d7362d"
+    },
+    {
+      "id": "symbol:tests/test_w2_window.py#function:test_a_cancellation_in_the_window_on_the_database_leaves_no_lock_and_no_connection",
+      "type": "symbol",
+      "name": "test_a_cancellation_in_the_window_on_the_database_leaves_no_lock_and_no_connection",
+      "qualifiedName": "test_a_cancellation_in_the_window_on_the_database_leaves_no_lock_and_no_connection",
+      "kind": "function",
+      "line": 73,
+      "label": "test_a_cancellation_in_the_window_on_the_database_leaves_no_lock_and_no_connection",
+      "path": "tests/test_w2_window.py",
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_w2_window.py"
+      },
+      "contentHash": "d26aaab003be4ba7ec13526f1af96d20b80ac9293d32094b6047b8d38d670427"
+    },
+    {
+      "id": "symbol:tests/test_w2_window.py#function:test_a_result_with_nothing_delivered_is_returned_and_not_undone",
+      "type": "symbol",
+      "name": "test_a_result_with_nothing_delivered_is_returned_and_not_undone",
+      "qualifiedName": "test_a_result_with_nothing_delivered_is_returned_and_not_undone",
+      "kind": "function",
+      "line": 184,
+      "label": "test_a_result_with_nothing_delivered_is_returned_and_not_undone",
+      "path": "tests/test_w2_window.py",
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_w2_window.py"
+      },
+      "contentHash": "a6a04a46cdc34cb29c250ad2052e4fd4976790a1a57b2dab9adbb2dcc26ad62b"
+    },
+    {
+      "id": "symbol:tests/test_w2_window.py#function:test_an_asyncio_timeout_whose_deadline_meets_the_threads_end_still_fires",
+      "type": "symbol",
+      "name": "test_an_asyncio_timeout_whose_deadline_meets_the_threads_end_still_fires",
+      "qualifiedName": "test_an_asyncio_timeout_whose_deadline_meets_the_threads_end_still_fires",
+      "kind": "function",
+      "line": 104,
+      "label": "test_an_asyncio_timeout_whose_deadline_meets_the_threads_end_still_fires",
+      "path": "tests/test_w2_window.py",
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_w2_window.py"
+      },
+      "contentHash": "aa22df96c1e3712e5f2cd0877bb6c440141e8b345fb1e516ea0b6fdda6138e2c"
+    },
+    {
+      "id": "symbol:tests/test_w2_window.py#function:test_an_asyncio_timeout_whose_deadline_meets_the_threads_end_still_fires.call",
+      "type": "symbol",
+      "name": "call",
+      "qualifiedName": "test_an_asyncio_timeout_whose_deadline_meets_the_threads_end_still_fires.call",
+      "kind": "function",
+      "line": 108,
+      "label": "test_an_asyncio_timeout_whose_deadline_meets_the_threads_end_still_fires.call",
+      "path": "tests/test_w2_window.py",
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_w2_window.py"
+      },
+      "contentHash": "51e756ae07fcf429367abb12b4cb373778d364f079d01971c71ea281fa7570bd"
+    },
+    {
+      "id": "symbol:tests/test_w2_window.py#function:test_an_asyncio_timeout_whose_deadline_meets_the_threads_end_still_fires.call.both",
+      "type": "symbol",
+      "name": "both",
+      "qualifiedName": "test_an_asyncio_timeout_whose_deadline_meets_the_threads_end_still_fires.call.both",
+      "kind": "function",
+      "line": 110,
+      "label": "test_an_asyncio_timeout_whose_deadline_meets_the_threads_end_still_fires.call.both",
+      "path": "tests/test_w2_window.py",
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_w2_window.py"
+      },
+      "contentHash": "cf37d953335396cca6477a7f78553c3c09ccd9fd03f82278f64f704577ffb08c"
+    },
+    {
+      "id": "symbol:tests/test_w2_window.py#function:test_another_exception_after_a_cancellation_is_the_one_raised",
+      "type": "symbol",
+      "name": "test_another_exception_after_a_cancellation_is_the_one_raised",
+      "qualifiedName": "test_another_exception_after_a_cancellation_is_the_one_raised",
+      "kind": "function",
+      "line": 202,
+      "label": "test_another_exception_after_a_cancellation_is_the_one_raised",
+      "path": "tests/test_w2_window.py",
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_w2_window.py"
+      },
+      "contentHash": "041afcc505a2eb4fd931a5662b29a3cb655e6af3e1951f3c6c79f1618170a006"
+    },
+    {
+      "id": "symbol:tests/test_w2_window.py#function:test_another_exception_delivered_as_the_thread_finishes_is_raised_after_the_undo",
+      "type": "symbol",
+      "name": "test_another_exception_delivered_as_the_thread_finishes_is_raised_after_the_undo",
+      "qualifiedName": "test_another_exception_delivered_as_the_thread_finishes_is_raised_after_the_undo",
+      "kind": "function",
+      "line": 148,
+      "label": "test_another_exception_delivered_as_the_thread_finishes_is_raised_after_the_undo",
+      "path": "tests/test_w2_window.py",
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_w2_window.py"
+      },
+      "contentHash": "6dd62496741d30d1ea83a10523543142e3897ff07bc5ce0446ffe0f572b99adf"
+    },
+    {
+      "id": "symbol:tests/test_w2_window.py#function:test_the_executors_wait_for_whose_deadline_meets_the_threads_end_still_times_out",
+      "type": "symbol",
+      "name": "test_the_executors_wait_for_whose_deadline_meets_the_threads_end_still_times_out",
+      "qualifiedName": "test_the_executors_wait_for_whose_deadline_meets_the_threads_end_still_times_out",
+      "kind": "function",
+      "line": 124,
+      "label": "test_the_executors_wait_for_whose_deadline_meets_the_threads_end_still_times_out",
+      "path": "tests/test_w2_window.py",
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_w2_window.py"
+      },
+      "contentHash": "ea0f273465a16a23feeb0bcd04a3e958910fb353ea405cefad8bd5ce84996fbf"
+    },
+    {
+      "id": "symbol:tests/test_w2_window.py#function:test_the_threads_own_failure_and_own_cancellation_are_still_its_own",
+      "type": "symbol",
+      "name": "test_the_threads_own_failure_and_own_cancellation_are_still_its_own",
+      "qualifiedName": "test_the_threads_own_failure_and_own_cancellation_are_still_its_own",
+      "kind": "function",
+      "line": 169,
+      "label": "test_the_threads_own_failure_and_own_cancellation_are_still_its_own",
+      "path": "tests/test_w2_window.py",
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_w2_window.py"
+      },
+      "contentHash": "de866b09d4c24672058b599ee825e84560c378ccd2b1a7a419ff27231da4db1f"
+    },
+    {
+      "id": "symbol:tests/test_w2_window.py#function:Undo.__call__",
+      "type": "symbol",
+      "name": "__call__",
+      "qualifiedName": "Undo.__call__",
+      "kind": "function",
+      "line": 45,
+      "label": "Undo.__call__",
+      "path": "tests/test_w2_window.py",
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_w2_window.py"
+      },
+      "contentHash": "7d0e68ff0e0fd795bd44a03d82a539413b0b257fea862c0b4fa0e10eddf92a38"
+    },
+    {
+      "id": "symbol:tests/test_w2_window.py#function:Undo.__init__",
+      "type": "symbol",
+      "name": "__init__",
+      "qualifiedName": "Undo.__init__",
+      "kind": "function",
+      "line": 42,
+      "label": "Undo.__init__",
+      "path": "tests/test_w2_window.py",
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_w2_window.py"
+      },
+      "contentHash": "a2f7a6833ca71aefc41513c314bd77d850881c64c4d3fe9e7e55ebc1a7349f17"
     }
   ],
   "edges": [
@@ -56409,7 +56710,7 @@
       "type": "defines",
       "source": "file:agentsdk/claimlock.py",
       "target": "symbol:agentsdk/claimlock.py#function:_completed",
-      "line": 205,
+      "line": 214,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -56461,11 +56762,25 @@
       "contentHash": "bc1d7e4773731779372ee50dc3e9543161bc50195be009cf0371c5119add3ef0"
     },
     {
+      "id": "defines:file:agentsdk/claimlock.py->symbol:agentsdk/claimlock.py#function:_own:",
+      "type": "defines",
+      "source": "file:agentsdk/claimlock.py",
+      "target": "symbol:agentsdk/claimlock.py#function:_own",
+      "line": 204,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "agentsdk/claimlock.py"
+      },
+      "contentHash": "dd99227bbdf11770f2a9bcd8bfe8aa9f89ebad2bfad170b2337671fdfe6e8480"
+    },
+    {
       "id": "defines:file:agentsdk/claimlock.py->symbol:agentsdk/claimlock.py#function:_release:",
       "type": "defines",
       "source": "file:agentsdk/claimlock.py",
       "target": "symbol:agentsdk/claimlock.py#function:_release",
-      "line": 235,
+      "line": 244,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -56479,7 +56794,7 @@
       "type": "defines",
       "source": "file:agentsdk/claimlock.py",
       "target": "symbol:agentsdk/claimlock.py#function:_try_lock",
-      "line": 220,
+      "line": 229,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -98755,6 +99070,244 @@
       "contentHash": "117d24f030fc28f4f4e2c3c6b8e8335f53b1b23f888ae6543473d392c3950ccb"
     },
     {
+      "id": "defines:file:tests/test_w2_window.py->symbol:tests/test_w2_window.py#class:Undo:",
+      "type": "defines",
+      "source": "file:tests/test_w2_window.py",
+      "target": "symbol:tests/test_w2_window.py#class:Undo",
+      "line": 41,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_w2_window.py"
+      },
+      "contentHash": "5e3b30a0286a07c4fc4b30da4e5470cec66370447eff58c926a9a69197f31c54"
+    },
+    {
+      "id": "defines:file:tests/test_w2_window.py->symbol:tests/test_w2_window.py#function:_waiting:",
+      "type": "defines",
+      "source": "file:tests/test_w2_window.py",
+      "target": "symbol:tests/test_w2_window.py#function:_waiting",
+      "line": 49,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_w2_window.py"
+      },
+      "contentHash": "18208ba4974e9673c43f66d56ef6eb6022b43cfbfa14ef172000e919b81632bf"
+    },
+    {
+      "id": "defines:file:tests/test_w2_window.py->symbol:tests/test_w2_window.py#function:held_locks:",
+      "type": "defines",
+      "source": "file:tests/test_w2_window.py",
+      "target": "symbol:tests/test_w2_window.py#function:held_locks",
+      "line": 27,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_w2_window.py"
+      },
+      "contentHash": "d887eb91c27229f4122cf4661491c59ebbe91f25fe9966ee3d78ea877c138b82"
+    },
+    {
+      "id": "defines:file:tests/test_w2_window.py->symbol:tests/test_w2_window.py#function:in_use:",
+      "type": "defines",
+      "source": "file:tests/test_w2_window.py",
+      "target": "symbol:tests/test_w2_window.py#function:in_use",
+      "line": 32,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_w2_window.py"
+      },
+      "contentHash": "d6a553972d70007ce2180274c92e62c95906eb8df7a2e7d97d6d00e43bc23969"
+    },
+    {
+      "id": "defines:file:tests/test_w2_window.py->symbol:tests/test_w2_window.py#function:test_a_cancellation_delivered_as_the_thread_fails_is_the_one_raised:",
+      "type": "defines",
+      "source": "file:tests/test_w2_window.py",
+      "target": "symbol:tests/test_w2_window.py#function:test_a_cancellation_delivered_as_the_thread_fails_is_the_one_raised",
+      "line": 192,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_w2_window.py"
+      },
+      "contentHash": "680107d7075c0136fa1dd09901d364a6016d2ace39aae2f2462ed2b9ae7e6533"
+    },
+    {
+      "id": "defines:file:tests/test_w2_window.py->symbol:tests/test_w2_window.py#function:test_a_cancellation_delivered_as_the_thread_finishes_is_raised_after_the_undo:",
+      "type": "defines",
+      "source": "file:tests/test_w2_window.py",
+      "target": "symbol:tests/test_w2_window.py#function:test_a_cancellation_delivered_as_the_thread_finishes_is_raised_after_the_undo",
+      "line": 63,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_w2_window.py"
+      },
+      "contentHash": "4b1479d76867f277f6617aec9b1af1a6c88f7fcbce047e3dd70ede729fa9c52d"
+    },
+    {
+      "id": "defines:file:tests/test_w2_window.py->symbol:tests/test_w2_window.py#function:test_a_cancellation_in_the_window_on_the_database_leaves_no_lock_and_no_connection:",
+      "type": "defines",
+      "source": "file:tests/test_w2_window.py",
+      "target": "symbol:tests/test_w2_window.py#function:test_a_cancellation_in_the_window_on_the_database_leaves_no_lock_and_no_connection",
+      "line": 73,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_w2_window.py"
+      },
+      "contentHash": "14504eab3b00ea25610ee5831855c49a801d1bfa1c3bc78b2d1c628ba932e30f"
+    },
+    {
+      "id": "defines:file:tests/test_w2_window.py->symbol:tests/test_w2_window.py#function:test_a_result_with_nothing_delivered_is_returned_and_not_undone:",
+      "type": "defines",
+      "source": "file:tests/test_w2_window.py",
+      "target": "symbol:tests/test_w2_window.py#function:test_a_result_with_nothing_delivered_is_returned_and_not_undone",
+      "line": 184,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_w2_window.py"
+      },
+      "contentHash": "c05036e7ab28dcf8fbaf5b9503c667b245bc080787dd57d730f5721fbe2dd35c"
+    },
+    {
+      "id": "defines:file:tests/test_w2_window.py->symbol:tests/test_w2_window.py#function:test_an_asyncio_timeout_whose_deadline_meets_the_threads_end_still_fires:",
+      "type": "defines",
+      "source": "file:tests/test_w2_window.py",
+      "target": "symbol:tests/test_w2_window.py#function:test_an_asyncio_timeout_whose_deadline_meets_the_threads_end_still_fires",
+      "line": 104,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_w2_window.py"
+      },
+      "contentHash": "de293d70fbc557c19054e5ed97c62e554789375561074136a31e387de91b9c6d"
+    },
+    {
+      "id": "defines:file:tests/test_w2_window.py->symbol:tests/test_w2_window.py#function:test_an_asyncio_timeout_whose_deadline_meets_the_threads_end_still_fires.call:",
+      "type": "defines",
+      "source": "file:tests/test_w2_window.py",
+      "target": "symbol:tests/test_w2_window.py#function:test_an_asyncio_timeout_whose_deadline_meets_the_threads_end_still_fires.call",
+      "line": 108,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_w2_window.py"
+      },
+      "contentHash": "7a611a67a1dc03d7ca890f6db271a314bd4d47cfe318b4d3aaab3735dcf8f83b"
+    },
+    {
+      "id": "defines:file:tests/test_w2_window.py->symbol:tests/test_w2_window.py#function:test_an_asyncio_timeout_whose_deadline_meets_the_threads_end_still_fires.call.both:",
+      "type": "defines",
+      "source": "file:tests/test_w2_window.py",
+      "target": "symbol:tests/test_w2_window.py#function:test_an_asyncio_timeout_whose_deadline_meets_the_threads_end_still_fires.call.both",
+      "line": 110,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_w2_window.py"
+      },
+      "contentHash": "e85457608d1d9a672b070e57678a87dac95cfac7070ed19d45d9ce1ff5820729"
+    },
+    {
+      "id": "defines:file:tests/test_w2_window.py->symbol:tests/test_w2_window.py#function:test_another_exception_after_a_cancellation_is_the_one_raised:",
+      "type": "defines",
+      "source": "file:tests/test_w2_window.py",
+      "target": "symbol:tests/test_w2_window.py#function:test_another_exception_after_a_cancellation_is_the_one_raised",
+      "line": 202,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_w2_window.py"
+      },
+      "contentHash": "6b5a307e3780f7700513ab260e2782e8470d06893d576bf6444952444d5b4904"
+    },
+    {
+      "id": "defines:file:tests/test_w2_window.py->symbol:tests/test_w2_window.py#function:test_another_exception_delivered_as_the_thread_finishes_is_raised_after_the_undo:",
+      "type": "defines",
+      "source": "file:tests/test_w2_window.py",
+      "target": "symbol:tests/test_w2_window.py#function:test_another_exception_delivered_as_the_thread_finishes_is_raised_after_the_undo",
+      "line": 148,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_w2_window.py"
+      },
+      "contentHash": "12a5b7473ef949ea0a43c55583b06caa42e4e5cfe47472f50c87ce64124f9959"
+    },
+    {
+      "id": "defines:file:tests/test_w2_window.py->symbol:tests/test_w2_window.py#function:test_the_executors_wait_for_whose_deadline_meets_the_threads_end_still_times_out:",
+      "type": "defines",
+      "source": "file:tests/test_w2_window.py",
+      "target": "symbol:tests/test_w2_window.py#function:test_the_executors_wait_for_whose_deadline_meets_the_threads_end_still_times_out",
+      "line": 124,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_w2_window.py"
+      },
+      "contentHash": "89e1ec26dd877d774c8e543b3aa372de2c3e6a357d62bbc7c9492bdfa27c11ec"
+    },
+    {
+      "id": "defines:file:tests/test_w2_window.py->symbol:tests/test_w2_window.py#function:test_the_threads_own_failure_and_own_cancellation_are_still_its_own:",
+      "type": "defines",
+      "source": "file:tests/test_w2_window.py",
+      "target": "symbol:tests/test_w2_window.py#function:test_the_threads_own_failure_and_own_cancellation_are_still_its_own",
+      "line": 169,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_w2_window.py"
+      },
+      "contentHash": "d9392cddfff2fd99467191d25f49687880ebe74afc0a36d64e57425f2430fe69"
+    },
+    {
+      "id": "defines:file:tests/test_w2_window.py->symbol:tests/test_w2_window.py#function:Undo.__call__:",
+      "type": "defines",
+      "source": "file:tests/test_w2_window.py",
+      "target": "symbol:tests/test_w2_window.py#function:Undo.__call__",
+      "line": 45,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_w2_window.py"
+      },
+      "contentHash": "b75712405af366505eef705b21cefb14f6621483594e75464f26955fd2ea7f39"
+    },
+    {
+      "id": "defines:file:tests/test_w2_window.py->symbol:tests/test_w2_window.py#function:Undo.__init__:",
+      "type": "defines",
+      "source": "file:tests/test_w2_window.py",
+      "target": "symbol:tests/test_w2_window.py#function:Undo.__init__",
+      "line": 42,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_w2_window.py"
+      },
+      "contentHash": "9d2d24b83c258ea46ef6ff2619d491cf2249c1ad28365277a86dd1e5961a8bd4"
+    },
+    {
       "id": "imports:file:agentsdk/__init__.py->file:agentsdk/api.py:.api",
       "type": "imports",
       "source": "file:agentsdk/__init__.py",
@@ -120653,6 +121206,141 @@
         "source": "tests/test_validation_and_guard.py"
       },
       "contentHash": "c460d729e11f40756ae77b8e860b95df65b9e2c0b4048827aa48fba1b5f24496"
+    },
+    {
+      "id": "imports:file:tests/test_w2_window.py->file:agentsdk/__init__.py:agentsdk",
+      "type": "imports",
+      "source": "file:tests/test_w2_window.py",
+      "target": "file:agentsdk/__init__.py",
+      "specifier": "agentsdk",
+      "line": 74,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-imports",
+        "source": "tests/test_w2_window.py"
+      },
+      "contentHash": "916dc1c275f8be5f3e0a7ae9fce84f7b1f7802efdff4eec3e8de0b0a7620c556"
+    },
+    {
+      "id": "imports:file:tests/test_w2_window.py->file:agentsdk/claimlock.py:agentsdk.claimlock",
+      "type": "imports",
+      "source": "file:tests/test_w2_window.py",
+      "target": "file:agentsdk/claimlock.py",
+      "specifier": "agentsdk.claimlock",
+      "line": 21,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-imports",
+        "source": "tests/test_w2_window.py"
+      },
+      "contentHash": "f3bbc006c2cf93ba9c0fd654f45bf8719807741816bbf32bdab63b0d3e82a79d"
+    },
+    {
+      "id": "imports:file:tests/test_w2_window.py->file:agentsdk/config.py:agentsdk.config",
+      "type": "imports",
+      "source": "file:tests/test_w2_window.py",
+      "target": "file:agentsdk/config.py",
+      "specifier": "agentsdk.config",
+      "line": 22,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-imports",
+        "source": "tests/test_w2_window.py"
+      },
+      "contentHash": "51ca28fc8f9040e9a37a6b46458c4f98a953efbd3a206cfab7378bff133debc0"
+    },
+    {
+      "id": "imports:file:tests/test_w2_window.py->package:pypi:psycopg:psycopg",
+      "type": "imports",
+      "source": "file:tests/test_w2_window.py",
+      "target": "package:pypi:psycopg",
+      "specifier": "psycopg",
+      "line": 17,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-imports",
+        "source": "tests/test_w2_window.py"
+      },
+      "contentHash": "1efb930d16d716c83ee59bf1097110945e2acf1e9c304ddb9d4482bbe6425ee8"
+    },
+    {
+      "id": "imports:file:tests/test_w2_window.py->package:pypi:pytest:pytest",
+      "type": "imports",
+      "source": "file:tests/test_w2_window.py",
+      "target": "package:pypi:pytest",
+      "specifier": "pytest",
+      "line": 18,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-imports",
+        "source": "tests/test_w2_window.py"
+      },
+      "contentHash": "4b4c67ba54b09d8d47a50755665ed6cdce8f94b1d158d9fb79ba4cb140c333aa"
+    },
+    {
+      "id": "imports:file:tests/test_w2_window.py->runtime:python:__future__:__future__",
+      "type": "imports",
+      "source": "file:tests/test_w2_window.py",
+      "target": "runtime:python:__future__",
+      "specifier": "__future__",
+      "line": 11,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-imports",
+        "source": "tests/test_w2_window.py"
+      },
+      "contentHash": "c63ef947e223e244e14003cc467e28ef3b71ec682e5eb79807d2e02436f04867"
+    },
+    {
+      "id": "imports:file:tests/test_w2_window.py->runtime:python:asyncio:asyncio",
+      "type": "imports",
+      "source": "file:tests/test_w2_window.py",
+      "target": "runtime:python:asyncio",
+      "specifier": "asyncio",
+      "line": 13,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-imports",
+        "source": "tests/test_w2_window.py"
+      },
+      "contentHash": "a15cbea399d250ee5bebbeb11cd7e04d00a6e87e2a9a3df2c9f5b41ed6f7b7e0"
+    },
+    {
+      "id": "imports:file:tests/test_w2_window.py->runtime:python:os:os",
+      "type": "imports",
+      "source": "file:tests/test_w2_window.py",
+      "target": "runtime:python:os",
+      "specifier": "os",
+      "line": 14,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-imports",
+        "source": "tests/test_w2_window.py"
+      },
+      "contentHash": "e9bcc1547f5970139fd59712356e30db9720e1dd46817ae47d5cace6e01c130e"
+    },
+    {
+      "id": "imports:file:tests/test_w2_window.py->runtime:python:uuid:uuid",
+      "type": "imports",
+      "source": "file:tests/test_w2_window.py",
+      "target": "runtime:python:uuid",
+      "specifier": "uuid",
+      "line": 15,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-imports",
+        "source": "tests/test_w2_window.py"
+      },
+      "contentHash": "f6b5975b60594ee7b64dab7b906aa912384cd7052425d2a8257c0286413ae860"
     }
   ],
   "warnings": []
