@@ -50,6 +50,8 @@ EXPECTED_EXAMPLES = {
     "19_sources.py",
     # FR-94 (M23): the evidence ledger.
     "20_ledger.py",
+    # FR-96 (M24): the exit signal, claim-lock under contention.
+    "21_contention.py",
 }
 
 

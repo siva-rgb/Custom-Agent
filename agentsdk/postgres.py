@@ -1560,11 +1560,33 @@ class PostgresLedgerStore:
         self._dsn = dsn
 
     @staticmethod
-    def _lock(conn: Any, tenant_id: str, project_id: str, ledger_run_id: str, *keys: str) -> None:
-        # Sorted, so two writers needing the same two keys take them in one order.
-        for key in sorted(set(keys)):
-            conn.execute("SELECT pg_advisory_xact_lock(hashtext(%s), %s)",
-                         ("|".join((tenant_id, project_id, ledger_run_id, key)), _LOCK_CLAIMS))
+    def _lock(conn: Any, tenant_id: str, project_id: str, ledger_run_id: str, *keys: str) -> list[int]:
+        """The keys' advisory locks, taken in the order of the lock values themselves,
+        each once: two keys whose hashes collide are one lock, so ordering by the keys'
+        text could cross two writers' orders and deadlock (M23 review caveat 2)."""
+        names = ["|".join((tenant_id, project_id, ledger_run_id, key)) for key in keys]
+        values = [row[0] for row in conn.execute(
+            "SELECT DISTINCT hashtext(name) AS h FROM unnest(%s::text[]) AS name ORDER BY h", (names,)).fetchall()]
+        for value in values:
+            conn.execute("SELECT pg_advisory_xact_lock(%s, %s)", (value, _LOCK_CLAIMS))
+        return values
+
+    @staticmethod
+    def _checked(conn: Any, tenant_id: str, project_id: str, contribution: Any) -> Any:
+        """M23 review caveat 1: every cited version in the claim's tenant and project, and
+        the contribution at least as tainted as each, whoever built it."""
+        from .ledger import _SOURCE_URN, ClaimRefused, _covered
+
+        cited = list(dict.fromkeys(contribution.supporting + contribution.contradicting))
+        found = {}
+        if cited:
+            found = {str(row[0]): _provenance_from_json(row[1]) for row in conn.execute(
+                "SELECT source_version_id, provenance FROM source_versions WHERE source_version_id = ANY(%s::uuid[])"
+                " AND tenant_id = %s AND project_id = %s", (cited, tenant_id, project_id)).fetchall()}
+        for vid in cited:
+            if vid not in found:
+                raise ClaimRefused(f"cited source {_SOURCE_URN}{vid} is not a source version in this tenant and project")
+        return _covered(contribution, [found[v] for v in cited])
 
     @staticmethod
     def _active(conn: Any, tenant_id: str, project_id: str, ledger_run_id: str, key: str) -> Any:
@@ -1610,6 +1632,7 @@ class PostgresLedgerStore:
         ledger = _uuid("ledger_run_id", ledger_run_id)
         with _checkout(self._dsn) as conn:
             with conn.transaction():
+                contribution = self._checked(conn, tenant_id, project_id, contribution)
                 self._lock(conn, tenant_id, project_id, ledger, key)
                 claim = self._active(conn, tenant_id, project_id, ledger, key)
                 new = claim is None
@@ -1627,6 +1650,7 @@ class PostgresLedgerStore:
         ledger = _uuid("ledger_run_id", ledger_run_id)
         with _checkout(self._dsn) as conn:
             with conn.transaction():
+                contribution = self._checked(conn, tenant_id, project_id, contribution)
                 row = conn.execute(
                     f"SELECT {_CLAIM_COLUMNS} FROM claims WHERE claim_id = %s AND tenant_id = %s"
                     " AND project_id = %s AND ledger_run_id = %s", (old_claim_id, tenant_id, project_id, ledger),
@@ -1646,27 +1670,51 @@ class PostgresLedgerStore:
                 made = self._contribute(conn, claim, contribution)
         return claim, made
 
+    def claim(self, tenant_id: str, project_id: str, ledger_run_id: str, claim_id: str) -> tuple[Any, Any, list[Any]]:
+        """One claim, what superseded it, and its contributions (M23 review caveat 5)."""
+        from .ledger import _uuid
+
+        ledger = _uuid("ledger_run_id", ledger_run_id)
+        with _checkout(self._dsn) as conn:
+            row = conn.execute(
+                f"SELECT {_CLAIM_COLUMNS} FROM claims WHERE claim_id = %s AND tenant_id = %s AND project_id = %s"
+                " AND ledger_run_id = %s", (claim_id, tenant_id, project_id, ledger)).fetchone()
+            if row is None:
+                raise LookupError(f"no claim {claim_id!r} in this ledger")
+            after = conn.execute("SELECT claim_id FROM claims WHERE supersedes = %s", (claim_id,)).fetchone()
+            contributions = self._contributions(conn, tenant_id, project_id, ledger, claim_id)
+        return _claim_from_row(row), None if after is None else str(after[0]), contributions
+
     def rows(self, tenant_id: str, project_id: str, ledger_run_id: str) -> tuple[list[Any], list[Any]]:
-        from .ledger import ClaimContribution, _uuid
+        from .ledger import _uuid
 
         ledger = _uuid("ledger_run_id", ledger_run_id)
         with _checkout(self._dsn) as conn:
             claims = [_claim_from_row(r) for r in conn.execute(
                 f"SELECT {_CLAIM_COLUMNS} FROM claims WHERE tenant_id = %s AND project_id = %s AND ledger_run_id = %s"
                 " ORDER BY recorded_at, claim_id", (tenant_id, project_id, ledger)).fetchall()]
-            rows = conn.execute(
-                "SELECT k.contribution_id, k.claim_id, k.run_id, k.node_id, k.agent_id, k.confidence, k.provenance,"
-                " k.why, k.recorded_at FROM claim_contributions k JOIN claims c ON c.claim_id = k.claim_id"
-                " WHERE c.tenant_id = %s AND c.project_id = %s AND c.ledger_run_id = %s"
-                " AND k.tenant_id = %s AND k.project_id = %s ORDER BY k.recorded_at, k.contribution_id",
-                (tenant_id, project_id, ledger, tenant_id, project_id)).fetchall()
-            cited: dict[str, dict[str, list[str]]] = {}
-            if rows:
-                for cid, stance, version in conn.execute(
-                    "SELECT contribution_id, stance, source_version_id FROM claim_citations"
-                    " WHERE contribution_id = ANY(%s) ORDER BY contribution_id, stance, position",
-                    ([r[0] for r in rows],)).fetchall():
-                    cited.setdefault(str(cid), {}).setdefault(stance, []).append(str(version))
+            contributions = self._contributions(conn, tenant_id, project_id, ledger, None)
+        return claims, contributions
+
+    @staticmethod
+    def _contributions(conn: Any, tenant_id: str, project_id: str, ledger: str, claim_id: str | None) -> list[Any]:
+        from .ledger import ClaimContribution
+
+        one = "" if claim_id is None else " AND k.claim_id = %s"
+        rows = conn.execute(
+            "SELECT k.contribution_id, k.claim_id, k.run_id, k.node_id, k.agent_id, k.confidence, k.provenance,"
+            " k.why, k.recorded_at FROM claim_contributions k JOIN claims c ON c.claim_id = k.claim_id"
+            " WHERE c.tenant_id = %s AND c.project_id = %s AND c.ledger_run_id = %s"
+            f" AND k.tenant_id = %s AND k.project_id = %s{one} ORDER BY k.recorded_at, k.contribution_id",
+            (tenant_id, project_id, ledger, tenant_id, project_id) + (() if claim_id is None else (claim_id,)),
+        ).fetchall()
+        cited: dict[str, dict[str, list[str]]] = {}
+        if rows:
+            for cid, stance, version in conn.execute(
+                "SELECT contribution_id, stance, source_version_id FROM claim_citations"
+                " WHERE contribution_id = ANY(%s) ORDER BY contribution_id, stance, position",
+                ([r[0] for r in rows],)).fetchall():
+                cited.setdefault(str(cid), {}).setdefault(stance, []).append(str(version))
         contributions = []
         for r in rows:
             cid = str(r[0])
@@ -1677,4 +1725,4 @@ class PostgresLedgerStore:
                 confidence=r[5], provenance=_provenance_from_json(r[6]), why=r[7],
                 contribution_id=cid, claim_id=str(r[1]), recorded_at=r[8],
             ))
-        return claims, contributions
+        return contributions

@@ -231,6 +231,11 @@ class InMemoryEvidenceStore:
         return [v for _, v in sorted(enumerate(found), key=lambda p: (p[1].retrieval_time, p[0]), reverse=True)]
 
 
+def _waited(waited: float | None, *, took_result: bool) -> dict[str, Any]:
+    """FR-95: a call that waited on the claim-lock says so in its event."""
+    return {} if waited is None else {"wait": {"seconds": waited, "took_result": took_result}}
+
+
 @dataclass(frozen=True)
 class Served:
     version: EvidenceSourceVersion
@@ -253,7 +258,9 @@ class ResourceCache:
         node_id: str | None = None,
         call: Callable[..., Awaitable[Any]],
         emit: Callable[[Any, dict[str, Any]], Awaitable[Any]] | None = None,
+        lock: Any = None,
     ) -> None:
+        self._lock = lock  # FR-95 (M24): the Runner's claim-lock, or None
         self._store, self._artifacts_for = store, artifacts_for
         self.tenant_id, self.project_id, self.run_id = tenant_id, project_id, run_id
         self.ledger_run_id, self.node_id = ledger_run_id, node_id
@@ -271,8 +278,42 @@ class ResourceCache:
             return None
         return content if hashlib.sha256(content).hexdigest() == version.content_hash else None
 
+    async def obtain(
+        self, key: ResourceCacheKey, *, scope: CacheScope, clock: Callable[[], datetime], freshness_seconds: float,
+        fetch: Callable[[], Awaitable[Any]], created_by: str,
+    ) -> tuple[str, str]:
+        """FR-91, FR-95: the page for `key`, served or fetched and recorded, under the
+        claim-lock for the key and the reach being written, so overlapping fetches of one
+        page fetch it once; a NO_CACHE fetch shares nothing and takes no lock. Returns the
+        tool's text and the source it names: a version's uri, or for a response that is
+        not 2xx, which records nothing, the final URL as before."""
+
+        async def op(waited: float | None) -> tuple[str, str]:
+            now = clock()
+            prior = None
+            if scope is not CacheScope.NO_CACHE:
+                served, prior = await self.serve(key, now=now, freshness_seconds=freshness_seconds, scope=scope,
+                                                 created_by=created_by, waited=waited)
+                if served is not None:
+                    return served.content.decode("utf-8"), served.version.uri
+            fetched = await fetch()
+            if not 200 <= fetched.status < 300:
+                return fetched.text, fetched.final_url
+            version = await self.record(
+                key, fetched.text.encode("utf-8"), final_uri=fetched.final_url, media_type=fetched.media, scope=scope,
+                retrieval_time=now, prior=prior, created_by=created_by, waited=waited)
+            return fetched.text, version.uri
+
+        if self._lock is None or scope is CacheScope.NO_CACHE:
+            return await op(None)
+        reach = (self.tenant_id, self.project_id, self.ledger_run_id if scope is CacheScope.SESSION else "")
+        lock_key = "|".join(("fetch", *reach, scope.value, key.canonical_uri, key.auth_scope_hash or "",
+                             key.request_variant or ""))
+        return await self._lock.run(lock_key, op)
+
     async def serve(
-        self, key: ResourceCacheKey, *, now: datetime, freshness_seconds: float, scope: CacheScope, created_by: str
+        self, key: ResourceCacheKey, *, now: datetime, freshness_seconds: float, scope: CacheScope, created_by: str,
+        waited: float | None = None,
     ) -> tuple[Served | None, str | None]:
         """A fresh version within reach, copied in if it is another tenant's or project's,
         or None and the version a fetch would replace: this tenant and project's newest
@@ -291,7 +332,8 @@ class ResourceCache:
                     key, content, final_uri=version.final_uri, media_type=version.media_type, scope=scope,
                     retrieval_time=version.retrieval_time, prior=self._prior(found), created_by=created_by)
             await self._event("SOURCE_SERVED", version, copied=copied,
-                              age_seconds=(now - version.retrieval_time).total_seconds())
+                              age_seconds=(now - version.retrieval_time).total_seconds(),
+                              **_waited(waited, took_result=True))
             return Served(version, content), None
         return None, self._prior(found)
 
@@ -301,11 +343,11 @@ class ResourceCache:
 
     async def record(
         self, key: ResourceCacheKey, content: bytes, *, final_uri: str, media_type: str, scope: CacheScope,
-        retrieval_time: datetime, prior: str | None, created_by: str,
+        retrieval_time: datetime, prior: str | None, created_by: str, waited: float | None = None,
     ) -> EvidenceSourceVersion:
         version = await self._record(key, content, final_uri=final_uri, media_type=media_type, scope=scope,
                                      retrieval_time=retrieval_time, prior=prior, created_by=created_by)
-        await self._event("SOURCE_FETCHED", version, copied=False)
+        await self._event("SOURCE_FETCHED", version, copied=False, **_waited(waited, took_result=False))
         return version
 
     async def _record(

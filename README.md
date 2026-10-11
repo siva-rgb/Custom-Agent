@@ -63,6 +63,12 @@ persisted so you can reconstruct exactly what happened afterwards.
   are derived from those contributions, so a claim drawn from untrusted pages
   stays untrusted; nothing is updated or deleted, and a supersession is a chain
   that never forks. Read it with `Runner.evidence_ledger()` (M23).
+- **Fetches each page once, however many agents ask** (M24's claim-lock): one
+  holder per page and per statement, across the tasks of a process and the
+  processes sharing the database; the others wait, then take the holder's
+  version or add to the holder's claim, and their events say how long they
+  waited. A holder that fails is retried by one waiter, with backoff, at most
+  three times, and no wait or result ever crosses a tenant.
 - **Runs a response's tool calls in parallel when the tools say it is safe.** A
   tool that declares `concurrency_safe=True` (the built-in read-only tools do)
   runs beside the other safe calls of the same response, under
@@ -100,7 +106,7 @@ Stated plainly, because an SDK that overstates itself costs you a week:
 | The execution manifest's `tools_sent` records the tools a run's agent is sent, written at run start with the rest of its configuration, so a run that ends before its first request records a set it never sent | Declared (M21) |
 | A fetch tool widened to a broader cache scope keeps serving the run's own version recorded at the narrower one until that version expires | Declared (M23) |
 | A claim's labels count the run's tool results already in its history when `record_claim` is called; results of other calls in the same parallel batch are not yet there and do not count | Declared (M23) |
-| Fetches of one page that miss the cache at the same moment each fetch it and each record a version; one fetch per page and scope is M24's claim-lock | Phase 3, M24 |
+| A holder that fails is retried by one waiter in its own process; waiters in other processes on the same database each take their turn and retry for themselves. A hung holder keeps its key until its tool times out; leases with expiry are Phase 6's | Declared (M24) |
 | A source version's content is the fetch tool's whole result, status line included, so a served page reads exactly as it did when fetched; a copy made into another tenant or project keeps the original's final URL and media type with its hash and retrieval time | Declared (M22) |
 | A session store's combined write (a compaction's summary and its `ContextCompacted` event) refuses an event sink that names another run, tenant or project. The Runner always passes the run's own sink; only code driving `AgentLoop` itself with another run's sink meets the refusal | Declared (M21a) |
 | On PostgreSQL, a custom event sink that names no scope, or that cannot write inside the store's transaction (it lacks `write` and `stored`), gets the summary and its event as two writes, so if its `emit` fails the summary stays stored without its event; the SDK's own sinks write both in one transaction | Declared (M20a, M21a) |
@@ -467,6 +473,7 @@ credentials -- which is also how the test suite checks them.
 | [`18_context.py`](scripts/18_context.py) | an agent sent only the one tool its profile names, a long run compacting past 0.75 of its window, and the artifact holding what was replaced, read back against its hash |
 | [`19_sources.py`](scripts/19_sources.py) | a page fetched once and then served from the cache in the same run and the next, a refetch after freshness recording a new version that names the old one, and a second tenant getting no hit |
 | [`20_ledger.py`](scripts/20_ledger.py) | two subagents recording one statement as one claim with both contributions and both pages cited, the claim untrusted because the pages are, and a wrong claim superseded with the chain read back |
+| [`21_contention.py`](scripts/21_contention.py) | Phase 3's exit signal: eight orchestrated readers on four overlapping pages, each page fetched once while the rest wait on the claim-lock, one claim per statement with every contributor, a correction, and a second tenant served nothing |
 
 ```bash
 python scripts/02_custom_tools.py --offline

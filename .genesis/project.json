@@ -9,7 +9,7 @@
     "non_goals": [],
     "trust_boundary": "local repository",
     "created_at": "2026-09-05T14:48:57.894Z",
-    "updated_at": "2026-10-11T05:19:36.904Z"
+    "updated_at": "2026-10-11T10:22:51.102Z"
   },
   "policy": {
     "ponytail": "full",
@@ -23,19 +23,19 @@
     }
   },
   "lifecycle": {
-    "phase": "build",
-    "status": "active",
-    "active_task": "M24-claim-lock",
+    "phase": "verify",
+    "status": "ready",
+    "active_task": null,
     "blocker": null,
-    "next_action": "Run the task pre-flight."
+    "next_action": "Review completed work and choose the next bounded outcome."
   },
   "commands": {},
   "workflow": {
     "type": "new-product",
     "started_at": "2026-09-05T14:48:57.897Z",
     "spec_check": {
-      "at": "2026-10-10T19:02:35.133Z",
-      "source_hash": "58a932f65d2936442d1a9e1aa5cf2de054f8e061d3c8b332004fb7c9daa7db87",
+      "at": "2026-10-11T05:39:37.963Z",
+      "source_hash": "413045c846c3afbe31042dde18e7154a4a865f5c0496b8e5878821c478fafd5f",
       "requirements": [
         "AC-1",
         "AC-10",
@@ -238,13 +238,13 @@
       ]
     },
     "plan_check": {
-      "at": "2026-10-10T19:02:35.374Z",
+      "at": "2026-10-11T05:39:38.351Z",
       "source_hash": "e620682b4cf585c1aa0bf9399b9e19eb6ae3040f81e84d51da8ce684f901c420"
     },
     "plan_approval": {
       "human": "siva-rgb (owner)",
-      "reason": "Spec re-approved during M23; tasks unchanged",
-      "at": "2026-10-10T19:02:35.489Z",
+      "reason": "Spec re-approved at M24 pre-flight; tasks unchanged",
+      "at": "2026-10-11T05:39:38.521Z",
       "source_hash": "e620682b4cf585c1aa0bf9399b9e19eb6ae3040f81e84d51da8ce684f901c420"
     }
   },
@@ -454,12 +454,12 @@
         "NFR-8",
         "NFR-9"
       ],
-      "source_hash": "58a932f65d2936442d1a9e1aa5cf2de054f8e061d3c8b332004fb7c9daa7db87",
+      "source_hash": "413045c846c3afbe31042dde18e7154a4a865f5c0496b8e5878821c478fafd5f",
       "approval": {
         "human": "siva-rgb (owner)",
-        "reason": "FR-93: a claim cites a fetched URL as well as a version uri",
-        "at": "2026-10-10T19:02:35.247Z",
-        "source_hash": "58a932f65d2936442d1a9e1aa5cf2de054f8e061d3c8b332004fb7c9daa7db87"
+        "reason": "M24 pre-flight: M23 caveats settled in FR-92 and FR-93",
+        "at": "2026-10-11T05:39:38.166Z",
+        "source_hash": "413045c846c3afbe31042dde18e7154a4a865f5c0496b8e5878821c478fafd5f"
       }
     }
   ],
@@ -1426,6 +1426,14 @@
       "status": "accepted",
       "source": null,
       "recorded_at": "2026-10-10T19:02:34.828Z"
+    },
+    {
+      "id": "DECISION-eecef939",
+      "title": "M24 pre-flight: M23 caveats 1 to 5 repaired; example 21 offline and live",
+      "text": "Owner decisions 2026-10-11 at M24's pre-flight on the five caveats of KNOWLEDGE-5d3124ff, all repaired inside M24. (1) Both ledger stores check that every cited version is in the claim's tenant and project, and raise the contribution's labels to cover every version it cites, so a direct store caller cannot record a cross-tenant citation or a contribution cleaner than its sources, and migration 0011's comment becomes true (the migration file is not edited; its checksum is recorded). (2) supersede takes its two advisory locks in the order of their hashtext values, deduplicated, so colliding keys can never cross and deadlock. (3) Cite-by-URL ranks the run's own tool results above its briefed inputs. (4) The key normalises NFC, then casefold, then NFC again. (5) record_claim and supersede_claim read back only their own claim. Rejected: declaring 4; repairing 1 only. Example 21 runs offline (also a gate test on both stores) and live through an orchestrated plan against example.com and iana.org; rejected: offline only. FR-92 and FR-93 are edited; the owner permitted re-signing the spec and plan as siva-rgb (owner); M24 is requeued through the CLI so plan approval reactivates it.",
+      "status": "accepted",
+      "source": null,
+      "recorded_at": "2026-10-11T05:39:37.470Z"
     }
   ],
   "knowledge": [
@@ -2284,6 +2292,14 @@
       "source": null,
       "tags": [],
       "recorded_at": "2026-10-11T05:19:36.495Z"
+    },
+    {
+      "id": "KNOWLEDGE-4301be95",
+      "title": "M24 round 1 approved, closing Phase 3 increment 1; C1 to C3 become M24a",
+      "text": "Approved 10:10:42Z by Opus 5 on source hash 0c9970bd, gates recomputed by the reviewer; author mutation run 20 of 20. M23 caveat 1 verified fixed (a store with no evidence store refuses every citation; all ten migration checksums match). Cancellation probed at 16 offsets x 4 trials, contended and not, with pg_locks and pool stats per probe; 60 trials that a cancelled waiter never cancels the holder; the try-lock window held open deterministically; M23's crossing-hashtext deadlock reproduced 30 of 30 against the text-sorted mutant and 0 of 30 on the fix; a killed holder process frees its key; a waiter holds no connection while waiting; example 21 on seven seeds on both stores. Owner decision: complete M24, then a follow-up task M24a before increment 2's specification for C1 to C4. Caveats: (C1) _completed suppresses a re-delivered CancelledError, so on a second cancellation during acquire or during the normal release (claimlock.py, the finally also goes through _completed) the advisory lock is not unlocked and the pooled connection is not returned; the lock is released only when CPython closes the dropped socket; pool slots are lost and after 33 occurrences a checkout raises PoolTimeout after 30 s; reachable only by a double cancel, which no SDK path performs today. (C3, C4) a CancelledError inside a retry attempt, or a waiter's own failure after a successful holder, reopens the 3-attempt budget, so at most 3 attempts is not absolute. (C2) the pipe delimiter in lock keys lets two tenants' keys collide, a wait-timing side channel only, pre-existing from M23. Carried to increment 2: (C5) a waited call that gets a non-2xx records its wait nowhere; (C6) the holder keeps a pooled connection while its operation draws on the same pool; (C7) M24's task requirements omit NFR-25; example 21's editor cites nothing, so its taint check passes vacuously for the corrected claim.",
+      "source": null,
+      "tags": [],
+      "recorded_at": "2026-10-11T10:22:50.721Z"
     }
   ],
   "tasks": [
@@ -2306,9 +2322,9 @@
           "status": "pass",
           "evidence": {
             "human": "siva-rgb (owner)",
-            "reason": "FR-93: a claim cites a fetched URL as well as a version uri",
-            "source_hash": "d890c63c51c9f68a4b26bfe46cce15a8f21aad23a66235a3cd4aa47aa38b2c2c",
-            "observed_at": "2026-10-10T19:02:35.247Z"
+            "reason": "M24 pre-flight: M23 caveats settled in FR-92 and FR-93",
+            "source_hash": "81fa00edacc623632d425d4b0a47e922e8b0125291f05cc99a99bc7563520d01",
+            "observed_at": "2026-10-11T05:39:38.166Z"
           }
         }
       ],
@@ -2318,7 +2334,7 @@
       "failures": [],
       "limitations": [],
       "created_at": "2026-09-05T14:48:57.897Z",
-      "updated_at": "2026-10-10T19:02:35.247Z"
+      "updated_at": "2026-10-11T05:39:38.166Z"
     },
     {
       "id": "M1-primitives",
@@ -3909,7 +3925,7 @@
     {
       "id": "M24-claim-lock",
       "outcome": "Overlapping agents fetch each source once and store each claim once under contention across tasks and processes, with backoff on a failed holder, and the Phase 3 increment 1 exit signal holds on both stores",
-      "state": "active",
+      "state": "done",
       "risk": "high",
       "owner": null,
       "scope": [],
@@ -3925,22 +3941,37 @@
           "id": "unit",
           "command": ".venv\\Scripts\\python.exe -m pytest tests/test_claim_lock.py -q",
           "mandatory": true,
-          "status": "pending",
-          "evidence": null
+          "status": "pass",
+          "evidence": {
+            "path": ".genesis/evidence/M24-claim-lock-unit.json",
+            "source_hash": "0c9970bdfa894ac9cea22762dc71904d60e63087abf717665221cd76aef11709",
+            "hash": "af1341d54969fb36344056744480a25e9a63eb576a43f1510564ae97c215981b",
+            "observed_at": "2026-10-11T10:01:26.007Z"
+          }
         },
         {
           "id": "regression",
           "command": ".venv\\Scripts\\python.exe -m pytest -q",
           "mandatory": true,
-          "status": "pending",
-          "evidence": null
+          "status": "pass",
+          "evidence": {
+            "path": ".genesis/evidence/M24-claim-lock-regression.json",
+            "source_hash": "0c9970bdfa894ac9cea22762dc71904d60e63087abf717665221cd76aef11709",
+            "hash": "66771fd50a249568b9d485257e425b2031376a9a4f321dc2dc05b58885cc94f8",
+            "observed_at": "2026-10-11T10:08:12.028Z"
+          }
         },
         {
           "id": "independent-review",
           "command": "",
           "mandatory": true,
-          "status": "pending",
-          "evidence": null
+          "status": "pass",
+          "evidence": {
+            "human": "Opus 5 (independent L4 reviewer, M24 round 1)",
+            "reason": "Requirements re-derived from SPEC.md FR-95, FR-96, NFR-24, NFR-25, AC-74 and the M24 sentences of FR-92 and FR-93. Gates recomputed by me on source hash 0c9970bd: unit 27 passed, regression 1891 passed in 404 s, both exit 0, no stray python; a separate full suite gave 1891 passed in 370 s. All eight attack items probed first-hand. Singleflight: 40 trials of 8 tasks at a 1 microsecond switch interval never had two holders; 5 OS processes on one database fetched one page once with 4 waiters served and took_result true, and a second tenant added exactly one more fetch, while a no-lock mutant gave 5 and 8 fetches, so the probe detects the defect. Retry: 25 trials gave exactly 1 plus 3 operations, 3 delays inside 0.2, 0.4 and 0.8 s, 5 waiters failing by key name and a fresh call clean; a cancelled holder is retried and the waiters succeed; a waiter failing after a good holder does not poison the key. Cancellation: 128 sweep attempts, 60 cancelled-waiter trials and 24 public-API trials with the cancel timed into the window between pg_try_advisory_lock succeeding and its result arriving, all leaving 0 advisory locks and the pool idle; pg_locks and other connections were 0 before and after every probe and 0 at the end. A waiting call holds no connection and adds no measurable loop delay; a tool timeout counted the wait and reported ToolTimeout at 5985 ms while the holder still fetched once. Cross-process: taskkill of a holder freed the key in 0.28 s, and hashtext collisions only cost waiting. Tenancy: both lock keys name tenant and project, SESSION carries the ledger run, NO_CACHE takes no lock. Exit signal: example 21 on 7 seeds of my own on both stores, 7 of 7 checks each, 177 to 208 claim-lock waits, so it contends in fact. M23 caveats: both stores now refuse cross-tenant, cross-project and unknown citations and raise a deliberately trusted clean contribution to untrusted with both taint flags; normalised is idempotent over every Unicode code point; the hash-ordered lock serialised 30 of 30 crossing-collision trials where the restored text-sorted lock deadlocked 30 of 30. Governance: the diff adds only DECISION-eecef939, knowledge stays at 107, 28 tasks unchanged in order, state and content, controls 85 to 86 with one requeue, no migration edited and all 10 checksums match their files. Caveats, none reachable through the public surface. First, ClaimLock _completed suppresses a re-delivered CancelledError, so a cancellation delivered twice while it is undoing drops the holder connection without pg_advisory_unlock or putconn, leaving an advisory lock held until the garbage collector closes the socket and losing one pool slot for good; 33 such events exhausted the pool and the next store call raised PoolTimeout after 30 s. RunControl request is guarded and RunHandle result shields the run task, so the public API delivers only one cancellation and this needs code outside NFR-5. Second, lock keys are joined with a vertical bar and tenant ids are unvalidated, so tenant A-bar-p with project x and tenant A with project p-bar-x share one key, letting a wait, though never a result, cross a tenant; the pattern predates M24. Third, _retry catches Exception only, so a cancelled retrier leaves no attempt budget. Fourth, a waiter failing after a good holder opens a fresh 3-attempt budget. Fifth, a call that waited and got a non-2xx response records no event, so its wait is unrecorded. Sixth, the holder keeps a pooled connection while its operation draws on the same pool of 32. Seventh, the task requirement list omits NFR-25. The six open choices are all sound: serialised waiters, per-process retry state, k counting from 0, supersede without a claim-lock since the hash-ordered store lock serialises it, the took_result mapping, and the editor citing nothing, the last weakening the exit signal slightly because the corrected claim cites no source and its taint check therefore passes vacuously.",
+            "source_hash": "0c9970bdfa894ac9cea22762dc71904d60e63087abf717665221cd76aef11709",
+            "observed_at": "2026-10-11T10:10:42.024Z"
+          }
         }
       ],
       "next_action": "Run the task pre-flight.",
@@ -3949,7 +3980,7 @@
       "failures": [],
       "limitations": [],
       "created_at": "2026-10-10T07:01:18.649Z",
-      "updated_at": "2026-10-10T07:01:18.649Z"
+      "updated_at": "2026-10-11T10:22:50.878Z"
     }
   ],
   "learning_proposals": [],
@@ -4719,18 +4750,36 @@
       "human": "Sonnet 5 (independent L4 reviewer, M23 round 1)",
       "reason": "Requirements re-derived from SPEC.md FR-92 to FR-94, NFR-25, NFR-26, AC-73. Verified first-hand: full suite 1864 passed (435 s, no cacheprovider); genesis gate with timeout 590000 passed, evidence source_hash fb7c130d unchanged, no stray python; example 20 offline 7 of 7; migration 0011 checksum matches file, tables at 0 rows at baseline; project.json diff 8ba3b01 shows only 2 decisions added, 2 requeue controls, no task added removed or reordered. claim_key is one Python function used by both stores, identical across 3 processes and hash seeds over every code point; AC-73 pairs (case, spacing, NFC/NFD, ss) give one key. Concurrency at switchinterval 1e-6, 30 attempts per phase on both stores (record x8, 6-way supersede, record racing supersede) plus 3 OS processes on one DB (20 attempts): 0 duplicate claims, 0 forks, 0 contributions after supersession (xmin order); no-lock mutants fail in every column, so the probes detect. Taint: history, briefed input, orchestrator child answer and uri-cited versions all reach the claim as untrusted; no-taken-in mutant flips it. Tenancy: cross-tenant and cross-project uri and URL citations refused, other tenant project ledger reads empty, cross-ledger supersede refused; foreign-version mutant flips. Cite-by-URL right after redirect, cache hit by a child, tenant copy, stale refetch, spellings (default port, trailing dot, fragment); other-run URL refused. M22 caveats 1 to 5 sound; caveat 4 shown with a no-delete mutant (artifact left 0 vs 1); canonical_uri differs from M22 only in host. CAVEATS not blockers: (1) the store layer does not enforce what RunLedger does: LedgerStore.record on both stores accepts a contribution citing another tenants version, a run id from another tenant, and a provenance lower than the cited versions (NFR-25 and NFR-26 hold only through RunLedger); the 0011 comment saying the store checks the cited versions tenant is untrue, and there are no DB triggers so append-only rests on the API surface; fix in code, do not edit the migration (checksum). (2) Two supersessions whose sorted key pairs cross-collide in hashtext (found with 450k keys, 20 collisions) raised DeadlockDetected instead of waiting, no corruption, needs crafted statements. (3) A briefed input carrying an older version urn outranks the runs own newer fetch when citing by URL, contrary to newest tool result in history; only reachable by briefing a cache artifact. (4) Case-only variants of 8 Greek characters give different keys because NFC then casefold is not canonically closed; follows the spec literally; zero-width and full-width forms are distinct keys. (5) every record reads the whole ledger back, quadratic in ledger size.",
       "revision": null
+    },
+    {
+      "id": "df0d2c0d-c544-4b27-901a-5a29b134c581",
+      "at": "2026-10-11T05:39:37.779Z",
+      "action": "requeue",
+      "task": "M24-claim-lock",
+      "human": null,
+      "reason": null,
+      "revision": null
+    },
+    {
+      "id": "8efecd2d-0218-45ac-9737-ba1e6aa4a807",
+      "at": "2026-10-11T10:10:42.024Z",
+      "action": "approve",
+      "task": "M24-claim-lock",
+      "human": "Opus 5 (independent L4 reviewer, M24 round 1)",
+      "reason": "Requirements re-derived from SPEC.md FR-95, FR-96, NFR-24, NFR-25, AC-74 and the M24 sentences of FR-92 and FR-93. Gates recomputed by me on source hash 0c9970bd: unit 27 passed, regression 1891 passed in 404 s, both exit 0, no stray python; a separate full suite gave 1891 passed in 370 s. All eight attack items probed first-hand. Singleflight: 40 trials of 8 tasks at a 1 microsecond switch interval never had two holders; 5 OS processes on one database fetched one page once with 4 waiters served and took_result true, and a second tenant added exactly one more fetch, while a no-lock mutant gave 5 and 8 fetches, so the probe detects the defect. Retry: 25 trials gave exactly 1 plus 3 operations, 3 delays inside 0.2, 0.4 and 0.8 s, 5 waiters failing by key name and a fresh call clean; a cancelled holder is retried and the waiters succeed; a waiter failing after a good holder does not poison the key. Cancellation: 128 sweep attempts, 60 cancelled-waiter trials and 24 public-API trials with the cancel timed into the window between pg_try_advisory_lock succeeding and its result arriving, all leaving 0 advisory locks and the pool idle; pg_locks and other connections were 0 before and after every probe and 0 at the end. A waiting call holds no connection and adds no measurable loop delay; a tool timeout counted the wait and reported ToolTimeout at 5985 ms while the holder still fetched once. Cross-process: taskkill of a holder freed the key in 0.28 s, and hashtext collisions only cost waiting. Tenancy: both lock keys name tenant and project, SESSION carries the ledger run, NO_CACHE takes no lock. Exit signal: example 21 on 7 seeds of my own on both stores, 7 of 7 checks each, 177 to 208 claim-lock waits, so it contends in fact. M23 caveats: both stores now refuse cross-tenant, cross-project and unknown citations and raise a deliberately trusted clean contribution to untrusted with both taint flags; normalised is idempotent over every Unicode code point; the hash-ordered lock serialised 30 of 30 crossing-collision trials where the restored text-sorted lock deadlocked 30 of 30. Governance: the diff adds only DECISION-eecef939, knowledge stays at 107, 28 tasks unchanged in order, state and content, controls 85 to 86 with one requeue, no migration edited and all 10 checksums match their files. Caveats, none reachable through the public surface. First, ClaimLock _completed suppresses a re-delivered CancelledError, so a cancellation delivered twice while it is undoing drops the holder connection without pg_advisory_unlock or putconn, leaving an advisory lock held until the garbage collector closes the socket and losing one pool slot for good; 33 such events exhausted the pool and the next store call raised PoolTimeout after 30 s. RunControl request is guarded and RunHandle result shields the run task, so the public API delivers only one cancellation and this needs code outside NFR-5. Second, lock keys are joined with a vertical bar and tenant ids are unvalidated, so tenant A-bar-p with project x and tenant A with project p-bar-x share one key, letting a wait, though never a result, cross a tenant; the pattern predates M24. Third, _retry catches Exception only, so a cancelled retrier leaves no attempt budget. Fourth, a waiter failing after a good holder opens a fresh 3-attempt budget. Fifth, a call that waited and got a non-2xx response records no event, so its wait is unrecorded. Sixth, the holder keeps a pooled connection while its operation draws on the same pool of 32. Seventh, the task requirement list omits NFR-25. The six open choices are all sound: serialised waiters, per-process retry state, k counting from 0, supersede without a claim-lock since the hash-ordered store lock serialises it, the took_result mapping, and the editor citing nothing, the last weakening the exit signal slightly because the corrected claim cites no source and its taint check therefore passes vacuously.",
+      "revision": null
     }
   ],
   "discovery": null,
   "checkpoint": {
-    "at": "2026-10-11T05:19:36.825Z",
+    "at": "2026-10-11T10:22:51.024Z",
     "revision": {
-      "commit": "8ba3b01bd64fa7f91e9097257e37e576271bdcf5",
+      "commit": "045696c34eaefd8bd1ca22aec59e4cc8d17b3996",
       "dirty": true,
-      "source_hash": "fb7c130d555051fe9d91d0625b143e88036a78f242e72922c76e5ca5ba84bb2f"
+      "source_hash": "0c9970bdfa894ac9cea22762dc71904d60e63087abf717665221cd76aef11709"
     },
-    "active_task": "M24-claim-lock",
-    "next_action": "Run the task pre-flight."
+    "active_task": null,
+    "next_action": "Review completed work and choose the next bounded outcome."
   },
   "legacy": null
 }

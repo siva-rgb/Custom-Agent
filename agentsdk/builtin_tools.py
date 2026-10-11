@@ -1092,22 +1092,11 @@ async def _fetch_recorded(options: _FetchOptions, cached: _CacheOptions, cache: 
     allowlist is checked first, so a cached page is never served for a URL this tool
     would refuse. Only a 2xx response is recorded; anything else returns as before."""
     _, host = _target(text, options.allowlist)
-    key = ResourceCacheKey(canonical_uri(text))
-    scope = cached.host_scopes.get(host, cached.scope)
-    now = cached.clock()
-    prior = None
-    if scope is not CacheScope.NO_CACHE:
-        served, prior = await cache.serve(key, now=now, freshness_seconds=cached.freshness, scope=scope, created_by=name)
-        if served is not None:
-            return ToolOutput(served.content.decode("utf-8"), source_uri=served.version.uri)
-    fetched = await _fetched(options, text)
-    if not 200 <= fetched.status < 300:
-        return ToolOutput(fetched.text, source_uri=fetched.final_url)
-    version = await cache.record(
-        key, fetched.text.encode("utf-8"), final_uri=fetched.final_url, media_type=fetched.media, scope=scope,
-        retrieval_time=now, prior=prior, created_by=name,
+    content, source = await cache.obtain(
+        ResourceCacheKey(canonical_uri(text)), scope=cached.host_scopes.get(host, cached.scope), clock=cached.clock,
+        freshness_seconds=cached.freshness, fetch=lambda: _fetched(options, text), created_by=name,
     )
-    return ToolOutput(fetched.text, source_uri=version.uri)
+    return ToolOutput(content, source_uri=source)
 
 
 def _utc_now() -> datetime:

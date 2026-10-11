@@ -42,6 +42,7 @@ from .plan import InMemoryRunStateStore
 from .scope import AttributedArtifacts, ToolScope
 from .evidence import InMemoryEvidenceStore, ResourceCache
 from .ledger import EvidenceLedger, InMemoryLedgerStore, RunLedger
+from .claimlock import ClaimLock
 from .primitives import ContentProvenance, unstorable_reason
 from .budget import BudgetLease, tokens_of
 from .prices import PRICE_TABLE_DATE, shipped_pricing
@@ -395,6 +396,9 @@ class Runner:
         self._memory_states: InMemoryRunStateStore | None = None
         self._memory_evidence: InMemoryEvidenceStore | None = None
         self._memory_ledger: InMemoryLedgerStore | None = None
+        # FR-95 (M24): one claim-lock per Runner, across its runs, and across processes
+        # through the database when there is one.
+        self._claim_lock = ClaimLock(persistence.dsn if persistence is not None else None)
 
     def _admits(self, tenant_id: str, project_id: str, run_id: str) -> bool:
         return (tenant_id, project_id, run_id) in self._started
@@ -421,7 +425,7 @@ class Runner:
         if self._persistence is not None:
             return self._persistence.ledger_store()
         if self._memory_ledger is None:
-            self._memory_ledger = InMemoryLedgerStore()
+            self._memory_ledger = InMemoryLedgerStore(self._evidence_store())
         return self._memory_ledger
 
     def evidence_ledger(self, tenant_id: str, project_id: str, ledger_run_id: str) -> EvidenceLedger:
@@ -868,8 +872,10 @@ class Runner:
             # FR-93: what the run has taken in when a claim is recorded -- every tool
             # result already in its history and every input it was briefed with.
             history = await control.store(sessions.history, run_id)
-            return tuple(r.provenance for m in history for r in m.tool_results) + tuple(
-                p for _, p in config.briefed_inputs)
+            # Briefed inputs first: cite-by-URL takes the last match, and the run's own
+            # tool results are newer than what it was briefed with (M23 review caveat 3).
+            return tuple(p for _, p in config.briefed_inputs) + tuple(
+                r.provenance for m in history for r in m.tool_results)
 
         ledger_run_id = config.ledger_run_id or run_id
         executor = ToolExecutor(
@@ -888,7 +894,7 @@ class Runner:
                     self._evidence_store, self._artifacts_for,
                     tenant_id=scope.tenant_id, project_id=scope.project_id, run_id=run_id,
                     ledger_run_id=ledger_run_id, node_id=config.node_id,
-                    call=control.store, emit=partial(control.store, events.emit),
+                    call=control.store, emit=partial(control.store, events.emit), lock=self._claim_lock,
                 ),
                 agent_id=spec.id,
                 ledger=RunLedger(
@@ -896,6 +902,7 @@ class Runner:
                     tenant_id=scope.tenant_id, project_id=scope.project_id, ledger_run_id=ledger_run_id,
                     run_id=run_id, node_id=config.node_id, agent_id=spec.id,
                     call=control.store, taken_in=taken_in, emit=partial(control.store, events.emit),
+                    lock=self._claim_lock,
                 ),
                 _events=events, _control=control, _runner=self, _lease=config.budget_lease,
             ),

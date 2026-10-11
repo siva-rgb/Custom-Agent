@@ -17,7 +17,7 @@ import re
 import threading
 import unicodedata
 import uuid
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import datetime, timezone
 from typing import Any, Awaitable, Callable, Protocol
 
@@ -50,9 +50,11 @@ class ClaimRefused(ValueError):
 
 
 def normalised(statement: str) -> str:
-    """P3-D9: Unicode NFC, then case-folded, then every run of whitespace one space and
+    """P3-D9: Unicode NFC, then case-folded, then NFC again -- case-folding alone is not
+    canonically closed (M23 review caveat 4) -- then every run of whitespace one space and
     the ends trimmed."""
-    return _WHITESPACE.sub(" ", unicodedata.normalize("NFC", statement).casefold()).strip()
+    folded = unicodedata.normalize("NFC", unicodedata.normalize("NFC", statement).casefold())
+    return _WHITESPACE.sub(" ", folded).strip()
 
 
 def claim_key(statement: str) -> str:
@@ -185,6 +187,15 @@ class LedgerStore(Protocol):
     def rows(self, tenant_id: str, project_id: str,
              ledger_run_id: str) -> tuple[list[EvidenceClaim], list[ClaimContribution]]: ...
 
+    def claim(self, tenant_id: str, project_id: str, ledger_run_id: str,
+              claim_id: str) -> tuple[EvidenceClaim, str | None, list[ClaimContribution]]: ...
+
+
+def _covered(contribution: NewContribution, cited: list[ContentProvenance]) -> NewContribution:
+    """M23 review caveat 1: a contribution at least as tainted as every version it cites,
+    whoever built it."""
+    return replace(contribution, provenance=ContentProvenance.from_model(contribution.provenance, *cited))
+
 
 def _contribution(new: NewContribution, claim_id: str, at: datetime) -> ClaimContribution:
     return ClaimContribution(**{f: getattr(new, f) for f in NewContribution.__dataclass_fields__},
@@ -192,12 +203,29 @@ def _contribution(new: NewContribution, claim_id: str, at: datetime) -> ClaimCon
 
 
 class InMemoryLedgerStore:
-    """FR-92's store for a Runner without persistence: every tenant's ledgers, one lock."""
+    """FR-92's store for a Runner without persistence: every tenant's ledgers, one lock.
 
-    def __init__(self) -> None:
+    It checks every citation against `evidence`, the store the versions are in (M23
+    review caveat 1); a store given none refuses any citation, having nothing to check
+    it against."""
+
+    def __init__(self, evidence: Any = None) -> None:
         self._claims: list[EvidenceClaim] = []
         self._contributions: list[ClaimContribution] = []
         self._lock = threading.Lock()
+        self._evidence = evidence
+
+    def _checked(self, tenant_id: str, project_id: str, contribution: NewContribution) -> NewContribution:
+        cited = []
+        for vid in contribution.supporting + contribution.contradicting:
+            try:
+                if self._evidence is None:
+                    raise LookupError(vid)
+                cited.append(self._evidence.get(tenant_id, project_id, vid).provenance)
+            except LookupError:
+                raise ClaimRefused(f"cited source {_SOURCE_URN}{vid} is not a source version in this tenant "
+                                   "and project") from None
+        return _covered(contribution, cited)
 
     def _ledger(self, tenant_id: str, project_id: str, ledger_run_id: str) -> list[EvidenceClaim]:
         return [c for c in self._claims
@@ -210,6 +238,7 @@ class InMemoryLedgerStore:
     def record(self, *, tenant_id: str, project_id: str, ledger_run_id: str, statement: str,
                contribution: NewContribution) -> tuple[EvidenceClaim, ClaimContribution, bool]:
         key = claim_key(_text("statement", statement, limit=MAX_STATEMENT))
+        contribution = self._checked(tenant_id, project_id, contribution)
         with self._lock:
             claim = self._active(self._ledger(tenant_id, project_id, ledger_run_id), key)
             new = claim is None
@@ -224,6 +253,7 @@ class InMemoryLedgerStore:
     def supersede(self, *, tenant_id: str, project_id: str, ledger_run_id: str, old_claim_id: str,
                   statement: str, contribution: NewContribution) -> tuple[EvidenceClaim, ClaimContribution]:
         key = claim_key(_text("statement", statement, limit=MAX_STATEMENT))
+        contribution = self._checked(tenant_id, project_id, contribution)
         with self._lock:
             claims = self._ledger(tenant_id, project_id, ledger_run_id)
             old = next((c for c in claims if c.claim_id == old_claim_id), None)
@@ -248,6 +278,16 @@ class InMemoryLedgerStore:
             claims = self._ledger(tenant_id, project_id, ledger_run_id)
             ids = {c.claim_id for c in claims}
             return claims, [c for c in self._contributions if c.claim_id in ids]
+
+    def claim(self, tenant_id: str, project_id: str, ledger_run_id: str,
+              claim_id: str) -> tuple[EvidenceClaim, str | None, list[ClaimContribution]]:
+        with self._lock:
+            claims = self._ledger(tenant_id, project_id, ledger_run_id)
+            found = next((c for c in claims if c.claim_id == claim_id), None)
+            if found is None:
+                raise LookupError(f"no claim {claim_id!r} in this ledger")
+            after = next((c.claim_id for c in claims if c.supersedes == claim_id), None)
+            return found, after, [c for c in self._contributions if c.claim_id == claim_id]
 
 
 def _union(lists: Any) -> tuple[str, ...]:
@@ -283,11 +323,12 @@ class EvidenceLedger:
         return [self._view(c, superseded_by, contributions) for c in by_id.values() if c.claim_id not in superseded_by]
 
     def claim(self, claim_id: str) -> ClaimView:
-        by_id, superseded_by, contributions = self._read()
+        """One claim, read on its own (M23 review caveat 5: not the whole ledger)."""
         key = _claim_id(claim_id)
-        if key not in by_id:
+        if key is None:
             raise LookupError(f"no claim {claim_id!r} in this ledger")
-        return self._view(by_id[key], superseded_by, contributions)
+        claim, after, contributions = self._store.claim(self.tenant_id, self.project_id, self.ledger_run_id, key)
+        return self._view(claim, {} if after is None else {key: after}, contributions)
 
     def history(self, claim_id: str) -> list[EvidenceClaim]:
         """The supersede chain the claim belongs to, oldest first."""
@@ -332,7 +373,9 @@ class RunLedger:
         call: Callable[..., Awaitable[Any]],
         taken_in: Callable[[], Awaitable[tuple[ContentProvenance, ...]]],
         emit: Callable[[Any, dict[str, Any]], Awaitable[Any]] | None = None,
+        lock: Any = None,
     ) -> None:
+        self._lock = lock  # FR-95 (M24): the Runner's claim-lock, or None
         self._store, self._evidence, self._call, self._taken_in, self._emit = store, evidence, call, taken_in, emit
         self.tenant_id, self.project_id, self.ledger_run_id = tenant_id, project_id, ledger_run_id
         self.run_id, self.node_id, self.agent_id = run_id, node_id, agent_id
@@ -394,19 +437,30 @@ class RunLedger:
 
     async def record(self, statement: str, supporting: Any = (), contradicting: Any = (),
                      confidence: Any = None) -> tuple[ClaimView, bool, ClaimContribution]:
-        contribution = await self._new(supporting, contradicting, confidence, None)
-        claim, made, new = await self._call(
-            self._store().record, tenant_id=self.tenant_id, project_id=self.project_id,
-            ledger_run_id=self.ledger_run_id, statement=statement, contribution=contribution)
-        view = await self._call(self.reader().claim, claim.claim_id)
-        if self._emit is not None:
-            from .events import EventType
+        """FR-93, under the claim-lock for the statement's key in this ledger (FR-95): a
+        record that found the key held waits, then contributes to the claim the holder
+        stored."""
+        key = claim_key(_text("statement", statement, limit=MAX_STATEMENT))
 
-            await self._emit(EventType.CLAIM_RECORDED, {
-                "claim_uri": claim.uri, "new": new, "contribution": _described(made),
-                "labels": _labels(view.provenance),
-            })
-        return view, new, made
+        async def op(waited: float | None) -> tuple[ClaimView, bool, ClaimContribution]:
+            contribution = await self._new(supporting, contradicting, confidence, None)
+            claim, made, new = await self._call(
+                self._store().record, tenant_id=self.tenant_id, project_id=self.project_id,
+                ledger_run_id=self.ledger_run_id, statement=statement, contribution=contribution)
+            view = await self._call(self.reader().claim, claim.claim_id)
+            if self._emit is not None:
+                from .events import EventType
+
+                payload = {"claim_uri": claim.uri, "new": new, "contribution": _described(made),
+                           "labels": _labels(view.provenance)}
+                if waited is not None:
+                    payload["wait"] = {"seconds": waited, "took_result": not new}
+                await self._emit(EventType.CLAIM_RECORDED, payload)
+            return view, new, made
+
+        if self._lock is None:
+            return await op(None)
+        return await self._lock.run("|".join(("claim", self.tenant_id, self.project_id, self.ledger_run_id, key)), op)
 
     async def supersede(self, claim: Any, statement: str, supporting: Any, contradicting: Any,
                         why: str) -> ClaimView:

@@ -1,0 +1,22 @@
+{
+  "task": "M24-claim-lock",
+  "gate": "unit",
+  "command": ".venv\\Scripts\\python.exe -m pytest tests/test_claim_lock.py -q",
+  "started_at": "2026-10-11T10:00:55.709Z",
+  "observed_at": "2026-10-11T10:01:26.007Z",
+  "exit_code": 0,
+  "signal": null,
+  "stdout": "...........................                                              [100%]\r\n27 passed in 29.44s\r\n",
+  "stderr": "",
+  "revision": {
+    "commit": "045696c34eaefd8bd1ca22aec59e4cc8d17b3996",
+    "dirty": true
+  },
+  "source_hash": "0c9970bdfa894ac9cea22762dc71904d60e63087abf717665221cd76aef11709",
+  "environment": {
+    "node": "v20.10.0",
+    "platform": "win32",
+    "arch": "x64"
+  },
+  "hash": "af1341d54969fb36344056744480a25e9a63eb576a43f1510564ae97c215981b"
+}
