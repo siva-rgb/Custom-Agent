@@ -9,7 +9,7 @@
     "non_goals": [],
     "trust_boundary": "local repository",
     "created_at": "2026-09-05T14:48:57.894Z",
-    "updated_at": "2026-10-10T17:36:29.908Z"
+    "updated_at": "2026-10-11T05:19:36.904Z"
   },
   "policy": {
     "ponytail": "full",
@@ -25,7 +25,7 @@
   "lifecycle": {
     "phase": "build",
     "status": "active",
-    "active_task": "M23-evidence-ledger",
+    "active_task": "M24-claim-lock",
     "blocker": null,
     "next_action": "Run the task pre-flight."
   },
@@ -34,8 +34,8 @@
     "type": "new-product",
     "started_at": "2026-09-05T14:48:57.897Z",
     "spec_check": {
-      "at": "2026-10-10T13:35:55.863Z",
-      "source_hash": "a5f04a03c9ad3be03b91baf0194353a9aa2863231c410e7e9751790acb5b4b43",
+      "at": "2026-10-10T19:02:35.133Z",
+      "source_hash": "58a932f65d2936442d1a9e1aa5cf2de054f8e061d3c8b332004fb7c9daa7db87",
       "requirements": [
         "AC-1",
         "AC-10",
@@ -238,13 +238,13 @@
       ]
     },
     "plan_check": {
-      "at": "2026-10-10T13:35:56.131Z",
+      "at": "2026-10-10T19:02:35.374Z",
       "source_hash": "e620682b4cf585c1aa0bf9399b9e19eb6ae3040f81e84d51da8ce684f901c420"
     },
     "plan_approval": {
       "human": "siva-rgb (owner)",
-      "reason": "Spec re-approved at M22 pre-flight; tasks unchanged",
-      "at": "2026-10-10T13:35:56.256Z",
+      "reason": "Spec re-approved during M23; tasks unchanged",
+      "at": "2026-10-10T19:02:35.489Z",
       "source_hash": "e620682b4cf585c1aa0bf9399b9e19eb6ae3040f81e84d51da8ce684f901c420"
     }
   },
@@ -454,12 +454,12 @@
         "NFR-8",
         "NFR-9"
       ],
-      "source_hash": "a5f04a03c9ad3be03b91baf0194353a9aa2863231c410e7e9751790acb5b4b43",
+      "source_hash": "58a932f65d2936442d1a9e1aa5cf2de054f8e061d3c8b332004fb7c9daa7db87",
       "approval": {
         "human": "siva-rgb (owner)",
-        "reason": "AC-75 reworded and FR-97 extended for the M21a review caveats; ledger_run_id pulled into M22 for SESSION scope (DECISION recorded at M22 pre-flight)",
-        "at": "2026-10-10T13:35:55.992Z",
-        "source_hash": "a5f04a03c9ad3be03b91baf0194353a9aa2863231c410e7e9751790acb5b4b43"
+        "reason": "FR-93: a claim cites a fetched URL as well as a version uri",
+        "at": "2026-10-10T19:02:35.247Z",
+        "source_hash": "58a932f65d2936442d1a9e1aa5cf2de054f8e061d3c8b332004fb7c9daa7db87"
       }
     }
   ],
@@ -1410,6 +1410,22 @@
       "status": "accepted",
       "source": null,
       "recorded_at": "2026-10-10T13:35:55.570Z"
+    },
+    {
+      "id": "DECISION-9de80b77",
+      "title": "M23 pre-flight: M22 caveats 1 to 5 repaired, 6 declared; the ledger store serialises per key",
+      "text": "Owner decisions 2026-10-11 at M23's pre-flight on the six caveats of KNOWLEDGE-2763f57b. Repaired inside M23: (1) the orchestrator's criterion executor scope carries the run's ledger_run_id and resource cache as the node scope does; (2) a test runs an orchestrator as a child and asserts its children share the top-level ledger, so the inheritance no longer rests on an orchestrator never being a child; (3) canonical_uri normalises the host as the fetch tool's allowlist does (lowercase, trailing dot removed, IDNA), the path still as sent, so http://h and http://h/ remain distinct keys, declared; (4) a fetch whose version cannot be recorded removes the artifact it stored; (5) ToolScope refuses a non-canonical ledger_run_id as RunConfig does. Declared: (6) own-first means a tool widened to a broader scope keeps serving its own narrower version until it expires. Rejected: repairing 1 and 2 only; repairing all six. Concurrency: the ledger store checks for an active claim and writes under a lock on (ledger, statement key), a transaction advisory lock on PostgreSQL and a lock in memory, so concurrent records of one new statement store one claim; M24 adds singleflight for the work. Rejected: duplicates until M24. The owner permitted re-signing the spec and plan approvals as siva-rgb (owner); FR-89, FR-90, FR-92 and FR-93 are edited; M23 is requeued through the CLI so plan approval reactivates it.",
+      "status": "accepted",
+      "source": null,
+      "recorded_at": "2026-10-10T18:48:12.569Z"
+    },
+    {
+      "id": "DECISION-9945a224",
+      "title": "M23: claims cite a fetched URL as well as a version uri",
+      "text": "Owner decision 2026-10-11 during M23. Writing example 20 showed a live model cannot cite a source version: the fetch result's text does not show its urn:agentsdk:source uri, and the request's provenance manifest is not sent to the provider. record_claim and supersede_claim therefore also accept a URL the run has fetched, and cite the version that run was most recently given for it: the newest tool result in the run's history whose version has that canonical URI, or whose final URI canonicalises to it. A URL the run never fetched, even one another run fetched, is refused naming it; version uris still work. The fetch tool's output is unchanged. Rejected: the fetch result naming its version on a first line, which would change M22's approved output and tests; doing both. FR-93 is edited and the owner permitted re-signing the spec and plan as siva-rgb (owner); M23 is requeued through the CLI so plan approval reactivates it.",
+      "status": "accepted",
+      "source": null,
+      "recorded_at": "2026-10-10T19:02:34.828Z"
     }
   ],
   "knowledge": [
@@ -2260,6 +2276,14 @@
       "source": null,
       "tags": [],
       "recorded_at": "2026-10-10T17:36:29.559Z"
+    },
+    {
+      "id": "KNOWLEDGE-5d3124ff",
+      "title": "M23 round 1 approved; five caveats to settle at M24's pre-flight",
+      "text": "Approved by Sonnet 5 on source hash fb7c130d, gates recomputed by the reviewer; author mutation run 24 of 24. claim_key has one implementation both stores import, identical across PYTHONHASHSEED 0, 1 and random in separate processes; every AC-73 pair collapses, and NBSP, ideographic space, NEL and ligatures were probed. Concurrency at 1 microsecond on both stores with no-lock mutants detected (29 of 30 duplicates in memory, 150 UniqueViolations on Postgres); three OS processes on one database gave 20 shared claims, 180 contributions, zero forks, each base superseded once, and an xmin check that no contribution landed after its claim's successor. Reviewer used monkeypatches only; no source file mutated. Owner decision: settle these at M24's pre-flight, (1) first. (1) InMemoryLedgerStore.record and PostgresLedgerStore do not check that cited versions are in the claim's tenant and project, nor compute provenance; RunLedger does both, and every model-reachable path goes through it, but LedgerStore, InMemoryLedgerStore and Persistence.ledger_store() are exported, so a caller can store a cross-tenant citation, and migration 0011's comment that the store checks tenancy is false; the fix is the store-layer check, not editing the migration, whose checksum is recorded. (2) Two hashtext collisions crossing in supersede's two-key lock raise a raw DeadlockDetected rather than waiting (20 collisions in 450k keys, the crossing case built deliberately). (3) taken_in appends briefed inputs after the history, so cite-by-URL's reversed scan can rank a briefed older version above the run's own newer fetch, contrary to DECISION-9945a224. (4) NFC then casefold is not canonically closed (Greek iota with dialytika and tonos versus its decomposed capital), spec-literal. (5) record_claim reads the whole ledger back on every call, quadratic in ledger size, not measured; M24's claim-lock sits on it.",
+      "source": null,
+      "tags": [],
+      "recorded_at": "2026-10-11T05:19:36.495Z"
     }
   ],
   "tasks": [
@@ -2282,9 +2306,9 @@
           "status": "pass",
           "evidence": {
             "human": "siva-rgb (owner)",
-            "reason": "AC-75 reworded and FR-97 extended for the M21a review caveats; ledger_run_id pulled into M22 for SESSION scope (DECISION recorded at M22 pre-flight)",
-            "source_hash": "a82f1d251709dece5a7906cc17112bdc98eb930f8507c05cd1935bd5da9c2034",
-            "observed_at": "2026-10-10T13:35:55.992Z"
+            "reason": "FR-93: a claim cites a fetched URL as well as a version uri",
+            "source_hash": "d890c63c51c9f68a4b26bfe46cce15a8f21aad23a66235a3cd4aa47aa38b2c2c",
+            "observed_at": "2026-10-10T19:02:35.247Z"
           }
         }
       ],
@@ -2294,7 +2318,7 @@
       "failures": [],
       "limitations": [],
       "created_at": "2026-09-05T14:48:57.897Z",
-      "updated_at": "2026-10-10T13:35:55.992Z"
+      "updated_at": "2026-10-10T19:02:35.247Z"
     },
     {
       "id": "M1-primitives",
@@ -3824,7 +3848,7 @@
     {
       "id": "M23-evidence-ledger",
       "outcome": "Agents record and supersede claims in their run's ledger, deduplicated by normalised statement, each contribution kept and its taint carried, the history a chain that never forks",
-      "state": "active",
+      "state": "done",
       "risk": "high",
       "owner": null,
       "scope": [],
@@ -3841,22 +3865,37 @@
           "id": "unit",
           "command": ".venv\\Scripts\\python.exe -m pytest tests/test_ledger.py -q",
           "mandatory": true,
-          "status": "pending",
-          "evidence": null
+          "status": "pass",
+          "evidence": {
+            "path": ".genesis/evidence/M23-evidence-ledger-unit.json",
+            "source_hash": "fb7c130d555051fe9d91d0625b143e88036a78f242e72922c76e5ca5ba84bb2f",
+            "hash": "86888e7b15ef075b055479330a60bda5c283e26228d66fdec288b59c24429819",
+            "observed_at": "2026-10-11T04:55:19.596Z"
+          }
         },
         {
           "id": "regression",
           "command": ".venv\\Scripts\\python.exe -m pytest -q",
           "mandatory": true,
-          "status": "pending",
-          "evidence": null
+          "status": "pass",
+          "evidence": {
+            "path": ".genesis/evidence/M23-evidence-ledger-regression.json",
+            "source_hash": "fb7c130d555051fe9d91d0625b143e88036a78f242e72922c76e5ca5ba84bb2f",
+            "hash": "2e662fe4530a99c9bb93053cf9077ba1c7705de9a5b7f01ee6a43a722544b30b",
+            "observed_at": "2026-10-11T05:02:16.493Z"
+          }
         },
         {
           "id": "independent-review",
           "command": "",
           "mandatory": true,
-          "status": "pending",
-          "evidence": null
+          "status": "pass",
+          "evidence": {
+            "human": "Sonnet 5 (independent L4 reviewer, M23 round 1)",
+            "reason": "Requirements re-derived from SPEC.md FR-92 to FR-94, NFR-25, NFR-26, AC-73. Verified first-hand: full suite 1864 passed (435 s, no cacheprovider); genesis gate with timeout 590000 passed, evidence source_hash fb7c130d unchanged, no stray python; example 20 offline 7 of 7; migration 0011 checksum matches file, tables at 0 rows at baseline; project.json diff 8ba3b01 shows only 2 decisions added, 2 requeue controls, no task added removed or reordered. claim_key is one Python function used by both stores, identical across 3 processes and hash seeds over every code point; AC-73 pairs (case, spacing, NFC/NFD, ss) give one key. Concurrency at switchinterval 1e-6, 30 attempts per phase on both stores (record x8, 6-way supersede, record racing supersede) plus 3 OS processes on one DB (20 attempts): 0 duplicate claims, 0 forks, 0 contributions after supersession (xmin order); no-lock mutants fail in every column, so the probes detect. Taint: history, briefed input, orchestrator child answer and uri-cited versions all reach the claim as untrusted; no-taken-in mutant flips it. Tenancy: cross-tenant and cross-project uri and URL citations refused, other tenant project ledger reads empty, cross-ledger supersede refused; foreign-version mutant flips. Cite-by-URL right after redirect, cache hit by a child, tenant copy, stale refetch, spellings (default port, trailing dot, fragment); other-run URL refused. M22 caveats 1 to 5 sound; caveat 4 shown with a no-delete mutant (artifact left 0 vs 1); canonical_uri differs from M22 only in host. CAVEATS not blockers: (1) the store layer does not enforce what RunLedger does: LedgerStore.record on both stores accepts a contribution citing another tenants version, a run id from another tenant, and a provenance lower than the cited versions (NFR-25 and NFR-26 hold only through RunLedger); the 0011 comment saying the store checks the cited versions tenant is untrue, and there are no DB triggers so append-only rests on the API surface; fix in code, do not edit the migration (checksum). (2) Two supersessions whose sorted key pairs cross-collide in hashtext (found with 450k keys, 20 collisions) raised DeadlockDetected instead of waiting, no corruption, needs crafted statements. (3) A briefed input carrying an older version urn outranks the runs own newer fetch when citing by URL, contrary to newest tool result in history; only reachable by briefing a cache artifact. (4) Case-only variants of 8 Greek characters give different keys because NFC then casefold is not canonically closed; follows the spec literally; zero-width and full-width forms are distinct keys. (5) every record reads the whole ledger back, quadratic in ledger size.",
+            "source_hash": "fb7c130d555051fe9d91d0625b143e88036a78f242e72922c76e5ca5ba84bb2f",
+            "observed_at": "2026-10-11T05:05:05.177Z"
+          }
         }
       ],
       "next_action": "Run the task pre-flight.",
@@ -3865,12 +3904,12 @@
       "failures": [],
       "limitations": [],
       "created_at": "2026-10-10T07:01:18.488Z",
-      "updated_at": "2026-10-10T07:01:18.489Z"
+      "updated_at": "2026-10-11T05:19:36.670Z"
     },
     {
       "id": "M24-claim-lock",
       "outcome": "Overlapping agents fetch each source once and store each claim once under contention across tasks and processes, with backoff on a failed holder, and the Phase 3 increment 1 exit signal holds on both stores",
-      "state": "queued",
+      "state": "active",
       "risk": "high",
       "owner": null,
       "scope": [],
@@ -4653,17 +4692,44 @@
       "human": "Fable 5.1 (independent L4 reviewer, M22 round 1)",
       "reason": "Requirements re-derived from SPEC.md FR-89 to FR-91, NFR-25, NFR-26, AC-71, AC-72. Verified first-hand: migration 0010 applied with checksum ea111545 matching the file byte for byte; governance diff is one decision added, knowledge 105 to 105, 28 tasks in order, only the SPEC-1 and M22 task records touched, one requeue control. Full suite 1797 passed in 501s with -p no:cacheprovider; genesis gate rerun by the reviewer: unit 121 passed, regression 1797 passed in 414s, both on source hash eeb7c464 matching the checkpoint, no stray process. Probes in scratchpad m22-r1-probes with tenants SYN-m22r1, every row removed by run id: the reach rule compared SQL vs in-memory vs reaches() vs a spec oracle over 112 versions x 48 reader and key combinations with zero mismatch, get() filtered by tenant and project on both stores; SESSION across tenants or projects sharing a ledger id and across top-level runs misses on both stores while a run carrying the top-level ledger is served; a PUBLIC_GLOBAL copy carries only hash, retrieval time, final_uri and media type, origin rows untouched, no foreign id in any column or event; a consistently forged artifact (content and artifact hash both rewritten) is still a miss against the version hash on both stores; no UPDATE or DELETE names source_versions; a store failure after the artifact put leaves no version and an error the model sees; no URL that _target admits makes canonical_uri raise; host_scopes applies by normalised host; future-dated and clock-skewed versions are never served and become the prior; default boundary served at 3599s and refetched at 3600s on Postgres; outside a Runner 29 outcomes and 3 tool specs are byte-identical to HEAD fa64753 and the default schema_hash 1c16f3bc is unchanged; ledger_run_id is the top-level id for a top-level run, a child and a grandchild spawned from really injected ToolScopes, and for orchestrator children before and after a replan; 40 memory and 10 Postgres trials of 8 parallel fetches of one key plus 6 concurrent runs of two tenants at a 1 microsecond switch interval with REFUSE_ON_EVENT_LOOP on: nothing raised, no on-loop store call, accounting consistent, no cross-tenant read; the C2 repair read and its test fails without it; example 19 live 6 of 6 against example.com and the gateway, rows removed by run id. Mutants: 13 of 14 killed, each file restored and verified by SHA-256; M12 (orchestrator passing no ledger) is equivalent because the orchestrator is a depth 0 run. Caveats, not blockers: the tool_succeeds criterion executor builds a ToolScope with no ledger and no cache so a fetch made there records nothing and keeps the final URL; trailing-dot and IDN spellings of one allowlisted host get different cache keys (a refetch, never a leak); a record failure leaves an orphan artifact in the reader tenant; ToolScope accepts an uppercase ledger_run_id that the in-memory reachable does not match while RunConfig refuses it; a tool widened to PUBLIC_GLOBAL served an existing PROJECT version records no wider version until it expires; all 8 concurrent misses fetched in every trial, the declared pre-M24 behaviour.",
       "revision": null
+    },
+    {
+      "id": "35f62e94-dd29-49bf-9514-8f00b3e46747",
+      "at": "2026-10-10T18:48:12.774Z",
+      "action": "requeue",
+      "task": "M23-evidence-ledger",
+      "human": null,
+      "reason": null,
+      "revision": null
+    },
+    {
+      "id": "e51ec3eb-a7b4-4b9b-9840-5f2233d693b9",
+      "at": "2026-10-10T19:02:35.014Z",
+      "action": "requeue",
+      "task": "M23-evidence-ledger",
+      "human": null,
+      "reason": null,
+      "revision": null
+    },
+    {
+      "id": "36c48183-aae5-4b52-8a93-a055a823e41a",
+      "at": "2026-10-11T05:05:05.177Z",
+      "action": "approve",
+      "task": "M23-evidence-ledger",
+      "human": "Sonnet 5 (independent L4 reviewer, M23 round 1)",
+      "reason": "Requirements re-derived from SPEC.md FR-92 to FR-94, NFR-25, NFR-26, AC-73. Verified first-hand: full suite 1864 passed (435 s, no cacheprovider); genesis gate with timeout 590000 passed, evidence source_hash fb7c130d unchanged, no stray python; example 20 offline 7 of 7; migration 0011 checksum matches file, tables at 0 rows at baseline; project.json diff 8ba3b01 shows only 2 decisions added, 2 requeue controls, no task added removed or reordered. claim_key is one Python function used by both stores, identical across 3 processes and hash seeds over every code point; AC-73 pairs (case, spacing, NFC/NFD, ss) give one key. Concurrency at switchinterval 1e-6, 30 attempts per phase on both stores (record x8, 6-way supersede, record racing supersede) plus 3 OS processes on one DB (20 attempts): 0 duplicate claims, 0 forks, 0 contributions after supersession (xmin order); no-lock mutants fail in every column, so the probes detect. Taint: history, briefed input, orchestrator child answer and uri-cited versions all reach the claim as untrusted; no-taken-in mutant flips it. Tenancy: cross-tenant and cross-project uri and URL citations refused, other tenant project ledger reads empty, cross-ledger supersede refused; foreign-version mutant flips. Cite-by-URL right after redirect, cache hit by a child, tenant copy, stale refetch, spellings (default port, trailing dot, fragment); other-run URL refused. M22 caveats 1 to 5 sound; caveat 4 shown with a no-delete mutant (artifact left 0 vs 1); canonical_uri differs from M22 only in host. CAVEATS not blockers: (1) the store layer does not enforce what RunLedger does: LedgerStore.record on both stores accepts a contribution citing another tenants version, a run id from another tenant, and a provenance lower than the cited versions (NFR-25 and NFR-26 hold only through RunLedger); the 0011 comment saying the store checks the cited versions tenant is untrue, and there are no DB triggers so append-only rests on the API surface; fix in code, do not edit the migration (checksum). (2) Two supersessions whose sorted key pairs cross-collide in hashtext (found with 450k keys, 20 collisions) raised DeadlockDetected instead of waiting, no corruption, needs crafted statements. (3) A briefed input carrying an older version urn outranks the runs own newer fetch when citing by URL, contrary to newest tool result in history; only reachable by briefing a cache artifact. (4) Case-only variants of 8 Greek characters give different keys because NFC then casefold is not canonically closed; follows the spec literally; zero-width and full-width forms are distinct keys. (5) every record reads the whole ledger back, quadratic in ledger size.",
+      "revision": null
     }
   ],
   "discovery": null,
   "checkpoint": {
-    "at": "2026-10-10T17:36:29.847Z",
+    "at": "2026-10-11T05:19:36.825Z",
     "revision": {
-      "commit": "fa64753fb3a226edb97067e8a62ad9c3528fd963",
+      "commit": "8ba3b01bd64fa7f91e9097257e37e576271bdcf5",
       "dirty": true,
-      "source_hash": "eeb7c46448c8ff29ac9d53ef06404d2ba0a528ac4ead75730558beddb983cede"
+      "source_hash": "fb7c130d555051fe9d91d0625b143e88036a78f242e72922c76e5ca5ba84bb2f"
     },
-    "active_task": "M23-evidence-ledger",
+    "active_task": "M24-claim-lock",
     "next_action": "Run the task pre-flight."
   },
   "legacy": null

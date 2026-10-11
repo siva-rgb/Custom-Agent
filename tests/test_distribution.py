@@ -48,6 +48,8 @@ EXPECTED_EXAMPLES = {
     "18_context.py",
     # FR-91 (M22): source versions and the scoped resource cache.
     "19_sources.py",
+    # FR-94 (M23): the evidence ledger.
+    "20_ledger.py",
 }
 
 

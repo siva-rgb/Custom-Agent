@@ -20,6 +20,8 @@ from enum import Enum
 from typing import Any, Awaitable, Callable, Protocol
 from urllib.parse import urlsplit, urlunsplit
 
+import httpx
+
 from .artifacts import canonical_id
 from .errors import ArtifactIntegrityError, ArtifactNotFound
 from .primitives import ContentProvenance, unstorable_reason
@@ -56,7 +58,15 @@ def canonical_uri(url: str) -> str:
     scheme = parts.scheme.lower()
     if scheme not in _DEFAULT_PORTS or not parts.hostname:
         raise ValueError(f"canonical_uri needs an http(s) URL with a host, got {url!r}")
-    host = parts.hostname.lower()
+    host = parts.hostname
+    # M22 review caveat 3: as the fetch tool's allowlist normalises a host -- IDNA,
+    # lowercase, no trailing dot -- so one host is one key.
+    bracketed = f"[{host}]" if ":" in host else host
+    try:
+        host = httpx.URL(f"http://{bracketed}/").raw_host.decode("ascii")
+    except Exception:  # noqa: BLE001
+        raise ValueError(f"canonical_uri needs an http(s) URL with a host, got {url!r}") from None
+    host = host.lower().rstrip(".")
     if ":" in host:
         host = f"[{host}]"
     port = parts.port
@@ -316,8 +326,16 @@ class ResourceCache:
             media_type=media_type, cache_scope=scope, auth_scope_hash=key.auth_scope_hash, prior_version=prior,
             provenance=provenance, tenant_id=self.tenant_id, project_id=self.project_id, source_run=self.run_id,
         )
-        await self._call(self._store().record, version, ledger_run_id=self.ledger_run_id,
-                         request_variant=key.request_variant)
+        try:
+            await self._call(self._store().record, version, ledger_run_id=self.ledger_run_id,
+                             request_variant=key.request_variant)
+        except BaseException:
+            # M22 review caveat 4: a version that cannot be recorded leaves no artifact.
+            try:
+                await self._artifacts_for(self.tenant_id, self.project_id).delete(ref.artifact_id)
+            except Exception:  # noqa: BLE001 - the record's failure is what the caller hears
+                pass
+            raise
         return version
 
     async def _event(self, kind: str, version: EvidenceSourceVersion, **extra: Any) -> None:

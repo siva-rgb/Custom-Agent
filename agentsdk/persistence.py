@@ -18,6 +18,7 @@ from .events import EventSink
 from .postgres import (
     PostgresArtifactStore,
     PostgresEvidenceStore,
+    PostgresLedgerStore,
     PostgresRunStateStore,
     PostgresEventStore,
     PostgresRunStore,
@@ -117,3 +118,7 @@ class Persistence:
         """The Postgres store of source versions (FR-89, M22). Every read names the
         reader's tenant and project."""
         return PostgresEvidenceStore(self.dsn)
+
+    def ledger_store(self) -> PostgresLedgerStore:
+        """The Postgres store of evidence ledgers (FR-92, M23)."""
+        return PostgresLedgerStore(self.dsn)

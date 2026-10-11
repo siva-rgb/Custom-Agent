@@ -1529,3 +1529,152 @@ class PostgresEvidenceStore:
                  tenant_id, project_id, ledger_run_id),
             ).fetchall()
         return [_version_from_row(row) for row in rows]
+
+
+# --- the evidence ledger (FR-92 to FR-94, M23) ----------------------------------------------
+
+_LOCK_CLAIMS = 3
+_CLAIM_COLUMNS = "claim_id, ledger_run_id, statement, claim_key, supersedes, tenant_id, project_id"
+
+
+def _claim_from_row(row: tuple) -> Any:
+    from .ledger import EvidenceClaim
+
+    return EvidenceClaim(
+        claim_id=str(row[0]), ledger_run_id=str(row[1]), statement=row[2], claim_key=row[3],
+        supersedes=None if row[4] is None else str(row[4]), tenant_id=row[5], project_id=row[6],
+    )
+
+
+class PostgresLedgerStore:
+    """FR-92's durable store: claims, contributions and citations (migration 0011).
+
+    Insert-only. Every statement is filtered by tenant, project and ledger. A record or
+    supersession checks and writes in one transaction under an advisory lock on the
+    ledger and the statement's key (DECISION-9de80b77), and UNIQUE (supersedes) keeps the
+    chain from forking even without it. Synchronous: callers on an event loop use a
+    worker thread (FR-81).
+    """
+
+    def __init__(self, dsn: str) -> None:
+        self._dsn = dsn
+
+    @staticmethod
+    def _lock(conn: Any, tenant_id: str, project_id: str, ledger_run_id: str, *keys: str) -> None:
+        # Sorted, so two writers needing the same two keys take them in one order.
+        for key in sorted(set(keys)):
+            conn.execute("SELECT pg_advisory_xact_lock(hashtext(%s), %s)",
+                         ("|".join((tenant_id, project_id, ledger_run_id, key)), _LOCK_CLAIMS))
+
+    @staticmethod
+    def _active(conn: Any, tenant_id: str, project_id: str, ledger_run_id: str, key: str) -> Any:
+        row = conn.execute(
+            f"SELECT {_CLAIM_COLUMNS} FROM claims c WHERE tenant_id = %s AND project_id = %s"
+            " AND ledger_run_id = %s AND claim_key = %s"
+            " AND NOT EXISTS (SELECT 1 FROM claims s WHERE s.supersedes = c.claim_id)",
+            (tenant_id, project_id, ledger_run_id, key),
+        ).fetchone()
+        return None if row is None else _claim_from_row(row)
+
+    @staticmethod
+    def _contribute(conn: Any, claim: Any, new: Any) -> Any:
+        from .ledger import _contribution
+
+        made = _contribution(new, claim.claim_id, datetime.now(timezone.utc))
+        conn.execute(
+            "INSERT INTO claim_contributions (contribution_id, claim_id, tenant_id, project_id, run_id, node_id,"
+            " agent_id, confidence, provenance, why, recorded_at) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)",
+            (made.contribution_id, claim.claim_id, claim.tenant_id, claim.project_id, made.run_id, made.node_id,
+             made.agent_id, made.confidence, Jsonb(_provenance_to_json(made.provenance)), made.why, made.recorded_at),
+        )
+        for stance in ("supporting", "contradicting"):
+            for position, version in enumerate(getattr(made, stance)):
+                conn.execute(
+                    "INSERT INTO claim_citations (contribution_id, stance, position, source_version_id)"
+                    " VALUES (%s, %s, %s, %s)", (made.contribution_id, stance, position, version))
+        return made
+
+    @staticmethod
+    def _insert_claim(conn: Any, claim: Any) -> None:
+        conn.execute(
+            f"INSERT INTO claims ({_CLAIM_COLUMNS}) VALUES (%s, %s, %s, %s, %s, %s, %s)",
+            (claim.claim_id, claim.ledger_run_id, claim.statement, claim.claim_key, claim.supersedes,
+             claim.tenant_id, claim.project_id),
+        )
+
+    def record(self, *, tenant_id: str, project_id: str, ledger_run_id: str, statement: str,
+               contribution: Any) -> tuple[Any, Any, bool]:
+        from .ledger import MAX_STATEMENT, EvidenceClaim, _text, _uuid, claim_key
+
+        key = claim_key(_text("statement", statement, limit=MAX_STATEMENT))
+        ledger = _uuid("ledger_run_id", ledger_run_id)
+        with _checkout(self._dsn) as conn:
+            with conn.transaction():
+                self._lock(conn, tenant_id, project_id, ledger, key)
+                claim = self._active(conn, tenant_id, project_id, ledger, key)
+                new = claim is None
+                if new:
+                    claim = EvidenceClaim(str(uuid.uuid4()), ledger, statement, key, None, tenant_id, project_id)
+                    self._insert_claim(conn, claim)
+                made = self._contribute(conn, claim, contribution)
+        return claim, made, new
+
+    def supersede(self, *, tenant_id: str, project_id: str, ledger_run_id: str, old_claim_id: str,
+                  statement: str, contribution: Any) -> tuple[Any, Any]:
+        from .ledger import _CLAIM_URN, MAX_STATEMENT, ClaimRefused, EvidenceClaim, _text, _uuid, claim_key
+
+        key = claim_key(_text("statement", statement, limit=MAX_STATEMENT))
+        ledger = _uuid("ledger_run_id", ledger_run_id)
+        with _checkout(self._dsn) as conn:
+            with conn.transaction():
+                row = conn.execute(
+                    f"SELECT {_CLAIM_COLUMNS} FROM claims WHERE claim_id = %s AND tenant_id = %s"
+                    " AND project_id = %s AND ledger_run_id = %s", (old_claim_id, tenant_id, project_id, ledger),
+                ).fetchone()
+                if row is None:
+                    raise ClaimRefused(f"no claim {_CLAIM_URN}{old_claim_id} in this ledger")
+                old = _claim_from_row(row)
+                self._lock(conn, tenant_id, project_id, ledger, old.claim_key, key)
+                after = conn.execute("SELECT claim_id FROM claims WHERE supersedes = %s", (old.claim_id,)).fetchone()
+                if after is not None:
+                    raise ClaimRefused(f"claim {old.uri} is already superseded by {_CLAIM_URN}{after[0]}")
+                other = self._active(conn, tenant_id, project_id, ledger, key)
+                if other is not None and other.claim_id != old.claim_id:
+                    raise ClaimRefused(f"the new statement matches active claim {other.uri}")
+                claim = EvidenceClaim(str(uuid.uuid4()), ledger, statement, key, old.claim_id, tenant_id, project_id)
+                self._insert_claim(conn, claim)
+                made = self._contribute(conn, claim, contribution)
+        return claim, made
+
+    def rows(self, tenant_id: str, project_id: str, ledger_run_id: str) -> tuple[list[Any], list[Any]]:
+        from .ledger import ClaimContribution, _uuid
+
+        ledger = _uuid("ledger_run_id", ledger_run_id)
+        with _checkout(self._dsn) as conn:
+            claims = [_claim_from_row(r) for r in conn.execute(
+                f"SELECT {_CLAIM_COLUMNS} FROM claims WHERE tenant_id = %s AND project_id = %s AND ledger_run_id = %s"
+                " ORDER BY recorded_at, claim_id", (tenant_id, project_id, ledger)).fetchall()]
+            rows = conn.execute(
+                "SELECT k.contribution_id, k.claim_id, k.run_id, k.node_id, k.agent_id, k.confidence, k.provenance,"
+                " k.why, k.recorded_at FROM claim_contributions k JOIN claims c ON c.claim_id = k.claim_id"
+                " WHERE c.tenant_id = %s AND c.project_id = %s AND c.ledger_run_id = %s"
+                " AND k.tenant_id = %s AND k.project_id = %s ORDER BY k.recorded_at, k.contribution_id",
+                (tenant_id, project_id, ledger, tenant_id, project_id)).fetchall()
+            cited: dict[str, dict[str, list[str]]] = {}
+            if rows:
+                for cid, stance, version in conn.execute(
+                    "SELECT contribution_id, stance, source_version_id FROM claim_citations"
+                    " WHERE contribution_id = ANY(%s) ORDER BY contribution_id, stance, position",
+                    ([r[0] for r in rows],)).fetchall():
+                    cited.setdefault(str(cid), {}).setdefault(stance, []).append(str(version))
+        contributions = []
+        for r in rows:
+            cid = str(r[0])
+            contributions.append(ClaimContribution(
+                run_id=str(r[2]), node_id=r[3], agent_id=r[4],
+                supporting=tuple(cited.get(cid, {}).get("supporting", ())),
+                contradicting=tuple(cited.get(cid, {}).get("contradicting", ())),
+                confidence=r[5], provenance=_provenance_from_json(r[6]), why=r[7],
+                contribution_id=cid, claim_id=str(r[1]), recorded_at=r[8],
+            ))
+        return claims, contributions

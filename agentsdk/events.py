@@ -41,6 +41,9 @@ class EventType(str, Enum):
     # hit, or a copy made into this tenant and project.
     SOURCE_FETCHED = "SourceFetched"
     SOURCE_SERVED = "SourceServed"
+    # FR-93, FR-94 (M23): a claim recorded or contributed to, and a claim superseded.
+    CLAIM_RECORDED = "ClaimRecorded"
+    CLAIM_SUPERSEDED = "ClaimSuperseded"
 
 
 @dataclass(frozen=True)

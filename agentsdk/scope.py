@@ -11,6 +11,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any, Callable
 
+from .artifacts import canonical_id
 from .postgres import RunScope
 from .primitives import unstorable_reason
 
@@ -35,6 +36,9 @@ class ToolScope(RunScope):
     # None ledger_run_id means this run's own id.
     ledger_run_id: str | None = None
     evidence: Any = field(default=None, compare=False, repr=False)
+    # FR-93 (M23): the agent running, and the run's way into its top-level ledger.
+    agent_id: str | None = None
+    ledger: Any = field(default=None, compare=False, repr=False)
     _events: Any = field(default=None, compare=False, repr=False)
     _control: Any = field(default=None, compare=False, repr=False)
     _runner: Any = field(default=None, compare=False, repr=False)
@@ -47,8 +51,10 @@ class ToolScope(RunScope):
             type(self.node_id) is not str or not self.node_id or unstorable_reason(self.node_id) is not None
         ):
             raise ValueError(f"node_id must be None or a non-empty storable str, got {self.node_id!r}")
-        if self.ledger_run_id is not None:
-            RunScope(run_id=self.ledger_run_id, tenant_id=self.tenant_id, project_id=self.project_id)
+        # M22 review caveat 5: only the canonical form, as RunConfig takes it, so every
+        # store finds the same ledger.
+        if self.ledger_run_id is not None and canonical_id(self.ledger_run_id) is None:
+            raise ValueError(f"ledger_run_id must be None or a canonical UUID as text, got {self.ledger_run_id!r}")
 
 
 class AttributedArtifacts:

@@ -44,6 +44,8 @@ _TRACKED = (
     ("plan_versions", "run_id"),
     ("plan_node_states", "run_id"),
     ("source_versions", "source_version_id"),
+    ("claims", "claim_id"),
+    ("claim_contributions", "contribution_id"),
 )
 _RUN_TABLES = tuple(table for table, _ in _TRACKED)
 

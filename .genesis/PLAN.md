@@ -4,7 +4,7 @@
 
 - workflow: new-product
 - phase: build
-- plan approval: siva-rgb (owner) at 2026-10-10T13:35:56.256Z
+- plan approval: siva-rgb (owner) at 2026-10-10T19:02:35.489Z
 
 ## Tasks
 
@@ -210,15 +210,15 @@
 
 ### M23-evidence-ledger — Agents record and supersede claims in their run's ledger, deduplicated by normalised statement, each contribution kept and its taint carried, the history a chain that never forks
 
-- state/risk: active / high
+- state/risk: done / high
 - requirements: FR-92, FR-93, FR-94, NFR-26, AC-73
 - scope: not bounded
-- gates: unit: .venv\Scripts\python.exe -m pytest tests/test_ledger.py -q, regression: .venv\Scripts\python.exe -m pytest -q, independent-review: pending
+- gates: unit: .venv\Scripts\python.exe -m pytest tests/test_ledger.py -q, regression: .venv\Scripts\python.exe -m pytest -q, independent-review: pass
 - next: Run the task pre-flight.
 
 ### M24-claim-lock — Overlapping agents fetch each source once and store each claim once under contention across tasks and processes, with backoff on a failed holder, and the Phase 3 increment 1 exit signal holds on both stores
 
-- state/risk: queued / high
+- state/risk: active / high
 - requirements: FR-95, FR-96, NFR-24, AC-74
 - scope: not bounded
 - gates: unit: .venv\Scripts\python.exe -m pytest tests/test_claim_lock.py -q, regression: .venv\Scripts\python.exe -m pytest -q, independent-review: pending

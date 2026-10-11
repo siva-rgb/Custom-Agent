@@ -493,6 +493,10 @@ class Orchestrator:
             scope=ToolScope(
                 run_id=scope.run_id, tenant_id=scope.tenant_id, project_id=scope.project_id,
                 node_id=node.node_id, artifacts=scope.artifacts,
+                # M22 review caveat 1: as the run's own scope, so a fetch or a claim made
+                # by a criterion is cached and recorded like any other.
+                ledger_run_id=scope.ledger_run_id, evidence=scope.evidence,
+                agent_id=scope.agent_id, ledger=scope.ledger,
             ),
         )
         outcome = await executor.execute(

@@ -56,6 +56,13 @@ persisted so you can reconstruct exactly what happened afterwards.
   run, no caching) per tool or per host. A hit stored in another tenant or
   project is copied into the reader's own, never shared, and each fetch emits
   `SourceFetched` or `SourceServed` (M22).
+- **Keeps an evidence ledger per top-level run** (`agentsdk.ledger.ledger_tools`):
+  agents record claims with `record_claim`, citing the pages they fetched, and
+  correct them with `supersede_claim`. One statement, however it is cased or
+  spaced, is one claim with every agent's contribution; its sources and labels
+  are derived from those contributions, so a claim drawn from untrusted pages
+  stays untrusted; nothing is updated or deleted, and a supersession is a chain
+  that never forks. Read it with `Runner.evidence_ledger()` (M23).
 - **Runs a response's tool calls in parallel when the tools say it is safe.** A
   tool that declares `concurrency_safe=True` (the built-in read-only tools do)
   runs beside the other safe calls of the same response, under
@@ -91,6 +98,8 @@ Stated plainly, because an SDK that overstates itself costs you a week:
 | Sandboxed tool execution | Phase 5 |
 | Pause and resume; durable interruptions (cancel is built) | Phase 6 |
 | The execution manifest's `tools_sent` records the tools a run's agent is sent, written at run start with the rest of its configuration, so a run that ends before its first request records a set it never sent | Declared (M21) |
+| A fetch tool widened to a broader cache scope keeps serving the run's own version recorded at the narrower one until that version expires | Declared (M23) |
+| A claim's labels count the run's tool results already in its history when `record_claim` is called; results of other calls in the same parallel batch are not yet there and do not count | Declared (M23) |
 | Fetches of one page that miss the cache at the same moment each fetch it and each record a version; one fetch per page and scope is M24's claim-lock | Phase 3, M24 |
 | A source version's content is the fetch tool's whole result, status line included, so a served page reads exactly as it did when fetched; a copy made into another tenant or project keeps the original's final URL and media type with its hash and retrieval time | Declared (M22) |
 | A session store's combined write (a compaction's summary and its `ContextCompacted` event) refuses an event sink that names another run, tenant or project. The Runner always passes the run's own sink; only code driving `AgentLoop` itself with another run's sink meets the refusal | Declared (M21a) |
@@ -457,6 +466,7 @@ credentials -- which is also how the test suite checks them.
 | [`17_orchestrator.py`](scripts/17_orchestrator.py) | a four-node plan whose check fails its acceptance criterion, the replan as a second version, and the side-effecting node carried rather than run again |
 | [`18_context.py`](scripts/18_context.py) | an agent sent only the one tool its profile names, a long run compacting past 0.75 of its window, and the artifact holding what was replaced, read back against its hash |
 | [`19_sources.py`](scripts/19_sources.py) | a page fetched once and then served from the cache in the same run and the next, a refetch after freshness recording a new version that names the old one, and a second tenant getting no hit |
+| [`20_ledger.py`](scripts/20_ledger.py) | two subagents recording one statement as one claim with both contributions and both pages cited, the claim untrusted because the pages are, and a wrong claim superseded with the chain read back |
 
 ```bash
 python scripts/02_custom_tools.py --offline

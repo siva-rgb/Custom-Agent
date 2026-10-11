@@ -41,6 +41,7 @@ from .artifacts import InMemoryArtifactStore
 from .plan import InMemoryRunStateStore
 from .scope import AttributedArtifacts, ToolScope
 from .evidence import InMemoryEvidenceStore, ResourceCache
+from .ledger import EvidenceLedger, InMemoryLedgerStore, RunLedger
 from .primitives import ContentProvenance, unstorable_reason
 from .budget import BudgetLease, tokens_of
 from .prices import PRICE_TABLE_DATE, shipped_pricing
@@ -393,6 +394,7 @@ class Runner:
         self._memory_artifacts: InMemoryArtifactStore | None = None
         self._memory_states: InMemoryRunStateStore | None = None
         self._memory_evidence: InMemoryEvidenceStore | None = None
+        self._memory_ledger: InMemoryLedgerStore | None = None
 
     def _admits(self, tenant_id: str, project_id: str, run_id: str) -> bool:
         return (tenant_id, project_id, run_id) in self._started
@@ -413,6 +415,19 @@ class Runner:
         if self._memory_evidence is None:
             self._memory_evidence = InMemoryEvidenceStore()
         return self._memory_evidence
+
+    def _ledger_store(self) -> Any:
+        """Where this Runner's evidence ledgers are kept (FR-92)."""
+        if self._persistence is not None:
+            return self._persistence.ledger_store()
+        if self._memory_ledger is None:
+            self._memory_ledger = InMemoryLedgerStore()
+        return self._memory_ledger
+
+    def evidence_ledger(self, tenant_id: str, project_id: str, ledger_run_id: str) -> EvidenceLedger:
+        """FR-94: the ledger of a top-level run, read within its tenant and project.
+        Its methods are store calls: from a coroutine, call them on a worker thread."""
+        return EvidenceLedger(self._ledger_store(), tenant_id, project_id, ledger_run_id)
 
     def _run_states_for(self, tenant_id: str, project_id: str) -> Any:
         """The RunStateStore for a run's tenant and project (FR-65, M19)."""
@@ -848,6 +863,15 @@ class Runner:
         artifacts = AttributedArtifacts(
             partial(self._artifacts_for, scope.tenant_id, scope.project_id), run_id, config.node_id
         )
+
+        async def taken_in() -> tuple[ContentProvenance, ...]:
+            # FR-93: what the run has taken in when a claim is recorded -- every tool
+            # result already in its history and every input it was briefed with.
+            history = await control.store(sessions.history, run_id)
+            return tuple(r.provenance for m in history for r in m.tool_results) + tuple(
+                p for _, p in config.briefed_inputs)
+
+        ledger_run_id = config.ledger_run_id or run_id
         executor = ToolExecutor(
             registry=registry,
             permission_checker=spec.checker(),
@@ -859,12 +883,19 @@ class Runner:
                 run_id=run_id, tenant_id=scope.tenant_id, project_id=scope.project_id,
                 node_id=config.node_id,
                 artifacts=artifacts,
-                ledger_run_id=config.ledger_run_id or run_id,
+                ledger_run_id=ledger_run_id,
                 evidence=ResourceCache(
                     self._evidence_store, self._artifacts_for,
                     tenant_id=scope.tenant_id, project_id=scope.project_id, run_id=run_id,
-                    ledger_run_id=config.ledger_run_id or run_id, node_id=config.node_id,
+                    ledger_run_id=ledger_run_id, node_id=config.node_id,
                     call=control.store, emit=partial(control.store, events.emit),
+                ),
+                agent_id=spec.id,
+                ledger=RunLedger(
+                    self._ledger_store, self._evidence_store,
+                    tenant_id=scope.tenant_id, project_id=scope.project_id, ledger_run_id=ledger_run_id,
+                    run_id=run_id, node_id=config.node_id, agent_id=spec.id,
+                    call=control.store, taken_in=taken_in, emit=partial(control.store, events.emit),
                 ),
                 _events=events, _control=control, _runner=self, _lease=config.budget_lease,
             ),
