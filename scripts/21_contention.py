@@ -11,7 +11,8 @@ claim, and a second tenant reads two of the same pages. Checked against the stor
     contributor and every page they cited as a source (FR-92, FR-93)
   * the corrected claim's supersede history readable, oldest first (FR-94)
   * no source served to the second tenant: it fetched the pages itself (NFR-25)
-  * every claim at least as tainted as the pages it cites (P3-D11)
+  * every claim at least as tainted as the pages it cites (P3-D11), the correction
+    included: the editor cites the page version the wrong claim rests on (FR-99)
 
 Run it
   python scripts/21_contention.py            # live: gateway + PostgreSQL (DATABASE_URL in .env)
@@ -53,6 +54,8 @@ from agentsdk.subagents import Briefing
 TENANT, PROJECT, OTHER_TENANT = "example-tenant", "examples", "example-other-tenant"
 READERS = 8
 TOOLS = ("fetch_url", "record_claim", "supersede_claim")
+# A source version is cited by its uri (FR-89, FR-93).
+VERSION_URN = "urn:agentsdk:source:"
 
 
 class Corpus:
@@ -99,6 +102,20 @@ def reader_steps(n: int, corpus: Corpus) -> list[list[list]]:
     if n == 0:
         records.append(["record_claim", {"statement": corpus.wrong, "supporting": [corpus.pages[0]]}])
     return [[["fetch_url", {"url": page}] for page in pages], records]
+
+
+def taint_holds(views, source_of) -> bool:
+    """Every claim at least as tainted as every page it cites, and no less trusted: its
+    taint flags include each page's, and it is untrusted wherever a page is. False for
+    no claims, so the check cannot pass on an empty ledger."""
+    held = bool(views)
+    for view in views:
+        for vid in tuple(view.supporting) + tuple(view.contradicting):
+            source = source_of(vid)
+            held &= source.provenance.taint_flags <= view.provenance.taint_flags
+            held &= (view.provenance.trust_zone is TrustZone.UNTRUSTED
+                     or source.provenance.trust_zone is not TrustZone.UNTRUSTED)
+    return held
 
 
 def described(turns: list[list[list]]) -> str:
@@ -189,10 +206,14 @@ async def contend(runner, orchestrator, corpus: Corpus, *, planner: str, reader:
 
     # The editor corrects the wrong claim, in the same ledger.
     wrong = claims.get(claim_key(corpus.wrong))
-    # One call, citing nothing: a live model makes a fetch and a claim citing it in one
-    # response, and a result of the same batch is not yet in the run's history (FR-93).
+    # It cites the page version the wrong claim rests on, by its uri, so the taint check
+    # below is not vacuous for the corrected claim (FR-99). One call: a live model given
+    # a fetch and a citation of it batches them, and a result of the same batch is not
+    # yet in the run's history (FR-93), so a citation by URL there is refused.
     editor_steps = [] if wrong is None else [[["supersede_claim", {
-        "claim": wrong.claim.uri, "statement": corpus.right, "why": "the first page says otherwise"}]]]
+        "claim": wrong.claim.uri, "statement": corpus.right,
+        "supporting": [VERSION_URN + wrong.supporting[0].removeprefix(VERSION_URN)],
+        "why": "the first page says otherwise"}]]]
     editor = await SubagentPool(runner).spawn(
         parent=RunScope(run_id=top.run_id, tenant_id=tenant, project_id=project),
         agent=AgentSpec(id="editor", tool_profile=TOOLS, instructions=(
@@ -215,13 +236,7 @@ async def contend(runner, orchestrator, corpus: Corpus, *, planner: str, reader:
     right = claims.get(claim_key(corpus.right))
     chain = await asyncio.to_thread(ledger.history, right.claim.claim_id) if right else []
     store = runner._evidence_store()
-    taint_ok = True
-    for view in views:
-        for vid in view.supporting + view.contradicting:
-            source = await asyncio.to_thread(store.get, tenant, project, vid)
-            taint_ok &= source.provenance.taint_flags <= view.provenance.taint_flags
-            taint_ok &= (view.provenance.trust_zone is TrustZone.UNTRUSTED
-                         or source.provenance.trust_zone is not TrustZone.UNTRUSTED)
+    taint_ok = await asyncio.to_thread(taint_holds, views, lambda vid: store.get(tenant, project, vid))
     other_sources = [(e.event_type, e.payload) for e in other.events
                      if e.event_type in (EventType.SOURCE_SERVED, EventType.SOURCE_FETCHED)]
     waits = runner._claim_lock.waits
@@ -246,7 +261,9 @@ async def contend(runner, orchestrator, corpus: Corpus, *, planner: str, reader:
          [c.statement for c in chain] == [corpus.wrong, corpus.right]),
         ("no source was served to the second tenant",
          len(other_sources) == 2 and all(kind is EventType.SOURCE_FETCHED for kind, _ in other_sources)),
-        ("every claim is at least as tainted as the pages it cites", bool(views) and taint_ok),
+        # The correction must cite a page, or the check is vacuous for it (FR-99).
+        ("every claim, the correction included, is at least as tainted as the pages it cites",
+         taint_ok and right is not None and len(right.supporting) >= 1),
     ]
     runs = [top.run_id, editor.run_id, other.run_id]
     return checks, runs, waits

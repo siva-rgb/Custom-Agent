@@ -26,7 +26,7 @@ import pytest
 
 from agentsdk import AgentSpec, Persistence, RunConfig, RunStatus, Runner
 from agentsdk.builtin_tools import fetch_tool
-from agentsdk.claimlock import ATTEMPTS, BASE_DELAY, ClaimLock, KeyFailed
+from agentsdk.claimlock import ATTEMPTS, BASE_DELAY, ClaimLock, KeyFailed, lock_key
 from agentsdk.config import normalise_database_url
 from agentsdk.events import EventType
 from agentsdk.evidence import InMemoryEvidenceStore
@@ -486,7 +486,8 @@ def test_caveat2_keys_are_locked_in_the_order_of_their_lock_values_each_once():
     with psycopg.connect(DSN) as conn:
         with conn.transaction():
             values = PostgresLedgerStore._lock(conn, TENANT, PROJECT, ledger, *reversed(keys), keys[0])
-            hashes = {k: conn.execute("SELECT hashtext(%s)", (f"{TENANT}|{PROJECT}|{ledger}|{k}",)).fetchone()[0]
+            # M25 (FR-99, P1): the names are encoded as claim-lock keys are.
+            hashes = {k: conn.execute("SELECT hashtext(%s)", (lock_key(TENANT, PROJECT, ledger, k),)).fetchone()[0]
                       for k in keys}
             held = conn.execute("SELECT count(*) FROM pg_locks WHERE locktype = 'advisory' AND pid = pg_backend_pid()"
                                 " AND objid = 3").fetchone()[0]

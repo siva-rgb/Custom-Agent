@@ -9,7 +9,7 @@
     "non_goals": [],
     "trust_boundary": "local repository",
     "created_at": "2026-09-05T14:48:57.894Z",
-    "updated_at": "2026-10-11T12:10:16.626Z"
+    "updated_at": "2026-10-11T14:16:19.857Z"
   },
   "policy": {
     "ponytail": "full",
@@ -23,19 +23,19 @@
     }
   },
   "lifecycle": {
-    "phase": "verify",
-    "status": "ready",
-    "active_task": null,
+    "phase": "build",
+    "status": "active",
+    "active_task": "M26-verifications-and-signals",
     "blocker": null,
-    "next_action": "Review completed work and choose the next bounded outcome."
+    "next_action": "Run the task pre-flight."
   },
   "commands": {},
   "workflow": {
     "type": "new-product",
     "started_at": "2026-09-05T14:48:57.897Z",
     "spec_check": {
-      "at": "2026-10-11T10:23:26.622Z",
-      "source_hash": "a84dc1b9ebf41cc8ac4c3fadbfc155f8d313788472a7302a54865deb5e43a106",
+      "at": "2026-10-11T12:35:06.004Z",
+      "source_hash": "c0005f3b2ed5c126eb1a1f13643bbbf8dde0abd2eef8743e3af6887bd8129653",
       "requirements": [
         "AC-1",
         "AC-10",
@@ -111,10 +111,24 @@
         "AC-74",
         "AC-75",
         "AC-76",
+        "AC-77",
+        "AC-78",
+        "AC-79",
         "AC-8",
+        "AC-80",
+        "AC-81",
         "AC-9",
         "FR-1",
         "FR-10",
+        "FR-100",
+        "FR-101",
+        "FR-102",
+        "FR-103",
+        "FR-104",
+        "FR-105",
+        "FR-106",
+        "FR-107",
+        "FR-108",
         "FR-11",
         "FR-12",
         "FR-13",
@@ -211,6 +225,7 @@
         "FR-96",
         "FR-97",
         "FR-98",
+        "FR-99",
         "NFR-1",
         "NFR-10",
         "NFR-11",
@@ -230,6 +245,9 @@
         "NFR-24",
         "NFR-25",
         "NFR-26",
+        "NFR-27",
+        "NFR-28",
+        "NFR-29",
         "NFR-3",
         "NFR-4",
         "NFR-5",
@@ -240,14 +258,14 @@
       ]
     },
     "plan_check": {
-      "at": "2026-10-11T10:23:27.045Z",
-      "source_hash": "e811b78bf4aa191768a959b923838523bff237a75a9da4db8faebe33cc283df7"
+      "at": "2026-10-11T14:16:04.717Z",
+      "source_hash": "dd4a74f8f53467e8a5c51b652bc1f52f02cbdf12691b6c3cc7c3c26069f9d1d8"
     },
     "plan_approval": {
       "human": "siva-rgb (owner)",
-      "reason": "M24a added before Phase 3 increment 2",
-      "at": "2026-10-11T10:23:27.181Z",
-      "source_hash": "e811b78bf4aa191768a959b923838523bff237a75a9da4db8faebe33cc283df7"
+      "reason": "Re-signed: increment 2 tasks M25 to M28 with the regression gate restored (DECISION-11af2ee2)",
+      "at": "2026-10-11T14:16:04.865Z",
+      "source_hash": "dd4a74f8f53467e8a5c51b652bc1f52f02cbdf12691b6c3cc7c3c26069f9d1d8"
     }
   },
   "artifacts": [
@@ -331,10 +349,24 @@
         "AC-74",
         "AC-75",
         "AC-76",
+        "AC-77",
+        "AC-78",
+        "AC-79",
         "AC-8",
+        "AC-80",
+        "AC-81",
         "AC-9",
         "FR-1",
         "FR-10",
+        "FR-100",
+        "FR-101",
+        "FR-102",
+        "FR-103",
+        "FR-104",
+        "FR-105",
+        "FR-106",
+        "FR-107",
+        "FR-108",
         "FR-11",
         "FR-12",
         "FR-13",
@@ -431,6 +463,7 @@
         "FR-96",
         "FR-97",
         "FR-98",
+        "FR-99",
         "NFR-1",
         "NFR-10",
         "NFR-11",
@@ -450,6 +483,9 @@
         "NFR-24",
         "NFR-25",
         "NFR-26",
+        "NFR-27",
+        "NFR-28",
+        "NFR-29",
         "NFR-3",
         "NFR-4",
         "NFR-5",
@@ -458,12 +494,12 @@
         "NFR-8",
         "NFR-9"
       ],
-      "source_hash": "a84dc1b9ebf41cc8ac4c3fadbfc155f8d313788472a7302a54865deb5e43a106",
+      "source_hash": "c0005f3b2ed5c126eb1a1f13643bbbf8dde0abd2eef8743e3af6887bd8129653",
       "approval": {
         "human": "siva-rgb (owner)",
-        "reason": "FR-98 and AC-76 for M24a",
-        "at": "2026-10-11T10:23:26.758Z",
-        "source_hash": "a84dc1b9ebf41cc8ac4c3fadbfc155f8d313788472a7302a54865deb5e43a106"
+        "reason": "Phase 3 increment 2: FR-99 to FR-108, NFR-27 to NFR-29, AC-77 to AC-81 (DECISION-f9888168, DECISION-581a647b, DECISION-2cec3b61)",
+        "at": "2026-10-11T12:35:06.161Z",
+        "source_hash": "c0005f3b2ed5c126eb1a1f13643bbbf8dde0abd2eef8743e3af6887bd8129653"
       }
     }
   ],
@@ -1446,6 +1482,38 @@
       "status": "accepted",
       "source": null,
       "recorded_at": "2026-10-11T10:23:26.335Z"
+    },
+    {
+      "id": "DECISION-f9888168",
+      "title": "Phase 3 increment 2: what the gate judges, outcomes, trust and paraphrases (P3-D13 to P3-D16)",
+      "text": "Owner decision 2026-10-11, at the start of Phase 3 increment 2, from an inventory finding that the design fixes only rule signals first, a critic called only when required and at most once, the critic never clearing taint, and ADR-15 calibration from externally validated outcomes with a manual fallback. P3-D13: the gate judges an orchestrated node after its deterministic criteria pass -- its answer and the claims it recorded -- and calls the critic at most once per node; every verdict is recorded as an EvidenceVerification on the node and its claims; claims recorded outside a plan get signals but no critic. P3-D14: approved leaves the node done; corrected leaves it done with the critic answer, carrying the taint of both, and any claim it corrects is superseded through supersede_claim so history keeps both; escalate fails the node with critic_escalated, which replanning handles. P3-D15: no verification raises a claim trust or clears its taint in this increment, neither the critic (P3-D3) nor an external outcome; raising to VALIDATED waits for the Phase 4 ApprovalManager as an explicit audited decision (ADR-26). P3-D16: paraphrases are never merged; the critic may name claims it judges paraphrases in its verification, advisory only, and dedup stays the exact normalised hash.",
+      "status": "accepted",
+      "source": null,
+      "recorded_at": "2026-10-11T12:18:24.823Z"
+    },
+    {
+      "id": "DECISION-581a647b",
+      "title": "Phase 3 increment 2: trigger, signals, calibration, critic, carried items and milestones (P3-D17 to P3-D22)",
+      "text": "Owner decision 2026-10-11. P3-D17: the gate runs on a node carrying a critic criterion, or on every node when the run GatePolicy says so; rule signals decide, so clean signals satisfy the criterion with no model call and the critic is called only when a signal fires. P3-D18: named rule signals over the node claims -- a claim with no supporting source, a claim with a contradicting source, fewer than min_sources supporting versions (default 1), a lowest contributor confidence below the threshold (default 0.7, None counting as below), and a node that recorded no claim when its criterion requires claims -- each switchable in GatePolicy; the critic is called if any fires, and the event names the signals that fired. P3-D19: record_validation stores a test result, known-answer fixture, downstream outcome or human adjudication for a claim or node as an external EvidenceVerification; calibration is a computed report per signal and threshold against external outcomes with a suggested threshold, and never changes configuration itself (governed learning, I-23). P3-D20: the critic is a configured subagent: GatePolicy names a critic AgentSpec, no tools by default, run as a child through the SubagentPool so budget, depth, taint, events and manifests apply, briefed with the node answer, its claims and the cited source versions content as data-only inputs, answering a fixed verdict schema; with no critic configured a critic criterion is refused as today. P3-D21: milestones M25 carried items; M26 EvidenceVerification (migration 0012), GatePolicy, the rule signals, events and record_validation; M27 the critic, the critic criterion available, outcome mapping and correction by supersede (example 22); M28 the calibration report and the exit signal run under contention with the gate (example 23). P3-D22: examples offline on both stores as gate tests and live against the gateway with an output-token limit. Carried items (KNOWLEDGE-06a8cf2f, KNOWLEDGE-4301be95): M25 repairs B1 (a waiter cancelled in backoff spends an attempt), W2 (KeyboardInterrupt absorbed in _finished), K1 (KeyFailed with no cause), P1 (ledger store lock names pipe-joined), P2 (manifest spec_material pipe-joined), C5 (a waited non-2xx records no wait), C7 (requirements bookkeeping) and example 21 vacuous taint check, each with a test that fails without it; W1 (an unbounded wait on a hung thread) and C6 (the holder keeps a pooled connection) are declared limits; B2 (a success between failures does not restore the budget) is kept as FR-98 states and declared, asserted by the approved test_c4.",
+      "status": "accepted",
+      "source": null,
+      "recorded_at": "2026-10-11T12:18:24.972Z"
+    },
+    {
+      "id": "DECISION-2cec3b61",
+      "title": "Phase 3 increment 2: the spec-level choices of the reviewed draft accepted",
+      "text": "Owner accepted on 2026-10-11, after the read-only spec review, the choices the second draft of FR-99 to FR-108 makes beyond P3-D13 to P3-D22: (1) agent_spec_hash is written v2 colon hex from M25, superseding FR-31 unchanged-hash statement, with no migration at M25; (2) B1 amends FR-98 so a waiter cancelled in backoff spends no attempt; (3) SourceUncached is a new event for a waited non-2xx fetch, and a waited fetch that raises records no wait, declared; (4) the critic draws on the node reservation, held until the gate ends, a reservation that cannot call fails the node budget_exceeded unreplanned, the critic counts in concurrency and task limits with node id node_id#critic; (5) the gate judges claims with a contribution from this execution child run only, deterministic criteria all run first, thin_support excludes unsupported, low_confidence excludes critic contributions, a gate_all_nodes node with no claims is cleared; (6) the verdict schema is built per node with enums of its claims and briefed versions, a corrected answer must satisfy the node output schema, and a correction losing a race fails the node and replans; (7) answer and claims rendering stored as artifacts before the critic, the critic has no tools, the briefing is capped by max_briefing_chars (default 200000) and fails over it, critic verifications written last naming applied and refused corrections; (8) record_validation and calibration_report are Runner methods, verifications live in the ledger store, node subjects checked against plan state; (9) calibration counts per gate row at gate time against the latest outcome, thresholds k/20, suggested threshold None below min_outcomes, with no incorrect outcome, or when none flags all.",
+      "status": "accepted",
+      "source": null,
+      "recorded_at": "2026-10-11T12:34:29.744Z"
+    },
+    {
+      "id": "DECISION-11af2ee2",
+      "title": "Increment 2 tasks: the regression gate added by one manual edit (owner)",
+      "text": "Owner decision 2026-10-11. M25 to M28 were added with the regression gate flag and its value passed as one shell argument, which task add dropped silently, so each task had only unit and independent-review, and Genesis has no command to add a gate to an existing task. The owner chose one manual edit, as for M21a: the gate regression, command .venv Scripts python.exe -m pytest -q, mandatory and pending, was inserted after unit in the four tasks in .genesis/project.json; a reserialisation check showed no other change; plan check then passed (32 tasks cover 218 requirements). Lesson: pass --gate and its value as two arguments, and read back every added task gates.",
+      "status": "accepted",
+      "source": null,
+      "recorded_at": "2026-10-11T12:40:37.550Z"
     }
   ],
   "knowledge": [
@@ -2320,6 +2388,22 @@
       "source": null,
       "tags": [],
       "recorded_at": "2026-10-11T12:10:09.044Z"
+    },
+    {
+      "id": "KNOWLEDGE-8710b0e2",
+      "title": "Facts the Phase 3 increment 2 spec review measured in the code, and what the draft changed",
+      "text": "Read-only review 2026-10-11 by an independent Sonnet 5.5 reviewer of the first draft of FR-99 to FR-108. Measured: a node lease is released (orchestrator.py finally after spawn) before _criteria runs, and a released lease refuses calls, so a critic cannot draw on it unless release moves after the gate; _NOT_REPLANNABLE matches by prefix, so critic_failed: budget_exceeded would replan; the node answer is stored after the criteria; contributions carry run_id and node_id only and no ancestry, node_id repeats across replans, and node children cannot spawn (depth 1 hardcoded); RunLedger.supersede builds its contribution from its own run, so a critic contribution needs the store supersede directly with ClaimSuperseded emitted by the orchestrator; the store does not check claim ownership by node or sources against a briefing; EventType is an open str Enum with no DB constraint; manifest columns are added by ALTER TABLE ADD COLUMN IF NOT EXISTS; no test hardcodes an agent_spec_hash value; P1 old lock name asserted at tests/test_claim_lock.py:489; claimlock _retry decrements before the backoff sleep; _finished cannot tell the future outcome from an exception delivered to the task; KeyFailed never sets __cause__; a waited non-2xx returns at evidence.py obtain with waited in scope; RunLedger.reader is reachable from ToolScope. Fifteen blocking findings, each repaired in the second draft; four owner choices taken on the way (agent_spec_hash prefixed v2, a correction losing a race fails its node and replans, the critic has no tools, the briefing is capped at max_briefing_chars and fails over it).",
+      "source": null,
+      "tags": [],
+      "recorded_at": "2026-10-11T12:34:29.530Z"
+    },
+    {
+      "id": "KNOWLEDGE-be223191",
+      "title": "M25 round 1 approved; the W2 window becomes M25a before M26",
+      "text": "Opus 5 approved M25 round 1 at 13:57:48Z on source hash 10b16da7, gates recomputed (unit 14, regression 1914, collect-only confirming the 1900 baseline). B1, K1, P1, P2, C5 and example 21 verified; the project.json gate edit (DECISION-11af2ee2) confined to the declared gates; the approved-test edit necessary and not weakening (three _lock mutants killed through it; the pipe join collides). Finding, a regression from M24a: in _finished the guard if future.done() and not future.cancelled(): continue exits the wait loop with interrupted still None when a cancellation is delivered to the caller in the window where the future has just completed, so _completed returns the result and the cancellation is swallowed. Reproduced by passing a future directly (ensure_future of a coroutine adds a loop hop that hides it); a timeout whose deadline coincides with the work settling (same timer instant, or 0.5 ms after) silently fails to fire, and executor.py wait_for around the acquire does not recover: the tool deadline can pass with no signal. Not a leak (0 locks, 0 connections) and AC-77 is met as written, but FR-99 prose (never swallowed) is violated and its sentence the future is done only in the second case is false. Owner decision: complete M25, then M25a before M26 fixes the guard and the same treatment for the non-cancellation branch, corrects FR-99, and kills the dropped mutant, which the reviewer judged not equivalent. Carried: KeyFailed.__init__ sets __cause__ even when None, forcing __suppress_context__ so a KeyFailed raised inside an except hides its context, and unpickling puts the message in .key (cosmetic); W1, C6, B2 and a waited fetch that raises recording no wait stay declared. Also: the plan check run after the manual gate edit cleared the plan approval; re-signed by the owner at 14:16Z after requeueing M25.",
+      "source": null,
+      "tags": [],
+      "recorded_at": "2026-10-11T14:16:19.697Z"
     }
   ],
   "tasks": [
@@ -2342,9 +2426,9 @@
           "status": "pass",
           "evidence": {
             "human": "siva-rgb (owner)",
-            "reason": "FR-98 and AC-76 for M24a",
-            "source_hash": "63f5050abac6c8765b679e5a99ce2f690296fe5ef342b8388b18955a72a80e17",
-            "observed_at": "2026-10-11T10:23:26.758Z"
+            "reason": "Phase 3 increment 2: FR-99 to FR-108, NFR-27 to NFR-29, AC-77 to AC-81 (DECISION-f9888168, DECISION-581a647b, DECISION-2cec3b61)",
+            "source_hash": "4e24d63d08e55e5faa46995511f64c687627d054215d2a9a0464a60d45ac2c94",
+            "observed_at": "2026-10-11T12:35:06.161Z"
           }
         }
       ],
@@ -2354,7 +2438,7 @@
       "failures": [],
       "limitations": [],
       "created_at": "2026-09-05T14:48:57.897Z",
-      "updated_at": "2026-10-11T10:23:26.758Z"
+      "updated_at": "2026-10-11T12:35:06.161Z"
     },
     {
       "id": "M1-primitives",
@@ -4059,6 +4143,216 @@
       "limitations": [],
       "created_at": "2026-10-11T10:23:26.907Z",
       "updated_at": "2026-10-11T12:10:16.625Z"
+    },
+    {
+      "id": "M25-gate-carried-items",
+      "outcome": "The claim-lock and ledger caveats carried from M24 and M24a are repaired or declared, and example 21's taint check can fail",
+      "state": "done",
+      "risk": "medium",
+      "owner": null,
+      "scope": [],
+      "dependencies": [],
+      "requirements": [
+        "FR-99",
+        "AC-77",
+        "NFR-25",
+        "NFR-26",
+        "NFR-29"
+      ],
+      "gates": [
+        {
+          "id": "unit",
+          "command": ".venv\\Scripts\\python.exe -m pytest tests/test_gate_carried.py -q",
+          "mandatory": true,
+          "status": "pass",
+          "evidence": {
+            "path": ".genesis/evidence/M25-gate-carried-items-unit.json",
+            "source_hash": "10b16da747999ae92e20a6fc32bd03eb8f4c4c34e7f7590852a8973975f80c27",
+            "hash": "e8ca52b48d9523ce8d0c96a4914448f769880099a23c9fb0cf7e3288c4608600",
+            "observed_at": "2026-10-11T13:27:20.635Z"
+          }
+        },
+        {
+          "id": "regression",
+          "command": ".venv\\Scripts\\python.exe -m pytest -q",
+          "mandatory": true,
+          "status": "pass",
+          "evidence": {
+            "path": ".genesis/evidence/M25-gate-carried-items-regression.json",
+            "source_hash": "10b16da747999ae92e20a6fc32bd03eb8f4c4c34e7f7590852a8973975f80c27",
+            "hash": "ae23f0c102961ca5f03e1e76e9e60953462c159640862eab69020156c12b02ea",
+            "observed_at": "2026-10-11T13:32:43.203Z"
+          }
+        },
+        {
+          "id": "independent-review",
+          "command": "",
+          "mandatory": true,
+          "status": "pass",
+          "evidence": {
+            "human": "Opus 5",
+            "reason": "Verified first hand, not from the recorded evidence. My own genesis gate run on source hash 10b16da7 gives unit 14 passed in 2.68s and regression 1914 passed in 321.33s, exit 0, no stray python; 1914 collected equals the 1900 baseline plus the 14 new tests, and the M22, M23, M24 and M24a gate files together with M25 give 238 passed. B1 with FR-98: the bound is absolute, 3 operations after the first failure with 26 waiters cancelled in their backoff while every call stayed on the key, and a mutant that restores the budget on a cancelled backoff breaks it to 5, so the probe is not vacuous; removing the line that charges a failed backoff hangs forever, so that guard is needed. K1: the cause is the failure that spent the last attempt on all four paths and never an earlier KeyFailed, and a mutant raising from the stored KeyFailed is caught. P1, P2 and NFR-29: no delimiter join feeds a hash or a lock name anywhere, agent_spec_hash is TEXT with no length or hex constraint and no reader assumes 64 hex, the two 64 hex checks are on content_hash and claim_key only, and an ungated run on PostgreSQL records the same status, the same events and the same rows as the committed pre-M25 tree with agent_spec_hash the only difference; both P2 assertions bite under mutation and the old pipe join really did collide. C5: on both stores a waited fetch answered 404 and 500 emits exactly one SourceUncached, an unwaited one and a 2xx emit none, the payload is canonical uri, status and the wait, stored as jsonb and read back, and no wait crosses a tenant or a project; dropping the wait guard is caught. Example 21: seven checks pass on both stores, taint_holds is false for a clean claim citing a tainted page, for an untrusted claim missing its flags and for no claims, the combined check fails on both stores when the correction cites nothing, so it is not vacuous, and a cited version uri is refused from another tenant and from another project. The edit to the approved caveat-2 test is necessary, the old form fails against the new code, and it is not weakening: reverting the lock names to the pipe join, reversing the order and dropping DISTINCT each make it fail by assertion. The one manual edit to project.json is structurally just a regression gate on the four increment 2 tasks, same key order, command and position as the gates the CLI wrote, with every other delta CLI shaped. CAVEAT 1, the one finding: _finished treats future.done() as proof that an exception is the futures own outcome, which is false for the two loop hops between the worker task finishing and the interrupted task resuming; a cancellation or a hand delivered KeyboardInterrupt arriving there is dropped and _completed returns the workers value, so an asyncio timeout around a claim-lock call silently does not fire. Reproduced 3 of 3 with a real worker thread on PostgreSQL and 3 of 3 with timeout_at on a bare future; the committed pre-M25 code does not drop it, so this is a regression inside the W2 repair, and it is also why the dropped mutant cannot be killed, 41 tests pass with it applied. No lock or connection leaked in any case, 0 advisory locks and 0 pooled connections after 1, 2, 5 and 25 cancellations, so FR-98 C1 holds, and 0 of 400 naturally timed trials hit the window, which is why I treat it as a caveat rather than a blocker: it is strictly milder than the declared W1. The repair is to stop continuing on a CancelledError when the future is not cancelled, and the FR-99 sentence that the threads future is done only in the second case is false and needs correcting. CAVEAT 2: the authors judgement that the dropped mutant is equivalent is right for the case argued, the works own exception raises identically either way, but it is not semantically equivalent and the mutant is the better code. CAVEAT 3, cosmetic: KeyFailed sets __cause__ in __init__, which also sets __suppress_context__ true even when the cause is None, so a KeyFailed raised inside an except block hides its context, and unpickling one puts the whole message in key; both pre-existing in shape. All eight files I mutated restored and SHA-256 verified identical, git status unchanged, 71 probe runs and their rows removed by run id only, store back at baseline, no advisory lock held, no stray process.",
+            "source_hash": "10b16da747999ae92e20a6fc32bd03eb8f4c4c34e7f7590852a8973975f80c27",
+            "observed_at": "2026-10-11T13:57:48.215Z"
+          }
+        }
+      ],
+      "next_action": "Run the task pre-flight.",
+      "blocker": null,
+      "notes": [],
+      "failures": [],
+      "limitations": [],
+      "created_at": "2026-10-11T12:35:06.322Z",
+      "updated_at": "2026-10-11T14:16:19.856Z"
+    },
+    {
+      "id": "M26-verifications-and-signals",
+      "outcome": "Verifications are recorded append-only within their tenancy, the gate's rule signals clear or flag a node with no model call, and external outcomes are recorded through the Runner",
+      "state": "active",
+      "risk": "medium",
+      "owner": null,
+      "scope": [],
+      "dependencies": [],
+      "requirements": [
+        "FR-100",
+        "FR-101",
+        "FR-102",
+        "FR-103",
+        "AC-78",
+        "NFR-25",
+        "NFR-26",
+        "NFR-27",
+        "NFR-28",
+        "NFR-29"
+      ],
+      "gates": [
+        {
+          "id": "unit",
+          "command": ".venv\\Scripts\\python.exe -m pytest tests/test_verifications.py -q",
+          "mandatory": true,
+          "status": "pending",
+          "evidence": null
+        },
+        {
+          "id": "regression",
+          "command": ".venv\\Scripts\\python.exe -m pytest -q",
+          "mandatory": true,
+          "status": "pending",
+          "evidence": null
+        },
+        {
+          "id": "independent-review",
+          "command": "",
+          "mandatory": true,
+          "status": "pending",
+          "evidence": null
+        }
+      ],
+      "next_action": "Run the task pre-flight.",
+      "blocker": null,
+      "notes": [],
+      "failures": [],
+      "limitations": [],
+      "created_at": "2026-10-11T12:35:06.467Z",
+      "updated_at": "2026-10-11T12:35:06.467Z"
+    },
+    {
+      "id": "M27-critic",
+      "outcome": "The critic runs at most once per gated node execution, its verdict decides the node, corrections supersede claims, and nothing it touches gets cleaner",
+      "state": "queued",
+      "risk": "high",
+      "owner": null,
+      "scope": [],
+      "dependencies": [],
+      "requirements": [
+        "FR-104",
+        "FR-105",
+        "FR-106",
+        "AC-79",
+        "NFR-25",
+        "NFR-26",
+        "NFR-28",
+        "NFR-29"
+      ],
+      "gates": [
+        {
+          "id": "unit",
+          "command": ".venv\\Scripts\\python.exe -m pytest tests/test_critic.py -q",
+          "mandatory": true,
+          "status": "pending",
+          "evidence": null
+        },
+        {
+          "id": "regression",
+          "command": ".venv\\Scripts\\python.exe -m pytest -q",
+          "mandatory": true,
+          "status": "pending",
+          "evidence": null
+        },
+        {
+          "id": "independent-review",
+          "command": "",
+          "mandatory": true,
+          "status": "pending",
+          "evidence": null
+        }
+      ],
+      "next_action": "Run the task pre-flight.",
+      "blocker": null,
+      "notes": [],
+      "failures": [],
+      "limitations": [],
+      "created_at": "2026-10-11T12:35:06.625Z",
+      "updated_at": "2026-10-11T12:35:06.625Z"
+    },
+    {
+      "id": "M28-calibration-and-exit",
+      "outcome": "The calibration report suggests and never applies a threshold, and the gate holds under contention on both stores",
+      "state": "queued",
+      "risk": "medium",
+      "owner": null,
+      "scope": [],
+      "dependencies": [],
+      "requirements": [
+        "FR-107",
+        "FR-108",
+        "AC-80",
+        "AC-81",
+        "NFR-25",
+        "NFR-26",
+        "NFR-27",
+        "NFR-28"
+      ],
+      "gates": [
+        {
+          "id": "unit",
+          "command": ".venv\\Scripts\\python.exe -m pytest tests/test_calibration.py -q",
+          "mandatory": true,
+          "status": "pending",
+          "evidence": null
+        },
+        {
+          "id": "regression",
+          "command": ".venv\\Scripts\\python.exe -m pytest -q",
+          "mandatory": true,
+          "status": "pending",
+          "evidence": null
+        },
+        {
+          "id": "independent-review",
+          "command": "",
+          "mandatory": true,
+          "status": "pending",
+          "evidence": null
+        }
+      ],
+      "next_action": "Run the task pre-flight.",
+      "blocker": null,
+      "notes": [],
+      "failures": [],
+      "limitations": [],
+      "created_at": "2026-10-11T12:35:06.784Z",
+      "updated_at": "2026-10-11T12:35:06.785Z"
     }
   ],
   "learning_proposals": [],
@@ -4855,17 +5149,35 @@
       "human": "Fable 5.1",
       "reason": "Re-derived FR-98 and AC-76. Gates recomputed by the reviewer: unit 9 passed, regression 1900 passed in 347.72s, both on source hash 880b57dd, no stray process. C1: 48 trials on the live database cancelling 1, 2, 5 and 20 times at every await (asyncio lock wait, try-lock before and after taking the lock, contended try-lock, poll sleep, holding, normal release, release after a failed op, undo, retry backoff, retry op) left no advisory lock in pg_locks, every pooled connection returned, every call returning only after its release thread finished, CancelledError raised each time; the same probe with M24 _completed swapped in reports a held lock, a stuck checkout and early returns. wait_for and asyncio.timeout raise TimeoutError only after the release; an extra cancel gives CancelledError. C3 and C4: a 400-seed fuzz of ok, fail, cancel-in-op and cancel-in-backoff on one key never exceeds three attempts and every later call fails naming the key, while the M24 module breaks 95 seeds, worst 11. C2: 20000 random part lists give no lock_key collision where a pipe join gives 168; both call sites pass strings; two reaches whose names pipe-join alike get different keys. M22, M23 and M24 gate files pass (215). The gate file fails 4 tests with M24 _completed and 2 with M24 _retry swapped in through a plugin. Caveats, none blocking: a retrier cancelled during its backoff delay draws an attempt, so three such cancellations fail the key with no operation retried; the budget is not restored by a success while calls remain on the key, so under uninterrupted contention one later failure fails the key with no retry once three are spent; a try-lock or release thread that never returns keeps the call uncancellable and delays a tool timeout for as long as it takes (2 s shown; pool checkout is bounded at 30 s, a query on a dead link is not), the same property as every store call; in Python 3.11 a wait_for whose timeout already fired and is then cancelled returns before the inner release ends, which still completes; KeyFailed shows no cause when the key was failed through failed_once or a cancelled retry; the M23 transaction-lock pipe join is an acceptable leftover since a collision only serialises two writers on one lock value (shown) and the claim-lock keys differ, best fixed when that test is next edited.",
       "revision": null
+    },
+    {
+      "id": "184d4c85-91df-49f6-ae46-19570743aa49",
+      "at": "2026-10-11T13:57:48.215Z",
+      "action": "approve",
+      "task": "M25-gate-carried-items",
+      "human": "Opus 5",
+      "reason": "Verified first hand, not from the recorded evidence. My own genesis gate run on source hash 10b16da7 gives unit 14 passed in 2.68s and regression 1914 passed in 321.33s, exit 0, no stray python; 1914 collected equals the 1900 baseline plus the 14 new tests, and the M22, M23, M24 and M24a gate files together with M25 give 238 passed. B1 with FR-98: the bound is absolute, 3 operations after the first failure with 26 waiters cancelled in their backoff while every call stayed on the key, and a mutant that restores the budget on a cancelled backoff breaks it to 5, so the probe is not vacuous; removing the line that charges a failed backoff hangs forever, so that guard is needed. K1: the cause is the failure that spent the last attempt on all four paths and never an earlier KeyFailed, and a mutant raising from the stored KeyFailed is caught. P1, P2 and NFR-29: no delimiter join feeds a hash or a lock name anywhere, agent_spec_hash is TEXT with no length or hex constraint and no reader assumes 64 hex, the two 64 hex checks are on content_hash and claim_key only, and an ungated run on PostgreSQL records the same status, the same events and the same rows as the committed pre-M25 tree with agent_spec_hash the only difference; both P2 assertions bite under mutation and the old pipe join really did collide. C5: on both stores a waited fetch answered 404 and 500 emits exactly one SourceUncached, an unwaited one and a 2xx emit none, the payload is canonical uri, status and the wait, stored as jsonb and read back, and no wait crosses a tenant or a project; dropping the wait guard is caught. Example 21: seven checks pass on both stores, taint_holds is false for a clean claim citing a tainted page, for an untrusted claim missing its flags and for no claims, the combined check fails on both stores when the correction cites nothing, so it is not vacuous, and a cited version uri is refused from another tenant and from another project. The edit to the approved caveat-2 test is necessary, the old form fails against the new code, and it is not weakening: reverting the lock names to the pipe join, reversing the order and dropping DISTINCT each make it fail by assertion. The one manual edit to project.json is structurally just a regression gate on the four increment 2 tasks, same key order, command and position as the gates the CLI wrote, with every other delta CLI shaped. CAVEAT 1, the one finding: _finished treats future.done() as proof that an exception is the futures own outcome, which is false for the two loop hops between the worker task finishing and the interrupted task resuming; a cancellation or a hand delivered KeyboardInterrupt arriving there is dropped and _completed returns the workers value, so an asyncio timeout around a claim-lock call silently does not fire. Reproduced 3 of 3 with a real worker thread on PostgreSQL and 3 of 3 with timeout_at on a bare future; the committed pre-M25 code does not drop it, so this is a regression inside the W2 repair, and it is also why the dropped mutant cannot be killed, 41 tests pass with it applied. No lock or connection leaked in any case, 0 advisory locks and 0 pooled connections after 1, 2, 5 and 25 cancellations, so FR-98 C1 holds, and 0 of 400 naturally timed trials hit the window, which is why I treat it as a caveat rather than a blocker: it is strictly milder than the declared W1. The repair is to stop continuing on a CancelledError when the future is not cancelled, and the FR-99 sentence that the threads future is done only in the second case is false and needs correcting. CAVEAT 2: the authors judgement that the dropped mutant is equivalent is right for the case argued, the works own exception raises identically either way, but it is not semantically equivalent and the mutant is the better code. CAVEAT 3, cosmetic: KeyFailed sets __cause__ in __init__, which also sets __suppress_context__ true even when the cause is None, so a KeyFailed raised inside an except block hides its context, and unpickling one puts the whole message in key; both pre-existing in shape. All eight files I mutated restored and SHA-256 verified identical, git status unchanged, 71 probe runs and their rows removed by run id only, store back at baseline, no advisory lock held, no stray process.",
+      "revision": null
+    },
+    {
+      "id": "8932632a-743a-411e-a2c8-8aa1d25b9686",
+      "at": "2026-10-11T14:16:04.563Z",
+      "action": "requeue",
+      "task": "M25-gate-carried-items",
+      "human": "siva-rgb (owner)",
+      "reason": "Requeued only to re-sign the increment 2 plan, whose approval the plan check after DECISION-11af2ee2 cleared",
+      "revision": null
     }
   ],
   "discovery": null,
   "checkpoint": {
-    "at": "2026-10-11T12:06:52.099Z",
+    "at": "2026-10-11T14:16:04.988Z",
     "revision": {
-      "commit": "64a262d506aec703f8300539cd4fb69e5ab52c7b",
+      "commit": "d339d285f8666aeacb165ea98a4a4d43a7181b57",
       "dirty": true,
-      "source_hash": "880b57dd175de0496d0f0d7d1373830413d5186d6ef5f21f96039e98fbb87492"
+      "source_hash": "10b16da747999ae92e20a6fc32bd03eb8f4c4c34e7f7590852a8973975f80c27"
     },
-    "active_task": "M24a-claim-lock-caveats",
+    "active_task": "M25-gate-carried-items",
     "next_action": "Run the task pre-flight."
   },
   "legacy": null

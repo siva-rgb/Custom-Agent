@@ -14,6 +14,7 @@ empty table.
 from __future__ import annotations
 
 import hashlib
+import json
 from typing import Any
 
 
@@ -43,11 +44,15 @@ def build_manifest(
 ) -> dict[str, Any]:
     # The spec hash covers what actually changes behaviour: identity,
     # instructions and the tool profile. A spec whose display name changed is
-    # not a different run configuration.
-    spec_material = "|".join((agent_spec_id, instructions, ",".join(sorted(tool_profile))))
+    # not a different run configuration. Its parts are encoded so that no two
+    # specs hash alike by a delimiter, and the hash names that encoding, so one
+    # written before M25 (bare hex, parts joined with "|") never equals one
+    # written after (FR-99, M24a review caveat P2).
+    spec_material = json.dumps([agent_spec_id, instructions, sorted(tool_profile)], ensure_ascii=False,
+                               separators=(",", ":"))
     return {
         "sdk_version": sdk_version,
-        "agent_spec_hash": _sha256(spec_material),
+        "agent_spec_hash": "v2:" + _sha256(spec_material),
         "instructions_hash": _sha256(instructions),
         "model_id": model_id,
         "model_version": model_version,
@@ -55,8 +60,8 @@ def build_manifest(
         "tool_spec_hashes": sorted(tool_spec_hashes),
         "policy_version": policy_version,
         # FR-31. Recorded beside the spec hash rather than folded into it, so
-        # agent_spec_hash stays comparable across M9: a spec hashes the same
-        # way whether its manifest was written before these fields or after.
+        # agent_spec_hash stays comparable within its encoding: a spec hashes the
+        # same way whether its manifest was written before these fields or after.
         "max_output_tokens": max_output_tokens,
         "reasoning_effort": reasoning_effort,
         "pricing": pricing,

@@ -298,6 +298,13 @@ class ResourceCache:
                     return served.content.decode("utf-8"), served.version.uri
             fetched = await fetch()
             if not 200 <= fetched.status < 300:
+                if waited is not None and self._emit is not None:
+                    # FR-99 (M24 review caveat C5): nothing is recorded, so the wait is.
+                    from .events import EventType
+
+                    await self._emit(EventType.SOURCE_UNCACHED, {
+                        "canonical_uri": key.canonical_uri, "status": fetched.status,
+                        **_waited(waited, took_result=False)})
                 return fetched.text, fetched.final_url
             version = await self.record(
                 key, fetched.text.encode("utf-8"), final_uri=fetched.final_url, media_type=fetched.media, scope=scope,

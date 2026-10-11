@@ -41,6 +41,9 @@ class EventType(str, Enum):
     # hit, or a copy made into this tenant and project.
     SOURCE_FETCHED = "SourceFetched"
     SOURCE_SERVED = "SourceServed"
+    # FR-99 (M25): a fetch that waited on the claim-lock and was answered with a status
+    # that is not 2xx, so recorded no version; it records its wait here.
+    SOURCE_UNCACHED = "SourceUncached"
     # FR-93, FR-94 (M23): a claim recorded or contributed to, and a claim superseded.
     CLAIM_RECORDED = "ClaimRecorded"
     CLAIM_SUPERSEDED = "ClaimSuperseded"

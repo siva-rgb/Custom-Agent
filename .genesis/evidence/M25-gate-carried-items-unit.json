@@ -1,0 +1,22 @@
+{
+  "task": "M25-gate-carried-items",
+  "gate": "unit",
+  "command": ".venv\\Scripts\\python.exe -m pytest tests/test_gate_carried.py -q",
+  "started_at": "2026-10-11T13:27:16.882Z",
+  "observed_at": "2026-10-11T13:27:20.635Z",
+  "exit_code": 0,
+  "signal": null,
+  "stdout": "..............                                                           [100%]\r\n14 passed in 2.68s\r\n",
+  "stderr": "",
+  "revision": {
+    "commit": "d339d285f8666aeacb165ea98a4a4d43a7181b57",
+    "dirty": true
+  },
+  "source_hash": "10b16da747999ae92e20a6fc32bd03eb8f4c4c34e7f7590852a8973975f80c27",
+  "environment": {
+    "node": "v20.10.0",
+    "platform": "win32",
+    "arch": "x64"
+  },
+  "hash": "e8ca52b48d9523ce8d0c96a4914448f769880099a23c9fb0cf7e3288c4608600"
+}

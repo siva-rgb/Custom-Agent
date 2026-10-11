@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "project": "agent-sdk",
-  "revision": "64a262d506aec703f8300539cd4fb69e5ab52c7b",
-  "sourceHash": "410f5dbfc8987e489163c69ae25e4f266dc05e6ef0c3f13dc6de8f934180b24a",
+  "revision": "d339d285f8666aeacb165ea98a4a4d43a7181b57",
+  "sourceHash": "6ea97b7b89b592aad4c8b100ea966399911bb2fd28ed8dad742a5a0e520a9938",
   "provenance": {
     "tool": "genesis-graphizer",
     "method": "static-analysis",
@@ -85,7 +85,7 @@
         "extractor": "filesystem",
         "source": "agentsdk/claimlock.py"
       },
-      "contentHash": "5a09010fff8dbe67891242109bdb86de6dfe61271ed4c9375d5a18c54eebb0f1"
+      "contentHash": "1a4b22cd7dcf2469800e31226f40582e4bebf65110f818afbd1468143b2c6706"
     },
     {
       "id": "file:agentsdk/compaction.py",
@@ -163,7 +163,7 @@
         "extractor": "filesystem",
         "source": "agentsdk/events.py"
       },
-      "contentHash": "c9a9eeed74ac77af5f83be5df008290dbe6ed585996319aa5794a4446d655545"
+      "contentHash": "df56b8b6ea50917bc96ccd0e2837e5f36cad319f241686963909b3480188b35a"
     },
     {
       "id": "file:agentsdk/evidence.py",
@@ -176,7 +176,7 @@
         "extractor": "filesystem",
         "source": "agentsdk/evidence.py"
       },
-      "contentHash": "d61dae81eab4a26731b37adc0a58445bc05a5b9e1d70fb82da5f43803c63d6a1"
+      "contentHash": "ae4bc519c4d4b929a905ecdd31e8c975314abc68fd3ec8b15d35ade0dd6e5790"
     },
     {
       "id": "file:agentsdk/executor.py",
@@ -267,7 +267,7 @@
         "extractor": "filesystem",
         "source": "agentsdk/manifest.py"
       },
-      "contentHash": "bb14951a60077007a47d0a922f8be561f404cc94b87d42fadee8c0c1b671fdc0"
+      "contentHash": "63a9a371c33ca951cf15beb84b15c2296acc29f56be1a6dad13cd78e5f2411bb"
     },
     {
       "id": "file:agentsdk/migrate.py",
@@ -371,7 +371,7 @@
         "extractor": "filesystem",
         "source": "agentsdk/postgres.py"
       },
-      "contentHash": "249a4abac9a96c20e1204433aea4655fe4c286db2ce0d8ab92b13c36049a6aaf"
+      "contentHash": "a9ec093cefdcfaf8746e9ee32bd8d65941e574cf1ed5bf0bd222d07e3466ac1b"
     },
     {
       "id": "file:agentsdk/prices.py",
@@ -956,7 +956,7 @@
         "extractor": "filesystem",
         "source": "scripts/21_contention.py"
       },
-      "contentHash": "3363aa83c1f6e714a17dffa3ba45867d8ed2e8ac09bcf1d65de45729e6e0da64"
+      "contentHash": "eecacfd1ad8e5143806f4514a8e7fdc8c5742444e8ea0401c8701a25542aa19e"
     },
     {
       "id": "file:tests/conftest.py",
@@ -1086,7 +1086,7 @@
         "extractor": "filesystem",
         "source": "tests/test_claim_lock.py"
       },
-      "contentHash": "0bc52b8f9e64e08d6df938b4ce77153cd09d18bd51e7afc529250c8a2a9c626c"
+      "contentHash": "c159ae2031d8b1f4b39d50a7fd4ae4fdf0ada5a24d2d3393a9798a34b89379fd"
     },
     {
       "id": "file:tests/test_compaction_record.py",
@@ -1139,6 +1139,19 @@
         "source": "tests/test_distribution.py"
       },
       "contentHash": "87570e544b20b438d8857b0cf35ca3f3504af8d02fbed84a2c3c75fc3c30dcfb"
+    },
+    {
+      "id": "file:tests/test_gate_carried.py",
+      "type": "file",
+      "label": "tests/test_gate_carried.py",
+      "path": "tests/test_gate_carried.py",
+      "language": "python",
+      "confidence": 1,
+      "provenance": {
+        "extractor": "filesystem",
+        "source": "tests/test_gate_carried.py"
+      },
+      "contentHash": "c51bc23f7a2917bf6ea5bcb781094de9c89524a845a3a57e01b30ceb20953443"
     },
     {
       "id": "file:tests/test_golden_eval.py",
@@ -5301,7 +5314,7 @@
       "name": "_Key",
       "qualifiedName": "_Key",
       "kind": "class",
-      "line": 53,
+      "line": 56,
       "label": "_Key",
       "path": "agentsdk/claimlock.py",
       "confidence": 1,
@@ -5317,7 +5330,7 @@
       "name": "ClaimLock",
       "qualifiedName": "ClaimLock",
       "kind": "class",
-      "line": 79,
+      "line": 82,
       "label": "ClaimLock",
       "path": "agentsdk/claimlock.py",
       "confidence": 1,
@@ -5349,7 +5362,7 @@
       "name": "_completed",
       "qualifiedName": "_completed",
       "kind": "function",
-      "line": 184,
+      "line": 205,
       "label": "_completed",
       "path": "agentsdk/claimlock.py",
       "confidence": 1,
@@ -5365,7 +5378,7 @@
       "name": "_finished",
       "qualifiedName": "_finished",
       "kind": "function",
-      "line": 168,
+      "line": 178,
       "label": "_finished",
       "path": "agentsdk/claimlock.py",
       "confidence": 1,
@@ -5381,7 +5394,7 @@
       "name": "__init__",
       "qualifiedName": "_Key.__init__",
       "kind": "function",
-      "line": 56,
+      "line": 59,
       "label": "_Key.__init__",
       "path": "agentsdk/claimlock.py",
       "confidence": 1,
@@ -5397,7 +5410,7 @@
       "name": "failed_once",
       "qualifiedName": "_Key.failed_once",
       "kind": "function",
-      "line": 65,
+      "line": 68,
       "label": "_Key.failed_once",
       "path": "agentsdk/claimlock.py",
       "confidence": 1,
@@ -5413,7 +5426,7 @@
       "name": "_release",
       "qualifiedName": "_release",
       "kind": "function",
-      "line": 211,
+      "line": 235,
       "label": "_release",
       "path": "agentsdk/claimlock.py",
       "confidence": 1,
@@ -5429,7 +5442,7 @@
       "name": "_try_lock",
       "qualifiedName": "_try_lock",
       "kind": "function",
-      "line": 196,
+      "line": 220,
       "label": "_try_lock",
       "path": "agentsdk/claimlock.py",
       "confidence": 1,
@@ -5445,7 +5458,7 @@
       "name": "__init__",
       "qualifiedName": "ClaimLock.__init__",
       "kind": "function",
-      "line": 83,
+      "line": 86,
       "label": "ClaimLock.__init__",
       "path": "agentsdk/claimlock.py",
       "confidence": 1,
@@ -5461,7 +5474,7 @@
       "name": "_database",
       "qualifiedName": "ClaimLock._database",
       "kind": "function",
-      "line": 147,
+      "line": 157,
       "label": "ClaimLock._database",
       "path": "agentsdk/claimlock.py",
       "confidence": 1,
@@ -5477,7 +5490,7 @@
       "name": "_retry",
       "qualifiedName": "ClaimLock._retry",
       "kind": "function",
-      "line": 122,
+      "line": 126,
       "label": "ClaimLock._retry",
       "path": "agentsdk/claimlock.py",
       "confidence": 1,
@@ -5493,7 +5506,7 @@
       "name": "run",
       "qualifiedName": "ClaimLock.run",
       "kind": "function",
-      "line": 96,
+      "line": 99,
       "label": "ClaimLock.run",
       "path": "agentsdk/claimlock.py",
       "confidence": 1,
@@ -5525,7 +5538,7 @@
       "name": "lock_key",
       "qualifiedName": "lock_key",
       "kind": "function",
-      "line": 47,
+      "line": 50,
       "label": "lock_key",
       "path": "agentsdk/claimlock.py",
       "confidence": 1,
@@ -6789,7 +6802,7 @@
       "name": "EventSink",
       "qualifiedName": "EventSink",
       "kind": "class",
-      "line": 70,
+      "line": 73,
       "label": "EventSink",
       "path": "agentsdk/events.py",
       "confidence": 1,
@@ -6821,7 +6834,7 @@
       "name": "InMemoryEventSink",
       "qualifiedName": "InMemoryEventSink",
       "kind": "class",
-      "line": 78,
+      "line": 81,
       "label": "InMemoryEventSink",
       "path": "agentsdk/events.py",
       "confidence": 1,
@@ -6837,7 +6850,7 @@
       "name": "RunEvent",
       "qualifiedName": "RunEvent",
       "kind": "class",
-      "line": 50,
+      "line": 53,
       "label": "RunEvent",
       "path": "agentsdk/events.py",
       "confidence": 1,
@@ -6853,7 +6866,7 @@
       "name": "emit",
       "qualifiedName": "EventSink.emit",
       "kind": "function",
-      "line": 71,
+      "line": 74,
       "label": "EventSink.emit",
       "path": "agentsdk/events.py",
       "confidence": 1,
@@ -6869,7 +6882,7 @@
       "name": "events",
       "qualifiedName": "EventSink.events",
       "kind": "function",
-      "line": 75,
+      "line": 78,
       "label": "EventSink.events",
       "path": "agentsdk/events.py",
       "confidence": 1,
@@ -6885,7 +6898,7 @@
       "name": "__init__",
       "qualifiedName": "InMemoryEventSink.__init__",
       "kind": "function",
-      "line": 85,
+      "line": 88,
       "label": "InMemoryEventSink.__init__",
       "path": "agentsdk/events.py",
       "confidence": 1,
@@ -6901,7 +6914,7 @@
       "name": "emit",
       "qualifiedName": "InMemoryEventSink.emit",
       "kind": "function",
-      "line": 102,
+      "line": 105,
       "label": "InMemoryEventSink.emit",
       "path": "agentsdk/events.py",
       "confidence": 1,
@@ -6917,7 +6930,7 @@
       "name": "events",
       "qualifiedName": "InMemoryEventSink.events",
       "kind": "function",
-      "line": 118,
+      "line": 121,
       "label": "InMemoryEventSink.events",
       "path": "agentsdk/events.py",
       "confidence": 1,
@@ -6933,7 +6946,7 @@
       "name": "scope",
       "qualifiedName": "InMemoryEventSink.scope",
       "kind": "function",
-      "line": 97,
+      "line": 100,
       "label": "InMemoryEventSink.scope",
       "path": "agentsdk/events.py",
       "confidence": 1,
@@ -7349,7 +7362,7 @@
       "name": "_event",
       "qualifiedName": "ResourceCache._event",
       "kind": "function",
-      "line": 384,
+      "line": 391,
       "label": "ResourceCache._event",
       "path": "agentsdk/evidence.py",
       "confidence": 1,
@@ -7381,7 +7394,7 @@
       "name": "_prior",
       "qualifiedName": "ResourceCache._prior",
       "kind": "function",
-      "line": 341,
+      "line": 348,
       "label": "ResourceCache._prior",
       "path": "agentsdk/evidence.py",
       "confidence": 1,
@@ -7397,7 +7410,7 @@
       "name": "_record",
       "qualifiedName": "ResourceCache._record",
       "kind": "function",
-      "line": 354,
+      "line": 361,
       "label": "ResourceCache._record",
       "path": "agentsdk/evidence.py",
       "confidence": 1,
@@ -7445,7 +7458,7 @@
       "name": "record",
       "qualifiedName": "ResourceCache.record",
       "kind": "function",
-      "line": 345,
+      "line": 352,
       "label": "ResourceCache.record",
       "path": "agentsdk/evidence.py",
       "confidence": 1,
@@ -7461,7 +7474,7 @@
       "name": "serve",
       "qualifiedName": "ResourceCache.serve",
       "kind": "function",
-      "line": 315,
+      "line": 322,
       "label": "ResourceCache.serve",
       "path": "agentsdk/evidence.py",
       "confidence": 1,
@@ -9605,7 +9618,7 @@
       "name": "_sha256",
       "qualifiedName": "_sha256",
       "kind": "function",
-      "line": 20,
+      "line": 21,
       "label": "_sha256",
       "path": "agentsdk/manifest.py",
       "confidence": 1,
@@ -9621,7 +9634,7 @@
       "name": "build_manifest",
       "qualifiedName": "build_manifest",
       "kind": "function",
-      "line": 24,
+      "line": 25,
       "label": "build_manifest",
       "path": "agentsdk/manifest.py",
       "confidence": 1,
@@ -12261,7 +12274,7 @@
       "name": "_active",
       "qualifiedName": "PostgresLedgerStore._active",
       "kind": "function",
-      "line": 1592,
+      "line": 1596,
       "label": "PostgresLedgerStore._active",
       "path": "agentsdk/postgres.py",
       "confidence": 1,
@@ -12277,7 +12290,7 @@
       "name": "_checked",
       "qualifiedName": "PostgresLedgerStore._checked",
       "kind": "function",
-      "line": 1575,
+      "line": 1579,
       "label": "PostgresLedgerStore._checked",
       "path": "agentsdk/postgres.py",
       "confidence": 1,
@@ -12293,7 +12306,7 @@
       "name": "_contribute",
       "qualifiedName": "PostgresLedgerStore._contribute",
       "kind": "function",
-      "line": 1602,
+      "line": 1606,
       "label": "PostgresLedgerStore._contribute",
       "path": "agentsdk/postgres.py",
       "confidence": 1,
@@ -12309,7 +12322,7 @@
       "name": "_contributions",
       "qualifiedName": "PostgresLedgerStore._contributions",
       "kind": "function",
-      "line": 1700,
+      "line": 1704,
       "label": "PostgresLedgerStore._contributions",
       "path": "agentsdk/postgres.py",
       "confidence": 1,
@@ -12325,7 +12338,7 @@
       "name": "_insert_claim",
       "qualifiedName": "PostgresLedgerStore._insert_claim",
       "kind": "function",
-      "line": 1620,
+      "line": 1624,
       "label": "PostgresLedgerStore._insert_claim",
       "path": "agentsdk/postgres.py",
       "confidence": 1,
@@ -12357,7 +12370,7 @@
       "name": "claim",
       "qualifiedName": "PostgresLedgerStore.claim",
       "kind": "function",
-      "line": 1673,
+      "line": 1677,
       "label": "PostgresLedgerStore.claim",
       "path": "agentsdk/postgres.py",
       "confidence": 1,
@@ -12373,7 +12386,7 @@
       "name": "record",
       "qualifiedName": "PostgresLedgerStore.record",
       "kind": "function",
-      "line": 1627,
+      "line": 1631,
       "label": "PostgresLedgerStore.record",
       "path": "agentsdk/postgres.py",
       "confidence": 1,
@@ -12389,7 +12402,7 @@
       "name": "rows",
       "qualifiedName": "PostgresLedgerStore.rows",
       "kind": "function",
-      "line": 1688,
+      "line": 1692,
       "label": "PostgresLedgerStore.rows",
       "path": "agentsdk/postgres.py",
       "confidence": 1,
@@ -12405,7 +12418,7 @@
       "name": "supersede",
       "qualifiedName": "PostgresLedgerStore.supersede",
       "kind": "function",
-      "line": 1645,
+      "line": 1649,
       "label": "PostgresLedgerStore.supersede",
       "path": "agentsdk/postgres.py",
       "confidence": 1,
@@ -19477,7 +19490,7 @@
       "name": "Corpus",
       "qualifiedName": "Corpus",
       "kind": "class",
-      "line": 58,
+      "line": 61,
       "label": "Corpus",
       "path": "scripts/21_contention.py",
       "confidence": 1,
@@ -19493,7 +19506,7 @@
       "name": "ScriptedPlanner",
       "qualifiedName": "ScriptedPlanner",
       "kind": "class",
-      "line": 138,
+      "line": 155,
       "label": "ScriptedPlanner",
       "path": "scripts/21_contention.py",
       "confidence": 1,
@@ -19509,7 +19522,7 @@
       "name": "ScriptedReader",
       "qualifiedName": "ScriptedReader",
       "kind": "class",
-      "line": 118,
+      "line": 135,
       "label": "ScriptedReader",
       "path": "scripts/21_contention.py",
       "confidence": 1,
@@ -19525,7 +19538,7 @@
       "name": "_spoken",
       "qualifiedName": "_spoken",
       "kind": "function",
-      "line": 83,
+      "line": 86,
       "label": "_spoken",
       "path": "scripts/21_contention.py",
       "confidence": 1,
@@ -19541,7 +19554,7 @@
       "name": "briefed",
       "qualifiedName": "briefed",
       "kind": "function",
-      "line": 114,
+      "line": 131,
       "label": "briefed",
       "path": "scripts/21_contention.py",
       "confidence": 1,
@@ -19557,7 +19570,7 @@
       "name": "contend",
       "qualifiedName": "contend",
       "kind": "function",
-      "line": 173,
+      "line": 190,
       "label": "contend",
       "path": "scripts/21_contention.py",
       "confidence": 1,
@@ -19573,7 +19586,7 @@
       "name": "__init__",
       "qualifiedName": "Corpus.__init__",
       "kind": "function",
-      "line": 62,
+      "line": 65,
       "label": "Corpus.__init__",
       "path": "scripts/21_contention.py",
       "confidence": 1,
@@ -19589,7 +19602,7 @@
       "name": "described",
       "qualifiedName": "described",
       "kind": "function",
-      "line": 104,
+      "line": 121,
       "label": "described",
       "path": "scripts/21_contention.py",
       "confidence": 1,
@@ -19605,7 +19618,7 @@
       "name": "live",
       "qualifiedName": "live",
       "kind": "function",
-      "line": 312,
+      "line": 329,
       "label": "live",
       "path": "scripts/21_contention.py",
       "confidence": 1,
@@ -19621,7 +19634,7 @@
       "name": "go",
       "qualifiedName": "live.go",
       "kind": "function",
-      "line": 324,
+      "line": 341,
       "label": "live.go",
       "path": "scripts/21_contention.py",
       "confidence": 1,
@@ -19637,7 +19650,7 @@
       "name": "offline",
       "qualifiedName": "offline",
       "kind": "function",
-      "line": 255,
+      "line": 272,
       "label": "offline",
       "path": "scripts/21_contention.py",
       "confidence": 1,
@@ -19653,7 +19666,7 @@
       "name": "delay",
       "qualifiedName": "offline.delay",
       "kind": "function",
-      "line": 278,
+      "line": 295,
       "label": "offline.delay",
       "path": "scripts/21_contention.py",
       "confidence": 1,
@@ -19669,7 +19682,7 @@
       "name": "resolve",
       "qualifiedName": "offline.resolve",
       "kind": "function",
-      "line": 275,
+      "line": 292,
       "label": "offline.resolve",
       "path": "scripts/21_contention.py",
       "confidence": 1,
@@ -19685,7 +19698,7 @@
       "name": "serve",
       "qualifiedName": "offline.serve",
       "kind": "function",
-      "line": 261,
+      "line": 278,
       "label": "offline.serve",
       "path": "scripts/21_contention.py",
       "confidence": 1,
@@ -19701,7 +19714,7 @@
       "name": "orchestrator_for",
       "qualifiedName": "orchestrator_for",
       "kind": "function",
-      "line": 156,
+      "line": 173,
       "label": "orchestrator_for",
       "path": "scripts/21_contention.py",
       "confidence": 1,
@@ -19717,7 +19730,7 @@
       "name": "pages_of",
       "qualifiedName": "pages_of",
       "kind": "function",
-      "line": 88,
+      "line": 91,
       "label": "pages_of",
       "path": "scripts/21_contention.py",
       "confidence": 1,
@@ -19733,7 +19746,7 @@
       "name": "reader_steps",
       "qualifiedName": "reader_steps",
       "kind": "function",
-      "line": 92,
+      "line": 95,
       "label": "reader_steps",
       "path": "scripts/21_contention.py",
       "confidence": 1,
@@ -19749,7 +19762,7 @@
       "name": "registry",
       "qualifiedName": "registry",
       "kind": "function",
-      "line": 164,
+      "line": 181,
       "label": "registry",
       "path": "scripts/21_contention.py",
       "confidence": 1,
@@ -19765,7 +19778,7 @@
       "name": "send",
       "qualifiedName": "ScriptedPlanner.send",
       "kind": "function",
-      "line": 141,
+      "line": 158,
       "label": "ScriptedPlanner.send",
       "path": "scripts/21_contention.py",
       "confidence": 1,
@@ -19781,7 +19794,7 @@
       "name": "__init__",
       "qualifiedName": "ScriptedReader.__init__",
       "kind": "function",
-      "line": 121,
+      "line": 138,
       "label": "ScriptedReader.__init__",
       "path": "scripts/21_contention.py",
       "confidence": 1,
@@ -19797,7 +19810,7 @@
       "name": "send",
       "qualifiedName": "ScriptedReader.send",
       "kind": "function",
-      "line": 124,
+      "line": 141,
       "label": "ScriptedReader.send",
       "path": "scripts/21_contention.py",
       "confidence": 1,
@@ -19806,6 +19819,22 @@
         "source": "scripts/21_contention.py"
       },
       "contentHash": "7e0b7936d3572cbdab11fc30ace97e261e79870291bfde9cec37e52fcfa3ea15"
+    },
+    {
+      "id": "symbol:scripts/21_contention.py#function:taint_holds",
+      "type": "symbol",
+      "name": "taint_holds",
+      "qualifiedName": "taint_holds",
+      "kind": "function",
+      "line": 107,
+      "label": "taint_holds",
+      "path": "scripts/21_contention.py",
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "scripts/21_contention.py"
+      },
+      "contentHash": "46a8aae88307378ae536b0e55471394cef9d2ad90b4e60494b9e2bb576d16642"
     },
     {
       "id": "symbol:tests/conftest.py#class:_LoopWatchedPool",
@@ -29269,7 +29298,7 @@
       "name": "Ticking",
       "qualifiedName": "test_caveat3_a_url_cites_the_runs_own_newer_fetch_over_an_older_briefed_version.Ticking",
       "kind": "class",
-      "line": 501,
+      "line": 502,
       "label": "test_caveat3_a_url_cites_the_runs_own_newer_fetch_over_an_older_briefed_version.Ticking",
       "path": "tests/test_claim_lock.py",
       "confidence": 1,
@@ -29797,7 +29826,7 @@
       "name": "test_caveat3_a_url_cites_the_runs_own_newer_fetch_over_an_older_briefed_version",
       "qualifiedName": "test_caveat3_a_url_cites_the_runs_own_newer_fetch_over_an_older_briefed_version",
       "kind": "function",
-      "line": 498,
+      "line": 499,
       "label": "test_caveat3_a_url_cites_the_runs_own_newer_fetch_over_an_older_briefed_version",
       "path": "tests/test_claim_lock.py",
       "confidence": 1,
@@ -29813,7 +29842,7 @@
       "name": "resolve",
       "qualifiedName": "test_caveat3_a_url_cites_the_runs_own_newer_fetch_over_an_older_briefed_version.resolve",
       "kind": "function",
-      "line": 509,
+      "line": 510,
       "label": "test_caveat3_a_url_cites_the_runs_own_newer_fetch_over_an_older_briefed_version.resolve",
       "path": "tests/test_claim_lock.py",
       "confidence": 1,
@@ -29829,7 +29858,7 @@
       "name": "__call__",
       "qualifiedName": "test_caveat3_a_url_cites_the_runs_own_newer_fetch_over_an_older_briefed_version.Ticking.__call__",
       "kind": "function",
-      "line": 504,
+      "line": 505,
       "label": "test_caveat3_a_url_cites_the_runs_own_newer_fetch_over_an_older_briefed_version.Ticking.__call__",
       "path": "tests/test_claim_lock.py",
       "confidence": 1,
@@ -29845,7 +29874,7 @@
       "name": "test_caveat4_case_folding_is_canonically_closed",
       "qualifiedName": "test_caveat4_case_folding_is_canonically_closed",
       "kind": "function",
-      "line": 530,
+      "line": 531,
       "label": "test_caveat4_case_folding_is_canonically_closed",
       "path": "tests/test_claim_lock.py",
       "confidence": 1,
@@ -29861,7 +29890,7 @@
       "name": "test_caveat5_recording_a_claim_reads_back_only_its_own_claim",
       "qualifiedName": "test_caveat5_recording_a_claim_reads_back_only_its_own_claim",
       "kind": "function",
-      "line": 535,
+      "line": 536,
       "label": "test_caveat5_recording_a_claim_reads_back_only_its_own_claim",
       "path": "tests/test_claim_lock.py",
       "confidence": 1,
@@ -29877,7 +29906,7 @@
       "name": "whole_ledger",
       "qualifiedName": "test_caveat5_recording_a_claim_reads_back_only_its_own_claim.whole_ledger",
       "kind": "function",
-      "line": 536,
+      "line": 537,
       "label": "test_caveat5_recording_a_claim_reads_back_only_its_own_claim.whole_ledger",
       "path": "tests/test_claim_lock.py",
       "confidence": 1,
@@ -33742,6 +33771,710 @@
         "source": "tests/test_distribution.py"
       },
       "contentHash": "36cc0f18c1a30636555708f8b5328baff9b8b821e5a592b73022b04c8c97634f"
+    },
+    {
+      "id": "symbol:tests/test_gate_carried.py#class:BackoffFails",
+      "type": "symbol",
+      "name": "BackoffFails",
+      "qualifiedName": "BackoffFails",
+      "kind": "class",
+      "line": 101,
+      "label": "BackoffFails",
+      "path": "tests/test_gate_carried.py",
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_gate_carried.py"
+      },
+      "contentHash": "611e3b1c2f9c8a160b840837ddb6833b106c5ae261083f7f3403a3c4d97f1e06"
+    },
+    {
+      "id": "symbol:tests/test_gate_carried.py#class:Fetches",
+      "type": "symbol",
+      "name": "Fetches",
+      "qualifiedName": "Fetches",
+      "kind": "class",
+      "line": 313,
+      "label": "Fetches",
+      "path": "tests/test_gate_carried.py",
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_gate_carried.py"
+      },
+      "contentHash": "a817a9a1c512a5b72902a71e6301bd2d5721eb531cdec245790430ab068a501f"
+    },
+    {
+      "id": "symbol:tests/test_gate_carried.py#class:FirstBackoffHangs",
+      "type": "symbol",
+      "name": "FirstBackoffHangs",
+      "qualifiedName": "FirstBackoffHangs",
+      "kind": "class",
+      "line": 67,
+      "label": "FirstBackoffHangs",
+      "path": "tests/test_gate_carried.py",
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_gate_carried.py"
+      },
+      "contentHash": "ea3243a8320738023107855fe7a5fc4762adb29b9a3f29c0764d6cb1d5b47d46"
+    },
+    {
+      "id": "symbol:tests/test_gate_carried.py#class:NoDelay",
+      "type": "symbol",
+      "name": "NoDelay",
+      "qualifiedName": "NoDelay",
+      "kind": "class",
+      "line": 57,
+      "label": "NoDelay",
+      "path": "tests/test_gate_carried.py",
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_gate_carried.py"
+      },
+      "contentHash": "e9a9f674bf57976498b59a17ea5251fbe2c5bab656a66e6d6693d7aa4c23be09"
+    },
+    {
+      "id": "symbol:tests/test_gate_carried.py#class:SlowNotFound",
+      "type": "symbol",
+      "name": "SlowNotFound",
+      "qualifiedName": "SlowNotFound",
+      "kind": "class",
+      "line": 290,
+      "label": "SlowNotFound",
+      "path": "tests/test_gate_carried.py",
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_gate_carried.py"
+      },
+      "contentHash": "b7fb6b3c06a5623fe540cc1a147f4204d1fd855304361232950d97bb858196a7"
+    },
+    {
+      "id": "symbol:tests/test_gate_carried.py#function:_drive",
+      "type": "symbol",
+      "name": "_drive",
+      "qualifiedName": "_drive",
+      "kind": "function",
+      "line": 123,
+      "label": "_drive",
+      "path": "tests/test_gate_carried.py",
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_gate_carried.py"
+      },
+      "contentHash": "a1257169319851a79c0edcc7340feef3d397c83485e7044b1dd840a22a47cd74"
+    },
+    {
+      "id": "symbol:tests/test_gate_carried.py#function:_example_21",
+      "type": "symbol",
+      "name": "_example_21",
+      "qualifiedName": "_example_21",
+      "kind": "function",
+      "line": 348,
+      "label": "_example_21",
+      "path": "tests/test_gate_carried.py",
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_gate_carried.py"
+      },
+      "contentHash": "2500dc2845a7be91cb473e6efb918a595504d20414739e3da874c08ccb59d6da"
+    },
+    {
+      "id": "symbol:tests/test_gate_carried.py#function:_hash",
+      "type": "symbol",
+      "name": "_hash",
+      "qualifiedName": "_hash",
+      "kind": "function",
+      "line": 266,
+      "label": "_hash",
+      "path": "tests/test_gate_carried.py",
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_gate_carried.py"
+      },
+      "contentHash": "f6a27c4ac532d84af53ab8563323094cfb5392d677149b8e36cd24b38c8d19bd"
+    },
+    {
+      "id": "symbol:tests/test_gate_carried.py#function:BackoffFails.__call__",
+      "type": "symbol",
+      "name": "__call__",
+      "qualifiedName": "BackoffFails.__call__",
+      "kind": "function",
+      "line": 102,
+      "label": "BackoffFails.__call__",
+      "path": "tests/test_gate_carried.py",
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_gate_carried.py"
+      },
+      "contentHash": "e52b7df62d7c748de18dca651372ea97e700fb424139b3089eda1997689cbee2"
+    },
+    {
+      "id": "symbol:tests/test_gate_carried.py#function:Fetches.send",
+      "type": "symbol",
+      "name": "send",
+      "qualifiedName": "Fetches.send",
+      "kind": "function",
+      "line": 314,
+      "label": "Fetches.send",
+      "path": "tests/test_gate_carried.py",
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_gate_carried.py"
+      },
+      "contentHash": "ad55e741c5ac1a13c31825f6a18d0b2b995a2375d022e8c67500dd1466937b50"
+    },
+    {
+      "id": "symbol:tests/test_gate_carried.py#function:FirstBackoffHangs.__call__",
+      "type": "symbol",
+      "name": "__call__",
+      "qualifiedName": "FirstBackoffHangs.__call__",
+      "kind": "function",
+      "line": 74,
+      "label": "FirstBackoffHangs.__call__",
+      "path": "tests/test_gate_carried.py",
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_gate_carried.py"
+      },
+      "contentHash": "d1a614e48303da69a3876805cee6dbe8fd0d67218e27ff84b298738ca5b13bfc"
+    },
+    {
+      "id": "symbol:tests/test_gate_carried.py#function:FirstBackoffHangs.__init__",
+      "type": "symbol",
+      "name": "__init__",
+      "qualifiedName": "FirstBackoffHangs.__init__",
+      "kind": "function",
+      "line": 70,
+      "label": "FirstBackoffHangs.__init__",
+      "path": "tests/test_gate_carried.py",
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_gate_carried.py"
+      },
+      "contentHash": "8ddcd4912088ace6a5ae9b9f369ef86182bc73bff63b865339a2b187ed5f54c9"
+    },
+    {
+      "id": "symbol:tests/test_gate_carried.py#function:held_locks",
+      "type": "symbol",
+      "name": "held_locks",
+      "qualifiedName": "held_locks",
+      "kind": "function",
+      "line": 40,
+      "label": "held_locks",
+      "path": "tests/test_gate_carried.py",
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_gate_carried.py"
+      },
+      "contentHash": "d33e55d6bc6ddbb8229f307f4bc8e22f17a8f075d699d40f499b266b8774827e"
+    },
+    {
+      "id": "symbol:tests/test_gate_carried.py#function:in_use",
+      "type": "symbol",
+      "name": "in_use",
+      "qualifiedName": "in_use",
+      "kind": "function",
+      "line": 45,
+      "label": "in_use",
+      "path": "tests/test_gate_carried.py",
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_gate_carried.py"
+      },
+      "contentHash": "47e62846e9b86b73bf9500b6c7519fe3feb2fa7701b0574df2c95b8dab7c81dc"
+    },
+    {
+      "id": "symbol:tests/test_gate_carried.py#function:NoDelay.__call__",
+      "type": "symbol",
+      "name": "__call__",
+      "qualifiedName": "NoDelay.__call__",
+      "kind": "function",
+      "line": 58,
+      "label": "NoDelay.__call__",
+      "path": "tests/test_gate_carried.py",
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_gate_carried.py"
+      },
+      "contentHash": "9748101e627d5520cf7140e943284002627b9ac1266ef1bfd5f54ac6d1998a28"
+    },
+    {
+      "id": "symbol:tests/test_gate_carried.py#function:SlowNotFound.__aenter__",
+      "type": "symbol",
+      "name": "__aenter__",
+      "qualifiedName": "SlowNotFound.__aenter__",
+      "kind": "function",
+      "line": 294,
+      "label": "SlowNotFound.__aenter__",
+      "path": "tests/test_gate_carried.py",
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_gate_carried.py"
+      },
+      "contentHash": "7f39643db9e03cc66c23457667e6016b97c0d63cd2ed6e72268daf6ece566c50"
+    },
+    {
+      "id": "symbol:tests/test_gate_carried.py#function:SlowNotFound.__aexit__",
+      "type": "symbol",
+      "name": "__aexit__",
+      "qualifiedName": "SlowNotFound.__aexit__",
+      "kind": "function",
+      "line": 299,
+      "label": "SlowNotFound.__aexit__",
+      "path": "tests/test_gate_carried.py",
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_gate_carried.py"
+      },
+      "contentHash": "e4f336f4b7b0f8a511e84cd610b8ff2ae4ebb9a9c3ca49af927ab5f2b3e2237f"
+    },
+    {
+      "id": "symbol:tests/test_gate_carried.py#function:SlowNotFound.__init__",
+      "type": "symbol",
+      "name": "__init__",
+      "qualifiedName": "SlowNotFound.__init__",
+      "kind": "function",
+      "line": 291,
+      "label": "SlowNotFound.__init__",
+      "path": "tests/test_gate_carried.py",
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_gate_carried.py"
+      },
+      "contentHash": "ea2ba6e35e58998bc5a29fc635ba4eb87b5d203573fcb7e6926c079efdd6ddab"
+    },
+    {
+      "id": "symbol:tests/test_gate_carried.py#function:SlowNotFound._handle",
+      "type": "symbol",
+      "name": "_handle",
+      "qualifiedName": "SlowNotFound._handle",
+      "kind": "function",
+      "line": 303,
+      "label": "SlowNotFound._handle",
+      "path": "tests/test_gate_carried.py",
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_gate_carried.py"
+      },
+      "contentHash": "80fb6390845075cfaa6b665ead1705229370539d941441c3d578f832b3beb861"
+    },
+    {
+      "id": "symbol:tests/test_gate_carried.py#function:test_b1_a_backoff_that_fails_spends_its_attempt_so_the_retries_still_end",
+      "type": "symbol",
+      "name": "test_b1_a_backoff_that_fails_spends_its_attempt_so_the_retries_still_end",
+      "qualifiedName": "test_b1_a_backoff_that_fails_spends_its_attempt_so_the_retries_still_end",
+      "kind": "function",
+      "line": 106,
+      "label": "test_b1_a_backoff_that_fails_spends_its_attempt_so_the_retries_still_end",
+      "path": "tests/test_gate_carried.py",
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_gate_carried.py"
+      },
+      "contentHash": "34063e69f5f4e3569c0a1f2b24782e4da4ca7d71fa8e48b71dc101970f3ca8c3"
+    },
+    {
+      "id": "symbol:tests/test_gate_carried.py#function:test_b1_a_backoff_that_fails_spends_its_attempt_so_the_retries_still_end.op",
+      "type": "symbol",
+      "name": "op",
+      "qualifiedName": "test_b1_a_backoff_that_fails_spends_its_attempt_so_the_retries_still_end.op",
+      "kind": "function",
+      "line": 109,
+      "label": "test_b1_a_backoff_that_fails_spends_its_attempt_so_the_retries_still_end.op",
+      "path": "tests/test_gate_carried.py",
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_gate_carried.py"
+      },
+      "contentHash": "971795d79ee8bfd7e649497479f7fa3131e5fa505895c21e8cd3f396cca3aded"
+    },
+    {
+      "id": "symbol:tests/test_gate_carried.py#function:test_b1_a_waiter_cancelled_during_its_backoff_spends_no_attempt_and_the_next_retries",
+      "type": "symbol",
+      "name": "test_b1_a_waiter_cancelled_during_its_backoff_spends_no_attempt_and_the_next_retries",
+      "qualifiedName": "test_b1_a_waiter_cancelled_during_its_backoff_spends_no_attempt_and_the_next_retries",
+      "kind": "function",
+      "line": 82,
+      "label": "test_b1_a_waiter_cancelled_during_its_backoff_spends_no_attempt_and_the_next_retries",
+      "path": "tests/test_gate_carried.py",
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_gate_carried.py"
+      },
+      "contentHash": "7abad5456406a32e00f2b9a52ce40a7577366600eb852d115e4623305df6553a"
+    },
+    {
+      "id": "symbol:tests/test_gate_carried.py#function:test_b1_a_waiter_cancelled_during_its_backoff_spends_no_attempt_and_the_next_retries.op",
+      "type": "symbol",
+      "name": "op",
+      "qualifiedName": "test_b1_a_waiter_cancelled_during_its_backoff_spends_no_attempt_and_the_next_retries.op",
+      "kind": "function",
+      "line": 87,
+      "label": "test_b1_a_waiter_cancelled_during_its_backoff_spends_no_attempt_and_the_next_retries.op",
+      "path": "tests/test_gate_carried.py",
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_gate_carried.py"
+      },
+      "contentHash": "11dc96b76f9e7384665309ce2da6af6b703495ea9f172325143669cc900d2b30"
+    },
+    {
+      "id": "symbol:tests/test_gate_carried.py#function:test_c5_a_waited_fetch_answered_404_records_its_wait_and_an_unwaited_one_nothing_new",
+      "type": "symbol",
+      "name": "test_c5_a_waited_fetch_answered_404_records_its_wait_and_an_unwaited_one_nothing_new",
+      "qualifiedName": "test_c5_a_waited_fetch_answered_404_records_its_wait_and_an_unwaited_one_nothing_new",
+      "kind": "function",
+      "line": 323,
+      "label": "test_c5_a_waited_fetch_answered_404_records_its_wait_and_an_unwaited_one_nothing_new",
+      "path": "tests/test_gate_carried.py",
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_gate_carried.py"
+      },
+      "contentHash": "7283db18ca1b8d1057e03709e9bb59b86fc4552b7b3a4d8124dc93f36c79e9a8"
+    },
+    {
+      "id": "symbol:tests/test_gate_carried.py#function:test_c5_a_waited_fetch_answered_404_records_its_wait_and_an_unwaited_one_nothing_new.resolve",
+      "type": "symbol",
+      "name": "resolve",
+      "qualifiedName": "test_c5_a_waited_fetch_answered_404_records_its_wait_and_an_unwaited_one_nothing_new.resolve",
+      "kind": "function",
+      "line": 325,
+      "label": "test_c5_a_waited_fetch_answered_404_records_its_wait_and_an_unwaited_one_nothing_new.resolve",
+      "path": "tests/test_gate_carried.py",
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_gate_carried.py"
+      },
+      "contentHash": "537993e995a06f67f9a74f81d5656bba74fcb0da3810ffeb3ddff5444f3a6d3c"
+    },
+    {
+      "id": "symbol:tests/test_gate_carried.py#function:test_c6_declared_a_holder_keeps_its_pooled_connection_while_its_operation_runs",
+      "type": "symbol",
+      "name": "test_c6_declared_a_holder_keeps_its_pooled_connection_while_its_operation_runs",
+      "qualifiedName": "test_c6_declared_a_holder_keeps_its_pooled_connection_while_its_operation_runs",
+      "kind": "function",
+      "line": 399,
+      "label": "test_c6_declared_a_holder_keeps_its_pooled_connection_while_its_operation_runs",
+      "path": "tests/test_gate_carried.py",
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_gate_carried.py"
+      },
+      "contentHash": "89db1b9971ec1f0530861c539b434338dc9e5f4e93b8ae5951a125347cf01bf6"
+    },
+    {
+      "id": "symbol:tests/test_gate_carried.py#function:test_c6_declared_a_holder_keeps_its_pooled_connection_while_its_operation_runs.op",
+      "type": "symbol",
+      "name": "op",
+      "qualifiedName": "test_c6_declared_a_holder_keeps_its_pooled_connection_while_its_operation_runs.op",
+      "kind": "function",
+      "line": 403,
+      "label": "test_c6_declared_a_holder_keeps_its_pooled_connection_while_its_operation_runs.op",
+      "path": "tests/test_gate_carried.py",
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_gate_carried.py"
+      },
+      "contentHash": "6fd05df1fdb11dfbe9f96115927ccc0e8633cea5b01afd9c77153f0a9e99d5d0"
+    },
+    {
+      "id": "symbol:tests/test_gate_carried.py#function:test_example_21s_correction_cites_a_page_and_its_taint_check_holds",
+      "type": "symbol",
+      "name": "test_example_21s_correction_cites_a_page_and_its_taint_check_holds",
+      "qualifiedName": "test_example_21s_correction_cites_a_page_and_its_taint_check_holds",
+      "kind": "function",
+      "line": 355,
+      "label": "test_example_21s_correction_cites_a_page_and_its_taint_check_holds",
+      "path": "tests/test_gate_carried.py",
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_gate_carried.py"
+      },
+      "contentHash": "fbd5f7d0da28fc3c2e4c1a336631eeee43543127080378c5609105cbaa172323"
+    },
+    {
+      "id": "symbol:tests/test_gate_carried.py#function:test_example_21s_taint_check_fails_against_a_clean_provenance",
+      "type": "symbol",
+      "name": "test_example_21s_taint_check_fails_against_a_clean_provenance",
+      "qualifiedName": "test_example_21s_taint_check_fails_against_a_clean_provenance",
+      "kind": "function",
+      "line": 361,
+      "label": "test_example_21s_taint_check_fails_against_a_clean_provenance",
+      "path": "tests/test_gate_carried.py",
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_gate_carried.py"
+      },
+      "contentHash": "bf734715173c24dfc73947232832f39def3b90c08e17af6c6253996ce1e06d7f"
+    },
+    {
+      "id": "symbol:tests/test_gate_carried.py#function:test_k1_a_key_failed_by_a_cancelled_last_attempt_carries_the_cancellation",
+      "type": "symbol",
+      "name": "test_k1_a_key_failed_by_a_cancelled_last_attempt_carries_the_cancellation",
+      "qualifiedName": "test_k1_a_key_failed_by_a_cancelled_last_attempt_carries_the_cancellation",
+      "kind": "function",
+      "line": 230,
+      "label": "test_k1_a_key_failed_by_a_cancelled_last_attempt_carries_the_cancellation",
+      "path": "tests/test_gate_carried.py",
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_gate_carried.py"
+      },
+      "contentHash": "70b204426c1c6f6466ea5138eeee5b105bbb5b0582679c7cfd27a5a4b79fa7a8"
+    },
+    {
+      "id": "symbol:tests/test_gate_carried.py#function:test_k1_a_key_failed_by_a_cancelled_last_attempt_carries_the_cancellation.op",
+      "type": "symbol",
+      "name": "op",
+      "qualifiedName": "test_k1_a_key_failed_by_a_cancelled_last_attempt_carries_the_cancellation.op",
+      "kind": "function",
+      "line": 234,
+      "label": "test_k1_a_key_failed_by_a_cancelled_last_attempt_carries_the_cancellation.op",
+      "path": "tests/test_gate_carried.py",
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_gate_carried.py"
+      },
+      "contentHash": "308abcdff3af87cc7733a29e0b79ebc5fe76562ad63002127d8188af9b44d0e7"
+    },
+    {
+      "id": "symbol:tests/test_gate_carried.py#function:test_k1_a_key_failed_by_a_waiters_own_failure_carries_that_failure",
+      "type": "symbol",
+      "name": "test_k1_a_key_failed_by_a_waiters_own_failure_carries_that_failure",
+      "qualifiedName": "test_k1_a_key_failed_by_a_waiters_own_failure_carries_that_failure",
+      "kind": "function",
+      "line": 211,
+      "label": "test_k1_a_key_failed_by_a_waiters_own_failure_carries_that_failure",
+      "path": "tests/test_gate_carried.py",
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_gate_carried.py"
+      },
+      "contentHash": "ea94c04b812517212d0496a4564469cf21a7a04a1c74a3144c3ac87eac1b56bb"
+    },
+    {
+      "id": "symbol:tests/test_gate_carried.py#function:test_k1_a_key_failed_by_a_waiters_own_failure_carries_that_failure.op",
+      "type": "symbol",
+      "name": "op",
+      "qualifiedName": "test_k1_a_key_failed_by_a_waiters_own_failure_carries_that_failure.op",
+      "kind": "function",
+      "line": 217,
+      "label": "test_k1_a_key_failed_by_a_waiters_own_failure_carries_that_failure.op",
+      "path": "tests/test_gate_carried.py",
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_gate_carried.py"
+      },
+      "contentHash": "2c04cde65c94aa15c3b7b14ec01f83fb19ce5da79517a91b007e747377e660e9"
+    },
+    {
+      "id": "symbol:tests/test_gate_carried.py#function:test_k1_every_key_failed_after_the_retries_carries_the_last_failure",
+      "type": "symbol",
+      "name": "test_k1_every_key_failed_after_the_retries_carries_the_last_failure",
+      "qualifiedName": "test_k1_every_key_failed_after_the_retries_carries_the_last_failure",
+      "kind": "function",
+      "line": 195,
+      "label": "test_k1_every_key_failed_after_the_retries_carries_the_last_failure",
+      "path": "tests/test_gate_carried.py",
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_gate_carried.py"
+      },
+      "contentHash": "ba3e303cda70abf67061e33fd0ed75d799e87492a107fde1b2ac306ba5dc9940"
+    },
+    {
+      "id": "symbol:tests/test_gate_carried.py#function:test_k1_every_key_failed_after_the_retries_carries_the_last_failure.op",
+      "type": "symbol",
+      "name": "op",
+      "qualifiedName": "test_k1_every_key_failed_after_the_retries_carries_the_last_failure.op",
+      "kind": "function",
+      "line": 199,
+      "label": "test_k1_every_key_failed_after_the_retries_carries_the_last_failure.op",
+      "path": "tests/test_gate_carried.py",
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_gate_carried.py"
+      },
+      "contentHash": "8bf0cf53fe3ce286e89645cd0fb1a795cd121eea5e821919de2c7a72599d907c"
+    },
+    {
+      "id": "symbol:tests/test_gate_carried.py#function:test_p1_two_ledgers_whose_lock_names_would_join_alike_take_different_locks",
+      "type": "symbol",
+      "name": "test_p1_two_ledgers_whose_lock_names_would_join_alike_take_different_locks",
+      "qualifiedName": "test_p1_two_ledgers_whose_lock_names_would_join_alike_take_different_locks",
+      "kind": "function",
+      "line": 256,
+      "label": "test_p1_two_ledgers_whose_lock_names_would_join_alike_take_different_locks",
+      "path": "tests/test_gate_carried.py",
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_gate_carried.py"
+      },
+      "contentHash": "12a91e40d77a662c4c06b60b679b5c965abea3ca13010da0ca0b1af1fdf668c4"
+    },
+    {
+      "id": "symbol:tests/test_gate_carried.py#function:test_p2_two_specs_whose_parts_would_join_alike_hash_differently_and_say_their_encoding",
+      "type": "symbol",
+      "name": "test_p2_two_specs_whose_parts_would_join_alike_hash_differently_and_say_their_encoding",
+      "qualifiedName": "test_p2_two_specs_whose_parts_would_join_alike_hash_differently_and_say_their_encoding",
+      "kind": "function",
+      "line": 271,
+      "label": "test_p2_two_specs_whose_parts_would_join_alike_hash_differently_and_say_their_encoding",
+      "path": "tests/test_gate_carried.py",
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_gate_carried.py"
+      },
+      "contentHash": "0a16c696771ac44008a1da30bf7f53494381402337514f8464d239a7379a4154"
+    },
+    {
+      "id": "symbol:tests/test_gate_carried.py#function:test_w1_declared_a_cancelled_call_waits_for_its_thread_however_long_it_runs",
+      "type": "symbol",
+      "name": "test_w1_declared_a_cancelled_call_waits_for_its_thread_however_long_it_runs",
+      "qualifiedName": "test_w1_declared_a_cancelled_call_waits_for_its_thread_however_long_it_runs",
+      "kind": "function",
+      "line": 382,
+      "label": "test_w1_declared_a_cancelled_call_waits_for_its_thread_however_long_it_runs",
+      "path": "tests/test_gate_carried.py",
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_gate_carried.py"
+      },
+      "contentHash": "28d029fdb6669c3b8c8c9325cc23c8b109b75dced509ba9169515020b0552179"
+    },
+    {
+      "id": "symbol:tests/test_gate_carried.py#function:test_w1_declared_a_cancelled_call_waits_for_its_thread_however_long_it_runs.slow",
+      "type": "symbol",
+      "name": "slow",
+      "qualifiedName": "test_w1_declared_a_cancelled_call_waits_for_its_thread_however_long_it_runs.slow",
+      "kind": "function",
+      "line": 385,
+      "label": "test_w1_declared_a_cancelled_call_waits_for_its_thread_however_long_it_runs.slow",
+      "path": "tests/test_gate_carried.py",
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_gate_carried.py"
+      },
+      "contentHash": "323211f4577b5abefe78f3a30b8edc022bd804dd33b903f79c7f9198ba205ab5"
+    },
+    {
+      "id": "symbol:tests/test_gate_carried.py#function:test_w2_an_interrupt_delivered_while_the_lock_is_taken_is_raised_once_the_lock_is_released",
+      "type": "symbol",
+      "name": "test_w2_an_interrupt_delivered_while_the_lock_is_taken_is_raised_once_the_lock_is_released",
+      "qualifiedName": "test_w2_an_interrupt_delivered_while_the_lock_is_taken_is_raised_once_the_lock_is_released",
+      "kind": "function",
+      "line": 146,
+      "label": "test_w2_an_interrupt_delivered_while_the_lock_is_taken_is_raised_once_the_lock_is_released",
+      "path": "tests/test_gate_carried.py",
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_gate_carried.py"
+      },
+      "contentHash": "43fcdb92db77b6da9884cfad34bcf86a1e79e28beef798a26eb8a874bfd6eeb2"
+    },
+    {
+      "id": "symbol:tests/test_gate_carried.py#function:test_w2_an_interrupt_delivered_while_the_lock_is_taken_is_raised_once_the_lock_is_released.slow_try",
+      "type": "symbol",
+      "name": "slow_try",
+      "qualifiedName": "test_w2_an_interrupt_delivered_while_the_lock_is_taken_is_raised_once_the_lock_is_released.slow_try",
+      "kind": "function",
+      "line": 153,
+      "label": "test_w2_an_interrupt_delivered_while_the_lock_is_taken_is_raised_once_the_lock_is_released.slow_try",
+      "path": "tests/test_gate_carried.py",
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_gate_carried.py"
+      },
+      "contentHash": "27f058abc08431e3694d77bc713f6f950fd07626ad37ca4d9c8bb47d85828a60"
+    },
+    {
+      "id": "symbol:tests/test_gate_carried.py#function:test_w2_an_interrupt_delivered_while_the_lock_is_taken_is_raised_once_the_lock_is_released.when",
+      "type": "symbol",
+      "name": "when",
+      "qualifiedName": "test_w2_an_interrupt_delivered_while_the_lock_is_taken_is_raised_once_the_lock_is_released.when",
+      "kind": "function",
+      "line": 162,
+      "label": "test_w2_an_interrupt_delivered_while_the_lock_is_taken_is_raised_once_the_lock_is_released.when",
+      "path": "tests/test_gate_carried.py",
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_gate_carried.py"
+      },
+      "contentHash": "0ccecb09552f33c8e2291238c41be04e1312b313da20434a4a88a100ea433ec3"
+    },
+    {
+      "id": "symbol:tests/test_gate_carried.py#function:test_w2_the_threads_own_failure_is_still_its_own_outcome",
+      "type": "symbol",
+      "name": "test_w2_the_threads_own_failure_is_still_its_own_outcome",
+      "qualifiedName": "test_w2_the_threads_own_failure_is_still_its_own_outcome",
+      "kind": "function",
+      "line": 182,
+      "label": "test_w2_the_threads_own_failure_is_still_its_own_outcome",
+      "path": "tests/test_gate_carried.py",
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_gate_carried.py"
+      },
+      "contentHash": "d86e612e14fc60d4f4234e2aadd7fa6e3fe12b7b18cec8e50582d0ecc0de779a"
+    },
+    {
+      "id": "symbol:tests/test_gate_carried.py#function:test_w2_the_threads_own_failure_is_still_its_own_outcome.fails",
+      "type": "symbol",
+      "name": "fails",
+      "qualifiedName": "test_w2_the_threads_own_failure_is_still_its_own_outcome.fails",
+      "kind": "function",
+      "line": 183,
+      "label": "test_w2_the_threads_own_failure_is_still_its_own_outcome.fails",
+      "path": "tests/test_gate_carried.py",
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_gate_carried.py"
+      },
+      "contentHash": "5cb9260520309203d878e9967eb629494aa491b409b36ffe0ab99ae745f66bb5"
     },
     {
       "id": "symbol:tests/test_golden_eval.py#class:LiveRun",
@@ -55634,7 +56367,7 @@
       "type": "defines",
       "source": "file:agentsdk/claimlock.py",
       "target": "symbol:agentsdk/claimlock.py#class:_Key",
-      "line": 53,
+      "line": 56,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -55648,7 +56381,7 @@
       "type": "defines",
       "source": "file:agentsdk/claimlock.py",
       "target": "symbol:agentsdk/claimlock.py#class:ClaimLock",
-      "line": 79,
+      "line": 82,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -55676,7 +56409,7 @@
       "type": "defines",
       "source": "file:agentsdk/claimlock.py",
       "target": "symbol:agentsdk/claimlock.py#function:_completed",
-      "line": 184,
+      "line": 205,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -55690,7 +56423,7 @@
       "type": "defines",
       "source": "file:agentsdk/claimlock.py",
       "target": "symbol:agentsdk/claimlock.py#function:_finished",
-      "line": 168,
+      "line": 178,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -55704,7 +56437,7 @@
       "type": "defines",
       "source": "file:agentsdk/claimlock.py",
       "target": "symbol:agentsdk/claimlock.py#function:_Key.__init__",
-      "line": 56,
+      "line": 59,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -55718,7 +56451,7 @@
       "type": "defines",
       "source": "file:agentsdk/claimlock.py",
       "target": "symbol:agentsdk/claimlock.py#function:_Key.failed_once",
-      "line": 65,
+      "line": 68,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -55732,7 +56465,7 @@
       "type": "defines",
       "source": "file:agentsdk/claimlock.py",
       "target": "symbol:agentsdk/claimlock.py#function:_release",
-      "line": 211,
+      "line": 235,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -55746,7 +56479,7 @@
       "type": "defines",
       "source": "file:agentsdk/claimlock.py",
       "target": "symbol:agentsdk/claimlock.py#function:_try_lock",
-      "line": 196,
+      "line": 220,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -55760,7 +56493,7 @@
       "type": "defines",
       "source": "file:agentsdk/claimlock.py",
       "target": "symbol:agentsdk/claimlock.py#function:ClaimLock.__init__",
-      "line": 83,
+      "line": 86,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -55774,7 +56507,7 @@
       "type": "defines",
       "source": "file:agentsdk/claimlock.py",
       "target": "symbol:agentsdk/claimlock.py#function:ClaimLock._database",
-      "line": 147,
+      "line": 157,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -55788,7 +56521,7 @@
       "type": "defines",
       "source": "file:agentsdk/claimlock.py",
       "target": "symbol:agentsdk/claimlock.py#function:ClaimLock._retry",
-      "line": 122,
+      "line": 126,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -55802,7 +56535,7 @@
       "type": "defines",
       "source": "file:agentsdk/claimlock.py",
       "target": "symbol:agentsdk/claimlock.py#function:ClaimLock.run",
-      "line": 96,
+      "line": 99,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -55830,7 +56563,7 @@
       "type": "defines",
       "source": "file:agentsdk/claimlock.py",
       "target": "symbol:agentsdk/claimlock.py#function:lock_key",
-      "line": 47,
+      "line": 50,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -56936,7 +57669,7 @@
       "type": "defines",
       "source": "file:agentsdk/events.py",
       "target": "symbol:agentsdk/events.py#class:EventSink",
-      "line": 70,
+      "line": 73,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -56964,7 +57697,7 @@
       "type": "defines",
       "source": "file:agentsdk/events.py",
       "target": "symbol:agentsdk/events.py#class:InMemoryEventSink",
-      "line": 78,
+      "line": 81,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -56978,7 +57711,7 @@
       "type": "defines",
       "source": "file:agentsdk/events.py",
       "target": "symbol:agentsdk/events.py#class:RunEvent",
-      "line": 50,
+      "line": 53,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -56992,7 +57725,7 @@
       "type": "defines",
       "source": "file:agentsdk/events.py",
       "target": "symbol:agentsdk/events.py#function:EventSink.emit",
-      "line": 71,
+      "line": 74,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -57006,7 +57739,7 @@
       "type": "defines",
       "source": "file:agentsdk/events.py",
       "target": "symbol:agentsdk/events.py#function:EventSink.events",
-      "line": 75,
+      "line": 78,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -57020,7 +57753,7 @@
       "type": "defines",
       "source": "file:agentsdk/events.py",
       "target": "symbol:agentsdk/events.py#function:InMemoryEventSink.__init__",
-      "line": 85,
+      "line": 88,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -57034,7 +57767,7 @@
       "type": "defines",
       "source": "file:agentsdk/events.py",
       "target": "symbol:agentsdk/events.py#function:InMemoryEventSink.emit",
-      "line": 102,
+      "line": 105,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -57048,7 +57781,7 @@
       "type": "defines",
       "source": "file:agentsdk/events.py",
       "target": "symbol:agentsdk/events.py#function:InMemoryEventSink.events",
-      "line": 118,
+      "line": 121,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -57062,7 +57795,7 @@
       "type": "defines",
       "source": "file:agentsdk/events.py",
       "target": "symbol:agentsdk/events.py#function:InMemoryEventSink.scope",
-      "line": 97,
+      "line": 100,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -57426,7 +58159,7 @@
       "type": "defines",
       "source": "file:agentsdk/evidence.py",
       "target": "symbol:agentsdk/evidence.py#function:ResourceCache._event",
-      "line": 384,
+      "line": 391,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -57454,7 +58187,7 @@
       "type": "defines",
       "source": "file:agentsdk/evidence.py",
       "target": "symbol:agentsdk/evidence.py#function:ResourceCache._prior",
-      "line": 341,
+      "line": 348,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -57468,7 +58201,7 @@
       "type": "defines",
       "source": "file:agentsdk/evidence.py",
       "target": "symbol:agentsdk/evidence.py#function:ResourceCache._record",
-      "line": 354,
+      "line": 361,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -57510,7 +58243,7 @@
       "type": "defines",
       "source": "file:agentsdk/evidence.py",
       "target": "symbol:agentsdk/evidence.py#function:ResourceCache.record",
-      "line": 345,
+      "line": 352,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -57524,7 +58257,7 @@
       "type": "defines",
       "source": "file:agentsdk/evidence.py",
       "target": "symbol:agentsdk/evidence.py#function:ResourceCache.serve",
-      "line": 315,
+      "line": 322,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -59400,7 +60133,7 @@
       "type": "defines",
       "source": "file:agentsdk/manifest.py",
       "target": "symbol:agentsdk/manifest.py#function:_sha256",
-      "line": 20,
+      "line": 21,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -59414,7 +60147,7 @@
       "type": "defines",
       "source": "file:agentsdk/manifest.py",
       "target": "symbol:agentsdk/manifest.py#function:build_manifest",
-      "line": 24,
+      "line": 25,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -61724,7 +62457,7 @@
       "type": "defines",
       "source": "file:agentsdk/postgres.py",
       "target": "symbol:agentsdk/postgres.py#function:PostgresLedgerStore._active",
-      "line": 1592,
+      "line": 1596,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -61738,7 +62471,7 @@
       "type": "defines",
       "source": "file:agentsdk/postgres.py",
       "target": "symbol:agentsdk/postgres.py#function:PostgresLedgerStore._checked",
-      "line": 1575,
+      "line": 1579,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -61752,7 +62485,7 @@
       "type": "defines",
       "source": "file:agentsdk/postgres.py",
       "target": "symbol:agentsdk/postgres.py#function:PostgresLedgerStore._contribute",
-      "line": 1602,
+      "line": 1606,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -61766,7 +62499,7 @@
       "type": "defines",
       "source": "file:agentsdk/postgres.py",
       "target": "symbol:agentsdk/postgres.py#function:PostgresLedgerStore._contributions",
-      "line": 1700,
+      "line": 1704,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -61780,7 +62513,7 @@
       "type": "defines",
       "source": "file:agentsdk/postgres.py",
       "target": "symbol:agentsdk/postgres.py#function:PostgresLedgerStore._insert_claim",
-      "line": 1620,
+      "line": 1624,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -61808,7 +62541,7 @@
       "type": "defines",
       "source": "file:agentsdk/postgres.py",
       "target": "symbol:agentsdk/postgres.py#function:PostgresLedgerStore.claim",
-      "line": 1673,
+      "line": 1677,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -61822,7 +62555,7 @@
       "type": "defines",
       "source": "file:agentsdk/postgres.py",
       "target": "symbol:agentsdk/postgres.py#function:PostgresLedgerStore.record",
-      "line": 1627,
+      "line": 1631,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -61836,7 +62569,7 @@
       "type": "defines",
       "source": "file:agentsdk/postgres.py",
       "target": "symbol:agentsdk/postgres.py#function:PostgresLedgerStore.rows",
-      "line": 1688,
+      "line": 1692,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -61850,7 +62583,7 @@
       "type": "defines",
       "source": "file:agentsdk/postgres.py",
       "target": "symbol:agentsdk/postgres.py#function:PostgresLedgerStore.supersede",
-      "line": 1645,
+      "line": 1649,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -68038,7 +68771,7 @@
       "type": "defines",
       "source": "file:scripts/21_contention.py",
       "target": "symbol:scripts/21_contention.py#class:Corpus",
-      "line": 58,
+      "line": 61,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -68052,7 +68785,7 @@
       "type": "defines",
       "source": "file:scripts/21_contention.py",
       "target": "symbol:scripts/21_contention.py#class:ScriptedPlanner",
-      "line": 138,
+      "line": 155,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -68066,7 +68799,7 @@
       "type": "defines",
       "source": "file:scripts/21_contention.py",
       "target": "symbol:scripts/21_contention.py#class:ScriptedReader",
-      "line": 118,
+      "line": 135,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -68080,7 +68813,7 @@
       "type": "defines",
       "source": "file:scripts/21_contention.py",
       "target": "symbol:scripts/21_contention.py#function:_spoken",
-      "line": 83,
+      "line": 86,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -68094,7 +68827,7 @@
       "type": "defines",
       "source": "file:scripts/21_contention.py",
       "target": "symbol:scripts/21_contention.py#function:briefed",
-      "line": 114,
+      "line": 131,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -68108,7 +68841,7 @@
       "type": "defines",
       "source": "file:scripts/21_contention.py",
       "target": "symbol:scripts/21_contention.py#function:contend",
-      "line": 173,
+      "line": 190,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -68122,7 +68855,7 @@
       "type": "defines",
       "source": "file:scripts/21_contention.py",
       "target": "symbol:scripts/21_contention.py#function:Corpus.__init__",
-      "line": 62,
+      "line": 65,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -68136,7 +68869,7 @@
       "type": "defines",
       "source": "file:scripts/21_contention.py",
       "target": "symbol:scripts/21_contention.py#function:described",
-      "line": 104,
+      "line": 121,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -68150,7 +68883,7 @@
       "type": "defines",
       "source": "file:scripts/21_contention.py",
       "target": "symbol:scripts/21_contention.py#function:live",
-      "line": 312,
+      "line": 329,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -68164,7 +68897,7 @@
       "type": "defines",
       "source": "file:scripts/21_contention.py",
       "target": "symbol:scripts/21_contention.py#function:live.go",
-      "line": 324,
+      "line": 341,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -68178,7 +68911,7 @@
       "type": "defines",
       "source": "file:scripts/21_contention.py",
       "target": "symbol:scripts/21_contention.py#function:offline",
-      "line": 255,
+      "line": 272,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -68192,7 +68925,7 @@
       "type": "defines",
       "source": "file:scripts/21_contention.py",
       "target": "symbol:scripts/21_contention.py#function:offline.delay",
-      "line": 278,
+      "line": 295,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -68206,7 +68939,7 @@
       "type": "defines",
       "source": "file:scripts/21_contention.py",
       "target": "symbol:scripts/21_contention.py#function:offline.resolve",
-      "line": 275,
+      "line": 292,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -68220,7 +68953,7 @@
       "type": "defines",
       "source": "file:scripts/21_contention.py",
       "target": "symbol:scripts/21_contention.py#function:offline.serve",
-      "line": 261,
+      "line": 278,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -68234,7 +68967,7 @@
       "type": "defines",
       "source": "file:scripts/21_contention.py",
       "target": "symbol:scripts/21_contention.py#function:orchestrator_for",
-      "line": 156,
+      "line": 173,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -68248,7 +68981,7 @@
       "type": "defines",
       "source": "file:scripts/21_contention.py",
       "target": "symbol:scripts/21_contention.py#function:pages_of",
-      "line": 88,
+      "line": 91,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -68262,7 +68995,7 @@
       "type": "defines",
       "source": "file:scripts/21_contention.py",
       "target": "symbol:scripts/21_contention.py#function:reader_steps",
-      "line": 92,
+      "line": 95,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -68276,7 +69009,7 @@
       "type": "defines",
       "source": "file:scripts/21_contention.py",
       "target": "symbol:scripts/21_contention.py#function:registry",
-      "line": 164,
+      "line": 181,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -68290,7 +69023,7 @@
       "type": "defines",
       "source": "file:scripts/21_contention.py",
       "target": "symbol:scripts/21_contention.py#function:ScriptedPlanner.send",
-      "line": 141,
+      "line": 158,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -68304,7 +69037,7 @@
       "type": "defines",
       "source": "file:scripts/21_contention.py",
       "target": "symbol:scripts/21_contention.py#function:ScriptedReader.__init__",
-      "line": 121,
+      "line": 138,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -68318,7 +69051,7 @@
       "type": "defines",
       "source": "file:scripts/21_contention.py",
       "target": "symbol:scripts/21_contention.py#function:ScriptedReader.send",
-      "line": 124,
+      "line": 141,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -68326,6 +69059,20 @@
         "source": "scripts/21_contention.py"
       },
       "contentHash": "88ae5b9a0bda35544f40fa3c7d8e283deff580196e2059c9a0d870a8cf3c45e6"
+    },
+    {
+      "id": "defines:file:scripts/21_contention.py->symbol:scripts/21_contention.py#function:taint_holds:",
+      "type": "defines",
+      "source": "file:scripts/21_contention.py",
+      "target": "symbol:scripts/21_contention.py#function:taint_holds",
+      "line": 107,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "scripts/21_contention.py"
+      },
+      "contentHash": "d99aef9eb32099a6038be2fa1730c44a3d88f1957ef7f3085767e270f4e4b3f6"
     },
     {
       "id": "defines:file:tests/conftest.py->symbol:tests/conftest.py#class:_LoopWatchedPool:",
@@ -76606,7 +77353,7 @@
       "type": "defines",
       "source": "file:tests/test_claim_lock.py",
       "target": "symbol:tests/test_claim_lock.py#class:test_caveat3_a_url_cites_the_runs_own_newer_fetch_over_an_older_briefed_version.Ticking",
-      "line": 501,
+      "line": 502,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -77068,7 +77815,7 @@
       "type": "defines",
       "source": "file:tests/test_claim_lock.py",
       "target": "symbol:tests/test_claim_lock.py#function:test_caveat3_a_url_cites_the_runs_own_newer_fetch_over_an_older_briefed_version",
-      "line": 498,
+      "line": 499,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -77082,7 +77829,7 @@
       "type": "defines",
       "source": "file:tests/test_claim_lock.py",
       "target": "symbol:tests/test_claim_lock.py#function:test_caveat3_a_url_cites_the_runs_own_newer_fetch_over_an_older_briefed_version.resolve",
-      "line": 509,
+      "line": 510,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -77096,7 +77843,7 @@
       "type": "defines",
       "source": "file:tests/test_claim_lock.py",
       "target": "symbol:tests/test_claim_lock.py#function:test_caveat3_a_url_cites_the_runs_own_newer_fetch_over_an_older_briefed_version.Ticking.__call__",
-      "line": 504,
+      "line": 505,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -77110,7 +77857,7 @@
       "type": "defines",
       "source": "file:tests/test_claim_lock.py",
       "target": "symbol:tests/test_claim_lock.py#function:test_caveat4_case_folding_is_canonically_closed",
-      "line": 530,
+      "line": 531,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -77124,7 +77871,7 @@
       "type": "defines",
       "source": "file:tests/test_claim_lock.py",
       "target": "symbol:tests/test_claim_lock.py#function:test_caveat5_recording_a_claim_reads_back_only_its_own_claim",
-      "line": 535,
+      "line": 536,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -77138,7 +77885,7 @@
       "type": "defines",
       "source": "file:tests/test_claim_lock.py",
       "target": "symbol:tests/test_claim_lock.py#function:test_caveat5_recording_a_claim_reads_back_only_its_own_claim.whole_ledger",
-      "line": 536,
+      "line": 537,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -80520,6 +81267,622 @@
         "source": "tests/test_distribution.py"
       },
       "contentHash": "bb24ddb37479824c5c8680e0833627ed633edae28ce2779b872f56e19401c63a"
+    },
+    {
+      "id": "defines:file:tests/test_gate_carried.py->symbol:tests/test_gate_carried.py#class:BackoffFails:",
+      "type": "defines",
+      "source": "file:tests/test_gate_carried.py",
+      "target": "symbol:tests/test_gate_carried.py#class:BackoffFails",
+      "line": 101,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_gate_carried.py"
+      },
+      "contentHash": "3912aa25bacfc14f1267b5c7c8b10f79c18993b83eb5d1bb7534812c5e341fc9"
+    },
+    {
+      "id": "defines:file:tests/test_gate_carried.py->symbol:tests/test_gate_carried.py#class:Fetches:",
+      "type": "defines",
+      "source": "file:tests/test_gate_carried.py",
+      "target": "symbol:tests/test_gate_carried.py#class:Fetches",
+      "line": 313,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_gate_carried.py"
+      },
+      "contentHash": "c3ffc5fb253c3678d5f7da46ddba549d927f660573cf9c3b21e878748a8c7507"
+    },
+    {
+      "id": "defines:file:tests/test_gate_carried.py->symbol:tests/test_gate_carried.py#class:FirstBackoffHangs:",
+      "type": "defines",
+      "source": "file:tests/test_gate_carried.py",
+      "target": "symbol:tests/test_gate_carried.py#class:FirstBackoffHangs",
+      "line": 67,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_gate_carried.py"
+      },
+      "contentHash": "d38b9273abb1ebf837dea9e6766409b0bebb82bd691720cbe0b550bd01db4576"
+    },
+    {
+      "id": "defines:file:tests/test_gate_carried.py->symbol:tests/test_gate_carried.py#class:NoDelay:",
+      "type": "defines",
+      "source": "file:tests/test_gate_carried.py",
+      "target": "symbol:tests/test_gate_carried.py#class:NoDelay",
+      "line": 57,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_gate_carried.py"
+      },
+      "contentHash": "8b2199861ba4a39458fcd2ceec48f2474baf1ad6367844380565e5c0237b747d"
+    },
+    {
+      "id": "defines:file:tests/test_gate_carried.py->symbol:tests/test_gate_carried.py#class:SlowNotFound:",
+      "type": "defines",
+      "source": "file:tests/test_gate_carried.py",
+      "target": "symbol:tests/test_gate_carried.py#class:SlowNotFound",
+      "line": 290,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_gate_carried.py"
+      },
+      "contentHash": "47499bf56c50fa3eb720a257467bc5ff8f82313813f70615d3429726dc3c89ad"
+    },
+    {
+      "id": "defines:file:tests/test_gate_carried.py->symbol:tests/test_gate_carried.py#function:_drive:",
+      "type": "defines",
+      "source": "file:tests/test_gate_carried.py",
+      "target": "symbol:tests/test_gate_carried.py#function:_drive",
+      "line": 123,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_gate_carried.py"
+      },
+      "contentHash": "bf4bc71cff422451d6c4ed1e2a02b519d887989df1581aa8a94b65bc5db7df92"
+    },
+    {
+      "id": "defines:file:tests/test_gate_carried.py->symbol:tests/test_gate_carried.py#function:_example_21:",
+      "type": "defines",
+      "source": "file:tests/test_gate_carried.py",
+      "target": "symbol:tests/test_gate_carried.py#function:_example_21",
+      "line": 348,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_gate_carried.py"
+      },
+      "contentHash": "d83bde1812d71ce197ca2fe4a4e4c0567390316fa00b47deaf8d129c92f5f9a6"
+    },
+    {
+      "id": "defines:file:tests/test_gate_carried.py->symbol:tests/test_gate_carried.py#function:_hash:",
+      "type": "defines",
+      "source": "file:tests/test_gate_carried.py",
+      "target": "symbol:tests/test_gate_carried.py#function:_hash",
+      "line": 266,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_gate_carried.py"
+      },
+      "contentHash": "47341657d840410e84e060777397deeae908a574dda39d97672e95e378c853c9"
+    },
+    {
+      "id": "defines:file:tests/test_gate_carried.py->symbol:tests/test_gate_carried.py#function:BackoffFails.__call__:",
+      "type": "defines",
+      "source": "file:tests/test_gate_carried.py",
+      "target": "symbol:tests/test_gate_carried.py#function:BackoffFails.__call__",
+      "line": 102,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_gate_carried.py"
+      },
+      "contentHash": "fa48d36ce7c5afe4b3dcab4ba9bd23e11d265bc04af3f037abdfd01ec7e7dd99"
+    },
+    {
+      "id": "defines:file:tests/test_gate_carried.py->symbol:tests/test_gate_carried.py#function:Fetches.send:",
+      "type": "defines",
+      "source": "file:tests/test_gate_carried.py",
+      "target": "symbol:tests/test_gate_carried.py#function:Fetches.send",
+      "line": 314,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_gate_carried.py"
+      },
+      "contentHash": "cb29dd6c07695bdbece81a6253aed7c7979985e4caef1b6577d5c45214522fab"
+    },
+    {
+      "id": "defines:file:tests/test_gate_carried.py->symbol:tests/test_gate_carried.py#function:FirstBackoffHangs.__call__:",
+      "type": "defines",
+      "source": "file:tests/test_gate_carried.py",
+      "target": "symbol:tests/test_gate_carried.py#function:FirstBackoffHangs.__call__",
+      "line": 74,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_gate_carried.py"
+      },
+      "contentHash": "69fc5cb9a41c6434f3c6aaf36d8628891119df61d5219e81468c2aae28f6fa45"
+    },
+    {
+      "id": "defines:file:tests/test_gate_carried.py->symbol:tests/test_gate_carried.py#function:FirstBackoffHangs.__init__:",
+      "type": "defines",
+      "source": "file:tests/test_gate_carried.py",
+      "target": "symbol:tests/test_gate_carried.py#function:FirstBackoffHangs.__init__",
+      "line": 70,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_gate_carried.py"
+      },
+      "contentHash": "cde18bfcd298989c2a662beca8eb3c86708ae197166e2cc8adc2bb965e14f8fb"
+    },
+    {
+      "id": "defines:file:tests/test_gate_carried.py->symbol:tests/test_gate_carried.py#function:held_locks:",
+      "type": "defines",
+      "source": "file:tests/test_gate_carried.py",
+      "target": "symbol:tests/test_gate_carried.py#function:held_locks",
+      "line": 40,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_gate_carried.py"
+      },
+      "contentHash": "5c927abe2fd5574669adcd5febf95e3058f629c6144a4ba5fae93a23e8ef7bd7"
+    },
+    {
+      "id": "defines:file:tests/test_gate_carried.py->symbol:tests/test_gate_carried.py#function:in_use:",
+      "type": "defines",
+      "source": "file:tests/test_gate_carried.py",
+      "target": "symbol:tests/test_gate_carried.py#function:in_use",
+      "line": 45,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_gate_carried.py"
+      },
+      "contentHash": "2679b222a21bbe45842dccdb1b71e23f61e92c5524e33785a70f6da00ff325ff"
+    },
+    {
+      "id": "defines:file:tests/test_gate_carried.py->symbol:tests/test_gate_carried.py#function:NoDelay.__call__:",
+      "type": "defines",
+      "source": "file:tests/test_gate_carried.py",
+      "target": "symbol:tests/test_gate_carried.py#function:NoDelay.__call__",
+      "line": 58,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_gate_carried.py"
+      },
+      "contentHash": "08c3c6db728e2b8595d921ee2b7775c66b87e8d83d29d4e0ac5d18a40f6e2ad3"
+    },
+    {
+      "id": "defines:file:tests/test_gate_carried.py->symbol:tests/test_gate_carried.py#function:SlowNotFound.__aenter__:",
+      "type": "defines",
+      "source": "file:tests/test_gate_carried.py",
+      "target": "symbol:tests/test_gate_carried.py#function:SlowNotFound.__aenter__",
+      "line": 294,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_gate_carried.py"
+      },
+      "contentHash": "e64228a4bb5b77a298cf2d605dc88ee80c8255462f4065578835ab78c7523be2"
+    },
+    {
+      "id": "defines:file:tests/test_gate_carried.py->symbol:tests/test_gate_carried.py#function:SlowNotFound.__aexit__:",
+      "type": "defines",
+      "source": "file:tests/test_gate_carried.py",
+      "target": "symbol:tests/test_gate_carried.py#function:SlowNotFound.__aexit__",
+      "line": 299,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_gate_carried.py"
+      },
+      "contentHash": "46d397b121064f2aa750ced72f212be2408ce1fa08df89a3ea671e62a11be91a"
+    },
+    {
+      "id": "defines:file:tests/test_gate_carried.py->symbol:tests/test_gate_carried.py#function:SlowNotFound.__init__:",
+      "type": "defines",
+      "source": "file:tests/test_gate_carried.py",
+      "target": "symbol:tests/test_gate_carried.py#function:SlowNotFound.__init__",
+      "line": 291,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_gate_carried.py"
+      },
+      "contentHash": "ab717963ea1284e047e3c2f5d1f0004cff055bf8f547bb99aaf74bcb6c5e6a66"
+    },
+    {
+      "id": "defines:file:tests/test_gate_carried.py->symbol:tests/test_gate_carried.py#function:SlowNotFound._handle:",
+      "type": "defines",
+      "source": "file:tests/test_gate_carried.py",
+      "target": "symbol:tests/test_gate_carried.py#function:SlowNotFound._handle",
+      "line": 303,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_gate_carried.py"
+      },
+      "contentHash": "d0ab817904fdb692f2b88cecd865d58f7a8f6348b4ec364b75af123e2dab8941"
+    },
+    {
+      "id": "defines:file:tests/test_gate_carried.py->symbol:tests/test_gate_carried.py#function:test_b1_a_backoff_that_fails_spends_its_attempt_so_the_retries_still_end:",
+      "type": "defines",
+      "source": "file:tests/test_gate_carried.py",
+      "target": "symbol:tests/test_gate_carried.py#function:test_b1_a_backoff_that_fails_spends_its_attempt_so_the_retries_still_end",
+      "line": 106,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_gate_carried.py"
+      },
+      "contentHash": "5e5c5603a14efc4021ee0192f4a0c158f24c4e3cd3a1ec5c0319eff86b5d8a21"
+    },
+    {
+      "id": "defines:file:tests/test_gate_carried.py->symbol:tests/test_gate_carried.py#function:test_b1_a_backoff_that_fails_spends_its_attempt_so_the_retries_still_end.op:",
+      "type": "defines",
+      "source": "file:tests/test_gate_carried.py",
+      "target": "symbol:tests/test_gate_carried.py#function:test_b1_a_backoff_that_fails_spends_its_attempt_so_the_retries_still_end.op",
+      "line": 109,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_gate_carried.py"
+      },
+      "contentHash": "80b5b6c6f363650228a3d749252fc00d0ec73fa83d1ae18a2dfa78bab1368428"
+    },
+    {
+      "id": "defines:file:tests/test_gate_carried.py->symbol:tests/test_gate_carried.py#function:test_b1_a_waiter_cancelled_during_its_backoff_spends_no_attempt_and_the_next_retries:",
+      "type": "defines",
+      "source": "file:tests/test_gate_carried.py",
+      "target": "symbol:tests/test_gate_carried.py#function:test_b1_a_waiter_cancelled_during_its_backoff_spends_no_attempt_and_the_next_retries",
+      "line": 82,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_gate_carried.py"
+      },
+      "contentHash": "56725534810b7cc0c1581460cf9cf745fc965eaacc639a65a0ce34369a90ae4f"
+    },
+    {
+      "id": "defines:file:tests/test_gate_carried.py->symbol:tests/test_gate_carried.py#function:test_b1_a_waiter_cancelled_during_its_backoff_spends_no_attempt_and_the_next_retries.op:",
+      "type": "defines",
+      "source": "file:tests/test_gate_carried.py",
+      "target": "symbol:tests/test_gate_carried.py#function:test_b1_a_waiter_cancelled_during_its_backoff_spends_no_attempt_and_the_next_retries.op",
+      "line": 87,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_gate_carried.py"
+      },
+      "contentHash": "834e4ef57c3a1f9e52f18886fbe87cc21e2878c31cca8303b2d03f0e01a1eea2"
+    },
+    {
+      "id": "defines:file:tests/test_gate_carried.py->symbol:tests/test_gate_carried.py#function:test_c5_a_waited_fetch_answered_404_records_its_wait_and_an_unwaited_one_nothing_new:",
+      "type": "defines",
+      "source": "file:tests/test_gate_carried.py",
+      "target": "symbol:tests/test_gate_carried.py#function:test_c5_a_waited_fetch_answered_404_records_its_wait_and_an_unwaited_one_nothing_new",
+      "line": 323,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_gate_carried.py"
+      },
+      "contentHash": "dda44fb59db9f694fa06b4e3aeef5319c23fcc544a6b06e984754822ec2bf15e"
+    },
+    {
+      "id": "defines:file:tests/test_gate_carried.py->symbol:tests/test_gate_carried.py#function:test_c5_a_waited_fetch_answered_404_records_its_wait_and_an_unwaited_one_nothing_new.resolve:",
+      "type": "defines",
+      "source": "file:tests/test_gate_carried.py",
+      "target": "symbol:tests/test_gate_carried.py#function:test_c5_a_waited_fetch_answered_404_records_its_wait_and_an_unwaited_one_nothing_new.resolve",
+      "line": 325,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_gate_carried.py"
+      },
+      "contentHash": "a672b3aef773cc63624fc9d17b7d11ef989283601bcaa008a6d1dc650c5224c3"
+    },
+    {
+      "id": "defines:file:tests/test_gate_carried.py->symbol:tests/test_gate_carried.py#function:test_c6_declared_a_holder_keeps_its_pooled_connection_while_its_operation_runs:",
+      "type": "defines",
+      "source": "file:tests/test_gate_carried.py",
+      "target": "symbol:tests/test_gate_carried.py#function:test_c6_declared_a_holder_keeps_its_pooled_connection_while_its_operation_runs",
+      "line": 399,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_gate_carried.py"
+      },
+      "contentHash": "60f53b5c3049a76ade92993fcd31fa1108c9d6668330b1566069c730d7729e8f"
+    },
+    {
+      "id": "defines:file:tests/test_gate_carried.py->symbol:tests/test_gate_carried.py#function:test_c6_declared_a_holder_keeps_its_pooled_connection_while_its_operation_runs.op:",
+      "type": "defines",
+      "source": "file:tests/test_gate_carried.py",
+      "target": "symbol:tests/test_gate_carried.py#function:test_c6_declared_a_holder_keeps_its_pooled_connection_while_its_operation_runs.op",
+      "line": 403,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_gate_carried.py"
+      },
+      "contentHash": "a6048bb7e079ef1ccf58af36bed2c3e7b462df60279d8804e805fdd05892fd1c"
+    },
+    {
+      "id": "defines:file:tests/test_gate_carried.py->symbol:tests/test_gate_carried.py#function:test_example_21s_correction_cites_a_page_and_its_taint_check_holds:",
+      "type": "defines",
+      "source": "file:tests/test_gate_carried.py",
+      "target": "symbol:tests/test_gate_carried.py#function:test_example_21s_correction_cites_a_page_and_its_taint_check_holds",
+      "line": 355,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_gate_carried.py"
+      },
+      "contentHash": "7a75153249b0530a794feac38d55358e8f0d50b2cda7ad8d9c107c47e54f9ceb"
+    },
+    {
+      "id": "defines:file:tests/test_gate_carried.py->symbol:tests/test_gate_carried.py#function:test_example_21s_taint_check_fails_against_a_clean_provenance:",
+      "type": "defines",
+      "source": "file:tests/test_gate_carried.py",
+      "target": "symbol:tests/test_gate_carried.py#function:test_example_21s_taint_check_fails_against_a_clean_provenance",
+      "line": 361,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_gate_carried.py"
+      },
+      "contentHash": "96b4b9c5800146acb215200b0b0f3cc9216d91b9bed4135e842d1aa2428e8a4d"
+    },
+    {
+      "id": "defines:file:tests/test_gate_carried.py->symbol:tests/test_gate_carried.py#function:test_k1_a_key_failed_by_a_cancelled_last_attempt_carries_the_cancellation:",
+      "type": "defines",
+      "source": "file:tests/test_gate_carried.py",
+      "target": "symbol:tests/test_gate_carried.py#function:test_k1_a_key_failed_by_a_cancelled_last_attempt_carries_the_cancellation",
+      "line": 230,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_gate_carried.py"
+      },
+      "contentHash": "479b97e62ea52268818e2e52044d76451eec739faa54141af628d377d2510a13"
+    },
+    {
+      "id": "defines:file:tests/test_gate_carried.py->symbol:tests/test_gate_carried.py#function:test_k1_a_key_failed_by_a_cancelled_last_attempt_carries_the_cancellation.op:",
+      "type": "defines",
+      "source": "file:tests/test_gate_carried.py",
+      "target": "symbol:tests/test_gate_carried.py#function:test_k1_a_key_failed_by_a_cancelled_last_attempt_carries_the_cancellation.op",
+      "line": 234,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_gate_carried.py"
+      },
+      "contentHash": "652c4838ec786c4daf6f234a763ba119a37bb2b9f9038637b3ab4d19ba52c825"
+    },
+    {
+      "id": "defines:file:tests/test_gate_carried.py->symbol:tests/test_gate_carried.py#function:test_k1_a_key_failed_by_a_waiters_own_failure_carries_that_failure:",
+      "type": "defines",
+      "source": "file:tests/test_gate_carried.py",
+      "target": "symbol:tests/test_gate_carried.py#function:test_k1_a_key_failed_by_a_waiters_own_failure_carries_that_failure",
+      "line": 211,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_gate_carried.py"
+      },
+      "contentHash": "7f2d89165ec6f6373f66d783ad24bec5bad95d5c05134bc176fe78f695a9a27c"
+    },
+    {
+      "id": "defines:file:tests/test_gate_carried.py->symbol:tests/test_gate_carried.py#function:test_k1_a_key_failed_by_a_waiters_own_failure_carries_that_failure.op:",
+      "type": "defines",
+      "source": "file:tests/test_gate_carried.py",
+      "target": "symbol:tests/test_gate_carried.py#function:test_k1_a_key_failed_by_a_waiters_own_failure_carries_that_failure.op",
+      "line": 217,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_gate_carried.py"
+      },
+      "contentHash": "a0ea6a3b126cfd213091d083b2401d0bfd52ef67f9ed2bd3a928da71bd68f7fd"
+    },
+    {
+      "id": "defines:file:tests/test_gate_carried.py->symbol:tests/test_gate_carried.py#function:test_k1_every_key_failed_after_the_retries_carries_the_last_failure:",
+      "type": "defines",
+      "source": "file:tests/test_gate_carried.py",
+      "target": "symbol:tests/test_gate_carried.py#function:test_k1_every_key_failed_after_the_retries_carries_the_last_failure",
+      "line": 195,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_gate_carried.py"
+      },
+      "contentHash": "a2506938d128a6c1c411a87b1e9086d48b2f93789dc0de674aac3fbba21dc37a"
+    },
+    {
+      "id": "defines:file:tests/test_gate_carried.py->symbol:tests/test_gate_carried.py#function:test_k1_every_key_failed_after_the_retries_carries_the_last_failure.op:",
+      "type": "defines",
+      "source": "file:tests/test_gate_carried.py",
+      "target": "symbol:tests/test_gate_carried.py#function:test_k1_every_key_failed_after_the_retries_carries_the_last_failure.op",
+      "line": 199,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_gate_carried.py"
+      },
+      "contentHash": "d49460c7790892d25cd07220855963cb247495c6a5b2c42a54e8536b8eb134bd"
+    },
+    {
+      "id": "defines:file:tests/test_gate_carried.py->symbol:tests/test_gate_carried.py#function:test_p1_two_ledgers_whose_lock_names_would_join_alike_take_different_locks:",
+      "type": "defines",
+      "source": "file:tests/test_gate_carried.py",
+      "target": "symbol:tests/test_gate_carried.py#function:test_p1_two_ledgers_whose_lock_names_would_join_alike_take_different_locks",
+      "line": 256,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_gate_carried.py"
+      },
+      "contentHash": "85b06414bc2ec8aa83caa6065862e425c5505a817c35abdc3ac3e4cc21a5aa6b"
+    },
+    {
+      "id": "defines:file:tests/test_gate_carried.py->symbol:tests/test_gate_carried.py#function:test_p2_two_specs_whose_parts_would_join_alike_hash_differently_and_say_their_encoding:",
+      "type": "defines",
+      "source": "file:tests/test_gate_carried.py",
+      "target": "symbol:tests/test_gate_carried.py#function:test_p2_two_specs_whose_parts_would_join_alike_hash_differently_and_say_their_encoding",
+      "line": 271,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_gate_carried.py"
+      },
+      "contentHash": "eef4980418f764ea12e2f37d95617e9da77c7c9a72188a902ce86fcb579c47b9"
+    },
+    {
+      "id": "defines:file:tests/test_gate_carried.py->symbol:tests/test_gate_carried.py#function:test_w1_declared_a_cancelled_call_waits_for_its_thread_however_long_it_runs:",
+      "type": "defines",
+      "source": "file:tests/test_gate_carried.py",
+      "target": "symbol:tests/test_gate_carried.py#function:test_w1_declared_a_cancelled_call_waits_for_its_thread_however_long_it_runs",
+      "line": 382,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_gate_carried.py"
+      },
+      "contentHash": "fb0f38d2288e7d8477946d19f8dd3d25671377b8cbd2ae3d051e29475e8179d3"
+    },
+    {
+      "id": "defines:file:tests/test_gate_carried.py->symbol:tests/test_gate_carried.py#function:test_w1_declared_a_cancelled_call_waits_for_its_thread_however_long_it_runs.slow:",
+      "type": "defines",
+      "source": "file:tests/test_gate_carried.py",
+      "target": "symbol:tests/test_gate_carried.py#function:test_w1_declared_a_cancelled_call_waits_for_its_thread_however_long_it_runs.slow",
+      "line": 385,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_gate_carried.py"
+      },
+      "contentHash": "dfa329786cf3d5a1484b535ff06a59cd4e17f124aa3105948a6de26ee44b2076"
+    },
+    {
+      "id": "defines:file:tests/test_gate_carried.py->symbol:tests/test_gate_carried.py#function:test_w2_an_interrupt_delivered_while_the_lock_is_taken_is_raised_once_the_lock_is_released:",
+      "type": "defines",
+      "source": "file:tests/test_gate_carried.py",
+      "target": "symbol:tests/test_gate_carried.py#function:test_w2_an_interrupt_delivered_while_the_lock_is_taken_is_raised_once_the_lock_is_released",
+      "line": 146,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_gate_carried.py"
+      },
+      "contentHash": "a36b466a6a5a91343fee7d350b1f0aa4dabe64bdc4e9ca8c1348ca76045957f7"
+    },
+    {
+      "id": "defines:file:tests/test_gate_carried.py->symbol:tests/test_gate_carried.py#function:test_w2_an_interrupt_delivered_while_the_lock_is_taken_is_raised_once_the_lock_is_released.slow_try:",
+      "type": "defines",
+      "source": "file:tests/test_gate_carried.py",
+      "target": "symbol:tests/test_gate_carried.py#function:test_w2_an_interrupt_delivered_while_the_lock_is_taken_is_raised_once_the_lock_is_released.slow_try",
+      "line": 153,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_gate_carried.py"
+      },
+      "contentHash": "a71696e2d2dde03ce5370590f643a03d62ea204b03e27a1074ecc4b75058c871"
+    },
+    {
+      "id": "defines:file:tests/test_gate_carried.py->symbol:tests/test_gate_carried.py#function:test_w2_an_interrupt_delivered_while_the_lock_is_taken_is_raised_once_the_lock_is_released.when:",
+      "type": "defines",
+      "source": "file:tests/test_gate_carried.py",
+      "target": "symbol:tests/test_gate_carried.py#function:test_w2_an_interrupt_delivered_while_the_lock_is_taken_is_raised_once_the_lock_is_released.when",
+      "line": 162,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_gate_carried.py"
+      },
+      "contentHash": "dd4d718f48c9b08973b1f9cf45b38d15e1c78ab22cbeb4fb1a450621d36ac7af"
+    },
+    {
+      "id": "defines:file:tests/test_gate_carried.py->symbol:tests/test_gate_carried.py#function:test_w2_the_threads_own_failure_is_still_its_own_outcome:",
+      "type": "defines",
+      "source": "file:tests/test_gate_carried.py",
+      "target": "symbol:tests/test_gate_carried.py#function:test_w2_the_threads_own_failure_is_still_its_own_outcome",
+      "line": 182,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_gate_carried.py"
+      },
+      "contentHash": "8f1ae79475ea0d039b9d81986991f70a0cae78329ed6397aa29cfa42643a6bed"
+    },
+    {
+      "id": "defines:file:tests/test_gate_carried.py->symbol:tests/test_gate_carried.py#function:test_w2_the_threads_own_failure_is_still_its_own_outcome.fails:",
+      "type": "defines",
+      "source": "file:tests/test_gate_carried.py",
+      "target": "symbol:tests/test_gate_carried.py#function:test_w2_the_threads_own_failure_is_still_its_own_outcome.fails",
+      "line": 183,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_gate_carried.py"
+      },
+      "contentHash": "eb30c1eebe1a6a29104a1de9731236b0c9d5d47e1b5d7a8e7abf6a93941d527c"
     },
     {
       "id": "defines:file:tests/test_golden_eval.py->symbol:tests/test_golden_eval.py#class:LiveRun:",
@@ -98927,7 +100290,7 @@
       "source": "file:agentsdk/claimlock.py",
       "target": "file:agentsdk/__init__.py",
       "specifier": ".",
-      "line": 152,
+      "line": 162,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -99527,7 +100890,7 @@
       "source": "file:agentsdk/evidence.py",
       "target": "file:agentsdk/claimlock.py",
       "specifier": ".claimlock",
-      "line": 310,
+      "line": 317,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -99557,7 +100920,7 @@
       "source": "file:agentsdk/evidence.py",
       "target": "file:agentsdk/events.py",
       "specifier": ".events",
-      "line": 387,
+      "line": 394,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -99587,7 +100950,7 @@
       "source": "file:agentsdk/evidence.py",
       "target": "file:agentsdk/tools.py",
       "specifier": ".tools",
-      "line": 358,
+      "line": 365,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -100872,12 +102235,27 @@
       "contentHash": "3037cb41c9ea0d9007a83ed751f37e4d98d87bdaa95f3e46bb438df2c325c7c9"
     },
     {
+      "id": "imports:file:agentsdk/manifest.py->runtime:python:json:json",
+      "type": "imports",
+      "source": "file:agentsdk/manifest.py",
+      "target": "runtime:python:json",
+      "specifier": "json",
+      "line": 17,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-imports",
+        "source": "agentsdk/manifest.py"
+      },
+      "contentHash": "f5c463016737f2dcf89540a4850bb7c173d4fb194ce95547fa497c6d9abc336b"
+    },
+    {
       "id": "imports:file:agentsdk/manifest.py->runtime:python:typing:typing",
       "type": "imports",
       "source": "file:agentsdk/manifest.py",
       "target": "runtime:python:typing",
       "specifier": "typing",
-      "line": 17,
+      "line": 18,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -101997,6 +103375,21 @@
       "contentHash": "9f871162f9c7b677f88f87f57f1bf818ef552f9e8ba37d0db073b23aa0d4ed97"
     },
     {
+      "id": "imports:file:agentsdk/postgres.py->file:agentsdk/claimlock.py:.claimlock",
+      "type": "imports",
+      "source": "file:agentsdk/postgres.py",
+      "target": "file:agentsdk/claimlock.py",
+      "specifier": ".claimlock",
+      "line": 1567,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-imports",
+        "source": "agentsdk/postgres.py"
+      },
+      "contentHash": "e1293ed031804c6c719e557cf5b241b71ebd5c8155db282af52348674fbb3537"
+    },
+    {
       "id": "imports:file:agentsdk/postgres.py->file:agentsdk/errors.py:.errors",
       "type": "imports",
       "source": "file:agentsdk/postgres.py",
@@ -102047,7 +103440,7 @@
       "source": "file:agentsdk/postgres.py",
       "target": "file:agentsdk/ledger.py",
       "specifier": ".ledger",
-      "line": 1701,
+      "line": 1705,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -108647,7 +110040,7 @@
       "source": "file:scripts/21_contention.py",
       "target": "file:agentsdk/__init__.py",
       "specifier": "agentsdk",
-      "line": 315,
+      "line": 332,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -108662,7 +110055,7 @@
       "source": "file:scripts/21_contention.py",
       "target": "file:agentsdk/builtin_tools.py",
       "specifier": "agentsdk.builtin_tools",
-      "line": 45,
+      "line": 46,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -108677,7 +110070,7 @@
       "source": "file:scripts/21_contention.py",
       "target": "file:agentsdk/config.py",
       "specifier": "agentsdk.config",
-      "line": 316,
+      "line": 333,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -108692,7 +110085,7 @@
       "source": "file:scripts/21_contention.py",
       "target": "file:agentsdk/events.py",
       "specifier": "agentsdk.events",
-      "line": 46,
+      "line": 47,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -108707,7 +110100,7 @@
       "source": "file:scripts/21_contention.py",
       "target": "file:agentsdk/ledger.py",
       "specifier": "agentsdk.ledger",
-      "line": 47,
+      "line": 48,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -108722,7 +110115,7 @@
       "source": "file:scripts/21_contention.py",
       "target": "file:agentsdk/model.py",
       "specifier": "agentsdk.model",
-      "line": 48,
+      "line": 49,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -108737,7 +110130,7 @@
       "source": "file:scripts/21_contention.py",
       "target": "file:agentsdk/postgres.py",
       "specifier": "agentsdk.postgres",
-      "line": 317,
+      "line": 334,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -108752,7 +110145,7 @@
       "source": "file:scripts/21_contention.py",
       "target": "file:agentsdk/primitives.py",
       "specifier": "agentsdk.primitives",
-      "line": 50,
+      "line": 51,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -108767,7 +110160,7 @@
       "source": "file:scripts/21_contention.py",
       "target": "file:agentsdk/providers/__init__.py",
       "specifier": "agentsdk.providers",
-      "line": 318,
+      "line": 335,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -108782,7 +110175,7 @@
       "source": "file:scripts/21_contention.py",
       "target": "file:agentsdk/registry.py",
       "specifier": "agentsdk.registry",
-      "line": 165,
+      "line": 182,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -108797,7 +110190,7 @@
       "source": "file:scripts/21_contention.py",
       "target": "file:agentsdk/subagents.py",
       "specifier": "agentsdk.subagents",
-      "line": 51,
+      "line": 52,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -108812,7 +110205,7 @@
       "source": "file:scripts/21_contention.py",
       "target": "package:pypi:dotenv",
       "specifier": "dotenv",
-      "line": 313,
+      "line": 330,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -108827,7 +110220,7 @@
       "source": "file:scripts/21_contention.py",
       "target": "runtime:python:__future__",
       "specifier": "__future__",
-      "line": 21,
+      "line": 22,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -108842,7 +110235,7 @@
       "source": "file:scripts/21_contention.py",
       "target": "runtime:python:argparse",
       "specifier": "argparse",
-      "line": 23,
+      "line": 24,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -108857,7 +110250,7 @@
       "source": "file:scripts/21_contention.py",
       "target": "runtime:python:asyncio",
       "specifier": "asyncio",
-      "line": 24,
+      "line": 25,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -108872,7 +110265,7 @@
       "source": "file:scripts/21_contention.py",
       "target": "runtime:python:decimal",
       "specifier": "decimal",
-      "line": 29,
+      "line": 30,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -108887,7 +110280,7 @@
       "source": "file:scripts/21_contention.py",
       "target": "runtime:python:json",
       "specifier": "json",
-      "line": 25,
+      "line": 26,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -108902,7 +110295,7 @@
       "source": "file:scripts/21_contention.py",
       "target": "runtime:python:os",
       "specifier": "os",
-      "line": 26,
+      "line": 27,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -108917,7 +110310,7 @@
       "source": "file:scripts/21_contention.py",
       "target": "runtime:python:random",
       "specifier": "random",
-      "line": 27,
+      "line": 28,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -108932,7 +110325,7 @@
       "source": "file:scripts/21_contention.py",
       "target": "runtime:python:sys",
       "specifier": "sys",
-      "line": 28,
+      "line": 29,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -108947,7 +110340,7 @@
       "source": "file:scripts/21_contention.py",
       "target": "runtime:python:urllib.parse",
       "specifier": "urllib.parse",
-      "line": 30,
+      "line": 31,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -112127,7 +113520,7 @@
       "source": "file:tests/test_claim_lock.py",
       "target": "runtime:python:datetime",
       "specifier": "datetime",
-      "line": 499,
+      "line": 500,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -113575,6 +114968,306 @@
         "source": "tests/test_distribution.py"
       },
       "contentHash": "144b425fe2c0a5e59e9cfcaf93641601bcc7094f6d4b01e10b4402a2562852a0"
+    },
+    {
+      "id": "imports:file:tests/test_gate_carried.py->file:agentsdk/__init__.py:agentsdk",
+      "type": "imports",
+      "source": "file:tests/test_gate_carried.py",
+      "target": "file:agentsdk/__init__.py",
+      "specifier": "agentsdk",
+      "line": 147,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-imports",
+        "source": "tests/test_gate_carried.py"
+      },
+      "contentHash": "26acd686347cba36e03ca35be2cacb4c9b32ecb280fecbc2138a9041fab36e76"
+    },
+    {
+      "id": "imports:file:tests/test_gate_carried.py->file:agentsdk/builtin_tools.py:agentsdk.builtin_tools",
+      "type": "imports",
+      "source": "file:tests/test_gate_carried.py",
+      "target": "file:agentsdk/builtin_tools.py",
+      "specifier": "agentsdk.builtin_tools",
+      "line": 25,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-imports",
+        "source": "tests/test_gate_carried.py"
+      },
+      "contentHash": "5f51c4336913a38f7d7a41052ba50b26fc79730bf905567ea2520a05bd7e6634"
+    },
+    {
+      "id": "imports:file:tests/test_gate_carried.py->file:agentsdk/claimlock.py:agentsdk.claimlock",
+      "type": "imports",
+      "source": "file:tests/test_gate_carried.py",
+      "target": "file:agentsdk/claimlock.py",
+      "specifier": "agentsdk.claimlock",
+      "line": 26,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-imports",
+        "source": "tests/test_gate_carried.py"
+      },
+      "contentHash": "64b3a3f9bff5352aab5491cb141006008899c0a4ac8eed7bccf941d05ce80634"
+    },
+    {
+      "id": "imports:file:tests/test_gate_carried.py->file:agentsdk/config.py:agentsdk.config",
+      "type": "imports",
+      "source": "file:tests/test_gate_carried.py",
+      "target": "file:agentsdk/config.py",
+      "specifier": "agentsdk.config",
+      "line": 27,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-imports",
+        "source": "tests/test_gate_carried.py"
+      },
+      "contentHash": "4fdb0559d7fa51502f2ca4118c6f2050e7b536bbb534bb4e416c673563c69701"
+    },
+    {
+      "id": "imports:file:tests/test_gate_carried.py->file:agentsdk/events.py:agentsdk.events",
+      "type": "imports",
+      "source": "file:tests/test_gate_carried.py",
+      "target": "file:agentsdk/events.py",
+      "specifier": "agentsdk.events",
+      "line": 28,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-imports",
+        "source": "tests/test_gate_carried.py"
+      },
+      "contentHash": "4b56c0d1ab52b363b0c2d5e0d261331f832ab20756335786a6b1748a313ad5d6"
+    },
+    {
+      "id": "imports:file:tests/test_gate_carried.py->file:agentsdk/manifest.py:agentsdk.manifest",
+      "type": "imports",
+      "source": "file:tests/test_gate_carried.py",
+      "target": "file:agentsdk/manifest.py",
+      "specifier": "agentsdk.manifest",
+      "line": 29,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-imports",
+        "source": "tests/test_gate_carried.py"
+      },
+      "contentHash": "2f68e288fd16888e2b6284c388efdeb5b4c583f0e9d893ba96c1aefd13cf0ce2"
+    },
+    {
+      "id": "imports:file:tests/test_gate_carried.py->file:agentsdk/model.py:agentsdk.model",
+      "type": "imports",
+      "source": "file:tests/test_gate_carried.py",
+      "target": "file:agentsdk/model.py",
+      "specifier": "agentsdk.model",
+      "line": 30,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-imports",
+        "source": "tests/test_gate_carried.py"
+      },
+      "contentHash": "4a762501e28a48475aa8732ce993017f243505c7a3f171ce6f947fef0928d53f"
+    },
+    {
+      "id": "imports:file:tests/test_gate_carried.py->file:agentsdk/postgres.py:agentsdk.postgres",
+      "type": "imports",
+      "source": "file:tests/test_gate_carried.py",
+      "target": "file:agentsdk/postgres.py",
+      "specifier": "agentsdk.postgres",
+      "line": 31,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-imports",
+        "source": "tests/test_gate_carried.py"
+      },
+      "contentHash": "6d8ca6b210cceccf4387842f0ca12f10a4622c803ddd4fc2657bfa90d0bc5a2d"
+    },
+    {
+      "id": "imports:file:tests/test_gate_carried.py->file:agentsdk/primitives.py:agentsdk.primitives",
+      "type": "imports",
+      "source": "file:tests/test_gate_carried.py",
+      "target": "file:agentsdk/primitives.py",
+      "specifier": "agentsdk.primitives",
+      "line": 32,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-imports",
+        "source": "tests/test_gate_carried.py"
+      },
+      "contentHash": "be8e737400092c1430abb28b46ed65164e583b4e9aa0b7e7e4569aff5e204966"
+    },
+    {
+      "id": "imports:file:tests/test_gate_carried.py->package:pypi:psycopg:psycopg",
+      "type": "imports",
+      "source": "file:tests/test_gate_carried.py",
+      "target": "package:pypi:psycopg",
+      "specifier": "psycopg",
+      "line": 20,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-imports",
+        "source": "tests/test_gate_carried.py"
+      },
+      "contentHash": "6a87644c984e5f924546d851bbf8b66c83dff35629663cadfa7692d6d4f6cc82"
+    },
+    {
+      "id": "imports:file:tests/test_gate_carried.py->package:pypi:pytest:pytest",
+      "type": "imports",
+      "source": "file:tests/test_gate_carried.py",
+      "target": "package:pypi:pytest",
+      "specifier": "pytest",
+      "line": 21,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-imports",
+        "source": "tests/test_gate_carried.py"
+      },
+      "contentHash": "5bf6dada08dd7fed7d220ccfd3d8ab7157878036ea289232a12e06b9f55c48d7"
+    },
+    {
+      "id": "imports:file:tests/test_gate_carried.py->runtime:python:__future__:__future__",
+      "type": "imports",
+      "source": "file:tests/test_gate_carried.py",
+      "target": "runtime:python:__future__",
+      "specifier": "__future__",
+      "line": 9,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-imports",
+        "source": "tests/test_gate_carried.py"
+      },
+      "contentHash": "b9de3d11a458827384a07eed6f4bb66a5385a0a3f843c8512118233fc6b97d6f"
+    },
+    {
+      "id": "imports:file:tests/test_gate_carried.py->runtime:python:asyncio:asyncio",
+      "type": "imports",
+      "source": "file:tests/test_gate_carried.py",
+      "target": "runtime:python:asyncio",
+      "specifier": "asyncio",
+      "line": 11,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-imports",
+        "source": "tests/test_gate_carried.py"
+      },
+      "contentHash": "dd92e3470c0690f59149300a4c25aa95ef2d9b343e4a3a509bac4aa9c13eccae"
+    },
+    {
+      "id": "imports:file:tests/test_gate_carried.py->runtime:python:importlib.util:importlib.util",
+      "type": "imports",
+      "source": "file:tests/test_gate_carried.py",
+      "target": "runtime:python:importlib.util",
+      "specifier": "importlib.util",
+      "line": 12,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-imports",
+        "source": "tests/test_gate_carried.py"
+      },
+      "contentHash": "127d265faeba7cd1b92063b0da400383d6d4594f02b799e5e9ea3be37bc5ea25"
+    },
+    {
+      "id": "imports:file:tests/test_gate_carried.py->runtime:python:os:os",
+      "type": "imports",
+      "source": "file:tests/test_gate_carried.py",
+      "target": "runtime:python:os",
+      "specifier": "os",
+      "line": 13,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-imports",
+        "source": "tests/test_gate_carried.py"
+      },
+      "contentHash": "921d3c9f5d14c82acc8a846125e840141b490aaf1524dda20a94452c46e017c5"
+    },
+    {
+      "id": "imports:file:tests/test_gate_carried.py->runtime:python:pathlib:pathlib",
+      "type": "imports",
+      "source": "file:tests/test_gate_carried.py",
+      "target": "runtime:python:pathlib",
+      "specifier": "pathlib",
+      "line": 17,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-imports",
+        "source": "tests/test_gate_carried.py"
+      },
+      "contentHash": "37fa21227eaa3ccabf0cb8013844e962e87219887347f188c29088460c767008"
+    },
+    {
+      "id": "imports:file:tests/test_gate_carried.py->runtime:python:threading:threading",
+      "type": "imports",
+      "source": "file:tests/test_gate_carried.py",
+      "target": "runtime:python:threading",
+      "specifier": "threading",
+      "line": 14,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-imports",
+        "source": "tests/test_gate_carried.py"
+      },
+      "contentHash": "bf8a9f08814ef7ed6cad58be7d36d989415b31aab78c01a5c8afe7301ff4d0a0"
+    },
+    {
+      "id": "imports:file:tests/test_gate_carried.py->runtime:python:time:time",
+      "type": "imports",
+      "source": "file:tests/test_gate_carried.py",
+      "target": "runtime:python:time",
+      "specifier": "time",
+      "line": 15,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-imports",
+        "source": "tests/test_gate_carried.py"
+      },
+      "contentHash": "413b0587a461b664bf62d304f1a5a6f9fa558f372d08949bb569c372818946c3"
+    },
+    {
+      "id": "imports:file:tests/test_gate_carried.py->runtime:python:types:types",
+      "type": "imports",
+      "source": "file:tests/test_gate_carried.py",
+      "target": "runtime:python:types",
+      "specifier": "types",
+      "line": 18,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-imports",
+        "source": "tests/test_gate_carried.py"
+      },
+      "contentHash": "59bae486377b40938f8f7c9753802029e59c75b80d1a1df50a4e4a2ec51ca80e"
+    },
+    {
+      "id": "imports:file:tests/test_gate_carried.py->runtime:python:uuid:uuid",
+      "type": "imports",
+      "source": "file:tests/test_gate_carried.py",
+      "target": "runtime:python:uuid",
+      "specifier": "uuid",
+      "line": 16,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-imports",
+        "source": "tests/test_gate_carried.py"
+      },
+      "contentHash": "c21bde978865c09ae599deebcd1ecdc22c2c3d5dca4567d17f26b0185f89bbf6"
     },
     {
       "id": "imports:file:tests/test_golden_eval.py->file:agentsdk/__init__.py:agentsdk",

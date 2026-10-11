@@ -42,6 +42,9 @@ class KeyFailed(RuntimeError):
         self.key = key
         reason = "" if cause is None else f": {type(cause).__name__}: {cause}"
         super().__init__(f"claim-lock key {key!r} failed after {ATTEMPTS} attempts{reason}")
+        # The failure that spent the key's last attempt, whoever raises this (M24a review
+        # caveat K1): raised `from` it, and kept here for a key failed before the raise.
+        self.__cause__ = cause
 
 
 def lock_key(*parts: str) -> str:
@@ -103,7 +106,8 @@ class ClaimLock:
         try:
             async with entry.lock:
                 if entry.failed is not None:
-                    raise KeyFailed(key, entry.failed.__cause__) from entry.failed
+                    cause = entry.failed.__cause__
+                    raise KeyFailed(key, cause) from cause
                 async with self._database(key) as polled:
                     waited = time.monotonic() - started if queued or polled else None
                     self.waits += waited is not None
@@ -128,11 +132,17 @@ class ClaimLock:
         last: BaseException | None = None
         while entry.budget:
             k = ATTEMPTS - entry.budget
-            entry.budget -= 1
+            counted = False
             try:
                 await self._sleep(self._random() * BASE_DELAY * 2 ** k)
+                # An attempt counts once its operation starts: a waiter cancelled in its
+                # backoff leaves the budget to the next (M24a review caveat B1).
+                entry.budget -= 1
+                counted = True
                 return await op(waited)
             except Exception as exc:  # noqa: BLE001 - every attempt's failure is the key's
+                if not counted:  # a backoff that failed is an attempt spent, or this never ends
+                    entry.budget -= 1
                 last = exc
             except BaseException as exc:
                 if entry.budget:
@@ -141,7 +151,7 @@ class ClaimLock:
                     entry.failed = KeyFailed(key, exc)
                 raise
         entry.failed = KeyFailed(key, last)
-        raise entry.failed from last
+        raise KeyFailed(key, last) from last
 
     @contextlib.asynccontextmanager
     async def _database(self, key: str) -> AsyncIterator[bool]:
@@ -165,32 +175,46 @@ class ClaimLock:
             await _completed(asyncio.to_thread(_release, pool, conn, key), None)
 
 
-async def _finished(future: asyncio.Future) -> bool:
+async def _finished(future: asyncio.Future) -> BaseException | None:
     """Wait for `future` to finish, however many times the caller is cancelled meanwhile;
-    return whether it was. A thread's work cannot be stopped, so its result must be
-    waited for and dealt with (M24 review caveat C1: the first version gave up at the
-    second cancellation, and leaked a held lock and a pooled connection)."""
-    cancelled = False
+    return what interrupted the caller, or None. A thread's work cannot be stopped, so its
+    result must be waited for and dealt with (M24 review caveat C1: the first version gave
+    up at the second cancellation, and leaked a held lock and a pooled connection).
+
+    An exception raised here while the future is still running was delivered to the
+    caller, not produced by the work, so it is kept for the caller to raise once the work
+    is dealt with rather than swallowed (M24a review caveat W2); one raised once the
+    future is done is the future's own outcome, which the caller reads from it."""
+    interrupted: BaseException | None = None
     while not future.done():
         try:
             await asyncio.shield(future)
-        except asyncio.CancelledError:
-            cancelled = True
-        except BaseException:  # noqa: BLE001 - the future's own outcome, read by the caller
-            pass
-    return cancelled
+        except asyncio.CancelledError as exc:
+            if future.done() and not future.cancelled():
+                continue
+            if interrupted is None:
+                interrupted = exc
+        except BaseException as exc:  # noqa: BLE001 - raised by the caller once the work is dealt with
+            if future.done():
+                continue
+            if interrupted is None or isinstance(interrupted, asyncio.CancelledError):
+                interrupted = exc
+    return interrupted
 
 
 async def _completed(work: Awaitable[Any], undo: Callable[[Any], Any] | None) -> Any:
-    """`work` run to the end even if the caller is cancelled meanwhile, with `undo`
-    applied to what it produced before the cancellation goes on -- also to the end."""
+    """`work` run to the end even if the caller is interrupted meanwhile, with `undo`
+    applied to what it produced before the interruption goes on -- also to the end."""
     future = asyncio.ensure_future(work)
-    if not await _finished(future):
+    interrupted = await _finished(future)
+    if interrupted is None:
         return future.result()
-    if undo is not None and future.exception() is None and future.result() is not None:
+    if undo is not None and not future.cancelled() and future.exception() is None and future.result() is not None:
         undone = asyncio.ensure_future(asyncio.to_thread(undo, future.result()))
-        await _finished(undone)
-    raise asyncio.CancelledError()
+        again = await _finished(undone)
+        if again is not None and not isinstance(again, asyncio.CancelledError)                 and isinstance(interrupted, asyncio.CancelledError):
+            interrupted = again
+    raise interrupted
 
 
 def _try_lock(pool: Any, key: str) -> Any:

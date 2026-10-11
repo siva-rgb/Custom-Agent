@@ -1564,7 +1564,11 @@ class PostgresLedgerStore:
         """The keys' advisory locks, taken in the order of the lock values themselves,
         each once: two keys whose hashes collide are one lock, so ordering by the keys'
         text could cross two writers' orders and deadlock (M23 review caveat 2)."""
-        names = ["|".join((tenant_id, project_id, ledger_run_id, key)) for key in keys]
+        from .claimlock import lock_key
+
+        # Encoded as claim-lock keys are, so no two ledgers' names collide by a delimiter
+        # (M24a review caveat P1).
+        names = [lock_key(tenant_id, project_id, ledger_run_id, key) for key in keys]
         values = [row[0] for row in conn.execute(
             "SELECT DISTINCT hashtext(name) AS h FROM unnest(%s::text[]) AS name ORDER BY h", (names,)).fetchall()]
         for value in values:

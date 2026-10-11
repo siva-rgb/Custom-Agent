@@ -55,7 +55,9 @@ persisted so you can reconstruct exactly what happened afterwards.
   freshness, the scope widened (tenant, everyone) or narrowed (the top-level
   run, no caching) per tool or per host. A hit stored in another tenant or
   project is copied into the reader's own, never shared, and each fetch emits
-  `SourceFetched` or `SourceServed` (M22).
+  `SourceFetched` or `SourceServed` (M22); one that waited on another's fetch
+  of the page and was answered with an error status emits `SourceUncached` with
+  its wait (M25).
 - **Keeps an evidence ledger per top-level run** (`agentsdk.ledger.ledger_tools`):
   agents record claims with `record_claim`, citing the pages they fetched, and
   correct them with `supersede_claim`. One statement, however it is cased or
@@ -107,6 +109,11 @@ Stated plainly, because an SDK that overstates itself costs you a week:
 | A fetch tool widened to a broader cache scope keeps serving the run's own version recorded at the narrower one until that version expires | Declared (M23) |
 | A claim's labels count the run's tool results already in its history when `record_claim` is called; results of other calls in the same parallel batch are not yet there and do not count | Declared (M23) |
 | A holder that fails is retried by one waiter in its own process; waiters in other processes on the same database each take their turn and retry for themselves. A hung holder keeps its key until its tool times out; leases with expiry are Phase 6's | Declared (M24) |
+| After a failure a key has three attempts in all while any call is on it; a success in between does not restore them, so the key is fresh again only once no call is left on it | Declared (M25) |
+| A claim-lock call cancelled while a worker thread takes or releases its database lock waits for that thread however long it runs, as every store call does; a thread that never returns keeps the call | Declared (M25) |
+| A claim-lock holder keeps its pooled connection while its own operation uses the same pool, so 32 concurrent holders can exhaust it | Declared (M25); Phase 6's leases |
+| A fetch that waited on another's fetch and then raised (refused, timed out, failed) records no wait; one answered with any status records it | Declared (M25) |
+| Since M25 the ledger store's transaction locks and the manifest's `agent_spec_hash` (now `v2:` and a hex digest) are encoded so no two names collide; processes writing one database must all run on the same side of M25, and a hash written before it is never compared with one written after | Declared (M25) |
 | A source version's content is the fetch tool's whole result, status line included, so a served page reads exactly as it did when fetched; a copy made into another tenant or project keeps the original's final URL and media type with its hash and retrieval time | Declared (M22) |
 | A session store's combined write (a compaction's summary and its `ContextCompacted` event) refuses an event sink that names another run, tenant or project. The Runner always passes the run's own sink; only code driving `AgentLoop` itself with another run's sink meets the refusal | Declared (M21a) |
 | On PostgreSQL, a custom event sink that names no scope, or that cannot write inside the store's transaction (it lacks `write` and `stored`), gets the summary and its event as two writes, so if its `emit` fails the summary stays stored without its event; the SDK's own sinks write both in one transaction | Declared (M20a, M21a) |
