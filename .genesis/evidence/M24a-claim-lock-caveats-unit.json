@@ -1,0 +1,22 @@
+{
+  "task": "M24a-claim-lock-caveats",
+  "gate": "unit",
+  "command": ".venv\\Scripts\\python.exe -m pytest tests/test_claim_lock_followup.py -q",
+  "started_at": "2026-10-11T11:46:35.826Z",
+  "observed_at": "2026-10-11T11:46:41.109Z",
+  "exit_code": 0,
+  "signal": null,
+  "stdout": ".........                                                                [100%]\r\n9 passed in 4.50s\r\n",
+  "stderr": "",
+  "revision": {
+    "commit": "64a262d506aec703f8300539cd4fb69e5ab52c7b",
+    "dirty": true
+  },
+  "source_hash": "880b57dd175de0496d0f0d7d1373830413d5186d6ef5f21f96039e98fbb87492",
+  "environment": {
+    "node": "v20.10.0",
+    "platform": "win32",
+    "arch": "x64"
+  },
+  "hash": "e76e9fc7e4a61d858ae3cad45af2ffb013a8a18009d9370b00f08a440c31bcdf"
+}

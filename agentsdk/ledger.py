@@ -460,7 +460,9 @@ class RunLedger:
 
         if self._lock is None:
             return await op(None)
-        return await self._lock.run("|".join(("claim", self.tenant_id, self.project_id, self.ledger_run_id, key)), op)
+        from .claimlock import lock_key
+
+        return await self._lock.run(lock_key("claim", self.tenant_id, self.project_id, self.ledger_run_id, key), op)
 
     async def supersede(self, claim: Any, statement: str, supporting: Any, contradicting: Any,
                         why: str) -> ClaimView:

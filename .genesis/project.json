@@ -9,7 +9,7 @@
     "non_goals": [],
     "trust_boundary": "local repository",
     "created_at": "2026-09-05T14:48:57.894Z",
-    "updated_at": "2026-10-11T10:22:51.102Z"
+    "updated_at": "2026-10-11T12:10:16.626Z"
   },
   "policy": {
     "ponytail": "full",
@@ -34,8 +34,8 @@
     "type": "new-product",
     "started_at": "2026-09-05T14:48:57.897Z",
     "spec_check": {
-      "at": "2026-10-11T05:39:37.963Z",
-      "source_hash": "413045c846c3afbe31042dde18e7154a4a865f5c0496b8e5878821c478fafd5f",
+      "at": "2026-10-11T10:23:26.622Z",
+      "source_hash": "a84dc1b9ebf41cc8ac4c3fadbfc155f8d313788472a7302a54865deb5e43a106",
       "requirements": [
         "AC-1",
         "AC-10",
@@ -110,6 +110,7 @@
         "AC-73",
         "AC-74",
         "AC-75",
+        "AC-76",
         "AC-8",
         "AC-9",
         "FR-1",
@@ -209,6 +210,7 @@
         "FR-95",
         "FR-96",
         "FR-97",
+        "FR-98",
         "NFR-1",
         "NFR-10",
         "NFR-11",
@@ -238,14 +240,14 @@
       ]
     },
     "plan_check": {
-      "at": "2026-10-11T05:39:38.351Z",
-      "source_hash": "e620682b4cf585c1aa0bf9399b9e19eb6ae3040f81e84d51da8ce684f901c420"
+      "at": "2026-10-11T10:23:27.045Z",
+      "source_hash": "e811b78bf4aa191768a959b923838523bff237a75a9da4db8faebe33cc283df7"
     },
     "plan_approval": {
       "human": "siva-rgb (owner)",
-      "reason": "Spec re-approved at M24 pre-flight; tasks unchanged",
-      "at": "2026-10-11T05:39:38.521Z",
-      "source_hash": "e620682b4cf585c1aa0bf9399b9e19eb6ae3040f81e84d51da8ce684f901c420"
+      "reason": "M24a added before Phase 3 increment 2",
+      "at": "2026-10-11T10:23:27.181Z",
+      "source_hash": "e811b78bf4aa191768a959b923838523bff237a75a9da4db8faebe33cc283df7"
     }
   },
   "artifacts": [
@@ -328,6 +330,7 @@
         "AC-73",
         "AC-74",
         "AC-75",
+        "AC-76",
         "AC-8",
         "AC-9",
         "FR-1",
@@ -427,6 +430,7 @@
         "FR-95",
         "FR-96",
         "FR-97",
+        "FR-98",
         "NFR-1",
         "NFR-10",
         "NFR-11",
@@ -454,12 +458,12 @@
         "NFR-8",
         "NFR-9"
       ],
-      "source_hash": "413045c846c3afbe31042dde18e7154a4a865f5c0496b8e5878821c478fafd5f",
+      "source_hash": "a84dc1b9ebf41cc8ac4c3fadbfc155f8d313788472a7302a54865deb5e43a106",
       "approval": {
         "human": "siva-rgb (owner)",
-        "reason": "M24 pre-flight: M23 caveats settled in FR-92 and FR-93",
-        "at": "2026-10-11T05:39:38.166Z",
-        "source_hash": "413045c846c3afbe31042dde18e7154a4a865f5c0496b8e5878821c478fafd5f"
+        "reason": "FR-98 and AC-76 for M24a",
+        "at": "2026-10-11T10:23:26.758Z",
+        "source_hash": "a84dc1b9ebf41cc8ac4c3fadbfc155f8d313788472a7302a54865deb5e43a106"
       }
     }
   ],
@@ -1434,6 +1438,14 @@
       "status": "accepted",
       "source": null,
       "recorded_at": "2026-10-11T05:39:37.470Z"
+    },
+    {
+      "id": "DECISION-a13245a0",
+      "title": "M24a: the claim-lock's caveats C1 to C4 settled before increment 2 (owner)",
+      "text": "Owner decision 2026-10-11 on M24's approval (KNOWLEDGE-4301be95): complete M24, then a follow-up task M24a before Phase 3 increment 2 is specified, settling C1 (the database lock always unlocked and the pooled connection always returned under repeated cancellation, replacing a cleanup that suppressed a re-delivered CancelledError), C3 and C4 (at most three attempts per failure episode in all, counting a cancelled attempt and a waiter's own failure) and C2 (lock keys encoded so no two reaches collide). Specified as FR-98 and AC-76, with its own gates and independent review. C5 to C7 and example 21's vacuous taint check on the uncited correction are carried to increment 2's pre-flight. Rejected: carrying everything to increment 2. The owner permitted signing the spec and plan as siva-rgb (owner); no task is active, so the plan is reopened through the CLI with no manual state edit.",
+      "status": "accepted",
+      "source": null,
+      "recorded_at": "2026-10-11T10:23:26.335Z"
     }
   ],
   "knowledge": [
@@ -2300,6 +2312,14 @@
       "source": null,
       "tags": [],
       "recorded_at": "2026-10-11T10:22:50.721Z"
+    },
+    {
+      "id": "KNOWLEDGE-06a8cf2f",
+      "title": "M24a round 1 approved; budget, wait and encoding caveats carried to increment 2",
+      "text": "Fable 5.1 approved M24a round 1 on source hash 880b57dd (unit 9, regression 1900). C1 verified at unit level and against the live database: repeated cancellation leaves no advisory lock and no pooled connection, where M24 leaked one connection. C2: lock_key injective over 4368 adversarial part lists, 0 collisions. Carried to Phase 3 increment 2 (owner, Complete now, carry all). B1, the first to settle: the budget decrement sits before the backoff sleep, so waiters cancelled during backoff spend the key budget and fail it for everyone with zero operations retried; moving the decrement after the sleep is one line. B2: a success between failures does not restore the budget. W1: _finished waits unboundedly on a thread that never returns, the same property as every to_thread store call. W2: _finished absorbs any BaseException thrown into the task while the future is pending, including KeyboardInterrupt (latent). K1: KeyFailed carries no cause when the key failed through failed_once or a cancelled retry. P1: the M23 transaction-lock names in PostgresLedgerStore._lock still join with a pipe. P2: manifest.py spec_material joins with a pipe before agent_spec_hash, so id a with instructions b|c hashes like id a|b with instructions c, a missed configuration change, predating M24. Also still carried: C5 to C7 and the vacuous taint check in example 21.",
+      "source": null,
+      "tags": [],
+      "recorded_at": "2026-10-11T12:10:09.044Z"
     }
   ],
   "tasks": [
@@ -2322,9 +2342,9 @@
           "status": "pass",
           "evidence": {
             "human": "siva-rgb (owner)",
-            "reason": "M24 pre-flight: M23 caveats settled in FR-92 and FR-93",
-            "source_hash": "81fa00edacc623632d425d4b0a47e922e8b0125291f05cc99a99bc7563520d01",
-            "observed_at": "2026-10-11T05:39:38.166Z"
+            "reason": "FR-98 and AC-76 for M24a",
+            "source_hash": "63f5050abac6c8765b679e5a99ce2f690296fe5ef342b8388b18955a72a80e17",
+            "observed_at": "2026-10-11T10:23:26.758Z"
           }
         }
       ],
@@ -2334,7 +2354,7 @@
       "failures": [],
       "limitations": [],
       "created_at": "2026-09-05T14:48:57.897Z",
-      "updated_at": "2026-10-11T05:39:38.166Z"
+      "updated_at": "2026-10-11T10:23:26.758Z"
     },
     {
       "id": "M1-primitives",
@@ -3981,6 +4001,64 @@
       "limitations": [],
       "created_at": "2026-10-10T07:01:18.649Z",
       "updated_at": "2026-10-11T10:22:50.878Z"
+    },
+    {
+      "id": "M24a-claim-lock-caveats",
+      "outcome": "The claim-lock never leaks a database lock or a pooled connection under repeated cancellation, a key's retries are three in all, and no two reaches share a lock key",
+      "state": "done",
+      "risk": "medium",
+      "owner": null,
+      "scope": [],
+      "dependencies": [],
+      "requirements": [
+        "FR-98",
+        "AC-76"
+      ],
+      "gates": [
+        {
+          "id": "unit",
+          "command": ".venv\\Scripts\\python.exe -m pytest tests/test_claim_lock_followup.py -q",
+          "mandatory": true,
+          "status": "pass",
+          "evidence": {
+            "path": ".genesis/evidence/M24a-claim-lock-caveats-unit.json",
+            "source_hash": "880b57dd175de0496d0f0d7d1373830413d5186d6ef5f21f96039e98fbb87492",
+            "hash": "e76e9fc7e4a61d858ae3cad45af2ffb013a8a18009d9370b00f08a440c31bcdf",
+            "observed_at": "2026-10-11T11:46:41.109Z"
+          }
+        },
+        {
+          "id": "regression",
+          "command": ".venv\\Scripts\\python.exe -m pytest -q",
+          "mandatory": true,
+          "status": "pass",
+          "evidence": {
+            "path": ".genesis/evidence/M24a-claim-lock-caveats-regression.json",
+            "source_hash": "880b57dd175de0496d0f0d7d1373830413d5186d6ef5f21f96039e98fbb87492",
+            "hash": "3ab3e985b6e699593663ece56a0bacac634db51e7b7e9ab74842831f68eb4551",
+            "observed_at": "2026-10-11T11:52:30.175Z"
+          }
+        },
+        {
+          "id": "independent-review",
+          "command": "",
+          "mandatory": true,
+          "status": "pass",
+          "evidence": {
+            "human": "Fable 5.1",
+            "reason": "Re-derived FR-98 and AC-76. Gates recomputed by the reviewer: unit 9 passed, regression 1900 passed in 347.72s, both on source hash 880b57dd, no stray process. C1: 48 trials on the live database cancelling 1, 2, 5 and 20 times at every await (asyncio lock wait, try-lock before and after taking the lock, contended try-lock, poll sleep, holding, normal release, release after a failed op, undo, retry backoff, retry op) left no advisory lock in pg_locks, every pooled connection returned, every call returning only after its release thread finished, CancelledError raised each time; the same probe with M24 _completed swapped in reports a held lock, a stuck checkout and early returns. wait_for and asyncio.timeout raise TimeoutError only after the release; an extra cancel gives CancelledError. C3 and C4: a 400-seed fuzz of ok, fail, cancel-in-op and cancel-in-backoff on one key never exceeds three attempts and every later call fails naming the key, while the M24 module breaks 95 seeds, worst 11. C2: 20000 random part lists give no lock_key collision where a pipe join gives 168; both call sites pass strings; two reaches whose names pipe-join alike get different keys. M22, M23 and M24 gate files pass (215). The gate file fails 4 tests with M24 _completed and 2 with M24 _retry swapped in through a plugin. Caveats, none blocking: a retrier cancelled during its backoff delay draws an attempt, so three such cancellations fail the key with no operation retried; the budget is not restored by a success while calls remain on the key, so under uninterrupted contention one later failure fails the key with no retry once three are spent; a try-lock or release thread that never returns keeps the call uncancellable and delays a tool timeout for as long as it takes (2 s shown; pool checkout is bounded at 30 s, a query on a dead link is not), the same property as every store call; in Python 3.11 a wait_for whose timeout already fired and is then cancelled returns before the inner release ends, which still completes; KeyFailed shows no cause when the key was failed through failed_once or a cancelled retry; the M23 transaction-lock pipe join is an acceptable leftover since a collision only serialises two writers on one lock value (shown) and the claim-lock keys differ, best fixed when that test is next edited.",
+            "source_hash": "880b57dd175de0496d0f0d7d1373830413d5186d6ef5f21f96039e98fbb87492",
+            "observed_at": "2026-10-11T11:54:44.761Z"
+          }
+        }
+      ],
+      "next_action": "Run the task pre-flight.",
+      "blocker": null,
+      "notes": [],
+      "failures": [],
+      "limitations": [],
+      "created_at": "2026-10-11T10:23:26.907Z",
+      "updated_at": "2026-10-11T12:10:16.625Z"
     }
   ],
   "learning_proposals": [],
@@ -4768,18 +4846,27 @@
       "human": "Opus 5 (independent L4 reviewer, M24 round 1)",
       "reason": "Requirements re-derived from SPEC.md FR-95, FR-96, NFR-24, NFR-25, AC-74 and the M24 sentences of FR-92 and FR-93. Gates recomputed by me on source hash 0c9970bd: unit 27 passed, regression 1891 passed in 404 s, both exit 0, no stray python; a separate full suite gave 1891 passed in 370 s. All eight attack items probed first-hand. Singleflight: 40 trials of 8 tasks at a 1 microsecond switch interval never had two holders; 5 OS processes on one database fetched one page once with 4 waiters served and took_result true, and a second tenant added exactly one more fetch, while a no-lock mutant gave 5 and 8 fetches, so the probe detects the defect. Retry: 25 trials gave exactly 1 plus 3 operations, 3 delays inside 0.2, 0.4 and 0.8 s, 5 waiters failing by key name and a fresh call clean; a cancelled holder is retried and the waiters succeed; a waiter failing after a good holder does not poison the key. Cancellation: 128 sweep attempts, 60 cancelled-waiter trials and 24 public-API trials with the cancel timed into the window between pg_try_advisory_lock succeeding and its result arriving, all leaving 0 advisory locks and the pool idle; pg_locks and other connections were 0 before and after every probe and 0 at the end. A waiting call holds no connection and adds no measurable loop delay; a tool timeout counted the wait and reported ToolTimeout at 5985 ms while the holder still fetched once. Cross-process: taskkill of a holder freed the key in 0.28 s, and hashtext collisions only cost waiting. Tenancy: both lock keys name tenant and project, SESSION carries the ledger run, NO_CACHE takes no lock. Exit signal: example 21 on 7 seeds of my own on both stores, 7 of 7 checks each, 177 to 208 claim-lock waits, so it contends in fact. M23 caveats: both stores now refuse cross-tenant, cross-project and unknown citations and raise a deliberately trusted clean contribution to untrusted with both taint flags; normalised is idempotent over every Unicode code point; the hash-ordered lock serialised 30 of 30 crossing-collision trials where the restored text-sorted lock deadlocked 30 of 30. Governance: the diff adds only DECISION-eecef939, knowledge stays at 107, 28 tasks unchanged in order, state and content, controls 85 to 86 with one requeue, no migration edited and all 10 checksums match their files. Caveats, none reachable through the public surface. First, ClaimLock _completed suppresses a re-delivered CancelledError, so a cancellation delivered twice while it is undoing drops the holder connection without pg_advisory_unlock or putconn, leaving an advisory lock held until the garbage collector closes the socket and losing one pool slot for good; 33 such events exhausted the pool and the next store call raised PoolTimeout after 30 s. RunControl request is guarded and RunHandle result shields the run task, so the public API delivers only one cancellation and this needs code outside NFR-5. Second, lock keys are joined with a vertical bar and tenant ids are unvalidated, so tenant A-bar-p with project x and tenant A with project p-bar-x share one key, letting a wait, though never a result, cross a tenant; the pattern predates M24. Third, _retry catches Exception only, so a cancelled retrier leaves no attempt budget. Fourth, a waiter failing after a good holder opens a fresh 3-attempt budget. Fifth, a call that waited and got a non-2xx response records no event, so its wait is unrecorded. Sixth, the holder keeps a pooled connection while its operation draws on the same pool of 32. Seventh, the task requirement list omits NFR-25. The six open choices are all sound: serialised waiters, per-process retry state, k counting from 0, supersede without a claim-lock since the hash-ordered store lock serialises it, the took_result mapping, and the editor citing nothing, the last weakening the exit signal slightly because the corrected claim cites no source and its taint check therefore passes vacuously.",
       "revision": null
+    },
+    {
+      "id": "392ccb8d-812d-4718-82e9-39a2d052a3a1",
+      "at": "2026-10-11T11:54:44.761Z",
+      "action": "approve",
+      "task": "M24a-claim-lock-caveats",
+      "human": "Fable 5.1",
+      "reason": "Re-derived FR-98 and AC-76. Gates recomputed by the reviewer: unit 9 passed, regression 1900 passed in 347.72s, both on source hash 880b57dd, no stray process. C1: 48 trials on the live database cancelling 1, 2, 5 and 20 times at every await (asyncio lock wait, try-lock before and after taking the lock, contended try-lock, poll sleep, holding, normal release, release after a failed op, undo, retry backoff, retry op) left no advisory lock in pg_locks, every pooled connection returned, every call returning only after its release thread finished, CancelledError raised each time; the same probe with M24 _completed swapped in reports a held lock, a stuck checkout and early returns. wait_for and asyncio.timeout raise TimeoutError only after the release; an extra cancel gives CancelledError. C3 and C4: a 400-seed fuzz of ok, fail, cancel-in-op and cancel-in-backoff on one key never exceeds three attempts and every later call fails naming the key, while the M24 module breaks 95 seeds, worst 11. C2: 20000 random part lists give no lock_key collision where a pipe join gives 168; both call sites pass strings; two reaches whose names pipe-join alike get different keys. M22, M23 and M24 gate files pass (215). The gate file fails 4 tests with M24 _completed and 2 with M24 _retry swapped in through a plugin. Caveats, none blocking: a retrier cancelled during its backoff delay draws an attempt, so three such cancellations fail the key with no operation retried; the budget is not restored by a success while calls remain on the key, so under uninterrupted contention one later failure fails the key with no retry once three are spent; a try-lock or release thread that never returns keeps the call uncancellable and delays a tool timeout for as long as it takes (2 s shown; pool checkout is bounded at 30 s, a query on a dead link is not), the same property as every store call; in Python 3.11 a wait_for whose timeout already fired and is then cancelled returns before the inner release ends, which still completes; KeyFailed shows no cause when the key was failed through failed_once or a cancelled retry; the M23 transaction-lock pipe join is an acceptable leftover since a collision only serialises two writers on one lock value (shown) and the claim-lock keys differ, best fixed when that test is next edited.",
+      "revision": null
     }
   ],
   "discovery": null,
   "checkpoint": {
-    "at": "2026-10-11T10:22:51.024Z",
+    "at": "2026-10-11T12:06:52.099Z",
     "revision": {
-      "commit": "045696c34eaefd8bd1ca22aec59e4cc8d17b3996",
+      "commit": "64a262d506aec703f8300539cd4fb69e5ab52c7b",
       "dirty": true,
-      "source_hash": "0c9970bdfa894ac9cea22762dc71904d60e63087abf717665221cd76aef11709"
+      "source_hash": "880b57dd175de0496d0f0d7d1373830413d5186d6ef5f21f96039e98fbb87492"
     },
-    "active_task": null,
-    "next_action": "Review completed work and choose the next bounded outcome."
+    "active_task": "M24a-claim-lock-caveats",
+    "next_action": "Run the task pre-flight."
   },
   "legacy": null
 }

@@ -307,9 +307,10 @@ class ResourceCache:
         if self._lock is None or scope is CacheScope.NO_CACHE:
             return await op(None)
         reach = (self.tenant_id, self.project_id, self.ledger_run_id if scope is CacheScope.SESSION else "")
-        lock_key = "|".join(("fetch", *reach, scope.value, key.canonical_uri, key.auth_scope_hash or "",
-                             key.request_variant or ""))
-        return await self._lock.run(lock_key, op)
+        from .claimlock import lock_key
+
+        return await self._lock.run(lock_key("fetch", *reach, scope.value, key.canonical_uri,
+                                             key.auth_scope_hash or "", key.request_variant or ""), op)
 
     async def serve(
         self, key: ResourceCacheKey, *, now: datetime, freshness_seconds: float, scope: CacheScope, created_by: str,

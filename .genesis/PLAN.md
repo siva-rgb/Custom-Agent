@@ -4,7 +4,7 @@
 
 - workflow: new-product
 - phase: verify
-- plan approval: siva-rgb (owner) at 2026-10-11T05:39:38.521Z
+- plan approval: siva-rgb (owner) at 2026-10-11T10:23:27.181Z
 
 ## Tasks
 
@@ -222,5 +222,13 @@
 - requirements: FR-95, FR-96, NFR-24, AC-74
 - scope: not bounded
 - gates: unit: .venv\Scripts\python.exe -m pytest tests/test_claim_lock.py -q, regression: .venv\Scripts\python.exe -m pytest -q, independent-review: pass
+- next: Run the task pre-flight.
+
+### M24a-claim-lock-caveats — The claim-lock never leaks a database lock or a pooled connection under repeated cancellation, a key's retries are three in all, and no two reaches share a lock key
+
+- state/risk: done / medium
+- requirements: FR-98, AC-76
+- scope: not bounded
+- gates: unit: .venv\Scripts\python.exe -m pytest tests/test_claim_lock_followup.py -q, regression: .venv\Scripts\python.exe -m pytest -q, independent-review: pass
 - next: Run the task pre-flight.
 

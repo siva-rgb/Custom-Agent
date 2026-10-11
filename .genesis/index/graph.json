@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "project": "agent-sdk",
-  "revision": "045696c34eaefd8bd1ca22aec59e4cc8d17b3996",
-  "sourceHash": "14770adb2d7339ca864609ef70f45b56eb22905cf8902a1e04f6e3cdc70238fc",
+  "revision": "64a262d506aec703f8300539cd4fb69e5ab52c7b",
+  "sourceHash": "410f5dbfc8987e489163c69ae25e4f266dc05e6ef0c3f13dc6de8f934180b24a",
   "provenance": {
     "tool": "genesis-graphizer",
     "method": "static-analysis",
@@ -85,7 +85,7 @@
         "extractor": "filesystem",
         "source": "agentsdk/claimlock.py"
       },
-      "contentHash": "77be557bbf01593fba038c27a1456d1946e4f6e06baebf78653e9825ad8de974"
+      "contentHash": "5a09010fff8dbe67891242109bdb86de6dfe61271ed4c9375d5a18c54eebb0f1"
     },
     {
       "id": "file:agentsdk/compaction.py",
@@ -176,7 +176,7 @@
         "extractor": "filesystem",
         "source": "agentsdk/evidence.py"
       },
-      "contentHash": "8b606707266af16915c7dd4fe9dd760b60f168f705931f90991eb0a7e642699d"
+      "contentHash": "d61dae81eab4a26731b37adc0a58445bc05a5b9e1d70fb82da5f43803c63d6a1"
     },
     {
       "id": "file:agentsdk/executor.py",
@@ -241,7 +241,7 @@
         "extractor": "filesystem",
         "source": "agentsdk/ledger.py"
       },
-      "contentHash": "e1d5e733597ab6b0beadb2bbee64e95d75fca5504a4c9e1c2f10f4e9356e0075"
+      "contentHash": "2d4b896a94f991979debda32a0bdfd35a8056ac3d720d7605d506045609941fc"
     },
     {
       "id": "file:agentsdk/loop.py",
@@ -1061,6 +1061,19 @@
         "source": "tests/test_carried_items.py"
       },
       "contentHash": "c31cb638646d5abdc61e8e29afb6351c53b8cc2dfdc6d2f7e4bcb4af6a1ef520"
+    },
+    {
+      "id": "file:tests/test_claim_lock_followup.py",
+      "type": "file",
+      "label": "tests/test_claim_lock_followup.py",
+      "path": "tests/test_claim_lock_followup.py",
+      "language": "python",
+      "confidence": 1,
+      "provenance": {
+        "extractor": "filesystem",
+        "source": "tests/test_claim_lock_followup.py"
+      },
+      "contentHash": "a86dfefaca4ff0ea117fe237e31db68b7d7047495e2e23ef19c78d52ec79618e"
     },
     {
       "id": "file:tests/test_claim_lock.py",
@@ -5288,7 +5301,7 @@
       "name": "_Key",
       "qualifiedName": "_Key",
       "kind": "class",
-      "line": 46,
+      "line": 53,
       "label": "_Key",
       "path": "agentsdk/claimlock.py",
       "confidence": 1,
@@ -5304,7 +5317,7 @@
       "name": "ClaimLock",
       "qualifiedName": "ClaimLock",
       "kind": "class",
-      "line": 56,
+      "line": 79,
       "label": "ClaimLock",
       "path": "agentsdk/claimlock.py",
       "confidence": 1,
@@ -5320,7 +5333,7 @@
       "name": "KeyFailed",
       "qualifiedName": "KeyFailed",
       "kind": "class",
-      "line": 37,
+      "line": 38,
       "label": "KeyFailed",
       "path": "agentsdk/claimlock.py",
       "confidence": 1,
@@ -5336,7 +5349,7 @@
       "name": "_completed",
       "qualifiedName": "_completed",
       "kind": "function",
-      "line": 135,
+      "line": 184,
       "label": "_completed",
       "path": "agentsdk/claimlock.py",
       "confidence": 1,
@@ -5347,12 +5360,28 @@
       "contentHash": "d2c4e0c0ef43797ff1148b1375b6e448cb436146fa65c722ab6bfd0f1b111513"
     },
     {
+      "id": "symbol:agentsdk/claimlock.py#function:_finished",
+      "type": "symbol",
+      "name": "_finished",
+      "qualifiedName": "_finished",
+      "kind": "function",
+      "line": 168,
+      "label": "_finished",
+      "path": "agentsdk/claimlock.py",
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "agentsdk/claimlock.py"
+      },
+      "contentHash": "59a087f5a426d607a6637cd3074a5ded284cfce1c45e61996f52c2f7832d1a7b"
+    },
+    {
       "id": "symbol:agentsdk/claimlock.py#function:_Key.__init__",
       "type": "symbol",
       "name": "__init__",
       "qualifiedName": "_Key.__init__",
       "kind": "function",
-      "line": 49,
+      "line": 56,
       "label": "_Key.__init__",
       "path": "agentsdk/claimlock.py",
       "confidence": 1,
@@ -5363,12 +5392,28 @@
       "contentHash": "e6969410dd665be3e7534fbf162f63d59a6e978ec19d65804b5144473afdfada"
     },
     {
+      "id": "symbol:agentsdk/claimlock.py#function:_Key.failed_once",
+      "type": "symbol",
+      "name": "failed_once",
+      "qualifiedName": "_Key.failed_once",
+      "kind": "function",
+      "line": 65,
+      "label": "_Key.failed_once",
+      "path": "agentsdk/claimlock.py",
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "agentsdk/claimlock.py"
+      },
+      "contentHash": "780e499522dcd27a1355e895cfda41b4b655a4536068680ed2396c6b9a6948c6"
+    },
+    {
       "id": "symbol:agentsdk/claimlock.py#function:_release",
       "type": "symbol",
       "name": "_release",
       "qualifiedName": "_release",
       "kind": "function",
-      "line": 164,
+      "line": 211,
       "label": "_release",
       "path": "agentsdk/claimlock.py",
       "confidence": 1,
@@ -5384,7 +5429,7 @@
       "name": "_try_lock",
       "qualifiedName": "_try_lock",
       "kind": "function",
-      "line": 149,
+      "line": 196,
       "label": "_try_lock",
       "path": "agentsdk/claimlock.py",
       "confidence": 1,
@@ -5400,7 +5445,7 @@
       "name": "__init__",
       "qualifiedName": "ClaimLock.__init__",
       "kind": "function",
-      "line": 60,
+      "line": 83,
       "label": "ClaimLock.__init__",
       "path": "agentsdk/claimlock.py",
       "confidence": 1,
@@ -5416,7 +5461,7 @@
       "name": "_database",
       "qualifiedName": "ClaimLock._database",
       "kind": "function",
-      "line": 114,
+      "line": 147,
       "label": "ClaimLock._database",
       "path": "agentsdk/claimlock.py",
       "confidence": 1,
@@ -5432,7 +5477,7 @@
       "name": "_retry",
       "qualifiedName": "ClaimLock._retry",
       "kind": "function",
-      "line": 99,
+      "line": 122,
       "label": "ClaimLock._retry",
       "path": "agentsdk/claimlock.py",
       "confidence": 1,
@@ -5448,7 +5493,7 @@
       "name": "run",
       "qualifiedName": "ClaimLock.run",
       "kind": "function",
-      "line": 73,
+      "line": 96,
       "label": "ClaimLock.run",
       "path": "agentsdk/claimlock.py",
       "confidence": 1,
@@ -5464,7 +5509,7 @@
       "name": "__init__",
       "qualifiedName": "KeyFailed.__init__",
       "kind": "function",
-      "line": 40,
+      "line": 41,
       "label": "KeyFailed.__init__",
       "path": "agentsdk/claimlock.py",
       "confidence": 1,
@@ -5473,6 +5518,22 @@
         "source": "agentsdk/claimlock.py"
       },
       "contentHash": "eacc7f07aef3d6d62178843873cc312ed13ab57173a95c33509b142c4af1aed2"
+    },
+    {
+      "id": "symbol:agentsdk/claimlock.py#function:lock_key",
+      "type": "symbol",
+      "name": "lock_key",
+      "qualifiedName": "lock_key",
+      "kind": "function",
+      "line": 47,
+      "label": "lock_key",
+      "path": "agentsdk/claimlock.py",
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "agentsdk/claimlock.py"
+      },
+      "contentHash": "54a829933ae2858a13c365545f2afaeb33184fb702d8022a28c82f634cdc082e"
     },
     {
       "id": "symbol:agentsdk/compaction.py#class:ContextCompactor",
@@ -7288,7 +7349,7 @@
       "name": "_event",
       "qualifiedName": "ResourceCache._event",
       "kind": "function",
-      "line": 383,
+      "line": 384,
       "label": "ResourceCache._event",
       "path": "agentsdk/evidence.py",
       "confidence": 1,
@@ -7320,7 +7381,7 @@
       "name": "_prior",
       "qualifiedName": "ResourceCache._prior",
       "kind": "function",
-      "line": 340,
+      "line": 341,
       "label": "ResourceCache._prior",
       "path": "agentsdk/evidence.py",
       "confidence": 1,
@@ -7336,7 +7397,7 @@
       "name": "_record",
       "qualifiedName": "ResourceCache._record",
       "kind": "function",
-      "line": 353,
+      "line": 354,
       "label": "ResourceCache._record",
       "path": "agentsdk/evidence.py",
       "confidence": 1,
@@ -7384,7 +7445,7 @@
       "name": "record",
       "qualifiedName": "ResourceCache.record",
       "kind": "function",
-      "line": 344,
+      "line": 345,
       "label": "ResourceCache.record",
       "path": "agentsdk/evidence.py",
       "confidence": 1,
@@ -7400,7 +7461,7 @@
       "name": "serve",
       "qualifiedName": "ResourceCache.serve",
       "kind": "function",
-      "line": 314,
+      "line": 315,
       "label": "ResourceCache.serve",
       "path": "agentsdk/evidence.py",
       "confidence": 1,
@@ -8504,7 +8565,7 @@
       "name": "_described",
       "qualifiedName": "_described",
       "kind": "function",
-      "line": 489,
+      "line": 491,
       "label": "_described",
       "path": "agentsdk/ledger.py",
       "confidence": 1,
@@ -8520,7 +8581,7 @@
       "name": "_labels",
       "qualifiedName": "_labels",
       "kind": "function",
-      "line": 483,
+      "line": 485,
       "label": "_labels",
       "path": "agentsdk/ledger.py",
       "confidence": 1,
@@ -8536,7 +8597,7 @@
       "name": "_ledger_of",
       "qualifiedName": "_ledger_of",
       "kind": "function",
-      "line": 516,
+      "line": 518,
       "label": "_ledger_of",
       "path": "agentsdk/ledger.py",
       "confidence": 1,
@@ -8552,7 +8613,7 @@
       "name": "_report",
       "qualifiedName": "_report",
       "kind": "function",
-      "line": 498,
+      "line": 500,
       "label": "_report",
       "path": "agentsdk/ledger.py",
       "confidence": 1,
@@ -8920,7 +8981,7 @@
       "name": "ledger_tools",
       "qualifiedName": "ledger_tools",
       "kind": "function",
-      "line": 523,
+      "line": 525,
       "label": "ledger_tools",
       "path": "agentsdk/ledger.py",
       "confidence": 1,
@@ -8936,7 +8997,7 @@
       "name": "record_claim",
       "qualifiedName": "ledger_tools.record_claim",
       "kind": "function",
-      "line": 528,
+      "line": 530,
       "label": "ledger_tools.record_claim",
       "path": "agentsdk/ledger.py",
       "confidence": 1,
@@ -8952,7 +9013,7 @@
       "name": "supersede_claim",
       "qualifiedName": "ledger_tools.supersede_claim",
       "kind": "function",
-      "line": 533,
+      "line": 535,
       "label": "ledger_tools.supersede_claim",
       "path": "agentsdk/ledger.py",
       "confidence": 1,
@@ -9192,7 +9253,7 @@
       "name": "supersede",
       "qualifiedName": "RunLedger.supersede",
       "kind": "function",
-      "line": 465,
+      "line": 467,
       "label": "RunLedger.supersede",
       "path": "agentsdk/ledger.py",
       "confidence": 1,
@@ -28753,6 +28814,406 @@
         "source": "tests/test_carried_items.py"
       },
       "contentHash": "8dfea4289e4c30bb9baaf68182caad35d1fd35e45b51d189416ecfbc46a308e5"
+    },
+    {
+      "id": "symbol:tests/test_claim_lock_followup.py#class:Fetches",
+      "type": "symbol",
+      "name": "Fetches",
+      "qualifiedName": "Fetches",
+      "kind": "class",
+      "line": 213,
+      "label": "Fetches",
+      "path": "tests/test_claim_lock_followup.py",
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_claim_lock_followup.py"
+      },
+      "contentHash": "a817a9a1c512a5b72902a71e6301bd2d5721eb531cdec245790430ab068a501f"
+    },
+    {
+      "id": "symbol:tests/test_claim_lock_followup.py#class:NoDelay",
+      "type": "symbol",
+      "name": "NoDelay",
+      "qualifiedName": "NoDelay",
+      "kind": "class",
+      "line": 120,
+      "label": "NoDelay",
+      "path": "tests/test_claim_lock_followup.py",
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_claim_lock_followup.py"
+      },
+      "contentHash": "e9a9f674bf57976498b59a17ea5251fbe2c5bab656a66e6d6693d7aa4c23be09"
+    },
+    {
+      "id": "symbol:tests/test_claim_lock_followup.py#class:Slow",
+      "type": "symbol",
+      "name": "Slow",
+      "qualifiedName": "Slow",
+      "kind": "class",
+      "line": 191,
+      "label": "Slow",
+      "path": "tests/test_claim_lock_followup.py",
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_claim_lock_followup.py"
+      },
+      "contentHash": "fbe7b3fd5f560ceea681c5cf65e5eb51e4415bbc3951dea0ea94e2ad75f4abfd"
+    },
+    {
+      "id": "symbol:tests/test_claim_lock_followup.py#function:_cancel_repeatedly",
+      "type": "symbol",
+      "name": "_cancel_repeatedly",
+      "qualifiedName": "_cancel_repeatedly",
+      "kind": "function",
+      "line": 48,
+      "label": "_cancel_repeatedly",
+      "path": "tests/test_claim_lock_followup.py",
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_claim_lock_followup.py"
+      },
+      "contentHash": "85bd7dc1f02e059e70e6a5a36f2e00a165a0548054598b7313c72f8262677b6d"
+    },
+    {
+      "id": "symbol:tests/test_claim_lock_followup.py#function:Fetches.send",
+      "type": "symbol",
+      "name": "send",
+      "qualifiedName": "Fetches.send",
+      "kind": "function",
+      "line": 214,
+      "label": "Fetches.send",
+      "path": "tests/test_claim_lock_followup.py",
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_claim_lock_followup.py"
+      },
+      "contentHash": "ad55e741c5ac1a13c31825f6a18d0b2b995a2375d022e8c67500dd1466937b50"
+    },
+    {
+      "id": "symbol:tests/test_claim_lock_followup.py#function:held_locks",
+      "type": "symbol",
+      "name": "held_locks",
+      "qualifiedName": "held_locks",
+      "kind": "function",
+      "line": 32,
+      "label": "held_locks",
+      "path": "tests/test_claim_lock_followup.py",
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_claim_lock_followup.py"
+      },
+      "contentHash": "d33e55d6bc6ddbb8229f307f4bc8e22f17a8f075d699d40f499b266b8774827e"
+    },
+    {
+      "id": "symbol:tests/test_claim_lock_followup.py#function:in_use",
+      "type": "symbol",
+      "name": "in_use",
+      "qualifiedName": "in_use",
+      "kind": "function",
+      "line": 38,
+      "label": "in_use",
+      "path": "tests/test_claim_lock_followup.py",
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_claim_lock_followup.py"
+      },
+      "contentHash": "47e62846e9b86b73bf9500b6c7519fe3feb2fa7701b0574df2c95b8dab7c81dc"
+    },
+    {
+      "id": "symbol:tests/test_claim_lock_followup.py#function:NoDelay.__call__",
+      "type": "symbol",
+      "name": "__call__",
+      "qualifiedName": "NoDelay.__call__",
+      "kind": "function",
+      "line": 121,
+      "label": "NoDelay.__call__",
+      "path": "tests/test_claim_lock_followup.py",
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_claim_lock_followup.py"
+      },
+      "contentHash": "9748101e627d5520cf7140e943284002627b9ac1266ef1bfd5f54ac6d1998a28"
+    },
+    {
+      "id": "symbol:tests/test_claim_lock_followup.py#function:Slow.__aenter__",
+      "type": "symbol",
+      "name": "__aenter__",
+      "qualifiedName": "Slow.__aenter__",
+      "kind": "function",
+      "line": 195,
+      "label": "Slow.__aenter__",
+      "path": "tests/test_claim_lock_followup.py",
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_claim_lock_followup.py"
+      },
+      "contentHash": "34e9a8b8c1d7941357379ed2c94ac7ece5dcd009f8e1d7ec113364134d0aed32"
+    },
+    {
+      "id": "symbol:tests/test_claim_lock_followup.py#function:Slow.__aexit__",
+      "type": "symbol",
+      "name": "__aexit__",
+      "qualifiedName": "Slow.__aexit__",
+      "kind": "function",
+      "line": 200,
+      "label": "Slow.__aexit__",
+      "path": "tests/test_claim_lock_followup.py",
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_claim_lock_followup.py"
+      },
+      "contentHash": "05ec845416158d3e6a428786ade0b65eaa827ca99167ca3501a2c097e5ebba50"
+    },
+    {
+      "id": "symbol:tests/test_claim_lock_followup.py#function:Slow.__init__",
+      "type": "symbol",
+      "name": "__init__",
+      "qualifiedName": "Slow.__init__",
+      "kind": "function",
+      "line": 192,
+      "label": "Slow.__init__",
+      "path": "tests/test_claim_lock_followup.py",
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_claim_lock_followup.py"
+      },
+      "contentHash": "eec584bc1b059dea5596131a795cbf7437486b7c3ec5c7cea4d3a1e0523d1a13"
+    },
+    {
+      "id": "symbol:tests/test_claim_lock_followup.py#function:Slow._handle",
+      "type": "symbol",
+      "name": "_handle",
+      "qualifiedName": "Slow._handle",
+      "kind": "function",
+      "line": 204,
+      "label": "Slow._handle",
+      "path": "tests/test_claim_lock_followup.py",
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_claim_lock_followup.py"
+      },
+      "contentHash": "8d0200072d24a97b0adfb8dfd051309402bcf8f4bf4c4f7c760813a728f8a20c"
+    },
+    {
+      "id": "symbol:tests/test_claim_lock_followup.py#function:test_c1_repeated_cancellation_leaves_no_lock_held_and_every_connection_returned",
+      "type": "symbol",
+      "name": "test_c1_repeated_cancellation_leaves_no_lock_held_and_every_connection_returned",
+      "qualifiedName": "test_c1_repeated_cancellation_leaves_no_lock_held_and_every_connection_returned",
+      "kind": "function",
+      "line": 64,
+      "label": "test_c1_repeated_cancellation_leaves_no_lock_held_and_every_connection_returned",
+      "path": "tests/test_claim_lock_followup.py",
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_claim_lock_followup.py"
+      },
+      "contentHash": "64031a70802e677b8c328f3c4b579cb66ddd435e50c8e2bcc8372bc432fa5074"
+    },
+    {
+      "id": "symbol:tests/test_claim_lock_followup.py#function:test_c1_repeated_cancellation_leaves_no_lock_held_and_every_connection_returned.op",
+      "type": "symbol",
+      "name": "op",
+      "qualifiedName": "test_c1_repeated_cancellation_leaves_no_lock_held_and_every_connection_returned.op",
+      "kind": "function",
+      "line": 83,
+      "label": "test_c1_repeated_cancellation_leaves_no_lock_held_and_every_connection_returned.op",
+      "path": "tests/test_claim_lock_followup.py",
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_claim_lock_followup.py"
+      },
+      "contentHash": "0d8e2f9bc3483cbb2b8a010201c93a40e0715cd122e64cb131eddab105ea4027"
+    },
+    {
+      "id": "symbol:tests/test_claim_lock_followup.py#function:test_c1_repeated_cancellation_leaves_no_lock_held_and_every_connection_returned.slow_release",
+      "type": "symbol",
+      "name": "slow_release",
+      "qualifiedName": "test_c1_repeated_cancellation_leaves_no_lock_held_and_every_connection_returned.slow_release",
+      "kind": "function",
+      "line": 72,
+      "label": "test_c1_repeated_cancellation_leaves_no_lock_held_and_every_connection_returned.slow_release",
+      "path": "tests/test_claim_lock_followup.py",
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_claim_lock_followup.py"
+      },
+      "contentHash": "6422b93bf22835e8977e4d41f3690ce74c4e59f6eb40f9d740f12d2da9d1f2c0"
+    },
+    {
+      "id": "symbol:tests/test_claim_lock_followup.py#function:test_c1_repeated_cancellation_leaves_no_lock_held_and_every_connection_returned.slow_try",
+      "type": "symbol",
+      "name": "slow_try",
+      "qualifiedName": "test_c1_repeated_cancellation_leaves_no_lock_held_and_every_connection_returned.slow_try",
+      "kind": "function",
+      "line": 67,
+      "label": "test_c1_repeated_cancellation_leaves_no_lock_held_and_every_connection_returned.slow_try",
+      "path": "tests/test_claim_lock_followup.py",
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_claim_lock_followup.py"
+      },
+      "contentHash": "c7f8f483cc166e302673404fdf2c9ed934ee8e3195928eced0cc94fec02bfbc2"
+    },
+    {
+      "id": "symbol:tests/test_claim_lock_followup.py#function:test_c2_parts_that_would_join_the_same_give_different_keys",
+      "type": "symbol",
+      "name": "test_c2_parts_that_would_join_the_same_give_different_keys",
+      "qualifiedName": "test_c2_parts_that_would_join_the_same_give_different_keys",
+      "kind": "function",
+      "line": 185,
+      "label": "test_c2_parts_that_would_join_the_same_give_different_keys",
+      "path": "tests/test_claim_lock_followup.py",
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_claim_lock_followup.py"
+      },
+      "contentHash": "91645a85ba47ae84bacbad53981086bae3d86950d37ee47d2ded1ed1f05f4591"
+    },
+    {
+      "id": "symbol:tests/test_claim_lock_followup.py#function:test_c2_two_reaches_whose_names_join_the_same_never_wait_on_each_other",
+      "type": "symbol",
+      "name": "test_c2_two_reaches_whose_names_join_the_same_never_wait_on_each_other",
+      "qualifiedName": "test_c2_two_reaches_whose_names_join_the_same_never_wait_on_each_other",
+      "kind": "function",
+      "line": 223,
+      "label": "test_c2_two_reaches_whose_names_join_the_same_never_wait_on_each_other",
+      "path": "tests/test_claim_lock_followup.py",
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_claim_lock_followup.py"
+      },
+      "contentHash": "8280cde43ed2ae5b94f339f72f46bce63b7a28a7b0a1745562db747ddad0dac6"
+    },
+    {
+      "id": "symbol:tests/test_claim_lock_followup.py#function:test_c2_two_reaches_whose_names_join_the_same_never_wait_on_each_other.resolve",
+      "type": "symbol",
+      "name": "resolve",
+      "qualifiedName": "test_c2_two_reaches_whose_names_join_the_same_never_wait_on_each_other.resolve",
+      "kind": "function",
+      "line": 225,
+      "label": "test_c2_two_reaches_whose_names_join_the_same_never_wait_on_each_other.resolve",
+      "path": "tests/test_claim_lock_followup.py",
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_claim_lock_followup.py"
+      },
+      "contentHash": "2b7bbbc76f6a7e390e15bd8ce2e94877c56f3cba9d4451f871fd164aa5be3a60"
+    },
+    {
+      "id": "symbol:tests/test_claim_lock_followup.py#function:test_c3_a_cancelled_attempt_counts_and_the_key_still_makes_three_in_all",
+      "type": "symbol",
+      "name": "test_c3_a_cancelled_attempt_counts_and_the_key_still_makes_three_in_all",
+      "qualifiedName": "test_c3_a_cancelled_attempt_counts_and_the_key_still_makes_three_in_all",
+      "kind": "function",
+      "line": 125,
+      "label": "test_c3_a_cancelled_attempt_counts_and_the_key_still_makes_three_in_all",
+      "path": "tests/test_claim_lock_followup.py",
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_claim_lock_followup.py"
+      },
+      "contentHash": "eb6f8b8eaf46d94926f1c933ea33e01b81f7976384d209e0f6d998a678a047b7"
+    },
+    {
+      "id": "symbol:tests/test_claim_lock_followup.py#function:test_c3_a_cancelled_attempt_counts_and_the_key_still_makes_three_in_all.op",
+      "type": "symbol",
+      "name": "op",
+      "qualifiedName": "test_c3_a_cancelled_attempt_counts_and_the_key_still_makes_three_in_all.op",
+      "kind": "function",
+      "line": 129,
+      "label": "test_c3_a_cancelled_attempt_counts_and_the_key_still_makes_three_in_all.op",
+      "path": "tests/test_claim_lock_followup.py",
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_claim_lock_followup.py"
+      },
+      "contentHash": "a01a3bf682bd1da1e21ae44527ac7b70810565f2f1b6d150b506738788526987"
+    },
+    {
+      "id": "symbol:tests/test_claim_lock_followup.py#function:test_c4_a_waiters_own_failure_draws_on_the_same_three",
+      "type": "symbol",
+      "name": "test_c4_a_waiters_own_failure_draws_on_the_same_three",
+      "qualifiedName": "test_c4_a_waiters_own_failure_draws_on_the_same_three",
+      "kind": "function",
+      "line": 147,
+      "label": "test_c4_a_waiters_own_failure_draws_on_the_same_three",
+      "path": "tests/test_claim_lock_followup.py",
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_claim_lock_followup.py"
+      },
+      "contentHash": "cc4d5caf561483f394caff9488fa29697800a20cbfec45e2f5e0f401e6a95d08"
+    },
+    {
+      "id": "symbol:tests/test_claim_lock_followup.py#function:test_c4_a_waiters_own_failure_draws_on_the_same_three.op",
+      "type": "symbol",
+      "name": "op",
+      "qualifiedName": "test_c4_a_waiters_own_failure_draws_on_the_same_three.op",
+      "kind": "function",
+      "line": 152,
+      "label": "test_c4_a_waiters_own_failure_draws_on_the_same_three.op",
+      "path": "tests/test_claim_lock_followup.py",
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_claim_lock_followup.py"
+      },
+      "contentHash": "524328b44fcce7b339d1879d4cc470838f4d344867301bb6a858b64e3fc509c3"
+    },
+    {
+      "id": "symbol:tests/test_claim_lock_followup.py#function:test_the_budget_is_fresh_once_no_call_is_left_on_the_key",
+      "type": "symbol",
+      "name": "test_the_budget_is_fresh_once_no_call_is_left_on_the_key",
+      "qualifiedName": "test_the_budget_is_fresh_once_no_call_is_left_on_the_key",
+      "kind": "function",
+      "line": 169,
+      "label": "test_the_budget_is_fresh_once_no_call_is_left_on_the_key",
+      "path": "tests/test_claim_lock_followup.py",
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_claim_lock_followup.py"
+      },
+      "contentHash": "4eae3dd50db6cd8270c71753de1c3ea6a41e505062173ef1f7f21f0930a6e015"
+    },
+    {
+      "id": "symbol:tests/test_claim_lock_followup.py#function:test_the_budget_is_fresh_once_no_call_is_left_on_the_key.fails",
+      "type": "symbol",
+      "name": "fails",
+      "qualifiedName": "test_the_budget_is_fresh_once_no_call_is_left_on_the_key.fails",
+      "kind": "function",
+      "line": 172,
+      "label": "test_the_budget_is_fresh_once_no_call_is_left_on_the_key.fails",
+      "path": "tests/test_claim_lock_followup.py",
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_claim_lock_followup.py"
+      },
+      "contentHash": "b7c45768ca5fc46601722818603837366aa2e3fab552c05db820690340541e9e"
     },
     {
       "id": "symbol:tests/test_claim_lock.py#class:Delays",
@@ -55173,7 +55634,7 @@
       "type": "defines",
       "source": "file:agentsdk/claimlock.py",
       "target": "symbol:agentsdk/claimlock.py#class:_Key",
-      "line": 46,
+      "line": 53,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -55187,7 +55648,7 @@
       "type": "defines",
       "source": "file:agentsdk/claimlock.py",
       "target": "symbol:agentsdk/claimlock.py#class:ClaimLock",
-      "line": 56,
+      "line": 79,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -55201,7 +55662,7 @@
       "type": "defines",
       "source": "file:agentsdk/claimlock.py",
       "target": "symbol:agentsdk/claimlock.py#class:KeyFailed",
-      "line": 37,
+      "line": 38,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -55215,7 +55676,7 @@
       "type": "defines",
       "source": "file:agentsdk/claimlock.py",
       "target": "symbol:agentsdk/claimlock.py#function:_completed",
-      "line": 135,
+      "line": 184,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -55225,11 +55686,25 @@
       "contentHash": "6c75b358c8bee5830a41b64e6d2d94f2a69b0284835cb9135fd22be3f8abb2bd"
     },
     {
+      "id": "defines:file:agentsdk/claimlock.py->symbol:agentsdk/claimlock.py#function:_finished:",
+      "type": "defines",
+      "source": "file:agentsdk/claimlock.py",
+      "target": "symbol:agentsdk/claimlock.py#function:_finished",
+      "line": 168,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "agentsdk/claimlock.py"
+      },
+      "contentHash": "03a5b7797b736e6839e3dfe05e3bfb84ddd051c34c6bfecd25dcf640d573ff20"
+    },
+    {
       "id": "defines:file:agentsdk/claimlock.py->symbol:agentsdk/claimlock.py#function:_Key.__init__:",
       "type": "defines",
       "source": "file:agentsdk/claimlock.py",
       "target": "symbol:agentsdk/claimlock.py#function:_Key.__init__",
-      "line": 49,
+      "line": 56,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -55239,11 +55714,25 @@
       "contentHash": "a35cc8f123f27df9d50af38b6a078722c6d22d82ac059ca9587dbf0fafd27bea"
     },
     {
+      "id": "defines:file:agentsdk/claimlock.py->symbol:agentsdk/claimlock.py#function:_Key.failed_once:",
+      "type": "defines",
+      "source": "file:agentsdk/claimlock.py",
+      "target": "symbol:agentsdk/claimlock.py#function:_Key.failed_once",
+      "line": 65,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "agentsdk/claimlock.py"
+      },
+      "contentHash": "bc1d7e4773731779372ee50dc3e9543161bc50195be009cf0371c5119add3ef0"
+    },
+    {
       "id": "defines:file:agentsdk/claimlock.py->symbol:agentsdk/claimlock.py#function:_release:",
       "type": "defines",
       "source": "file:agentsdk/claimlock.py",
       "target": "symbol:agentsdk/claimlock.py#function:_release",
-      "line": 164,
+      "line": 211,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -55257,7 +55746,7 @@
       "type": "defines",
       "source": "file:agentsdk/claimlock.py",
       "target": "symbol:agentsdk/claimlock.py#function:_try_lock",
-      "line": 149,
+      "line": 196,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -55271,7 +55760,7 @@
       "type": "defines",
       "source": "file:agentsdk/claimlock.py",
       "target": "symbol:agentsdk/claimlock.py#function:ClaimLock.__init__",
-      "line": 60,
+      "line": 83,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -55285,7 +55774,7 @@
       "type": "defines",
       "source": "file:agentsdk/claimlock.py",
       "target": "symbol:agentsdk/claimlock.py#function:ClaimLock._database",
-      "line": 114,
+      "line": 147,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -55299,7 +55788,7 @@
       "type": "defines",
       "source": "file:agentsdk/claimlock.py",
       "target": "symbol:agentsdk/claimlock.py#function:ClaimLock._retry",
-      "line": 99,
+      "line": 122,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -55313,7 +55802,7 @@
       "type": "defines",
       "source": "file:agentsdk/claimlock.py",
       "target": "symbol:agentsdk/claimlock.py#function:ClaimLock.run",
-      "line": 73,
+      "line": 96,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -55327,7 +55816,7 @@
       "type": "defines",
       "source": "file:agentsdk/claimlock.py",
       "target": "symbol:agentsdk/claimlock.py#function:KeyFailed.__init__",
-      "line": 40,
+      "line": 41,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -55335,6 +55824,20 @@
         "source": "agentsdk/claimlock.py"
       },
       "contentHash": "c227b1ecadb800b4df4f6ff6094ab4a91044714332b078fe5a7ce2ac3234b937"
+    },
+    {
+      "id": "defines:file:agentsdk/claimlock.py->symbol:agentsdk/claimlock.py#function:lock_key:",
+      "type": "defines",
+      "source": "file:agentsdk/claimlock.py",
+      "target": "symbol:agentsdk/claimlock.py#function:lock_key",
+      "line": 47,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "agentsdk/claimlock.py"
+      },
+      "contentHash": "76d38a73ec014f10fc8102ef5f50a38d20fdc6fa06b0ccd4197a36e69268f727"
     },
     {
       "id": "defines:file:agentsdk/compaction.py->symbol:agentsdk/compaction.py#class:ContextCompactor:",
@@ -56923,7 +57426,7 @@
       "type": "defines",
       "source": "file:agentsdk/evidence.py",
       "target": "symbol:agentsdk/evidence.py#function:ResourceCache._event",
-      "line": 383,
+      "line": 384,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -56951,7 +57454,7 @@
       "type": "defines",
       "source": "file:agentsdk/evidence.py",
       "target": "symbol:agentsdk/evidence.py#function:ResourceCache._prior",
-      "line": 340,
+      "line": 341,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -56965,7 +57468,7 @@
       "type": "defines",
       "source": "file:agentsdk/evidence.py",
       "target": "symbol:agentsdk/evidence.py#function:ResourceCache._record",
-      "line": 353,
+      "line": 354,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -57007,7 +57510,7 @@
       "type": "defines",
       "source": "file:agentsdk/evidence.py",
       "target": "symbol:agentsdk/evidence.py#function:ResourceCache.record",
-      "line": 344,
+      "line": 345,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -57021,7 +57524,7 @@
       "type": "defines",
       "source": "file:agentsdk/evidence.py",
       "target": "symbol:agentsdk/evidence.py#function:ResourceCache.serve",
-      "line": 314,
+      "line": 315,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -57987,7 +58490,7 @@
       "type": "defines",
       "source": "file:agentsdk/ledger.py",
       "target": "symbol:agentsdk/ledger.py#function:_described",
-      "line": 489,
+      "line": 491,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -58001,7 +58504,7 @@
       "type": "defines",
       "source": "file:agentsdk/ledger.py",
       "target": "symbol:agentsdk/ledger.py#function:_labels",
-      "line": 483,
+      "line": 485,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -58015,7 +58518,7 @@
       "type": "defines",
       "source": "file:agentsdk/ledger.py",
       "target": "symbol:agentsdk/ledger.py#function:_ledger_of",
-      "line": 516,
+      "line": 518,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -58029,7 +58532,7 @@
       "type": "defines",
       "source": "file:agentsdk/ledger.py",
       "target": "symbol:agentsdk/ledger.py#function:_report",
-      "line": 498,
+      "line": 500,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -58351,7 +58854,7 @@
       "type": "defines",
       "source": "file:agentsdk/ledger.py",
       "target": "symbol:agentsdk/ledger.py#function:ledger_tools",
-      "line": 523,
+      "line": 525,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -58365,7 +58868,7 @@
       "type": "defines",
       "source": "file:agentsdk/ledger.py",
       "target": "symbol:agentsdk/ledger.py#function:ledger_tools.record_claim",
-      "line": 528,
+      "line": 530,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -58379,7 +58882,7 @@
       "type": "defines",
       "source": "file:agentsdk/ledger.py",
       "target": "symbol:agentsdk/ledger.py#function:ledger_tools.supersede_claim",
-      "line": 533,
+      "line": 535,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -58589,7 +59092,7 @@
       "type": "defines",
       "source": "file:agentsdk/ledger.py",
       "target": "symbol:agentsdk/ledger.py#function:RunLedger.supersede",
-      "line": 465,
+      "line": 467,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -75705,6 +76208,356 @@
         "source": "tests/test_carried_items.py"
       },
       "contentHash": "49a47ad3cc08a055603cb03d584709a3cb09addc1a419f1f7a6fad8fbc26a785"
+    },
+    {
+      "id": "defines:file:tests/test_claim_lock_followup.py->symbol:tests/test_claim_lock_followup.py#class:Fetches:",
+      "type": "defines",
+      "source": "file:tests/test_claim_lock_followup.py",
+      "target": "symbol:tests/test_claim_lock_followup.py#class:Fetches",
+      "line": 213,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_claim_lock_followup.py"
+      },
+      "contentHash": "8ea8002c288dbd714f2de0ccf91f809c496b67477182dce28301b01976bb4644"
+    },
+    {
+      "id": "defines:file:tests/test_claim_lock_followup.py->symbol:tests/test_claim_lock_followup.py#class:NoDelay:",
+      "type": "defines",
+      "source": "file:tests/test_claim_lock_followup.py",
+      "target": "symbol:tests/test_claim_lock_followup.py#class:NoDelay",
+      "line": 120,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_claim_lock_followup.py"
+      },
+      "contentHash": "aa4147c61a9fbbece57a4c2381df7cff603824deb86aeafd449ef9bc1163827f"
+    },
+    {
+      "id": "defines:file:tests/test_claim_lock_followup.py->symbol:tests/test_claim_lock_followup.py#class:Slow:",
+      "type": "defines",
+      "source": "file:tests/test_claim_lock_followup.py",
+      "target": "symbol:tests/test_claim_lock_followup.py#class:Slow",
+      "line": 191,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_claim_lock_followup.py"
+      },
+      "contentHash": "ae63a964128f847fa0ab1f844b9ce1726b5b3700dfbc40ffe58f2ecef46d28c5"
+    },
+    {
+      "id": "defines:file:tests/test_claim_lock_followup.py->symbol:tests/test_claim_lock_followup.py#function:_cancel_repeatedly:",
+      "type": "defines",
+      "source": "file:tests/test_claim_lock_followup.py",
+      "target": "symbol:tests/test_claim_lock_followup.py#function:_cancel_repeatedly",
+      "line": 48,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_claim_lock_followup.py"
+      },
+      "contentHash": "6796a09aab499cd76d5581820bf943f59cbc176ca08c26966f41b941b4bad182"
+    },
+    {
+      "id": "defines:file:tests/test_claim_lock_followup.py->symbol:tests/test_claim_lock_followup.py#function:Fetches.send:",
+      "type": "defines",
+      "source": "file:tests/test_claim_lock_followup.py",
+      "target": "symbol:tests/test_claim_lock_followup.py#function:Fetches.send",
+      "line": 214,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_claim_lock_followup.py"
+      },
+      "contentHash": "98dee193a23c2da715987ddac98da884003cb54e33739497628c5e3edc061f2d"
+    },
+    {
+      "id": "defines:file:tests/test_claim_lock_followup.py->symbol:tests/test_claim_lock_followup.py#function:held_locks:",
+      "type": "defines",
+      "source": "file:tests/test_claim_lock_followup.py",
+      "target": "symbol:tests/test_claim_lock_followup.py#function:held_locks",
+      "line": 32,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_claim_lock_followup.py"
+      },
+      "contentHash": "4766188bca160a57012676dd9f5a9e36f8b5de5e77b58ae0afbfaf1305acf13e"
+    },
+    {
+      "id": "defines:file:tests/test_claim_lock_followup.py->symbol:tests/test_claim_lock_followup.py#function:in_use:",
+      "type": "defines",
+      "source": "file:tests/test_claim_lock_followup.py",
+      "target": "symbol:tests/test_claim_lock_followup.py#function:in_use",
+      "line": 38,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_claim_lock_followup.py"
+      },
+      "contentHash": "1fb617495f9d093916b761e3cf00fa773811f03da87f4d0804cc0c159089fb1d"
+    },
+    {
+      "id": "defines:file:tests/test_claim_lock_followup.py->symbol:tests/test_claim_lock_followup.py#function:NoDelay.__call__:",
+      "type": "defines",
+      "source": "file:tests/test_claim_lock_followup.py",
+      "target": "symbol:tests/test_claim_lock_followup.py#function:NoDelay.__call__",
+      "line": 121,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_claim_lock_followup.py"
+      },
+      "contentHash": "b72ea5671d56f59b85c0373a3fee847016e79b04309815cae4d338ba951fb8c2"
+    },
+    {
+      "id": "defines:file:tests/test_claim_lock_followup.py->symbol:tests/test_claim_lock_followup.py#function:Slow.__aenter__:",
+      "type": "defines",
+      "source": "file:tests/test_claim_lock_followup.py",
+      "target": "symbol:tests/test_claim_lock_followup.py#function:Slow.__aenter__",
+      "line": 195,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_claim_lock_followup.py"
+      },
+      "contentHash": "d49e51b7d51d3ed228cb809d177932cf3f402c67b00a026e7c43819afb3b187b"
+    },
+    {
+      "id": "defines:file:tests/test_claim_lock_followup.py->symbol:tests/test_claim_lock_followup.py#function:Slow.__aexit__:",
+      "type": "defines",
+      "source": "file:tests/test_claim_lock_followup.py",
+      "target": "symbol:tests/test_claim_lock_followup.py#function:Slow.__aexit__",
+      "line": 200,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_claim_lock_followup.py"
+      },
+      "contentHash": "0bb8f78f8012ec5675e03eda1802ba6f27bc7e5c8842fe140d695e7eda587e34"
+    },
+    {
+      "id": "defines:file:tests/test_claim_lock_followup.py->symbol:tests/test_claim_lock_followup.py#function:Slow.__init__:",
+      "type": "defines",
+      "source": "file:tests/test_claim_lock_followup.py",
+      "target": "symbol:tests/test_claim_lock_followup.py#function:Slow.__init__",
+      "line": 192,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_claim_lock_followup.py"
+      },
+      "contentHash": "5397169538e8224fdf84fabd8a5d6408abdc1cc384f737ee0bbbd8c10f706287"
+    },
+    {
+      "id": "defines:file:tests/test_claim_lock_followup.py->symbol:tests/test_claim_lock_followup.py#function:Slow._handle:",
+      "type": "defines",
+      "source": "file:tests/test_claim_lock_followup.py",
+      "target": "symbol:tests/test_claim_lock_followup.py#function:Slow._handle",
+      "line": 204,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_claim_lock_followup.py"
+      },
+      "contentHash": "002ae25938ff15205f7148b7fbab31c020c04042cf6cee56395442595d3fa4f5"
+    },
+    {
+      "id": "defines:file:tests/test_claim_lock_followup.py->symbol:tests/test_claim_lock_followup.py#function:test_c1_repeated_cancellation_leaves_no_lock_held_and_every_connection_returned:",
+      "type": "defines",
+      "source": "file:tests/test_claim_lock_followup.py",
+      "target": "symbol:tests/test_claim_lock_followup.py#function:test_c1_repeated_cancellation_leaves_no_lock_held_and_every_connection_returned",
+      "line": 64,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_claim_lock_followup.py"
+      },
+      "contentHash": "1dca4667d3ba53f77b0eeff5cb0e55fbf263c317f53fd6d60bac5839c519d88b"
+    },
+    {
+      "id": "defines:file:tests/test_claim_lock_followup.py->symbol:tests/test_claim_lock_followup.py#function:test_c1_repeated_cancellation_leaves_no_lock_held_and_every_connection_returned.op:",
+      "type": "defines",
+      "source": "file:tests/test_claim_lock_followup.py",
+      "target": "symbol:tests/test_claim_lock_followup.py#function:test_c1_repeated_cancellation_leaves_no_lock_held_and_every_connection_returned.op",
+      "line": 83,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_claim_lock_followup.py"
+      },
+      "contentHash": "17a0aec1b96f167ec59bd281975f904e03a31a6ec23bed4616bb3bca58316caf"
+    },
+    {
+      "id": "defines:file:tests/test_claim_lock_followup.py->symbol:tests/test_claim_lock_followup.py#function:test_c1_repeated_cancellation_leaves_no_lock_held_and_every_connection_returned.slow_release:",
+      "type": "defines",
+      "source": "file:tests/test_claim_lock_followup.py",
+      "target": "symbol:tests/test_claim_lock_followup.py#function:test_c1_repeated_cancellation_leaves_no_lock_held_and_every_connection_returned.slow_release",
+      "line": 72,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_claim_lock_followup.py"
+      },
+      "contentHash": "c30804b264577e4913c5351ca5d2fafe155c9b8c1204c6ec62384467c1225845"
+    },
+    {
+      "id": "defines:file:tests/test_claim_lock_followup.py->symbol:tests/test_claim_lock_followup.py#function:test_c1_repeated_cancellation_leaves_no_lock_held_and_every_connection_returned.slow_try:",
+      "type": "defines",
+      "source": "file:tests/test_claim_lock_followup.py",
+      "target": "symbol:tests/test_claim_lock_followup.py#function:test_c1_repeated_cancellation_leaves_no_lock_held_and_every_connection_returned.slow_try",
+      "line": 67,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_claim_lock_followup.py"
+      },
+      "contentHash": "b8487496de22c9afc698c52a11794761ebe1fe3e18b629330951758f424e52a6"
+    },
+    {
+      "id": "defines:file:tests/test_claim_lock_followup.py->symbol:tests/test_claim_lock_followup.py#function:test_c2_parts_that_would_join_the_same_give_different_keys:",
+      "type": "defines",
+      "source": "file:tests/test_claim_lock_followup.py",
+      "target": "symbol:tests/test_claim_lock_followup.py#function:test_c2_parts_that_would_join_the_same_give_different_keys",
+      "line": 185,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_claim_lock_followup.py"
+      },
+      "contentHash": "075c685cf20e1877cbd319bebead4477c79b70f6a4ffabb0a407634f4bf92014"
+    },
+    {
+      "id": "defines:file:tests/test_claim_lock_followup.py->symbol:tests/test_claim_lock_followup.py#function:test_c2_two_reaches_whose_names_join_the_same_never_wait_on_each_other:",
+      "type": "defines",
+      "source": "file:tests/test_claim_lock_followup.py",
+      "target": "symbol:tests/test_claim_lock_followup.py#function:test_c2_two_reaches_whose_names_join_the_same_never_wait_on_each_other",
+      "line": 223,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_claim_lock_followup.py"
+      },
+      "contentHash": "067b7c370659d08485df62bc7ff6c91fa49eeb57f3df4d2bb661ac01341e257d"
+    },
+    {
+      "id": "defines:file:tests/test_claim_lock_followup.py->symbol:tests/test_claim_lock_followup.py#function:test_c2_two_reaches_whose_names_join_the_same_never_wait_on_each_other.resolve:",
+      "type": "defines",
+      "source": "file:tests/test_claim_lock_followup.py",
+      "target": "symbol:tests/test_claim_lock_followup.py#function:test_c2_two_reaches_whose_names_join_the_same_never_wait_on_each_other.resolve",
+      "line": 225,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_claim_lock_followup.py"
+      },
+      "contentHash": "93b7237c9512dff1cc2f8c976cbb4e6b0eba817a35af42ebed7736c531af16b6"
+    },
+    {
+      "id": "defines:file:tests/test_claim_lock_followup.py->symbol:tests/test_claim_lock_followup.py#function:test_c3_a_cancelled_attempt_counts_and_the_key_still_makes_three_in_all:",
+      "type": "defines",
+      "source": "file:tests/test_claim_lock_followup.py",
+      "target": "symbol:tests/test_claim_lock_followup.py#function:test_c3_a_cancelled_attempt_counts_and_the_key_still_makes_three_in_all",
+      "line": 125,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_claim_lock_followup.py"
+      },
+      "contentHash": "41357e0018f51def45c20b6c76a1d25ef766773f007b9ae9655f40bef6dc90e7"
+    },
+    {
+      "id": "defines:file:tests/test_claim_lock_followup.py->symbol:tests/test_claim_lock_followup.py#function:test_c3_a_cancelled_attempt_counts_and_the_key_still_makes_three_in_all.op:",
+      "type": "defines",
+      "source": "file:tests/test_claim_lock_followup.py",
+      "target": "symbol:tests/test_claim_lock_followup.py#function:test_c3_a_cancelled_attempt_counts_and_the_key_still_makes_three_in_all.op",
+      "line": 129,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_claim_lock_followup.py"
+      },
+      "contentHash": "8222b59ed819ee699cf3badd440ebcecbf1e2217aa357e9735898e32b169c13e"
+    },
+    {
+      "id": "defines:file:tests/test_claim_lock_followup.py->symbol:tests/test_claim_lock_followup.py#function:test_c4_a_waiters_own_failure_draws_on_the_same_three:",
+      "type": "defines",
+      "source": "file:tests/test_claim_lock_followup.py",
+      "target": "symbol:tests/test_claim_lock_followup.py#function:test_c4_a_waiters_own_failure_draws_on_the_same_three",
+      "line": 147,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_claim_lock_followup.py"
+      },
+      "contentHash": "95d1c2960211e4a5701083007fb2d10c561add3893bb5d8290aa00e802dd854c"
+    },
+    {
+      "id": "defines:file:tests/test_claim_lock_followup.py->symbol:tests/test_claim_lock_followup.py#function:test_c4_a_waiters_own_failure_draws_on_the_same_three.op:",
+      "type": "defines",
+      "source": "file:tests/test_claim_lock_followup.py",
+      "target": "symbol:tests/test_claim_lock_followup.py#function:test_c4_a_waiters_own_failure_draws_on_the_same_three.op",
+      "line": 152,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_claim_lock_followup.py"
+      },
+      "contentHash": "16dcf280d127ccdfc2e5777615101cac0bd104914bf9a65e716d8eb4bb52ea40"
+    },
+    {
+      "id": "defines:file:tests/test_claim_lock_followup.py->symbol:tests/test_claim_lock_followup.py#function:test_the_budget_is_fresh_once_no_call_is_left_on_the_key:",
+      "type": "defines",
+      "source": "file:tests/test_claim_lock_followup.py",
+      "target": "symbol:tests/test_claim_lock_followup.py#function:test_the_budget_is_fresh_once_no_call_is_left_on_the_key",
+      "line": 169,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_claim_lock_followup.py"
+      },
+      "contentHash": "1ed6b9fda40e9939bbabc726829e43d4139ebe67cc1ce60cda208550d50797c6"
+    },
+    {
+      "id": "defines:file:tests/test_claim_lock_followup.py->symbol:tests/test_claim_lock_followup.py#function:test_the_budget_is_fresh_once_no_call_is_left_on_the_key.fails:",
+      "type": "defines",
+      "source": "file:tests/test_claim_lock_followup.py",
+      "target": "symbol:tests/test_claim_lock_followup.py#function:test_the_budget_is_fresh_once_no_call_is_left_on_the_key.fails",
+      "line": 172,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_claim_lock_followup.py"
+      },
+      "contentHash": "eed6b1929fa782c226c4e21cca4ff1416f6b794c57296df08e88c1ecb5bdeed8"
     },
     {
       "id": "defines:file:tests/test_claim_lock.py->symbol:tests/test_claim_lock.py#class:Delays:",
@@ -98074,7 +98927,7 @@
       "source": "file:agentsdk/claimlock.py",
       "target": "file:agentsdk/__init__.py",
       "specifier": ".",
-      "line": 119,
+      "line": 152,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -98119,7 +98972,7 @@
       "source": "file:agentsdk/claimlock.py",
       "target": "runtime:python:collections.abc",
       "specifier": "collections.abc",
-      "line": 25,
+      "line": 26,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -98144,12 +98997,27 @@
       "contentHash": "4678a7e15b9a5611630b4cc5994f60a02e039287018cea8caafe1cd405cceb0d"
     },
     {
+      "id": "imports:file:agentsdk/claimlock.py->runtime:python:json:json",
+      "type": "imports",
+      "source": "file:agentsdk/claimlock.py",
+      "target": "runtime:python:json",
+      "specifier": "json",
+      "line": 23,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-imports",
+        "source": "agentsdk/claimlock.py"
+      },
+      "contentHash": "2e714fb08c61365efe21408ce3cb52ec204fae9e3a37351a020255704e2ed31a"
+    },
+    {
       "id": "imports:file:agentsdk/claimlock.py->runtime:python:random:random",
       "type": "imports",
       "source": "file:agentsdk/claimlock.py",
       "target": "runtime:python:random",
       "specifier": "random",
-      "line": 23,
+      "line": 24,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -98164,7 +99032,7 @@
       "source": "file:agentsdk/claimlock.py",
       "target": "runtime:python:time",
       "specifier": "time",
-      "line": 24,
+      "line": 25,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -98179,7 +99047,7 @@
       "source": "file:agentsdk/claimlock.py",
       "target": "runtime:python:typing",
       "specifier": "typing",
-      "line": 26,
+      "line": 27,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -98654,6 +99522,21 @@
       "contentHash": "68444ecd4eb94bdf3b051cca60153d908e156fd06b58dddbe016af5719440ec0"
     },
     {
+      "id": "imports:file:agentsdk/evidence.py->file:agentsdk/claimlock.py:.claimlock",
+      "type": "imports",
+      "source": "file:agentsdk/evidence.py",
+      "target": "file:agentsdk/claimlock.py",
+      "specifier": ".claimlock",
+      "line": 310,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-imports",
+        "source": "agentsdk/evidence.py"
+      },
+      "contentHash": "4086c09bd129640c79489e3137e28e191d816566ed925efeda56fde429cf46eb"
+    },
+    {
       "id": "imports:file:agentsdk/evidence.py->file:agentsdk/errors.py:.errors",
       "type": "imports",
       "source": "file:agentsdk/evidence.py",
@@ -98674,7 +99557,7 @@
       "source": "file:agentsdk/evidence.py",
       "target": "file:agentsdk/events.py",
       "specifier": ".events",
-      "line": 386,
+      "line": 387,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -98704,7 +99587,7 @@
       "source": "file:agentsdk/evidence.py",
       "target": "file:agentsdk/tools.py",
       "specifier": ".tools",
-      "line": 357,
+      "line": 358,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -99374,12 +100257,27 @@
       "contentHash": "715dc6b87e4cd7cdbf5e4da01d5b604eca063a32b8fba96a173bd14bc5b28591"
     },
     {
+      "id": "imports:file:agentsdk/ledger.py->file:agentsdk/claimlock.py:.claimlock",
+      "type": "imports",
+      "source": "file:agentsdk/ledger.py",
+      "target": "file:agentsdk/claimlock.py",
+      "specifier": ".claimlock",
+      "line": 463,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-imports",
+        "source": "agentsdk/ledger.py"
+      },
+      "contentHash": "1788cd2196cb577dcb9ab16f7d688974e694daf329b7b5622b683dda9e2d89c8"
+    },
+    {
       "id": "imports:file:agentsdk/ledger.py->file:agentsdk/events.py:.events",
       "type": "imports",
       "source": "file:agentsdk/ledger.py",
       "target": "file:agentsdk/events.py",
       "specifier": ".events",
-      "line": 476,
+      "line": 478,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -99424,7 +100322,7 @@
       "source": "file:agentsdk/ledger.py",
       "target": "file:agentsdk/scope.py",
       "specifier": ".scope",
-      "line": 526,
+      "line": 528,
       "resolved": true,
       "confidence": 1,
       "provenance": {
@@ -110772,6 +111670,231 @@
         "source": "tests/test_carried_items.py"
       },
       "contentHash": "3a14bec432c70e9fe4ebf8c85ce336c5c8486c34598a97abc7378b78e84b27fc"
+    },
+    {
+      "id": "imports:file:tests/test_claim_lock_followup.py->file:agentsdk/__init__.py:agentsdk",
+      "type": "imports",
+      "source": "file:tests/test_claim_lock_followup.py",
+      "target": "file:agentsdk/__init__.py",
+      "specifier": "agentsdk",
+      "line": 40,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-imports",
+        "source": "tests/test_claim_lock_followup.py"
+      },
+      "contentHash": "3675c424cfb2cb5ae62b52532b773834325f214d08ca9fc6d6d5eef11a42dae6"
+    },
+    {
+      "id": "imports:file:tests/test_claim_lock_followup.py->file:agentsdk/builtin_tools.py:agentsdk.builtin_tools",
+      "type": "imports",
+      "source": "file:tests/test_claim_lock_followup.py",
+      "target": "file:agentsdk/builtin_tools.py",
+      "specifier": "agentsdk.builtin_tools",
+      "line": 22,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-imports",
+        "source": "tests/test_claim_lock_followup.py"
+      },
+      "contentHash": "10102e9cf9c705cafc612438c03956286a1bd89f5a5ca45ed7a862d8d5fdefe1"
+    },
+    {
+      "id": "imports:file:tests/test_claim_lock_followup.py->file:agentsdk/claimlock.py:agentsdk.claimlock",
+      "type": "imports",
+      "source": "file:tests/test_claim_lock_followup.py",
+      "target": "file:agentsdk/claimlock.py",
+      "specifier": "agentsdk.claimlock",
+      "line": 23,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-imports",
+        "source": "tests/test_claim_lock_followup.py"
+      },
+      "contentHash": "857607a7e61eaa6c5ae86571277a852d67787f3b61de35e5c0344cfbfc6a4d45"
+    },
+    {
+      "id": "imports:file:tests/test_claim_lock_followup.py->file:agentsdk/config.py:agentsdk.config",
+      "type": "imports",
+      "source": "file:tests/test_claim_lock_followup.py",
+      "target": "file:agentsdk/config.py",
+      "specifier": "agentsdk.config",
+      "line": 24,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-imports",
+        "source": "tests/test_claim_lock_followup.py"
+      },
+      "contentHash": "0afddaaba9a465ee358ef36a7cdecdfa2b1b6a884290fc3b9f84d559afd8b52b"
+    },
+    {
+      "id": "imports:file:tests/test_claim_lock_followup.py->file:agentsdk/events.py:agentsdk.events",
+      "type": "imports",
+      "source": "file:tests/test_claim_lock_followup.py",
+      "target": "file:agentsdk/events.py",
+      "specifier": "agentsdk.events",
+      "line": 25,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-imports",
+        "source": "tests/test_claim_lock_followup.py"
+      },
+      "contentHash": "02a0ad1760490386a4048aa1f2fd4e10d8829dd2200f396d8ded124696efe073"
+    },
+    {
+      "id": "imports:file:tests/test_claim_lock_followup.py->file:agentsdk/model.py:agentsdk.model",
+      "type": "imports",
+      "source": "file:tests/test_claim_lock_followup.py",
+      "target": "file:agentsdk/model.py",
+      "specifier": "agentsdk.model",
+      "line": 26,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-imports",
+        "source": "tests/test_claim_lock_followup.py"
+      },
+      "contentHash": "4e7549fb9a03771d2f97cb4e9852c8db5d898bcb8a345c2e695e0b3eca85dba4"
+    },
+    {
+      "id": "imports:file:tests/test_claim_lock_followup.py->file:agentsdk/primitives.py:agentsdk.primitives",
+      "type": "imports",
+      "source": "file:tests/test_claim_lock_followup.py",
+      "target": "file:agentsdk/primitives.py",
+      "specifier": "agentsdk.primitives",
+      "line": 27,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-imports",
+        "source": "tests/test_claim_lock_followup.py"
+      },
+      "contentHash": "6d9cf7ff76abeb59b58c990227370fc4e6178c963b1de817074b8f4614a3b1dd"
+    },
+    {
+      "id": "imports:file:tests/test_claim_lock_followup.py->package:pypi:psycopg:psycopg",
+      "type": "imports",
+      "source": "file:tests/test_claim_lock_followup.py",
+      "target": "package:pypi:psycopg",
+      "specifier": "psycopg",
+      "line": 17,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-imports",
+        "source": "tests/test_claim_lock_followup.py"
+      },
+      "contentHash": "e9a8c048bf421622f5b082cfd9a13478c1234441dfe19f2ad75d6039bafd97be"
+    },
+    {
+      "id": "imports:file:tests/test_claim_lock_followup.py->package:pypi:pytest:pytest",
+      "type": "imports",
+      "source": "file:tests/test_claim_lock_followup.py",
+      "target": "package:pypi:pytest",
+      "specifier": "pytest",
+      "line": 18,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-imports",
+        "source": "tests/test_claim_lock_followup.py"
+      },
+      "contentHash": "e1428cdbdd28135fe5cb54b6e5f3271ac4d787d42bb3b09c86dcb99706a2481d"
+    },
+    {
+      "id": "imports:file:tests/test_claim_lock_followup.py->runtime:python:__future__:__future__",
+      "type": "imports",
+      "source": "file:tests/test_claim_lock_followup.py",
+      "target": "runtime:python:__future__",
+      "specifier": "__future__",
+      "line": 9,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-imports",
+        "source": "tests/test_claim_lock_followup.py"
+      },
+      "contentHash": "3644be1cef2270da3250d643dbc605b240ed885a4a76f3db4617078573dcc76d"
+    },
+    {
+      "id": "imports:file:tests/test_claim_lock_followup.py->runtime:python:asyncio:asyncio",
+      "type": "imports",
+      "source": "file:tests/test_claim_lock_followup.py",
+      "target": "runtime:python:asyncio",
+      "specifier": "asyncio",
+      "line": 11,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-imports",
+        "source": "tests/test_claim_lock_followup.py"
+      },
+      "contentHash": "5e3242f58f5f71d03977203e44f7ee1b41f0ff3468cd39650601bb9ba99ce044"
+    },
+    {
+      "id": "imports:file:tests/test_claim_lock_followup.py->runtime:python:json:json",
+      "type": "imports",
+      "source": "file:tests/test_claim_lock_followup.py",
+      "target": "runtime:python:json",
+      "specifier": "json",
+      "line": 12,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-imports",
+        "source": "tests/test_claim_lock_followup.py"
+      },
+      "contentHash": "5946d6f0a71a5437b2883240e68eb535845c67525e2c92fa3c9b7cc21a84f9c0"
+    },
+    {
+      "id": "imports:file:tests/test_claim_lock_followup.py->runtime:python:os:os",
+      "type": "imports",
+      "source": "file:tests/test_claim_lock_followup.py",
+      "target": "runtime:python:os",
+      "specifier": "os",
+      "line": 13,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-imports",
+        "source": "tests/test_claim_lock_followup.py"
+      },
+      "contentHash": "e42d0a436e0c56490f185e6831143702b45528429356b257b29eb8e1f926848f"
+    },
+    {
+      "id": "imports:file:tests/test_claim_lock_followup.py->runtime:python:time:time",
+      "type": "imports",
+      "source": "file:tests/test_claim_lock_followup.py",
+      "target": "runtime:python:time",
+      "specifier": "time",
+      "line": 14,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-imports",
+        "source": "tests/test_claim_lock_followup.py"
+      },
+      "contentHash": "048d973c94c720907b8304833bee7c18442544e06c53645c0ba6840d3234addd"
+    },
+    {
+      "id": "imports:file:tests/test_claim_lock_followup.py->runtime:python:uuid:uuid",
+      "type": "imports",
+      "source": "file:tests/test_claim_lock_followup.py",
+      "target": "runtime:python:uuid",
+      "specifier": "uuid",
+      "line": 15,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-imports",
+        "source": "tests/test_claim_lock_followup.py"
+      },
+      "contentHash": "5a8613ac8a64403f41c69b0a807170105e6422521e8699edebee18886f8b5355"
     },
     {
       "id": "imports:file:tests/test_claim_lock.py->file:agentsdk/__init__.py:agentsdk",
