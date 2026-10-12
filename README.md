@@ -81,6 +81,13 @@ persisted so you can reconstruct exactly what happened afterwards.
   corrections supersede the claims as its own contributions, and the node takes
   its answer, tainted as both) or escalates (the node fails and is replanned),
   and its verdict is recorded and emitted as `CriticVerdict`.
+- **Reports how well the gate is calibrated, and changes nothing** (M28):
+  `Runner.calibration_report()` counts, for one tenant and project, each
+  signal and each confidence threshold from 0.05 to 0.95 against the external
+  outcomes recorded for the claims the gate judged, with the critic's verdicts
+  beside them, and suggests the smallest threshold that would have flagged every
+  incorrect claim. The suggestion is only reported: the threshold you configured
+  stays until you change it.
 - **Fetches each page once, however many agents ask** (M24's claim-lock): one
   holder per page and per statement, across the tasks of a process and the
   processes sharing the database; the others wait, then take the holder's
@@ -502,6 +509,7 @@ credentials -- which is also how the test suite checks them.
 | [`20_ledger.py`](scripts/20_ledger.py) | two subagents recording one statement as one claim with both contributions and both pages cited, the claim untrusted because the pages are, and a wrong claim superseded with the chain read back |
 | [`21_contention.py`](scripts/21_contention.py) | Phase 3's exit signal: eight orchestrated readers on four overlapping pages, each page fetched once while the rest wait on the claim-lock, one claim per statement with every contributor, a correction, and a second tenant served nothing |
 | [`22_critic.py`](scripts/22_critic.py) | the confidence gate and the critic: a node cleared on clean signals with no model call, one the critic approves, one it corrects by superseding the claim, and one it escalates into a replan |
+| [`23_gate_contention.py`](scripts/23_gate_contention.py) | Phase 3's second exit signal: example 21's eight readers with every node gated, the critic run for exactly the nodes the corpus makes doubtful, two critics racing to correct one claim with the loser replanned, then external outcomes and the calibration report |
 
 ```bash
 python scripts/02_custom_tools.py --offline

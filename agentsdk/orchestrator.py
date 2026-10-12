@@ -54,36 +54,38 @@ _CRITIC_INSTRUCTIONS = (
     "say the same thing in other words as paraphrases. Judge these questions:"
 )
 _GATE_ALL_QUESTION = "Is the answer supported by its sources?"
+# Text the ledger can record (its _text): something besides whitespace, and no NUL or lone
+# surrogate, which neither TEXT nor JSONB stores (M27 review caveat).
+_RECORDABLE = r"^[^\x00\ud800-\udfff]*[^\s\x00\ud800-\udfff][^\x00\ud800-\udfff]*$"
 
 
 def _verdict_schema(claims: list[str], sources: list[str], max_text: int) -> dict[str, Any]:
     """FR-104: the verdict a critic answers, built for one node: a correction names one of
-    its claims and cites only the sources it was briefed with, and lengths stay within what
-    the ledger records, so a valid verdict can always be recorded."""
+    its claims and cites only the sources it was briefed with, a paraphrase groups only its
+    claims, and text and counts stay within what the ledger records, so a valid verdict can
+    always be recorded."""
     cited = {"type": "array", "uniqueItems": True, "maxItems": 50,
              "items": {"type": "string", "enum": sources} if sources else {"type": "string"}}
     if not sources:
         cited["maxItems"] = 0
+    text = {"type": "string", "minLength": 1, "maxLength": max_text, "pattern": _RECORDABLE}
+    mine = {"type": "string", "enum": claims} if claims else {"type": "string"}
     correction = {
         "type": "object", "required": ["claim", "statement"], "additionalProperties": False,
-        "properties": {
-            "claim": {"type": "string", "enum": claims} if claims else {"type": "string"},
-            "statement": {"type": "string", "minLength": 1, "maxLength": max_text},
-            "supporting": cited, "contradicting": cited,
-        },
+        "properties": {"claim": mine, "statement": text, "supporting": cited, "contradicting": cited},
     }
     return {
         "type": "object", "required": ["verdict", "reason"], "additionalProperties": False,
         "properties": {
             "verdict": {"type": "string", "enum": ["approved", "corrected", "escalate"]},
-            "reason": {"type": "string", "minLength": 1, "maxLength": max_text},
+            "reason": text,
             # Any text, empty included, beside a verdict that does not use it: models fill
             # every field. Only a correction must carry an answer (the "then" below).
             "corrected_answer": {"type": "string"},
             "corrections": {"type": "array", "items": correction, "maxItems": len(claims)},
-            "paraphrases": {"type": "array", "items": {
-                "type": "array", "minItems": 2, "uniqueItems": True,
-                "items": {"type": "string", "enum": claims} if claims else {"type": "string"}}},
+            # A node with fewer than two claims has nothing to group.
+            "paraphrases": {"type": "array", **({} if len(claims) > 1 else {"maxItems": 0}), "items": {
+                "type": "array", "minItems": 2, "uniqueItems": True, "items": mine}},
         },
         "if": {"properties": {"verdict": {"const": "corrected"}}, "required": ["verdict"]},
         "then": {"required": ["corrected_answer"],

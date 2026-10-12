@@ -54,6 +54,8 @@ EXPECTED_EXAMPLES = {
     "21_contention.py",
     # FR-106 (M27): the critic.
     "22_critic.py",
+    # FR-108 (M28): the exit signal under the gate.
+    "23_gate_contention.py",
 }
 
 

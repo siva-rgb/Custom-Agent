@@ -14,6 +14,7 @@ result or cancels it. `Runner.run()` is a run started that way and awaited.
 from __future__ import annotations
 
 import asyncio
+from datetime import datetime
 from decimal import Decimal
 from functools import partial
 from typing import Any, Mapping
@@ -43,6 +44,7 @@ from .scope import AttributedArtifacts, ToolScope
 from .evidence import InMemoryEvidenceStore, ResourceCache
 from .ledger import EvidenceLedger, InMemoryLedgerStore, RunLedger
 from .gate import EvidenceVerification, GatePolicy, NodeSubject
+from .calibration import CalibrationReport, _checked, calibrate
 from .claimlock import ClaimLock
 from .primitives import ContentProvenance, unstorable_reason
 from .budget import BudgetLease, tokens_of
@@ -477,6 +479,18 @@ class Runner:
         )
         await asyncio.to_thread(self._ledger_store().append_verifications, [row])
         return row
+
+    async def calibration_report(
+        self, tenant_id: str, project_id: str, *, since: datetime | None = None, min_outcomes: int = 20,
+    ) -> CalibrationReport:
+        """FR-107: the gate's signals and thresholds against external outcomes, read from
+        one tenant and project's gate, critic and external verifications on a worker
+        thread. It changes nothing: its suggested threshold is for a person to apply or
+        not (P3-D19)."""
+        _checked(since, min_outcomes)
+        rows = await asyncio.to_thread(self._ledger_store().verifications_since, tenant_id, project_id, since,
+                                       kinds=("gate", "critic", "external"))
+        return calibrate(rows, tenant_id=tenant_id, project_id=project_id, since=since, min_outcomes=min_outcomes)
 
     def evidence_ledger(self, tenant_id: str, project_id: str, ledger_run_id: str) -> EvidenceLedger:
         """FR-94: the ledger of a top-level run, read within its tenant and project.

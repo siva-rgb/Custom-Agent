@@ -1,0 +1,22 @@
+{
+  "task": "M28-calibration-and-exit",
+  "gate": "unit",
+  "command": ".venv\\Scripts\\python.exe -m pytest tests/test_calibration.py -q",
+  "started_at": "2026-10-12T17:17:03.467Z",
+  "observed_at": "2026-10-12T17:17:44.872Z",
+  "exit_code": 0,
+  "signal": null,
+  "stdout": "................                                                         [100%]\r\n16 passed in 40.04s\r\n",
+  "stderr": "",
+  "revision": {
+    "commit": "1964f7ce9df4f988c3ac5d59f65b2687f97a04a2",
+    "dirty": true
+  },
+  "source_hash": "46d03d737f0165320a52abef4ef2b38ed810022e9a96c15e80d7fac57cef0a71",
+  "environment": {
+    "node": "v20.10.0",
+    "platform": "win32",
+    "arch": "x64"
+  },
+  "hash": "3b6e812025a19ac877be8e0bf3c78eb61ed0a52524ef6789b4e6c4ae25bf3bb2"
+}

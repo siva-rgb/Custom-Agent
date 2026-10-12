@@ -526,6 +526,201 @@ async def test_with_no_critic_configured_a_critic_criterion_still_fails_criterio
 
 
 # =================================================================================================
+# M28 pre-flight: M27's review caveats (DECISION-df1790f1)
+# =================================================================================================
+
+
+def critic_tainted(monkeypatch):
+    """Taints the critic's result alone, with a flag neither the page nor any answer carries,
+    so a label that should carry the critic's taint is seen to carry it (KNOWLEDGE-98fb16e9:
+    a check against the page's taint passes whatever the critic's label does)."""
+    real = SubagentPool.spawn
+
+    async def spawn(self, **kwargs):
+        result = await real(self, **kwargs)
+        if kwargs.get("node_id", "").endswith("#critic"):
+            result = dataclasses.replace(result, provenance=result.provenance.with_taint(TaintFlag.SECRET_BEARING))
+        return result
+
+    monkeypatch.setattr(SubagentPool, "spawn", spawn)
+
+
+@pytest.mark.parametrize("store", ["memory", "postgres"])
+async def test_everything_the_critic_wrote_carries_the_critics_own_taint_whatever_the_verdict(store, monkeypatch):
+    """AC-79, NFR-28: the corrected answer and its stored output, the superseding claim, the
+    critic's verifications and the orchestrator's reports each carry the critic's taint, for
+    approved, corrected, escalate and a critic that fails."""
+    def invalid(claims, sources, attempt):
+        return json.dumps({"verdict": "approved"})  # no reason: re-asked, then the critic fails
+
+    critic_tainted(monkeypatch)
+    critic = Critic({"approve": approved, "escalate": escalated, "invalid": invalid,
+                     "correct": corrected("The Rhine reaches the North Sea.", "The Rhine reaches the North Sea.")})
+    plan = [node("a", [READ, doubted("A.")], "approve"),
+            node("c", [READ, doubted("The Rhine reaches the Black Sea.")], "correct"),
+            node("e", [READ, doubted("E.")], "escalate"), node("f", [READ, doubted("F.")], "invalid")]
+    rerun = [plan[0], plan[1], node("e", [READ, doubted("E.")], "approve"), node("f", [READ, doubted("F.")], "approve")]
+    async with Pages() as pages:
+        orchestrator, runner = setup(pages, {"nodes": plan}, {"nodes": rerun}, critic=critic, store=store)
+        result = await orchestrate(runner, orchestrator)
+    assert finished(result, "c") == [("done", None), ("done", "carried from version 1")]
+    assert [s for s, _ in finished(result, "e")] == ["failed", "done"]
+    assert finished(result, "f")[0] == ("failed", "critic_failed: output_contract_violation")
+    secret = TaintFlag.SECRET_BEARING
+    # The corrected answer, as the node holds it and as it is stored for its dependents.
+    run = orchestrator._runs[result.run_id]
+    answer, provenance = run.answers["c"]
+    assert answer == "The Rhine reaches the North Sea." and secret in provenance.taint_flags
+    assert TaintFlag.EXTERNAL_CONTENT in provenance.taint_flags, "and the answer's own taint"
+    stored = await runner._artifacts_for(TENANT, PROJECT).metadata(run.outputs["c"])
+    assert secret in stored.provenance.taint_flags
+    # The claim the critic's correction recorded.
+    [superseding] = [v for v in await ledger(runner, result.run_id) if v.claim.supersedes is not None]
+    assert secret in superseding.provenance.taint_flags
+    assert TaintFlag.EXTERNAL_CONTENT in superseding.provenance.taint_flags, "raised over the page it cites"
+    # Every critic verification, on the node and on its claims.
+    rows = await verifications(runner, result.run_id, kinds=("critic",))
+    assert {r.outcome for r in rows} == {"approved", "corrected", "escalate"}
+    assert all(secret in r.provenance.taint_flags for r in rows), [r.provenance for r in rows]
+    # The orchestrator's reports of both versions, the failed critic's included.
+    sessions = runner._sessions_for(RunScope(run_id=result.run_id, tenant_id=TENANT, project_id=PROJECT))
+    history = await asyncio.to_thread(sessions.history, result.run_id)
+    reports = [r for m in history for r in m.tool_results]
+    assert len(reports) == 2 and all(secret in r.provenance.taint_flags for r in reports), reports
+
+
+async def test_a_reason_or_statement_the_ledger_cannot_record_is_refused_by_the_verdict_schema():
+    """FR-104: a valid verdict can always be recorded. Text the ledger refuses -- only
+    whitespace, a NUL, a lone surrogate -- fails the verdict schema and is re-asked, rather
+    than passing it and failing the node with the critic unrecorded (M27 review caveat)."""
+    def verdict_with(reason="r", statement="s"):
+        def verdict(claims, sources, attempt):
+            return json.dumps({"verdict": "corrected", "reason": reason, "corrected_answer": "x",
+                               "corrections": [{"claim": claims[0], "statement": statement,
+                                                "supporting": sources[:1]}]})
+        return verdict
+
+    for bad in (verdict_with(reason=" \n\t"), verdict_with(reason="a\u0000b"), verdict_with(reason="a\ud800"),
+                verdict_with(statement="  "), verdict_with(statement="The\u0000 Rhine."),
+                verdict_with(statement="\udfff")):
+        critic = Critic({"x": bad})
+        async with Pages() as pages:
+            orchestrator, runner = setup(pages, {"nodes": [node("n", [READ, doubted("The Rhine.")], "x")]},
+                                         critic=critic)
+            result = await orchestrate(runner, orchestrator)
+        [(status, reason), *_] = finished(result, "n")
+        assert status == "failed" and reason == "critic_failed: output_contract_violation", reason
+        assert critic.runs == 1 and len(critic.requests) == 2, "re-asked exactly once"
+    # Not over-refused: text with whitespace around and within it is recorded as given.
+    critic = Critic({"x": verdict_with(reason=" the page\nsays so ", statement="  The Rhine\treaches the sea. ")})
+    async with Pages() as pages:
+        orchestrator, runner = setup(pages, {"nodes": [node("n", [READ, doubted("The Rhine.")], "x")]}, critic=critic)
+        result = await orchestrate(runner, orchestrator)
+    assert finished(result, "n") == [("done", None)]
+    [view] = await ledger(runner, result.run_id)
+    assert view.claim.statement == "  The Rhine\treaches the sea. "
+    assert view.contributions[0].why == " the page\nsays so "
+
+
+async def test_paraphrases_name_only_the_nodes_own_claims_even_when_it_has_none():
+    """FR-104 (P3-D16): paraphrases are groups of this node's claim uris. A node with no
+    claims -- judged for no_claims -- has none to group (M27 review caveat)."""
+    def free(claims, sources, attempt):
+        return json.dumps({"verdict": "approved", "reason": "r", "paraphrases": [["anything", "else"]]})
+
+    def none(claims, sources, attempt):
+        return json.dumps({"verdict": "approved", "reason": "r", "paraphrases": []})
+
+    def grouped(claims, sources, attempt):
+        return json.dumps({"verdict": "approved", "reason": "r", "paraphrases": [claims[:2]]})
+
+    critic = Critic({"free": free, "none": none, "grouped": grouped})
+    async with Pages() as pages:
+        orchestrator, runner = setup(pages, {"nodes": [
+            node("free", [["answer", "nothing recorded"]], "free"),
+            node("none", [["answer", "nothing recorded"]], "none"),
+            node("grouped", [READ, doubted("The Rhine flows north."), doubted("The Rhine runs north.")], "grouped"),
+            # Two claims, so a group is allowed and only the enum can refuse it.
+            node("outside", [READ, doubted("Outside one."), doubted("Outside two.")], "free")]}, critic=critic)
+        result = await orchestrate(runner, orchestrator)
+    for refused in ("free", "outside"):
+        [(status, reason), *_] = finished(result, refused)
+        assert status == "failed" and reason == "critic_failed: output_contract_violation", (refused, reason)
+    assert finished(result, "none") == [("done", None)]
+    assert finished(result, "grouped") == [("done", None)]
+    rows = await verifications(runner, result.run_id, kinds=("critic",))
+    [grouped_row] = [r for r in rows if getattr(r.subject, "node_id", None) == "grouped"]
+    [group] = grouped_row.detail["paraphrases"]
+    assert len(group) == 2 and all(CLAIM_URI.fullmatch(u) for u in group)
+
+
+@pytest.mark.parametrize("store", ["memory", "postgres"])
+async def test_an_answer_only_correction_takes_the_answer_and_supersedes_nothing(store, monkeypatch):
+    """FR-105 (DECISION-df1790f1): `corrected` with no corrections is valid -- the critic
+    corrects the answer's wording while every claim stands. The node takes the corrected
+    answer, tainted as both; no claim is superseded and the verification applies nothing."""
+    def wording(claims, sources, attempt):
+        return json.dumps({"verdict": "corrected", "reason": "clearer", "corrected_answer": "The Rhine, clearly.",
+                           "corrections": []})
+
+    critic_tainted(monkeypatch)
+    critic = Critic({"word": wording})
+    async with Pages() as pages:
+        orchestrator, runner = setup(pages, {"nodes": [node("n", [READ, doubted("The Rhine."),
+                                                                  ["answer", "the rhine"]], "word")]},
+                                     critic=critic, store=store)
+        result = await orchestrate(runner, orchestrator)
+    assert finished(result, "n") == [("done", None)]
+    answer, provenance = orchestrator._runs[result.run_id].answers["n"]
+    assert answer == "The Rhine, clearly."
+    assert {TaintFlag.SECRET_BEARING, TaintFlag.EXTERNAL_CONTENT} <= provenance.taint_flags
+    [view] = await ledger(runner, result.run_id)
+    assert view.claim.statement == "The Rhine." and view.claim.supersedes is None
+    assert events(result, EventType.CLAIM_SUPERSEDED) == []
+    [verdict] = events(result, EventType.CRITIC_VERDICT)
+    assert verdict.payload["verdict"] == "corrected" and verdict.payload["superseded"] == []
+    rows = await verifications(runner, result.run_id, kinds=("critic",))
+    assert len(rows) == 2 and all(r.detail["applied"] == [] and r.detail["refused"] == [] for r in rows)
+
+
+@pytest.mark.parametrize("store", ["memory", "postgres"])
+async def test_a_store_failure_after_the_critic_fails_the_node_and_the_rerun_has_its_own_one_critic_run(
+        store, monkeypatch):
+    """FR-104: within one execution the critic runs at most once. A store that refuses the
+    critic's verifications fails that execution as any store failure fails a node, with no
+    verdict recorded; the rerun is a new execution, gated afresh with one critic run. Patched
+    on the store class: PostgreSQL hands out a fresh store object per call (M27 review)."""
+    from agentsdk.ledger import InMemoryLedgerStore
+    from agentsdk.postgres import PostgresLedgerStore
+
+    refused = []
+    for cls in (InMemoryLedgerStore, PostgresLedgerStore):
+        real = cls.append_verifications
+
+        def append(self, rows, _real=real):
+            if not refused and any(r.kind == "critic" for r in rows):
+                refused.append(rows)
+                raise RuntimeError("the store is down")
+            return _real(self, rows)
+
+        monkeypatch.setattr(cls, "append_verifications", append)
+    critic = Critic({"approve": approved})
+    turns = [READ, doubted("The Rhine reaches the North Sea.")]
+    async with Pages() as pages:
+        orchestrator, runner = setup(pages, {"nodes": [node("n", turns, "approve")]},
+                                     {"nodes": [node("n", turns, "approve")]}, critic=critic, store=store)
+        result = await orchestrate(runner, orchestrator)
+    first, second = finished(result, "n")
+    assert first == ("failed", "node_error: RuntimeError: the store is down"), first
+    assert second == ("done", None)
+    assert refused and critic.runs == 2, "one critic run for each of the two executions"
+    [verdict] = events(result, EventType.CRITIC_VERDICT)
+    assert verdict.payload["version"] == 2
+    rows = await verifications(runner, result.run_id, kinds=("critic",))
+    assert rows and {r.detail["critic_run"] for r in rows} == {verdict.payload["critic_run"]}
+
+
+# =================================================================================================
 # FR-106: example 22, offline on both stores
 # =================================================================================================
 
