@@ -22,6 +22,15 @@ def _sha256(text: str) -> str:
     return hashlib.sha256(text.encode("utf-8")).hexdigest()
 
 
+def agent_spec_hash(agent_spec_id: str, instructions: str, tool_profile: tuple[str, ...]) -> str:
+    """What changes an agent's behaviour -- identity, instructions and the tool profile --
+    hashed so no two specs collide by a delimiter, naming its encoding (FR-99, P2): a
+    hash written before M25 (bare hex, parts joined with "|") never equals one after."""
+    material = json.dumps([agent_spec_id, instructions, sorted(tool_profile)], ensure_ascii=False,
+                          separators=(",", ":"))
+    return "v2:" + _sha256(material)
+
+
 def build_manifest(
     *,
     sdk_version: str,
@@ -41,18 +50,14 @@ def build_manifest(
     budget_reservations: dict[str, Any] | None = None,
     price_table_date: str | None = None,
     tools_sent: list[dict[str, str]] | None = None,
+    gate_policy: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     # The spec hash covers what actually changes behaviour: identity,
     # instructions and the tool profile. A spec whose display name changed is
-    # not a different run configuration. Its parts are encoded so that no two
-    # specs hash alike by a delimiter, and the hash names that encoding, so one
-    # written before M25 (bare hex, parts joined with "|") never equals one
-    # written after (FR-99, M24a review caveat P2).
-    spec_material = json.dumps([agent_spec_id, instructions, sorted(tool_profile)], ensure_ascii=False,
-                               separators=(",", ":"))
+    # not a different run configuration.
     return {
         "sdk_version": sdk_version,
-        "agent_spec_hash": "v2:" + _sha256(spec_material),
+        "agent_spec_hash": agent_spec_hash(agent_spec_id, instructions, tool_profile),
         "instructions_hash": _sha256(instructions),
         "model_id": model_id,
         "model_version": model_version,
@@ -79,4 +84,7 @@ def build_manifest(
         # (FR-11): a run that ends before its first request records the set it would
         # have been sent (M21, C4, declared).
         "tools_sent": None if tools_sent is None else sorted(tools_sent, key=lambda t: t["name"]),
+        # FR-101 (M26): the run's effective GatePolicy, its critic named by id and spec
+        # hash, so two runs gated differently never share a manifest; None when ungated.
+        "gate_policy": gate_policy,
     }

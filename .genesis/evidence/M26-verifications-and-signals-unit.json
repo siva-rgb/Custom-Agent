@@ -1,0 +1,22 @@
+{
+  "task": "M26-verifications-and-signals",
+  "gate": "unit",
+  "command": ".venv\\Scripts\\python.exe -m pytest tests/test_verifications.py -q",
+  "started_at": "2026-10-12T07:24:07.563Z",
+  "observed_at": "2026-10-12T07:24:17.533Z",
+  "exit_code": 0,
+  "signal": null,
+  "stdout": "..........................................................               [100%]\r\n58 passed in 8.95s\r\n",
+  "stderr": "",
+  "revision": {
+    "commit": "c35a3192a9ba957abe4ad3de99e9ef272dfae9b7",
+    "dirty": true
+  },
+  "source_hash": "f17a7f2e8b2ec33b14ebdc2069879df93d9d728dc5fcaddacb66dc10558188bb",
+  "environment": {
+    "node": "v20.10.0",
+    "platform": "win32",
+    "arch": "x64"
+  },
+  "hash": "aa6b407fa71eea8cd415f1e8114a602889f64f1efdb017a5275339263c360b3d"
+}

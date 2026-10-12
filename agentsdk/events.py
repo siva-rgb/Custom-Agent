@@ -47,6 +47,9 @@ class EventType(str, Enum):
     # FR-93, FR-94 (M23): a claim recorded or contributed to, and a claim superseded.
     CLAIM_RECORDED = "ClaimRecorded"
     CLAIM_SUPERSEDED = "ClaimSuperseded"
+    # FR-102 (M26): the gate judged a plan node -- the signals that fired, its outcome
+    # and the verification recorded; on the orchestrator run's stream, node in task_id.
+    GATE_EVALUATED = "GateEvaluated"
 
 
 @dataclass(frozen=True)

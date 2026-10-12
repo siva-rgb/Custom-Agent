@@ -65,6 +65,15 @@ persisted so you can reconstruct exactly what happened afterwards.
   are derived from those contributions, so a claim drawn from untrusted pages
   stays untrusted; nothing is updated or deleted, and a supersession is a chain
   that never forks. Read it with `Runner.evidence_ledger()` (M23).
+- **Gates plan nodes on their evidence** (`GatePolicy`, M26): a node carrying a
+  `critic` criterion, or every node when the policy says so, is judged after its
+  deterministic criteria by rule signals over the claims its child recorded -- a
+  claim with no source, a contradicting source, too few sources, a confidence
+  below the threshold, or no claim at all -- with no model call. Clean signals
+  clear the node; each judgement is an append-only `EvidenceVerification` and a
+  `GateEvaluated` event, and an application records externally validated
+  outcomes with `Runner.record_validation()`. No verification makes a claim or
+  an answer cleaner.
 - **Fetches each page once, however many agents ask** (M24's claim-lock): one
   holder per page and per statement, across the tasks of a process and the
   processes sharing the database; the others wait, then take the holder's
@@ -99,7 +108,8 @@ Stated plainly, because an SDK that overstates itself costs you a week:
 
 | not built | where it lands |
 |---|---|
-| Within orchestration (plans run as DAGs of child runs, with deterministic acceptance criteria and replanning, since M19): critic criteria, loop nodes, and any behaviour for a node's `timeout` and `retry_policy`, which are stored but not acted on | Critic in Phase 3; loops in Phase 5A; timeout and retry not yet scheduled |
+| Within orchestration (plans run as DAGs of child runs, with deterministic acceptance criteria and replanning, since M19): the critic itself, so a gated node whose signals fire fails `criterion_not_available` (M26); loop nodes; and any behaviour for a node's `timeout` and `retry_policy`, which are stored but not acted on | Critic in M27; loops in Phase 5A; timeout and retry not yet scheduled |
+| The gate judges the claims a node's own child recorded; a run that child spawned itself is outside them (a node's child does not spawn today). A node gated only because the policy gates every node, and that recorded no claim, is cleared | Declared (M26) |
 | Streaming of model tokens as they are generated (a run's events do stream, through `RunHandle.events()`) | Later; not yet scheduled |
 | Native MCP (Model Context Protocol) support | Phase 4 |
 | Human approval workflows | Phase 4. The approval step exists and auto-allows |

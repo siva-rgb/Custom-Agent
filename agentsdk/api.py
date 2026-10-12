@@ -42,6 +42,7 @@ from .plan import InMemoryRunStateStore
 from .scope import AttributedArtifacts, ToolScope
 from .evidence import InMemoryEvidenceStore, ResourceCache
 from .ledger import EvidenceLedger, InMemoryLedgerStore, RunLedger
+from .gate import EvidenceVerification, GatePolicy, NodeSubject
 from .claimlock import ClaimLock
 from .primitives import ContentProvenance, unstorable_reason
 from .budget import BudgetLease, tokens_of
@@ -223,6 +224,9 @@ class RunConfig:
     # be served. Set by the SubagentPool on every child; None for a top-level run,
     # whose own id it then is.
     ledger_run_id: str | None = None
+    # FR-101 (M26): the gate this run's plan nodes pass, recorded in its manifest. Set
+    # by Orchestrator.config(); never carried to a child.
+    gate_policy: GatePolicy | None = None
 
     def __post_init__(self) -> None:
         # Before the range checks: a bool passes every one of them (True >= 1,
@@ -294,6 +298,8 @@ class RunConfig:
             type(self.ledger_run_id) is not str or column_rejection_reason(self.ledger_run_id, "UUID") is not None
         ):
             raise ValueError(f"ledger_run_id must be None or a UUID as text, got {self.ledger_run_id!r}")
+        if self.gate_policy is not None and not isinstance(self.gate_policy, GatePolicy):
+            raise ValueError(f"gate_policy must be a GatePolicy or None, got {type(self.gate_policy).__name__}")
         if self.context_policy is not None and not isinstance(self.context_policy, ContextPolicy):
             raise ValueError(f"context_policy must be a ContextPolicy or None, got {type(self.context_policy).__name__}")
         if self.scheduler_limits is not None and self.scheduler_limits.provider_concurrency_limits:
@@ -392,6 +398,9 @@ class Runner:
         # FR-76 (M19): with no persistence, the in-memory artifact and run-state
         # stores a run's tools reach, admitting exactly the runs this Runner started.
         self._started: set[tuple[str, str, str]] = set()
+        # FR-100 (M26): each started run's parent, so the in-memory ledger store can tell
+        # whether a node's run belongs to a ledger, as Postgres reads runs.parent_run_id.
+        self._parents: dict[tuple[str, str, str], str | None] = {}
         self._memory_artifacts: InMemoryArtifactStore | None = None
         self._memory_states: InMemoryRunStateStore | None = None
         self._memory_evidence: InMemoryEvidenceStore | None = None
@@ -425,8 +434,48 @@ class Runner:
         if self._persistence is not None:
             return self._persistence.ledger_store()
         if self._memory_ledger is None:
-            self._memory_ledger = InMemoryLedgerStore(self._evidence_store())
+            self._memory_ledger = InMemoryLedgerStore(self._evidence_store(), nodes=self._node_of_ledger)
         return self._memory_ledger
+
+    def _node_of_ledger(self, tenant_id: str, project_id: str, ledger_run_id: str, subject: Any) -> bool:
+        """FR-100, in memory: the node is stored for its run in this tenant and project, and
+        that run is the ledger's run or descends from it -- the rule the Postgres store
+        applies to plan_node_states and runs.parent_run_id."""
+        run, seen = subject.run_id, set()
+        while run is not None and run != ledger_run_id and run not in seen:
+            seen.add(run)
+            run = self._parents.get((tenant_id, project_id, run))
+        if run != ledger_run_id or (tenant_id, project_id, subject.run_id) not in self._started:
+            return False
+        states = self._memory_states
+        if states is None:
+            return False
+        with states._lock:
+            plan = states._plans.get((tenant_id, project_id, subject.plan_id, subject.version))
+        return plan is not None and plan.run_id == subject.run_id and any(
+            node.node_id == subject.node_id for node in plan.nodes)
+
+    async def record_validation(
+        self, tenant_id: str, project_id: str, ledger_run_id: str, subject: str | NodeSubject, source: str,
+        verdict: str, detail: str,
+    ) -> EvidenceVerification:
+        """FR-103: an externally validated outcome -- a test, a known-answer fixture, a
+        downstream outcome or a human adjudication -- recorded for a claim (by its uri) or
+        a plan node of the ledger. On the Runner, which no tool reaches, so no model or
+        tool can record an outcome about its own work; it changes no claim's provenance
+        (P3-D15). A subject outside the ledger's tenant, project or ledger is refused with
+        LookupError and nothing is recorded."""
+        from datetime import datetime, timezone
+
+        row = EvidenceVerification(
+            verification_id=str(uuid.uuid4()), ledger_run_id=ledger_run_id, subject=subject, kind="external",
+            outcome=verdict,
+            detail={"source": source, "detail": detail},
+            provenance=ContentProvenance.internal_tool(f"urn:agentsdk:validation:{source}"),
+            tenant_id=tenant_id, project_id=project_id, created_at=datetime.now(timezone.utc),
+        )
+        await asyncio.to_thread(self._ledger_store().append_verifications, [row])
+        return row
 
     def evidence_ledger(self, tenant_id: str, project_id: str, ledger_run_id: str) -> EvidenceLedger:
         """FR-94: the ledger of a top-level run, read within its tenant and project.
@@ -779,6 +828,8 @@ class Runner:
     ) -> RunResult:
         run_id = scope.run_id
         self._started.add((scope.tenant_id, scope.project_id, run_id))
+        self._parents[(scope.tenant_id, scope.project_id, run_id)] = (
+            None if config.parent_run_id is None else str(config.parent_run_id))
         control.failure = config.pending_failure
         limits = self._limits_for(config)
         # FR-69: refused before anything runs, with or without persistence.
@@ -811,6 +862,7 @@ class Runner:
                     tool_profile=spec.tool_profile,
                     tool_spec_hashes=[s.schema_hash() for s in self._registry.specs()],
                     tools_sent=[{"name": s.name, "schema_hash": s.schema_hash()} for s in registry.specs()],
+                    gate_policy=None if config.gate_policy is None else config.gate_policy.to_json(),
                     model_id=recorded_model or "unspecified",
                     **self._model_versions(recorded_model, client_key),
                     policy_version=type(spec.checker()).__name__,

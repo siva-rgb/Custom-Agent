@@ -24,6 +24,7 @@ from .budget import BudgetGovernor, BudgetPolicy
 from .errors import MaxDepthExceeded, describe_exception
 from .events import EventType
 from .executor import ToolExecutor
+from .gate import EvidenceVerification, GatePolicy, NodeSubject, signals_of
 from .loop import schema_problem
 from .outcomes import Completed
 from .plan import PLAN_SCHEMA, PlanVersion, _node_document, _thawed, plan_from_document
@@ -89,6 +90,7 @@ class Orchestrator:
         limits: SchedulerLimits | None = None,
         instructions: str = _INSTRUCTIONS,
         context_policy: ContextPolicy | None = None,
+        gate: GatePolicy | None = None,
     ) -> None:
         if not isinstance(roles, Mapping) or not roles or not all(
             type(name) is str and name and isinstance(spec, AgentSpec) for name, spec in roles.items()
@@ -100,6 +102,10 @@ class Orchestrator:
             raise ValueError(f"limits must be a SchedulerLimits or None, got {type(limits).__name__}")
         if context_policy is not None and not isinstance(context_policy, ContextPolicy):
             raise ValueError(f"context_policy must be a ContextPolicy or None, got {type(context_policy).__name__}")
+        if gate is not None and not isinstance(gate, GatePolicy):
+            raise ValueError(f"gate must be a GatePolicy or None, got {type(gate).__name__}")
+        # FR-101, FR-102 (M26): the gate a node passes after its deterministic criteria.
+        self._gate = gate
         self._roles = dict(roles)
         # FR-77, FR-78 (M20): what the orchestrator and every child see, and when their
         # histories compact. The default compacts at 0.75 of the model's window, so a
@@ -134,7 +140,8 @@ class Orchestrator:
             tenant_id=tenant_id, project_id=project_id, budget_lease=governor.orchestrator_lease(),
             # Unresolved from the start: only a plan version that completes clears it, so
             # a run that never gets one through ends failed (FR-75, round 1 D1).
-            pending_failure="no plan version completed", context_policy=self.context_policy, **options,
+            pending_failure="no plan version completed", context_policy=self.context_policy,
+            gate_policy=self._gate, **options,
         )
 
     def plans(self, run_id: str) -> tuple[PlanVersion, ...]:
@@ -249,6 +256,22 @@ class Orchestrator:
                 )
                 self._unresolved(scope, run.ended)
                 raise ValueError(run.ended) from None
+        # FR-101 (M26): the critic is checked as a role is, when a node to be run can be
+        # gated, so an unrunnable critic is a configuration error before anything is spent.
+        gate = self._gate
+        if gate is not None and gate.critic is not None and any(
+                gate.gates(node.acceptance_criteria) for node in plan.nodes if node.node_id not in carried):
+            config = RunConfig(tenant_id=scope.tenant_id, project_id=scope.project_id,
+                               context_policy=self.context_policy, budget_lease=scope._lease)
+            try:
+                scope._runner._open(gate.critic, config)
+            except Exception as exc:  # noqa: BLE001 - every configuration error alike
+                run.ended = (
+                    f"plan {plan.plan_id} version {plan.version} cannot run and cannot be replanned: "
+                    f"critic {gate.critic.id!r} cannot run: {describe_exception(exc)}"
+                )
+                self._unresolved(scope, run.ended)
+                raise ValueError(run.ended) from None
 
     def _carried(self, run: _Run, plan: PlanVersion) -> tuple[str, ...]:
         """FR-75: the nodes of the new version that were done in any earlier version of
@@ -309,7 +332,7 @@ class Orchestrator:
                         progressed = True
                         await settle(node.node_id, "ready", None)
                         await settle(node.node_id, "running", None)
-                        running[asyncio.ensure_future(self._node(run, node, scope, governor))] = node.node_id
+                        running[asyncio.ensure_future(self._node(run, node, scope, governor, plan))] = node.node_id
                 if not running:
                     if all(status != "pending" for status in statuses.values()):
                         return
@@ -360,7 +383,7 @@ class Orchestrator:
             raise ending  # a cancellation that arrived while the nodes finished
 
     async def _node(
-        self, run: _Run, node: Any, scope: ToolScope, governor: BudgetGovernor
+        self, run: _Run, node: Any, scope: ToolScope, governor: BudgetGovernor, plan: PlanVersion
     ) -> tuple[str, str | None, tuple[ContentProvenance, ...]]:
         """One node: its status, why, and the label of everything said about it.
 
@@ -369,20 +392,34 @@ class Orchestrator:
         """
         labels: list[ContentProvenance] = []
         try:
-            status, reason = await self._attempt(run, node, scope, governor, labels)
+            status, reason = await self._attempt(run, node, scope, governor, labels, plan)
         except Exception as exc:  # noqa: BLE001
             status, reason = "failed", f"node_error: {describe_exception(exc)}"
         return status, reason, tuple(labels)
 
     async def _attempt(
-        self, run: _Run, node: Any, scope: ToolScope, governor: BudgetGovernor, labels: list[ContentProvenance]
+        self, run: _Run, node: Any, scope: ToolScope, governor: BudgetGovernor, labels: list[ContentProvenance],
+        plan: PlanVersion,
     ) -> tuple[str, str | None]:
         role = self._roles.get(node.assigned_role)
         if role is None:
             return "failed", f"unknown_role: {node.assigned_role!r} is not one of this orchestrator's roles"
         if not governor.may_start_child():
             return "failed", "budget_exceeded"
+        # FR-102: a gated node's reservation is held until its gate, and any critic, has
+        # finished; an ungated node's is released as soon as its child ends, as before.
+        gated = self._gate is not None and self._gate.gates(node.acceptance_criteria)
         lease = governor.lease(node.node_id)
+        try:
+            return await self._attempted(run, node, scope, labels, plan, role, lease, gated)
+        finally:
+            if gated:
+                lease.release()
+
+    async def _attempted(
+        self, run: _Run, node: Any, scope: ToolScope, labels: list[ContentProvenance], plan: PlanVersion,
+        role: AgentSpec, lease: Any, gated: bool,
+    ) -> tuple[str, str | None]:
         try:
             result = await run.pool.spawn(
                 parent=ToolScope(run_id=scope.run_id, tenant_id=scope.tenant_id, project_id=scope.project_id,
@@ -403,7 +440,8 @@ class Orchestrator:
         except MaxDepthExceeded as exc:
             return "failed", f"spawn_refused: {describe_exception(exc)}"
         finally:
-            lease.release()
+            if not gated:
+                lease.release()
         # Whatever this node's report says came from its child -- an answer, an error, a
         # reason -- carries the child's label (round 1, D2 and D3).
         labels.append(result.provenance)
@@ -423,6 +461,8 @@ class Orchestrator:
                 )
             return "failed", f"child_failed: {result.error or result.status.value}"
         problem = await self._criteria(run, node, result.output, scope, role, labels)
+        if problem is None and gated:
+            problem = await self._gated(node, scope, plan, result)
         if problem is not None:
             return "failed", problem
         store = scope._runner._artifacts_for(scope.tenant_id, scope.project_id)
@@ -445,14 +485,63 @@ class Orchestrator:
         self, run: _Run, node: Any, output: str | None, scope: ToolScope, role: AgentSpec,
         labels: list[ContentProvenance],
     ) -> str | None:
-        """FR-74: the first criterion that is not satisfied, or None when every one is."""
+        """FR-74, FR-102: the first deterministic criterion that is not satisfied, in plan
+        order, whatever stands before it; then, for a node the gate does not cover, its
+        first critic criterion, which nothing can satisfy without a critic. None when the
+        rest is the gate's to decide, or there is nothing left."""
+        def name_of(criterion: Any) -> str:
+            return f"{criterion.kind} {criterion.target or criterion.description or ''}".strip()
+
         for criterion in node.acceptance_criteria:
-            name = f"{criterion.kind} {criterion.target or criterion.description or ''}".strip()
             if criterion.kind == "critic":
-                return f"criterion_not_available: {name}; a critic arrives with Phase 3"
+                continue
             detail = await self._check(run, criterion, node, output, scope, role, labels)
             if detail is not None:
-                return f"acceptance_criterion_failed: {name}: {detail}"
+                return f"acceptance_criterion_failed: {name_of(criterion)}: {detail}"
+        critics = [c for c in node.acceptance_criteria if c.kind == "critic"]
+        if critics and not (self._gate is not None and self._gate.gates(node.acceptance_criteria)):
+            return f"criterion_not_available: {name_of(critics[0])}; a critic arrives with Phase 3"
+        return None
+
+    async def _gated(self, node: Any, scope: ToolScope, plan: PlanVersion, result: Any) -> str | None:
+        """FR-102: the gate. The node's claims -- the active claims of the run's ledger with
+        a contribution from this execution's child run, read once on a worker thread -- are
+        judged by the rule signals, with no model call. The verification is recorded and
+        GateEvaluated emitted either way; clean signals satisfy the node's critic criteria,
+        and fired ones need the critic, which arrives with M27 (DECISION-4f57d8c5)."""
+        from datetime import datetime, timezone
+
+        from .ledger import EvidenceLedger
+
+        gate = self._gate
+        runner, ledger_run_id = scope._runner, scope.ledger_run_id or scope.run_id
+        ledger = EvidenceLedger(runner._ledger_store(), scope.tenant_id, scope.project_id, ledger_run_id)
+        views = await scope._control.store(ledger.active)
+        mine = [v for v in views if any(c.run_id == result.run_id for c in v.contributions)]
+        judged = [signals_of(v, gate) for v in mine]
+        fired = [s for s in gate.signals if any(s in j["fired"] for j in judged)]
+        no_claims = not mine and "no_claims" in gate.signals and any(
+            c.kind == "critic" for c in node.acceptance_criteria)
+        if no_claims:
+            fired.append("no_claims")
+        outcome = "critic_required" if fired else "clear"
+        row = EvidenceVerification(
+            verification_id=str(uuid.uuid4()), ledger_run_id=ledger_run_id,
+            subject=NodeSubject(run_id=scope.run_id, plan_id=plan.plan_id, version=plan.version,
+                                node_id=node.node_id),
+            kind="gate", outcome=outcome, detail={"claims": judged, "fired": fired, "child_run": result.run_id},
+            provenance=ContentProvenance.from_model(result.provenance, *(v.provenance for v in mine)),
+            tenant_id=scope.tenant_id, project_id=scope.project_id, created_at=datetime.now(timezone.utc),
+        )
+        await scope._control.store(runner._ledger_store().append_verifications, [row])
+        await scope._control.store(
+            scope._events.emit, EventType.GATE_EVALUATED,
+            {"plan_id": plan.plan_id, "version": plan.version, "signals": fired, "outcome": outcome,
+             "verification": row.uri},
+            task_id=node.node_id,
+        )
+        if fired:
+            return f"criterion_not_available: critic; the critic arrives with M27 (signals: {', '.join(fired)})"
         return None
 
     async def _check(

@@ -19,6 +19,7 @@ import unicodedata
 import uuid
 from dataclasses import dataclass, replace
 from datetime import datetime, timezone
+from collections.abc import Sequence
 from typing import Any, Awaitable, Callable, Protocol
 
 from .artifacts import canonical_id
@@ -190,6 +191,17 @@ class LedgerStore(Protocol):
     def claim(self, tenant_id: str, project_id: str, ledger_run_id: str,
               claim_id: str) -> tuple[EvidenceClaim, str | None, list[ClaimContribution]]: ...
 
+    # FR-100 (M26): verifications, append-only. A row whose subject is not in its own
+    # tenant, project and ledger is refused with LookupError, and the batch with it.
+
+    def append_verifications(self, rows: Sequence[Any]) -> None: ...
+
+    def verifications(self, tenant_id: str, project_id: str, ledger_run_id: str, *, subject: Any = None,
+                      kinds: Sequence[str] | None = None) -> list[Any]: ...
+
+    def verifications_since(self, tenant_id: str, project_id: str, since: datetime | None = None, *,
+                            kinds: Sequence[str] | None = None) -> list[Any]: ...
+
 
 def _covered(contribution: NewContribution, cited: list[ContentProvenance]) -> NewContribution:
     """M23 review caveat 1: a contribution at least as tainted as every version it cites,
@@ -207,13 +219,17 @@ class InMemoryLedgerStore:
 
     It checks every citation against `evidence`, the store the versions are in (M23
     review caveat 1); a store given none refuses any citation, having nothing to check
-    it against."""
+    it against. A verification of a node is checked with `nodes(tenant_id, project_id,
+    ledger_run_id, subject)`, which says whether the node is a plan node of the ledger's
+    runs (FR-100); a store given none refuses every node subject."""
 
-    def __init__(self, evidence: Any = None) -> None:
+    def __init__(self, evidence: Any = None, nodes: Callable[..., bool] | None = None) -> None:
         self._claims: list[EvidenceClaim] = []
         self._contributions: list[ClaimContribution] = []
+        self._verifications: list[Any] = []
         self._lock = threading.Lock()
         self._evidence = evidence
+        self._nodes = nodes
 
     def _checked(self, tenant_id: str, project_id: str, contribution: NewContribution) -> NewContribution:
         cited = []
@@ -290,6 +306,45 @@ class InMemoryLedgerStore:
             return found, after, [c for c in self._contributions if c.claim_id == claim_id]
 
 
+    def append_verifications(self, rows: Sequence[Any]) -> None:
+        from .gate import EvidenceVerification
+
+        rows = list(rows)
+        if not all(isinstance(r, EvidenceVerification) for r in rows):
+            raise ValueError("append_verifications takes EvidenceVerification rows")
+        # Node subjects are checked outside this store's lock: the check reads the
+        # Runner's run-state store, which has its own.
+        for row in rows:
+            if row.claim_id is None and not (self._nodes is not None and self._nodes(
+                    row.tenant_id, row.project_id, row.ledger_run_id, row.subject)):
+                raise LookupError(f"node {row.subject} is not a plan node of ledger {row.ledger_run_id}'s runs "
+                                  "in this tenant and project")
+        with self._lock:
+            for row in rows:
+                if row.claim_id is not None and not any(
+                        c.claim_id == row.claim_id for c in self._ledger(row.tenant_id, row.project_id,
+                                                                         row.ledger_run_id)):
+                    raise LookupError(f"claim {row.subject} is not in ledger {row.ledger_run_id} of this tenant "
+                                      "and project")
+            if any(r.verification_id in {v.verification_id for v in self._verifications} for r in rows):
+                raise ValueError("a verification with that id is already recorded")
+            self._verifications.extend(rows)
+
+    def verifications(self, tenant_id: str, project_id: str, ledger_run_id: str, *, subject: Any = None,
+                      kinds: Sequence[str] | None = None) -> list[Any]:
+        with self._lock:
+            return [v for v in self._verifications
+                    if (v.tenant_id, v.project_id, v.ledger_run_id) == (tenant_id, project_id, ledger_run_id)
+                    and (subject is None or v.subject == subject) and (kinds is None or v.kind in kinds)]
+
+    def verifications_since(self, tenant_id: str, project_id: str, since: datetime | None = None, *,
+                            kinds: Sequence[str] | None = None) -> list[Any]:
+        with self._lock:
+            return [v for v in self._verifications
+                    if (v.tenant_id, v.project_id) == (tenant_id, project_id)
+                    and (since is None or v.created_at >= since) and (kinds is None or v.kind in kinds)]
+
+
 def _union(lists: Any) -> tuple[str, ...]:
     return tuple(dict.fromkeys(i for ids in lists for i in ids))
 
@@ -329,6 +384,13 @@ class EvidenceLedger:
             raise LookupError(f"no claim {claim_id!r} in this ledger")
         claim, after, contributions = self._store.claim(self.tenant_id, self.project_id, self.ledger_run_id, key)
         return self._view(claim, {} if after is None else {key: after}, contributions)
+
+    def signals(self, claim_id: str, policy: Any) -> dict[str, Any]:
+        """FR-102: the gate's rule signals for one claim, a claim recorded outside a plan
+        included, evaluated and returned; nothing is recorded (P3-D13)."""
+        from .gate import signals_of
+
+        return signals_of(self.claim(claim_id), policy)
 
     def history(self, claim_id: str) -> list[EvidenceClaim]:
         """The supersede chain the claim belongs to, oldest first."""

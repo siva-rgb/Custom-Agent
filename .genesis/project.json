@@ -9,7 +9,7 @@
     "non_goals": [],
     "trust_boundary": "local repository",
     "created_at": "2026-09-05T14:48:57.894Z",
-    "updated_at": "2026-10-11T17:07:10.238Z"
+    "updated_at": "2026-10-12T09:33:08.035Z"
   },
   "policy": {
     "ponytail": "full",
@@ -23,11 +23,11 @@
     }
   },
   "lifecycle": {
-    "phase": "verify",
-    "status": "ready",
-    "active_task": null,
+    "phase": "build",
+    "status": "active",
+    "active_task": "M27-critic",
     "blocker": null,
-    "next_action": "Review completed work and choose the next bounded outcome."
+    "next_action": "Run the task pre-flight."
   },
   "commands": {},
   "workflow": {
@@ -260,13 +260,13 @@
       ]
     },
     "plan_check": {
-      "at": "2026-10-11T14:17:27.412Z",
+      "at": "2026-10-11T17:07:11.609Z",
       "source_hash": "af9713067d7a4eb25070082e0fae1447ad69ce0cc234264b3eef7f13b2f90def"
     },
     "plan_approval": {
       "human": "siva-rgb (owner)",
-      "reason": "M25a added before M26; M26 to M28 paused until it is done",
-      "at": "2026-10-11T14:17:27.581Z",
+      "reason": "M25a done; M26 to M28 resumed and requeued (DECISION-4cf55a17)",
+      "at": "2026-10-11T17:07:11.778Z",
       "source_hash": "af9713067d7a4eb25070082e0fae1447ad69ce0cc234264b3eef7f13b2f90def"
     }
   },
@@ -1526,6 +1526,14 @@
       "status": "accepted",
       "source": null,
       "recorded_at": "2026-10-11T14:17:15.175Z"
+    },
+    {
+      "id": "DECISION-4f57d8c5",
+      "title": "M26 pre-flight: a gated node whose signals fire fails criterion_not_available until M27",
+      "text": "Owner decision 2026-10-12 at the M26 pre-flight. The critic arrives with M27, so in M26 a gated node whose signals fire records its gate verification with outcome critic_required and GateEvaluated, then fails with criterion_not_available: critic; the critic arrives with M27, the reason a critic criterion gives today; M27 replaces that one branch with the critic run. Clean signals satisfy the criterion with no model call. Interpretation stated for review: a node subject is valid when its plan node is stored for the subject run in the ledger tenant and project and that run is the ledger run or descends from it by parent_run_id, the same rule on both stores (the Runner records each run parent for the in-memory check). The node reservation is held through the gate only for a node that will be gated, so ungated plans keep their budget timing (NFR-29).",
+      "status": "accepted",
+      "source": null,
+      "recorded_at": "2026-10-12T06:37:34.610Z"
     }
   ],
   "knowledge": [
@@ -2424,6 +2432,14 @@
       "source": null,
       "tags": [],
       "recorded_at": "2026-10-11T17:07:10.067Z"
+    },
+    {
+      "id": "KNOWLEDGE-306e8bfc",
+      "title": "M26 round 1 approved; four caveats become M26a before M27",
+      "text": "Fable 5.1 approved M26 round 1 at 09:11:22Z on source hash f17a7f2e, gates recomputed (unit 58, regression 1981); the review stalled in item 8 and was resumed, items 1 to 7 complete before the stall. Verified: a 20000-view fuzz of the five signals against an independent FR-102 oracle; the node-subject rule identical on both stores across a child orchestrator, a replanned run, a sibling top-level run and an explicit ledger_run_id; bypass controls land when the store check is removed; NFR-29 against git archive c35a319 with event streams, requests and row multisets identical; a cancelled run still writes its gate row; a store failure fails the node loudly with the lease released and no GateEvaluated; AC-44 tracking caught a real stray SYN-m12 run on its first outing. Caveats, settled in M26a by owner decision: (1) FR-103 and AC-78 say record_validation is reachable from no ToolScope, but every tool scope carries _runner (api.py tool scope construction), so a custom tool can certify its own claim; a model cannot, since it only supplies arguments; the reachability test checks field names only and would keep passing; _runner is load-bearing at eight orchestrator sites. (2) 0012 comment says the foreign keys back the store check, but only node-subject tenancy is backed; claim-subject tenancy and ledger membership rest on the store transactional check (a recurrence of M23 caveat 1: a migration comment asserting what the schema does not enforce). (3) README: with no critic configured, a tool_succeeds criterion after a critic criterion now runs its side effects before criterion_not_available. (4) a claim whose only contributions are the critic own never fires low_confidence, live once M27 runs the critic. Process: the reviewer passed the raw DATABASE_URL to apply_migrations and a ProgrammingError echoed it; self-disclosed and fixed; the recorded rotation triggers (reachable from other machines, reused, shared use) do not apply. Carried unchanged: W1, C6, B2, a waited fetch that raises recording no wait, KeyFailed context and pickling, M25a M4 branch.",
+      "source": null,
+      "tags": [],
+      "recorded_at": "2026-10-12T09:33:07.727Z"
     }
   ],
   "tasks": [
@@ -4228,7 +4244,7 @@
     {
       "id": "M26-verifications-and-signals",
       "outcome": "Verifications are recorded append-only within their tenancy, the gate's rule signals clear or flag a node with no model call, and external outcomes are recorded through the Runner",
-      "state": "paused",
+      "state": "done",
       "risk": "medium",
       "owner": null,
       "scope": [],
@@ -4250,22 +4266,37 @@
           "id": "unit",
           "command": ".venv\\Scripts\\python.exe -m pytest tests/test_verifications.py -q",
           "mandatory": true,
-          "status": "pending",
-          "evidence": null
+          "status": "pass",
+          "evidence": {
+            "path": ".genesis/evidence/M26-verifications-and-signals-unit.json",
+            "source_hash": "f17a7f2e8b2ec33b14ebdc2069879df93d9d728dc5fcaddacb66dc10558188bb",
+            "hash": "aa6b407fa71eea8cd415f1e8114a602889f64f1efdb017a5275339263c360b3d",
+            "observed_at": "2026-10-12T07:24:17.533Z"
+          }
         },
         {
           "id": "regression",
           "command": ".venv\\Scripts\\python.exe -m pytest -q",
           "mandatory": true,
-          "status": "pending",
-          "evidence": null
+          "status": "pass",
+          "evidence": {
+            "path": ".genesis/evidence/M26-verifications-and-signals-regression.json",
+            "source_hash": "f17a7f2e8b2ec33b14ebdc2069879df93d9d728dc5fcaddacb66dc10558188bb",
+            "hash": "9c0ce089284443b3d55f0ba1e3ba9b26b174615dcd8dfb6decd0e9bdfd3455c2",
+            "observed_at": "2026-10-12T07:30:55.097Z"
+          }
         },
         {
           "id": "independent-review",
           "command": "",
           "mandatory": true,
-          "status": "pending",
-          "evidence": null
+          "status": "pass",
+          "evidence": {
+            "human": "Fable 5.1",
+            "reason": "Verified first-hand: gate rerun green on source hash f17a7f2e (unit 58 passed, regression 1981 passed in 395.93s); full suite rerun in halves 946 plus 1035 passed; migration 0012 idempotent (two further applies changed nothing, all 11 checksums match). Probed on both stores: no verification read or append crosses a tenant, project or ledger (7 refused subjects each, nothing recorded), bypass controls land rows so the probes have teeth; node-subject rule is the same on both stores for a child orchestrator (accepted), a sibling top-level run (refused), a replanned version (v1 and v2 accepted, v3 refused); no method or SQL updates or deletes a verification; a claim view is identical after gate, critic and external rows; the gate row carries the claim and answer taint and a from_model mutant is caught; 20000 random views agree with an independent FR-102 oracle at both edges, None confidence and critic exclusion; the claim set is the child run (siblings excluded, replan judged afresh); deterministic criteria run first in plan order with no gate row on failure; the reservation is held through the gate (mutant killed by both the author test and my probe) and released at child end for ungated nodes; store failure gives node_error with lease released and no event; cancel during the gate completes the shielded write with row and event agreeing; a clean gated node makes the same model calls as an ungated one; an ungated plan sends identical requests and records identical events and rows versus c35a319 with gate_policy NULL. Caveats, none blocking: (1) FR-103 wording overstates: a custom tool declaring a ToolScope reaches the Runner through the private _runner field and can self-certify a claim via record_validation (probe landed a row); the same field already exposes the ledger store, the model cannot reach it, and the reachability test checks names only, so recommend hiding _runner from non built-in tools or narrowing the wording. (2) The schema alone backs only the node-subject tenancy: with the store check bypassed a claim row in another tenant or another ledger, and a node row whose subject_run is not the plan run, pass the foreign keys; the migration comment overstates the backing. (3) An orchestrator run whose ledger_run_id is re-pointed to a non-ancestor fails every gated node with node_error LookupError on both stores, loudly; not an advertised use. (4) Beyond the declared change, with no critic configured a tool_succeeds criterion after a critic criterion now executes before criterion_not_available, as FR-102 orders; worth a README line. (5) M27 edge: a claim whose only contributions are the critic own never fires low_confidence. (6) Half one of my suite run took 2223s against 396s under the gate, passed, cause not determined. Cleanup: 31 runs and 18 verifications deleted by recorded ids only; store at baseline; 0 advisory locks; orchestrator.py restored with identical SHA-256.",
+            "source_hash": "f17a7f2e8b2ec33b14ebdc2069879df93d9d728dc5fcaddacb66dc10558188bb",
+            "observed_at": "2026-10-12T09:11:22.293Z"
+          }
         }
       ],
       "next_action": "Run the task pre-flight.",
@@ -4274,12 +4305,12 @@
       "failures": [],
       "limitations": [],
       "created_at": "2026-10-11T12:35:06.467Z",
-      "updated_at": "2026-10-11T12:35:06.467Z"
+      "updated_at": "2026-10-12T09:33:08.035Z"
     },
     {
       "id": "M27-critic",
       "outcome": "The critic runs at most once per gated node execution, its verdict decides the node, corrections supersede claims, and nothing it touches gets cleaner",
-      "state": "paused",
+      "state": "active",
       "risk": "high",
       "owner": null,
       "scope": [],
@@ -4328,7 +4359,7 @@
     {
       "id": "M28-calibration-and-exit",
       "outcome": "The calibration report suggests and never applies a threshold, and the gate holds under contention on both stores",
-      "state": "paused",
+      "state": "queued",
       "risk": "medium",
       "owner": null,
       "scope": [],
@@ -5291,17 +5322,80 @@
       "human": "Sonnet 5",
       "reason": "Round 1 independent review. Own matrix of 5 deliveries (cancel, asyncio.timeout, wait_for, KeyboardInterrupt, RuntimeError) x 3 future outcomes x 2 orders: new code 0 of 30 wrong, M25 code 18 of 30 wrong (control catches the old bug). DB windows at acquire and release for cancel and timeout: new raises after undo, M25 returns past it, no lock and no connection left. Executor wait_for with real ClaimLock acquire and release: new TimeoutError, M25 returns FETCHED. Real Runner plus fetch_tool, acquire thread ending around the 6.0s executor deadline: ToolTimeout, no lock held. 120 randomized repeated-cancel trials contended and not: no swallow, no leak, checked at return. Governance diff of project.json vs HEAD: only SPEC-1 and plan re-approval, M25a added, M26 to M28 paused with requeue and pause controls, FR-109 and AC-82 added, nothing else moved. Gate run by me: unit 9 passed, regression 1923 passed, no stray python, 0 advisory locks. Survivor M1 judged equivalent (CancelledError raised either way, no undo). Caveats: mutant M4 (cancelled-future branch treats any exception as own) also survives the 9 tests; it is only reachable if a non-cancellation exception is hand-thrown while the thread future is itself cancelled, which asyncio never does, so latent. Same-object delivered and future exception is also equivalent since the future then raises it anyway.",
       "revision": null
+    },
+    {
+      "id": "970ec34f-bcb3-4c32-ac1f-8ea440e19757",
+      "at": "2026-10-11T17:07:10.707Z",
+      "action": "resume",
+      "task": "M26-verifications-and-signals",
+      "human": "siva-rgb (owner)",
+      "reason": "M25a done (DECISION-4cf55a17)",
+      "revision": null
+    },
+    {
+      "id": "bc8717e3-7f56-4586-99e1-493bd1c3a4ab",
+      "at": "2026-10-11T17:07:10.852Z",
+      "action": "requeue",
+      "task": "M26-verifications-and-signals",
+      "human": "siva-rgb (owner)",
+      "reason": "Back in the queue after M25a (DECISION-4cf55a17)",
+      "revision": null
+    },
+    {
+      "id": "88dcad4f-bc9e-4bd9-9719-8a7c0d775d93",
+      "at": "2026-10-11T17:07:10.995Z",
+      "action": "resume",
+      "task": "M27-critic",
+      "human": "siva-rgb (owner)",
+      "reason": "M25a done (DECISION-4cf55a17)",
+      "revision": null
+    },
+    {
+      "id": "6d4af468-6def-4aea-98db-57dc24bc860c",
+      "at": "2026-10-11T17:07:11.146Z",
+      "action": "requeue",
+      "task": "M27-critic",
+      "human": "siva-rgb (owner)",
+      "reason": "Back in the queue after M25a (DECISION-4cf55a17)",
+      "revision": null
+    },
+    {
+      "id": "ad0ff3e1-1be8-4944-87bc-9f316d420d09",
+      "at": "2026-10-11T17:07:11.290Z",
+      "action": "resume",
+      "task": "M28-calibration-and-exit",
+      "human": "siva-rgb (owner)",
+      "reason": "M25a done (DECISION-4cf55a17)",
+      "revision": null
+    },
+    {
+      "id": "b257cea6-011f-4029-8b1b-0141e7bbb9d2",
+      "at": "2026-10-11T17:07:11.446Z",
+      "action": "requeue",
+      "task": "M28-calibration-and-exit",
+      "human": "siva-rgb (owner)",
+      "reason": "Back in the queue after M25a (DECISION-4cf55a17)",
+      "revision": null
+    },
+    {
+      "id": "315c3df8-d0c2-4eae-84f1-eb4d3273ba45",
+      "at": "2026-10-12T09:11:22.293Z",
+      "action": "approve",
+      "task": "M26-verifications-and-signals",
+      "human": "Fable 5.1",
+      "reason": "Verified first-hand: gate rerun green on source hash f17a7f2e (unit 58 passed, regression 1981 passed in 395.93s); full suite rerun in halves 946 plus 1035 passed; migration 0012 idempotent (two further applies changed nothing, all 11 checksums match). Probed on both stores: no verification read or append crosses a tenant, project or ledger (7 refused subjects each, nothing recorded), bypass controls land rows so the probes have teeth; node-subject rule is the same on both stores for a child orchestrator (accepted), a sibling top-level run (refused), a replanned version (v1 and v2 accepted, v3 refused); no method or SQL updates or deletes a verification; a claim view is identical after gate, critic and external rows; the gate row carries the claim and answer taint and a from_model mutant is caught; 20000 random views agree with an independent FR-102 oracle at both edges, None confidence and critic exclusion; the claim set is the child run (siblings excluded, replan judged afresh); deterministic criteria run first in plan order with no gate row on failure; the reservation is held through the gate (mutant killed by both the author test and my probe) and released at child end for ungated nodes; store failure gives node_error with lease released and no event; cancel during the gate completes the shielded write with row and event agreeing; a clean gated node makes the same model calls as an ungated one; an ungated plan sends identical requests and records identical events and rows versus c35a319 with gate_policy NULL. Caveats, none blocking: (1) FR-103 wording overstates: a custom tool declaring a ToolScope reaches the Runner through the private _runner field and can self-certify a claim via record_validation (probe landed a row); the same field already exposes the ledger store, the model cannot reach it, and the reachability test checks names only, so recommend hiding _runner from non built-in tools or narrowing the wording. (2) The schema alone backs only the node-subject tenancy: with the store check bypassed a claim row in another tenant or another ledger, and a node row whose subject_run is not the plan run, pass the foreign keys; the migration comment overstates the backing. (3) An orchestrator run whose ledger_run_id is re-pointed to a non-ancestor fails every gated node with node_error LookupError on both stores, loudly; not an advertised use. (4) Beyond the declared change, with no critic configured a tool_succeeds criterion after a critic criterion now executes before criterion_not_available, as FR-102 orders; worth a README line. (5) M27 edge: a claim whose only contributions are the critic own never fires low_confidence. (6) Half one of my suite run took 2223s against 396s under the gate, passed, cause not determined. Cleanup: 31 runs and 18 verifications deleted by recorded ids only; store at baseline; 0 advisory locks; orchestrator.py restored with identical SHA-256.",
+      "revision": null
     }
   ],
   "discovery": null,
   "checkpoint": {
-    "at": "2026-10-11T14:26:02.851Z",
+    "at": "2026-10-12T06:58:48.717Z",
     "revision": {
-      "commit": "d9796348ef03d620558851fe4decc388a3dbb321",
+      "commit": "c35a3192a9ba957abe4ad3de99e9ef272dfae9b7",
       "dirty": true,
-      "source_hash": "6ebfe3675bd4cad0152b157099aef4213a0baf2cba07fe450806a2ada4f5515b"
+      "source_hash": "f17a7f2e8b2ec33b14ebdc2069879df93d9d728dc5fcaddacb66dc10558188bb"
     },
-    "active_task": "M25a-w2-window",
+    "active_task": "M26-verifications-and-signals",
     "next_action": "Run the task pre-flight."
   },
   "legacy": null

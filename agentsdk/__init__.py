@@ -36,6 +36,7 @@ from .evidence import (
     ResourceCacheKey,
 )
 from .ledger import ClaimContribution, ClaimView, EvidenceClaim, EvidenceLedger, InMemoryLedgerStore, LedgerStore
+from .gate import EvidenceVerification, GatePolicy
 from .errors import (
     AgentSDKError,
     ArtifactIntegrityError,
@@ -139,6 +140,10 @@ __all__ = [
     "EvidenceLedger",
     "InMemoryLedgerStore",
     "LedgerStore",
+    # The confidence gate (FR-100, FR-101): a field of RunConfig and an argument of the
+    # Orchestrator, and the record it writes.
+    "EvidenceVerification",
+    "GatePolicy",
     "AcceptanceCriterion",
     "BudgetReservation",
     "NodeRetryPolicy",

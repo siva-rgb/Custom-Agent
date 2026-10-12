@@ -46,6 +46,8 @@ _TRACKED = (
     ("source_versions", "source_version_id"),
     ("claims", "claim_id"),
     ("claim_contributions", "contribution_id"),
+    # M26 (FR-100): verifications, so a test that leaves one behind fails AC-44.
+    ("verifications", "verification_id"),
 )
 _RUN_TABLES = tuple(table for table, _ in _TRACKED)
 

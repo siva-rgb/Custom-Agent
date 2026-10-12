@@ -941,6 +941,8 @@ class PostgresRunStore:
         budget_reservations = manifest.get("budget_reservations")
         # FR-77 (0009): the tools the run was sent; NULL for every manifest before it.
         tools_sent = manifest.get("tools_sent")
+        # FR-101 (0012): the gate policy; NULL for an ungated run and every one before it.
+        gate_policy = manifest.get("gate_policy")
         conn.execute(
             """
                 INSERT INTO execution_manifests (
@@ -948,12 +950,12 @@ class PostgresRunStore:
                     instructions_hash, model_id, model_version,
                     model_adapter_version, tool_spec_hashes, policy_version,
                     max_output_tokens, reasoning_effort, pricing, scheduler_limits,
-                    budget_policy, budget_reservations, price_table_date, tools_sent
+                    budget_policy, budget_reservations, price_table_date, tools_sent, gate_policy
                 )
                 -- Tenancy from the run row, as everywhere else. Inside
                 -- start_run the row is written in this same transaction, so
                 -- the SELECT sees it.
-                SELECT r.run_id, r.tenant_id, r.project_id, %s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s
+                SELECT r.run_id, r.tenant_id, r.project_id, %s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s
                 FROM runs r
                 WHERE r.run_id = %s AND r.tenant_id = %s AND r.project_id = %s
             """,
@@ -974,6 +976,7 @@ class PostgresRunStore:
                 Jsonb(budget_reservations) if budget_reservations is not None else None,
                 manifest.get("price_table_date"),
                 Jsonb(tools_sent) if tools_sent is not None else None,
+                Jsonb(gate_policy) if gate_policy is not None else None,
                 scope.run_id,
                 scope.tenant_id,
                 scope.project_id,
@@ -1699,6 +1702,104 @@ class PostgresLedgerStore:
                 " ORDER BY recorded_at, claim_id", (tenant_id, project_id, ledger)).fetchall()]
             contributions = self._contributions(conn, tenant_id, project_id, ledger, None)
         return claims, contributions
+
+    # --- FR-100 (M26): verifications -----------------------------------------------------------
+
+    def append_verifications(self, rows: Any) -> None:
+        """Every row in one transaction, each subject checked in its own tenant, project
+        and ledger first: a claim of the ledger, or a plan node stored for a run that is
+        the ledger's run or descends from it. One refused row refuses them all."""
+        from .gate import EvidenceVerification
+
+        rows = list(rows)
+        if not all(isinstance(r, EvidenceVerification) for r in rows):
+            raise ValueError("append_verifications takes EvidenceVerification rows")
+        with _checkout(self._dsn) as conn:
+            with conn.transaction():
+                for row in rows:
+                    self._subject_checked(conn, row)
+                    node = None if row.claim_id is not None else row.subject
+                    conn.execute(
+                        "INSERT INTO verifications (verification_id, tenant_id, project_id, ledger_run_id,"
+                        " subject_claim, subject_run, subject_plan, subject_version, subject_node, kind, outcome,"
+                        " detail, provenance, created_at) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)",
+                        (row.verification_id, row.tenant_id, row.project_id, row.ledger_run_id, row.claim_id,
+                         None if node is None else node.run_id, None if node is None else node.plan_id,
+                         None if node is None else node.version, None if node is None else node.node_id,
+                         row.kind, row.outcome, Jsonb(row.detail), Jsonb(_provenance_to_json(row.provenance)),
+                         row.created_at))
+
+    @staticmethod
+    def _subject_checked(conn: Any, row: Any) -> None:
+        if row.claim_id is not None:
+            found = conn.execute(
+                "SELECT 1 FROM claims WHERE claim_id = %s AND tenant_id = %s AND project_id = %s"
+                " AND ledger_run_id = %s", (row.claim_id, row.tenant_id, row.project_id, row.ledger_run_id),
+            ).fetchone()
+            if found is None:
+                raise LookupError(f"claim {row.subject} is not in ledger {row.ledger_run_id} of this tenant "
+                                  "and project")
+            return
+        node = row.subject
+        found = conn.execute(
+            "WITH RECURSIVE up (run_id, parent_run_id, depth) AS ("
+            "  SELECT run_id, parent_run_id, 0 FROM runs WHERE run_id = %s AND tenant_id = %s AND project_id = %s"
+            "  UNION ALL SELECT r.run_id, r.parent_run_id, up.depth + 1 FROM runs r"
+            "  JOIN up ON r.run_id = up.parent_run_id"
+            "  WHERE r.tenant_id = %s AND r.project_id = %s AND up.depth < 64)"
+            " SELECT 1 FROM plan_node_states s WHERE s.tenant_id = %s AND s.project_id = %s AND s.plan_id = %s"
+            " AND s.version = %s AND s.node_id = %s AND s.run_id = %s"
+            " AND EXISTS (SELECT 1 FROM up WHERE up.run_id = %s)",
+            (node.run_id, row.tenant_id, row.project_id, row.tenant_id, row.project_id,
+             row.tenant_id, row.project_id, node.plan_id, node.version, node.node_id, node.run_id,
+             row.ledger_run_id),
+        ).fetchone()
+        if found is None:
+            raise LookupError(f"node {node} is not a plan node of the runs of ledger {row.ledger_run_id} in this "
+                              "tenant and project")
+
+    def verifications(self, tenant_id: str, project_id: str, ledger_run_id: str, *, subject: Any = None,
+                      kinds: Any = None) -> list[Any]:
+        from .gate import NodeSubject
+        from .ledger import _claim_id, _uuid
+
+        where, params = ["ledger_run_id = %s"], [_uuid("ledger_run_id", ledger_run_id)]
+        if isinstance(subject, NodeSubject):
+            where.append("subject_run = %s AND subject_plan = %s AND subject_version = %s AND subject_node = %s")
+            params += [subject.run_id, subject.plan_id, subject.version, subject.node_id]
+        elif subject is not None:
+            where.append("subject_claim = %s")
+            params.append(_claim_id(subject))
+        return self._verifications(tenant_id, project_id, where, params, kinds)
+
+    def verifications_since(self, tenant_id: str, project_id: str, since: Any = None, *,
+                            kinds: Any = None) -> list[Any]:
+        where, params = [], []
+        if since is not None:
+            where.append("created_at >= %s")
+            params.append(since)
+        return self._verifications(tenant_id, project_id, where, params, kinds)
+
+    def _verifications(self, tenant_id: str, project_id: str, where: list[str], params: list[Any],
+                       kinds: Any) -> list[Any]:
+        from .gate import EvidenceVerification, NodeSubject
+
+        if kinds is not None:
+            where = [*where, "kind = ANY(%s)"]
+            params = [*params, list(kinds)]
+        clause = "".join(f" AND {w}" for w in where)
+        with _checkout(self._dsn) as conn:
+            rows = conn.execute(
+                "SELECT verification_id, ledger_run_id, subject_claim, subject_run, subject_plan, subject_version,"
+                " subject_node, kind, outcome, detail, provenance, tenant_id, project_id, created_at"
+                f" FROM verifications WHERE tenant_id = %s AND project_id = %s{clause}"
+                " ORDER BY created_at, verification_id", (tenant_id, project_id, *params)).fetchall()
+        return [EvidenceVerification(
+            verification_id=str(r[0]), ledger_run_id=str(r[1]),
+            subject=f"urn:agentsdk:claim:{r[2]}" if r[2] is not None else NodeSubject(
+                run_id=str(r[3]), plan_id=str(r[4]), version=r[5], node_id=r[6]),
+            kind=r[7], outcome=r[8], detail=r[9], provenance=_provenance_from_json(r[10]),
+            tenant_id=r[11], project_id=r[12], created_at=r[13]) for r in rows]
 
     @staticmethod
     def _contributions(conn: Any, tenant_id: str, project_id: str, ledger: str, claim_id: str | None) -> list[Any]:
