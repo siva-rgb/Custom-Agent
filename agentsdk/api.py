@@ -461,9 +461,10 @@ class Runner:
     ) -> EvidenceVerification:
         """FR-103: an externally validated outcome -- a test, a known-answer fixture, a
         downstream outcome or a human adjudication -- recorded for a claim (by its uri) or
-        a plan node of the ledger. On the Runner, which no tool reaches, so no model or
-        tool can record an outcome about its own work; it changes no claim's provenance
-        (P3-D15). A subject outside the ledger's tenant, project or ledger is refused with
+        a plan node of the ledger. A Runner method in no tool registry, which no tool the
+        SDK ships calls, so no model can record an outcome about its own work; a custom
+        tool is first-party code and reaches the Runner through its scope (FR-110,
+        declared). It changes no claim's provenance (P3-D15). A subject outside the ledger's tenant, project or ledger is refused with
         LookupError and nothing is recorded."""
         from datetime import datetime, timezone
 

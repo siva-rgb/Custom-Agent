@@ -52,6 +52,8 @@ EXPECTED_EXAMPLES = {
     "20_ledger.py",
     # FR-96 (M24): the exit signal, claim-lock under contention.
     "21_contention.py",
+    # FR-106 (M27): the critic.
+    "22_critic.py",
 }
 
 

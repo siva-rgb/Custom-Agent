@@ -1,0 +1,22 @@
+{
+  "task": "M27-critic",
+  "gate": "unit",
+  "command": ".venv\\Scripts\\python.exe -m pytest tests/test_critic.py -q",
+  "started_at": "2026-10-12T13:39:19.089Z",
+  "observed_at": "2026-10-12T13:39:27.454Z",
+  "exit_code": 0,
+  "signal": null,
+  "stdout": ".....................                                                    [100%]\r\n21 passed in 7.03s\r\n",
+  "stderr": "",
+  "revision": {
+    "commit": "1c21fc56e8cede88ba2fccedc4ea1248763ee968",
+    "dirty": true
+  },
+  "source_hash": "a23d4e3b8048c5597fc844168bc1dfc033b48bda350efc8e4b0d4412ccc3a814",
+  "environment": {
+    "node": "v20.10.0",
+    "platform": "win32",
+    "arch": "x64"
+  },
+  "hash": "6502f0cb8b555c8aa0c7400a370a466242a3c8ab6af87cfbb95f8c532f1f046a"
+}

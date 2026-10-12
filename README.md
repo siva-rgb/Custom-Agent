@@ -74,6 +74,13 @@ persisted so you can reconstruct exactly what happened afterwards.
   `GateEvaluated` event, and an application records externally validated
   outcomes with `Runner.record_validation()`. No verification makes a claim or
   an answer cleaner.
+- **Calls a critic only when the signals fire** (M27): the policy's critic, an
+  agent with no tools, runs once per node execution as a child of the
+  orchestrator on the node's own budget, briefed with the answer, the claims and
+  the pages they cite as data. It approves (the node is done), corrects (its
+  corrections supersede the claims as its own contributions, and the node takes
+  its answer, tainted as both) or escalates (the node fails and is replanned),
+  and its verdict is recorded and emitted as `CriticVerdict`.
 - **Fetches each page once, however many agents ask** (M24's claim-lock): one
   holder per page and per statement, across the tasks of a process and the
   processes sharing the database; the others wait, then take the holder's
@@ -108,9 +115,10 @@ Stated plainly, because an SDK that overstates itself costs you a week:
 
 | not built | where it lands |
 |---|---|
-| Within orchestration (plans run as DAGs of child runs, with deterministic acceptance criteria and replanning, since M19): the critic itself, so a gated node whose signals fire fails `criterion_not_available` (M26); loop nodes; and any behaviour for a node's `timeout` and `retry_policy`, which are stored but not acted on | Critic in M27; loops in Phase 5A; timeout and retry not yet scheduled |
+| Within orchestration (plans run as DAGs of child runs, with deterministic acceptance criteria and replanning, since M19): loop nodes; and any behaviour for a node's `timeout` and `retry_policy`, which are stored but not acted on | Loops in Phase 5A; timeout and retry not yet scheduled |
 | The gate judges the claims a node's own child recorded; a run that child spawned itself is outside them (a node's child does not spawn today). A node gated only because the policy gates every node, and that recorded no claim, is cleared | Declared (M26) |
 | Every deterministic criterion of a node runs before a critic criterion is judged or refused, so with no critic configured a `tool_succeeds` criterion's side effects happen before the node fails `criterion_not_available` | Declared (M26a) |
+| On a database where M26 already recorded a verification naming a claim of another ledger, migration 0013 cannot apply until that row is removed: adding its key checks every existing row, and the migration rolls back whole | Declared (M27) |
 | No model can record an externally validated outcome: `Runner.record_validation` is in no tool registry and no tool the SDK ships calls it. A custom tool is first-party code in your process and reaches the Runner through its scope, as it reaches the ledger store, so it could call `record_validation`; in-process code is outside the threat model | Declared (M26a) |
 | Streaming of model tokens as they are generated (a run's events do stream, through `RunHandle.events()`) | Later; not yet scheduled |
 | Native MCP (Model Context Protocol) support | Phase 4 |
@@ -493,6 +501,7 @@ credentials -- which is also how the test suite checks them.
 | [`19_sources.py`](scripts/19_sources.py) | a page fetched once and then served from the cache in the same run and the next, a refetch after freshness recording a new version that names the old one, and a second tenant getting no hit |
 | [`20_ledger.py`](scripts/20_ledger.py) | two subagents recording one statement as one claim with both contributions and both pages cited, the claim untrusted because the pages are, and a wrong claim superseded with the chain read back |
 | [`21_contention.py`](scripts/21_contention.py) | Phase 3's exit signal: eight orchestrated readers on four overlapping pages, each page fetched once while the rest wait on the claim-lock, one claim per statement with every contributor, a correction, and a second tenant served nothing |
+| [`22_critic.py`](scripts/22_critic.py) | the confidence gate and the critic: a node cleared on clean signals with no model call, one the critic approves, one it corrects by superseding the claim, and one it escalates into a replan |
 
 ```bash
 python scripts/02_custom_tools.py --offline

@@ -132,8 +132,11 @@ def remove_what_the_test_wrote():
 
 def exposures(scope: ToolScope, runner: Runner) -> list[str]:
     """The fields of a tool's scope, other than `_runner`, whose value is the Runner or an
-    object with a way to append verifications or record an outcome. By value: a field
-    renamed, or a new one, is caught as surely as one named for what it holds."""
+    object with a way to append verifications or record an outcome. By value, one level
+    deep: a field renamed, or a new one, holding such an object is caught as surely as one
+    named for what it holds, but an object held inside a field's value is not inspected --
+    `ledger._store` is a bound method of the Runner, the reach `_runner` already declares,
+    and a writer wrapped one level down would pass (M26a review)."""
     found = []
     for f in dataclasses.fields(scope):
         if f.name == "_runner":

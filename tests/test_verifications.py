@@ -383,7 +383,7 @@ def _view(supporting, contradicting, confidences, critic_confidences=()):
                      contradicting=tuple(str(uuid.uuid4()) for _ in range(contradicting)), provenance=UNTRUSTED)
 
 
-def _expected(supporting, contradicting, confidences, policy):
+def _expected(supporting, contradicting, confidences, policy, critic_only=False):
     fired = set()
     if supporting == 0:
         fired.add("unsupported")
@@ -391,8 +391,9 @@ def _expected(supporting, contradicting, confidences, policy):
         fired.add("contradicted")
     if 1 <= supporting < policy.min_sources:
         fired.add("thin_support")
+    # FR-110: a claim only a critic contributed to has no stated confidence, so it is below.
     lowest = [-1.0 if c is None else c for c in confidences]
-    if lowest and min(lowest) < policy.confidence_threshold:
+    if (critic_only or lowest) and (not lowest or min(lowest) < policy.confidence_threshold):
         fired.add("low_confidence")
     return fired & set(policy.signals)
 
@@ -404,10 +405,11 @@ def test_each_signal_fires_exactly_when_its_rule_holds_over_generated_ledgers():
         policy = GatePolicy(critic=CRITIC, min_sources=rng.randint(1, 4), confidence_threshold=threshold,
                             signals=tuple(s for s in SIGNALS if rng.random() < 0.8))
         supporting, contradicting = rng.randint(0, 5), rng.choice([0, 0, 1, 2])
-        confidences = [rng.choice([None, 0.0, 0.5, 0.7, threshold, 0.9, 1.0]) for _ in range(rng.randint(1, 3))]
-        critic = [rng.choice([None, 0.0])] if rng.random() < 0.3 else []
+        confidences = [rng.choice([None, 0.0, 0.5, 0.7, threshold, 0.9, 1.0]) for _ in range(rng.randint(0, 3))]
+        critic = [rng.choice([None, 0.0])] if rng.random() < 0.3 or not confidences else []
         found = signals_of(_view(supporting, contradicting, confidences, critic), policy)
-        assert set(found["fired"]) == _expected(supporting, contradicting, confidences, policy), (
+        expected = _expected(supporting, contradicting, confidences, policy, critic_only=bool(critic) and not confidences)
+        assert set(found["fired"]) == expected, (
             supporting, contradicting, confidences, policy, found)
         assert not {"unsupported", "thin_support"} <= set(found["fired"])
         assert found["values"]["supporting"] == supporting
@@ -453,15 +455,16 @@ async def test_clean_signals_satisfy_the_criterion_with_no_model_call_and_record
 
 
 @pytest.mark.parametrize("store", ["memory", "postgres"])
-async def test_a_signal_that_fires_records_critic_required_and_fails_the_node_until_m27(store):
+async def test_a_signal_that_fires_records_critic_required_and_calls_the_critic_once(store):
+    # Edited at M27: until M27 the node failed criterion_not_available here (DECISION-4f57d8c5);
+    # now the critic runs, and this file's scripted critic approves.
     async with Pages() as pages:
         orchestrator, runner, reader, critic = setup(
             pages, [node("n", [READ, claim("The Rhine reaches the Black Sea.")], [CRITERION])],
             gate=GatePolicy(critic=CRITIC), store=store)
         result = await orchestrate(runner, orchestrator)
-    status, reason = finished(result, "n")
-    assert status == "failed" and reason.startswith("criterion_not_available: critic"), reason
-    assert critic.calls == 0
+    assert finished(result, "n") == ("done", None)
+    assert critic.calls == 1
     [row] = await verifications(runner, result.run_id, kinds=("gate",))
     assert row.outcome == "critic_required" and row.detail["claims"][0]["fired"] == ["unsupported"]
     assert [e.payload["signals"] for e in gate_events(result)][0] == ["unsupported"]
@@ -469,11 +472,12 @@ async def test_a_signal_that_fires_records_critic_required_and_fails_the_node_un
 
 async def test_no_claims_fires_only_for_a_node_carrying_a_critic_criterion():
     async with Pages() as pages:
-        orchestrator, runner, _, _ = setup(
+        orchestrator, runner, _, critic = setup(
             pages, [node("with", [READ], [CRITERION]), node("without", [READ])],
             gate=GatePolicy(critic=CRITIC, gate_all_nodes=True))
         result = await orchestrate(runner, orchestrator)
-    assert finished(result, "with")[0] == "failed"
+    # Edited at M27: no_claims now calls the critic (which approves here) instead of failing the node.
+    assert finished(result, "with") == ("done", None) and critic.calls == 1
     assert finished(result, "without") == ("done", None)
     by_node = {e.task_id: e.payload for e in gate_events(result)}
     assert by_node["with"]["signals"] == ["no_claims"] and by_node["without"]["outcome"] == "clear"
@@ -642,7 +646,9 @@ async def test_record_validation_records_an_external_outcome_and_changes_no_clai
     assert len(await verifications(runner, result.run_id, kinds=("external",))) == 2
 
 
-def test_record_validation_is_reachable_from_no_tool():
+def test_record_validation_is_a_runner_method_no_tool_or_ledger_reader_offers():
+    # Renamed at M27 (M26a review): FR-110 withdrew "reachable from no ToolScope"; a custom
+    # tool reaches the Runner through _runner. What this asserts is unchanged.
     assert hasattr(Runner, "record_validation")
     assert not any("validation" in f.name for f in dataclasses.fields(ToolScope))
     from agentsdk.ledger import EvidenceLedger, RunLedger

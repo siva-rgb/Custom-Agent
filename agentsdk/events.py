@@ -50,6 +50,9 @@ class EventType(str, Enum):
     # FR-102 (M26): the gate judged a plan node -- the signals that fired, its outcome
     # and the verification recorded; on the orchestrator run's stream, node in task_id.
     GATE_EVALUATED = "GateEvaluated"
+    # FR-105 (M27): a critic's verdict on a gated node -- the critic run, the verdict, the
+    # claims it superseded and the verification recorded; on the orchestrator run's stream.
+    CRITIC_VERDICT = "CriticVerdict"
 
 
 @dataclass(frozen=True)

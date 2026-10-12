@@ -9,7 +9,7 @@
     "non_goals": [],
     "trust_boundary": "local repository",
     "created_at": "2026-09-05T14:48:57.894Z",
-    "updated_at": "2026-10-12T12:33:00.963Z"
+    "updated_at": "2026-10-12T14:32:45.708Z"
   },
   "policy": {
     "ponytail": "full",
@@ -23,11 +23,11 @@
     }
   },
   "lifecycle": {
-    "phase": "verify",
-    "status": "ready",
-    "active_task": null,
+    "phase": "build",
+    "status": "active",
+    "active_task": "M28-calibration-and-exit",
     "blocker": null,
-    "next_action": "Review completed work and choose the next bounded outcome."
+    "next_action": "Run the task pre-flight."
   },
   "commands": {},
   "workflow": {
@@ -262,13 +262,13 @@
       ]
     },
     "plan_check": {
-      "at": "2026-10-12T09:38:36.239Z",
+      "at": "2026-10-12T12:33:02.557Z",
       "source_hash": "4d083d2f106d228ad0919f214f76dfe777904a2ea13ea12e34ba74553988af18"
     },
     "plan_approval": {
       "human": "siva-rgb (owner)",
-      "reason": "M26a added before M27; M27 and M28 paused until it is done",
-      "at": "2026-10-12T09:38:36.497Z",
+      "reason": "M26a done; M27 and M28 resumed and requeued (DECISION-512ecd10)",
+      "at": "2026-10-12T12:33:02.862Z",
       "source_hash": "4d083d2f106d228ad0919f214f76dfe777904a2ea13ea12e34ba74553988af18"
     }
   },
@@ -1546,6 +1546,22 @@
       "status": "accepted",
       "source": null,
       "recorded_at": "2026-10-12T09:38:22.926Z"
+    },
+    {
+      "id": "DECISION-066e317a",
+      "title": "Gates run in the background with a 25-minute limit from M27 (owner)",
+      "text": "Owner decision 2026-10-12 at the M27 pre-flight. Profiled with --durations: the full suite took 6m47s (1989 tests), against 7m15s and 8m06s in the M26 and M26a gate runs, so load explains much of the spread; the 41 tests over one second sum to 159 s (slowest the postgres exit-signal test at 20 s and the two live golden evals at 21 s together), and the remaining 250 s is spread over about 1950 tests at roughly 0.13 s each, most likely per-test database cleanup fixtures. Growth is linear in test count. From M27 on, genesis gate runs in the background with --timeout 1500000, past the 10-minute foreground limit, and each gate time is reported so growth stays visible; per-test overhead is not changed.",
+      "status": "accepted",
+      "source": null,
+      "recorded_at": "2026-10-12T12:49:16.216Z"
+    },
+    {
+      "id": "DECISION-df1790f1",
+      "title": "M27 caveats settled at M28 pre-flight; an answer-only correction is valid (owner)",
+      "text": "Owner decision 2026-10-12 after M27 round 1 (KNOWLEDGE in project.json, M27 round 1): complete M27 and settle its caveats inside M28 pre-flight, reviewed with M28, rather than a separate M27a. A corrected verdict with an empty corrections list is valid: the critic may correct the wording of the answer while every claim stands; the answer carries the taint of both and the verification records no applied corrections; stated in FR-104 and FR-105 and tested. The owner permitted signing the spec and plan changes as siva-rgb (owner).",
+      "status": "accepted",
+      "source": null,
+      "recorded_at": "2026-10-12T14:32:45.513Z"
     }
   ],
   "knowledge": [
@@ -2460,6 +2476,14 @@
       "source": null,
       "tags": [],
       "recorded_at": "2026-10-12T12:33:00.697Z"
+    },
+    {
+      "id": "KNOWLEDGE-98fb16e9",
+      "title": "M27 round 1 approved; the critic label clauses and four caveats go to M28 pre-flight",
+      "text": "Sonnet 5 approved M27 round 1 at 13:57:20Z on source hash a23d4e3b, gates recomputed detached at the 25-minute limit (unit 21, regression 2010). Verified: exactly once per execution across a replan carrying a node forward, two nodes racing on one claim (second refused already superseded, rerun gated afresh), cancellation during the critic (ran once, no rows) and a store failure after the critic (in memory only: Postgres returns a fresh store object per call, so that monkeypatch never applied); event order GateEvaluated, ClaimSuperseded, CriticVerdict, PlanNodeFinished on both stores; example 22 live passed with a real output_contract_violation replanned. Finding: four NFR-28 mutants survive all tests, including dropping taking_in at the corrected answer (orchestrator.py, the corrected return); AC-79 requires the corrected answer at least as tainted as the critic inputs and the orchestrator labels carrying the critic provenance, correct in the code but undemonstrated, because every taint check compares against the page and the critic shares the page taint (third recurrence after M24 example 21 and M26 gate-row provenance). Caveats: a whitespace-only or NUL reason passes the verdict schema minLength then fails NewContribution outside the try, leaving a critic run with no critic row or CriticVerdict and the node node_error; paraphrases on a node with no claims are free strings; corrections [] with corrected swaps the answer superseding nothing; approved keeps the child label (per spec). Owner decisions: settle at M28 pre-flight, no M27a: a test tainting the critic result alone; whitespace and NUL refused at the schema boundary; paraphrases constrained to the node claims; an answer-only correction (corrected with no corrections) is valid; the Postgres store-failure-after-critic case.",
+      "source": null,
+      "tags": [],
+      "recorded_at": "2026-10-12T14:32:45.332Z"
     }
   ],
   "tasks": [
@@ -4330,7 +4354,7 @@
     {
       "id": "M27-critic",
       "outcome": "The critic runs at most once per gated node execution, its verdict decides the node, corrections supersede claims, and nothing it touches gets cleaner",
-      "state": "paused",
+      "state": "done",
       "risk": "high",
       "owner": null,
       "scope": [],
@@ -4350,22 +4374,37 @@
           "id": "unit",
           "command": ".venv\\Scripts\\python.exe -m pytest tests/test_critic.py -q",
           "mandatory": true,
-          "status": "pending",
-          "evidence": null
+          "status": "pass",
+          "evidence": {
+            "path": ".genesis/evidence/M27-critic-unit.json",
+            "source_hash": "a23d4e3b8048c5597fc844168bc1dfc033b48bda350efc8e4b0d4412ccc3a814",
+            "hash": "6502f0cb8b555c8aa0c7400a370a466242a3c8ab6af87cfbb95f8c532f1f046a",
+            "observed_at": "2026-10-12T13:39:27.454Z"
+          }
         },
         {
           "id": "regression",
           "command": ".venv\\Scripts\\python.exe -m pytest -q",
           "mandatory": true,
-          "status": "pending",
-          "evidence": null
+          "status": "pass",
+          "evidence": {
+            "path": ".genesis/evidence/M27-critic-regression.json",
+            "source_hash": "a23d4e3b8048c5597fc844168bc1dfc033b48bda350efc8e4b0d4412ccc3a814",
+            "hash": "653a45b7f01783d51d63ce232d101f11ff60363ee9b6297c303eaa8934dc21af",
+            "observed_at": "2026-10-12T13:46:03.442Z"
+          }
         },
         {
           "id": "independent-review",
           "command": "",
           "mandatory": true,
-          "status": "pending",
-          "evidence": null
+          "status": "pass",
+          "evidence": {
+            "human": "Sonnet 5",
+            "reason": "Own gate run green (unit 21 passed, regression 2010 passed, source hash a23d4e3b). Probed on memory and postgres: critic taint and answer taint reach the corrected answer, its stored artifact, the superseding claim and the critic rows; a failed or budget-exceeded critic still labels the orchestrator report; rendering label covers answer and claims; critic ran once per execution (done nodes carried, shared-claim race refused honestly with applied and refused recorded, cancel and store failure leave no stray rows); order is gate, ClaimSuperseded, CriticVerdict, node finished. Example 22 live passed 4 of 4, cleaned by run id. Caveats: (1) mutants that drop taking_in, the answer label on the rendering, the critic label on the superseding contribution or on the critic rows all survive the 21 shipped tests (only my probes kill them): add a critic-only taint test; (2) a whitespace or NUL reason passes the verdict schema but fails ledger text checks, giving node_error with the critic run unrecorded (no partial state); (3) paraphrases are free strings when a node has no claims, recorded in detail only; (4) corrected with empty corrections replaces the answer with no supersession; (5) an approved answer keeps the child label by spec, the critic label joins the report and rows. Test edits judged necessary and not weaker.",
+            "source_hash": "a23d4e3b8048c5597fc844168bc1dfc033b48bda350efc8e4b0d4412ccc3a814",
+            "observed_at": "2026-10-12T13:57:20.672Z"
+          }
         }
       ],
       "next_action": "Run the task pre-flight.",
@@ -4374,12 +4413,12 @@
       "failures": [],
       "limitations": [],
       "created_at": "2026-10-11T12:35:06.625Z",
-      "updated_at": "2026-10-11T12:35:06.625Z"
+      "updated_at": "2026-10-12T14:32:45.707Z"
     },
     {
       "id": "M28-calibration-and-exit",
       "outcome": "The calibration report suggests and never applies a threshold, and the gate holds under contention on both stores",
-      "state": "paused",
+      "state": "active",
       "risk": "medium",
       "owner": null,
       "scope": [],
@@ -5502,17 +5541,62 @@
       "human": "Opus 5",
       "reason": "Verified first hand, not from the recorded evidence. My own gate run: unit 8 passed in 2.01s, regression 1989 passed in 384.56s, source hash 22f32a7f, no stray python. M22 to M26a gate files 342 passed in 92.13s. Migration 0013 probed with a control: on a scratch schema carrying migrations through 0012 only, cross-ledger, cross-tenant and cross-project claim subjects all land; through 0013 all three are refused by verifications_claim_in_ledger while the legitimate row still lands and a node subject with subject_claim NULL is unaffected. Idempotent over three applications with an identical constraint set, applies over pre-existing valid claim and verification rows, every recorded checksum matches the file and 0013 is recorded. The amended signal rule is correct on 10 hand cases and 2000 generated claims with the critic exclusion intact. Both README rows accurate, the criteria order checked against the orchestrator code. The static check has teeth: a planted mention of record_validation in orchestrator.py fails it, and the file was restored byte for byte. Store at baseline, 0 advisory locks, no scratch schema left. Caveats, none blocking: (1) the docstring of record_validation in api.py line 464 still says the Runner is one no tool reaches, the statement this task withdrew, and should be corrected; (2) AC-83 says every shipped tool runs under the watch but only 4 of 9 do, the web search tool and the four file tools do not, and only the static check covers them; (3) the walk is one level deep, which I judge the right depth since the deeper path lands on the same Runner that _runner already declares, but a store held one level down, and a property or non-field attribute, both escape it, shown with planted controls; (4) the surviving M26 test named record_validation is reachable from no tool now misleads and should be renamed; (5) the M26 oracle in test_verifications still encodes the pre-amendment rule for a claim with no non-critic contribution, passing only because its generator never builds one; (6) 0013 refuses to apply where a pre-0013 cross-ledger row already exists, cleanly rather than partially, which no note mentions.",
       "revision": null
+    },
+    {
+      "id": "3fef9773-38f9-494c-92f5-fc78fa38c388",
+      "at": "2026-10-12T12:33:01.668Z",
+      "action": "resume",
+      "task": "M27-critic",
+      "human": "siva-rgb (owner)",
+      "reason": "M26a done (DECISION-512ecd10)",
+      "revision": null
+    },
+    {
+      "id": "d6cad0b9-3eab-40db-ab10-8a9469bd28e9",
+      "at": "2026-10-12T12:33:01.899Z",
+      "action": "requeue",
+      "task": "M27-critic",
+      "human": "siva-rgb (owner)",
+      "reason": "Back in the queue after M26a (DECISION-512ecd10)",
+      "revision": null
+    },
+    {
+      "id": "d02f7cdb-2b18-4291-9492-0cc93ff1d5f0",
+      "at": "2026-10-12T12:33:02.102Z",
+      "action": "resume",
+      "task": "M28-calibration-and-exit",
+      "human": "siva-rgb (owner)",
+      "reason": "M26a done (DECISION-512ecd10)",
+      "revision": null
+    },
+    {
+      "id": "e616d1ba-b06c-4ebe-9b2c-bcd4902a136a",
+      "at": "2026-10-12T12:33:02.310Z",
+      "action": "requeue",
+      "task": "M28-calibration-and-exit",
+      "human": "siva-rgb (owner)",
+      "reason": "Back in the queue after M26a (DECISION-512ecd10)",
+      "revision": null
+    },
+    {
+      "id": "736cb84b-b242-4558-bb9b-51fa29f5da35",
+      "at": "2026-10-12T13:57:20.672Z",
+      "action": "approve",
+      "task": "M27-critic",
+      "human": "Sonnet 5",
+      "reason": "Own gate run green (unit 21 passed, regression 2010 passed, source hash a23d4e3b). Probed on memory and postgres: critic taint and answer taint reach the corrected answer, its stored artifact, the superseding claim and the critic rows; a failed or budget-exceeded critic still labels the orchestrator report; rendering label covers answer and claims; critic ran once per execution (done nodes carried, shared-claim race refused honestly with applied and refused recorded, cancel and store failure leave no stray rows); order is gate, ClaimSuperseded, CriticVerdict, node finished. Example 22 live passed 4 of 4, cleaned by run id. Caveats: (1) mutants that drop taking_in, the answer label on the rendering, the critic label on the superseding contribution or on the critic rows all survive the 21 shipped tests (only my probes kill them): add a critic-only taint test; (2) a whitespace or NUL reason passes the verdict schema but fails ledger text checks, giving node_error with the critic run unrecorded (no partial state); (3) paraphrases are free strings when a node has no claims, recorded in detail only; (4) corrected with empty corrections replaces the answer with no supersession; (5) an approved answer keeps the child label by spec, the critic label joins the report and rows. Test edits judged necessary and not weaker.",
+      "revision": null
     }
   ],
   "discovery": null,
   "checkpoint": {
-    "at": "2026-10-12T09:51:06.059Z",
+    "at": "2026-10-12T13:24:41.395Z",
     "revision": {
-      "commit": "eb69b1dc67b0585cf6872d91508543c464b3a234",
+      "commit": "1c21fc56e8cede88ba2fccedc4ea1248763ee968",
       "dirty": true,
-      "source_hash": "22f32a7f4fbf77f2071ff93974e9e591dfd0e269bb1beb83af435f3780e69a60"
+      "source_hash": "a23d4e3b8048c5597fc844168bc1dfc033b48bda350efc8e4b0d4412ccc3a814"
     },
-    "active_task": "M26a-gate-caveats",
+    "active_task": "M27-critic",
     "next_action": "Run the task pre-flight."
   },
   "legacy": null

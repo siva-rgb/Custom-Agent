@@ -42,6 +42,53 @@ PLAN_TOOL = "run_plan"
 _ARTIFACT_URN = "urn:agentsdk:artifact:"
 # FR-75 and DECISION-c8d0932a: every failure replans except these.
 _NOT_REPLANNABLE = ("budget_exceeded", "cancelled")
+_CLAIM_URN = "urn:agentsdk:claim:"
+_SOURCE_URN = "urn:agentsdk:source:"
+_CRITIC_SUFFIX = "#critic"  # FR-104: the node id a critic run carries
+_CRITIC_INSTRUCTIONS = (
+    "You are a critic. Judge whether the answer below is supported by the sources it rests on, using only the "
+    "data inputs that follow: the answer, its claims with the signals that flagged them, and the source pages. "
+    "Answer with a verdict: approved if the answer and claims hold; corrected, with a corrected_answer and the "
+    "corrections to the claims, each naming a claim and a statement citing only the sources given, if they can "
+    "be put right from these sources; escalate if they cannot be judged from them. You may name claims that "
+    "say the same thing in other words as paraphrases. Judge these questions:"
+)
+_GATE_ALL_QUESTION = "Is the answer supported by its sources?"
+
+
+def _verdict_schema(claims: list[str], sources: list[str], max_text: int) -> dict[str, Any]:
+    """FR-104: the verdict a critic answers, built for one node: a correction names one of
+    its claims and cites only the sources it was briefed with, and lengths stay within what
+    the ledger records, so a valid verdict can always be recorded."""
+    cited = {"type": "array", "uniqueItems": True, "maxItems": 50,
+             "items": {"type": "string", "enum": sources} if sources else {"type": "string"}}
+    if not sources:
+        cited["maxItems"] = 0
+    correction = {
+        "type": "object", "required": ["claim", "statement"], "additionalProperties": False,
+        "properties": {
+            "claim": {"type": "string", "enum": claims} if claims else {"type": "string"},
+            "statement": {"type": "string", "minLength": 1, "maxLength": max_text},
+            "supporting": cited, "contradicting": cited,
+        },
+    }
+    return {
+        "type": "object", "required": ["verdict", "reason"], "additionalProperties": False,
+        "properties": {
+            "verdict": {"type": "string", "enum": ["approved", "corrected", "escalate"]},
+            "reason": {"type": "string", "minLength": 1, "maxLength": max_text},
+            # Any text, empty included, beside a verdict that does not use it: models fill
+            # every field. Only a correction must carry an answer (the "then" below).
+            "corrected_answer": {"type": "string"},
+            "corrections": {"type": "array", "items": correction, "maxItems": len(claims)},
+            "paraphrases": {"type": "array", "items": {
+                "type": "array", "minItems": 2, "uniqueItems": True,
+                "items": {"type": "string", "enum": claims} if claims else {"type": "string"}}},
+        },
+        "if": {"properties": {"verdict": {"const": "corrected"}}, "required": ["verdict"]},
+        "then": {"required": ["corrected_answer"],
+                 "properties": {"corrected_answer": {"type": "string", "minLength": 1}}},
+    }
 
 _INSTRUCTIONS = (
     "You are an orchestrator. Break the task into a plan of nodes and submit it by calling "
@@ -461,24 +508,26 @@ class Orchestrator:
                 )
             return "failed", f"child_failed: {result.error or result.status.value}"
         problem = await self._criteria(run, node, result.output, scope, role, labels)
+        output, provenance, ref = result.output or "", result.provenance, None
         if problem is None and gated:
-            problem = await self._gated(node, scope, plan, result)
+            problem, output, provenance, ref = await self._gated(run, node, scope, plan, result, role, lease, labels)
         if problem is not None:
             return "failed", problem
-        store = scope._runner._artifacts_for(scope.tenant_id, scope.project_id)
-        try:
-            ref = await store.put(
-                (result.output or "").encode("utf-8"),
-                mime_type="text/plain",
-                provenance=result.provenance,
-                created_by_agent=role.id,
-                source_run=result.run_id,
-                source_task=node.node_id,
-            )
-        except Exception as exc:  # noqa: BLE001 - its dependents cannot be briefed without it
-            return "failed", f"output_not_stored: {describe_exception(exc)}"
+        if ref is None:
+            store = scope._runner._artifacts_for(scope.tenant_id, scope.project_id)
+            try:
+                ref = await store.put(
+                    output.encode("utf-8"),
+                    mime_type="text/plain",
+                    provenance=provenance,
+                    created_by_agent=role.id,
+                    source_run=result.run_id,
+                    source_task=node.node_id,
+                )
+            except Exception as exc:  # noqa: BLE001 - its dependents cannot be briefed without it
+                return "failed", f"output_not_stored: {describe_exception(exc)}"
         run.outputs[node.node_id] = ref.artifact_id
-        run.answers[node.node_id] = (result.output or "", result.provenance)
+        run.answers[node.node_id] = (output, provenance)
         return "done", None
 
     async def _criteria(
@@ -503,12 +552,16 @@ class Orchestrator:
             return f"criterion_not_available: {name_of(critics[0])}; a critic arrives with Phase 3"
         return None
 
-    async def _gated(self, node: Any, scope: ToolScope, plan: PlanVersion, result: Any) -> str | None:
+    async def _gated(
+        self, run: _Run, node: Any, scope: ToolScope, plan: PlanVersion, result: Any, role: AgentSpec,
+        lease: Any, labels: list[ContentProvenance],
+    ) -> tuple[str | None, str, ContentProvenance, Any]:
         """FR-102: the gate. The node's claims -- the active claims of the run's ledger with
         a contribution from this execution's child run, read once on a worker thread -- are
         judged by the rule signals, with no model call. The verification is recorded and
         GateEvaluated emitted either way; clean signals satisfy the node's critic criteria,
-        and fired ones need the critic, which arrives with M27 (DECISION-4f57d8c5)."""
+        and fired ones call the critic (FR-104). Returns why the node failed, or None, with
+        the node's answer and its label, and the artifact already holding it if there is one."""
         from datetime import datetime, timezone
 
         from .ledger import EvidenceLedger
@@ -525,10 +578,9 @@ class Orchestrator:
         if no_claims:
             fired.append("no_claims")
         outcome = "critic_required" if fired else "clear"
+        subject = NodeSubject(run_id=scope.run_id, plan_id=plan.plan_id, version=plan.version, node_id=node.node_id)
         row = EvidenceVerification(
-            verification_id=str(uuid.uuid4()), ledger_run_id=ledger_run_id,
-            subject=NodeSubject(run_id=scope.run_id, plan_id=plan.plan_id, version=plan.version,
-                                node_id=node.node_id),
+            verification_id=str(uuid.uuid4()), ledger_run_id=ledger_run_id, subject=subject,
             kind="gate", outcome=outcome, detail={"claims": judged, "fired": fired, "child_run": result.run_id},
             provenance=ContentProvenance.from_model(result.provenance, *(v.provenance for v in mine)),
             tenant_id=scope.tenant_id, project_id=scope.project_id, created_at=datetime.now(timezone.utc),
@@ -540,9 +592,137 @@ class Orchestrator:
              "verification": row.uri},
             task_id=node.node_id,
         )
-        if fired:
-            return f"criterion_not_available: critic; the critic arrives with M27 (signals: {', '.join(fired)})"
-        return None
+        if not fired:
+            return None, result.output or "", result.provenance, None
+        return await self._criticised(run, node, scope, plan, result, role, lease, labels, mine, judged, fired,
+                                      subject, ledger_run_id)
+
+    async def _criticised(
+        self, run: _Run, node: Any, scope: ToolScope, plan: PlanVersion, result: Any, role: AgentSpec,
+        lease: Any, labels: list[ContentProvenance], mine: list[Any], judged: list[dict[str, Any]],
+        fired: list[str], subject: NodeSubject, ledger_run_id: str,
+    ) -> tuple[str | None, str, ContentProvenance, Any]:
+        """FR-104, FR-105: the critic, once for this node execution, and what its verdict
+        decides. Nothing it writes is cleaner than what it read (NFR-28): its result's label
+        joins the node's labels whatever the verdict, a corrected answer carries the taint
+        of both, and a correction is a supersession raised over the sources it cites."""
+        from datetime import datetime, timezone
+
+        from .ledger import MAX_STATEMENT, ClaimRefused, NewContribution
+
+        gate, runner = self._gate, scope._runner
+        answer = result.output or ""
+        unchanged = (answer, result.provenance, None)
+        # The node's reservation pays for its critic, and must be able to pay for a call.
+        if not lease.may_call():
+            return ("budget_exceeded", *unchanged)
+        # What the critic is briefed with, stored first: the answer, the claims as read
+        # with the signals that fired, and every source version those claims cite.
+        artifacts = scope.artifacts
+        version_ids = list(dict.fromkeys(i for v in mine for i in (*v.supporting, *v.contradicting)))
+        source_uris = [f"{_SOURCE_URN}{i}" for i in version_ids]
+        rendering = {
+            "node": node.node_id, "signals": fired,
+            "claims": [{"claim": v.claim.uri, "statement": v.claim.statement,
+                        "supporting": [f"{_SOURCE_URN}{i}" for i in v.supporting],
+                        "contradicting": [f"{_SOURCE_URN}{i}" for i in v.contradicting],
+                        "contributions": [{"agent": c.agent_id, "confidence": c.confidence} for c in v.contributions],
+                        "fired": j["fired"]} for v, j in zip(mine, judged)],
+        }
+        rendered = json.dumps(rendering, ensure_ascii=False, indent=1)
+        answer_ref = await artifacts.put(answer.encode("utf-8"), mime_type="text/plain", provenance=result.provenance,
+                                         created_by_agent=role.id)
+        rendering_ref = await artifacts.put(
+            rendered.encode("utf-8"), mime_type="application/json", created_by_agent="gate",
+            provenance=ContentProvenance.from_model(result.provenance, *(v.provenance for v in mine)))
+        evidence = runner._evidence_store()
+        sources = [await scope._control.store(evidence.get, scope.tenant_id, scope.project_id, i) for i in version_ids]
+        input_refs = (answer_ref.artifact_id, rendering_ref.artifact_id, *(s.artifact_id for s in sources))
+        size = len(answer) + len(rendered)
+        for source in sources:
+            size += len((await artifacts.get(source.artifact_id)).decode("utf-8", errors="replace"))
+        if size > gate.max_briefing_chars:
+            return ("critic_failed: briefing_too_large", *unchanged)
+        descriptions = [c.description for c in node.acceptance_criteria if c.kind == "critic"] or [_GATE_ALL_QUESTION]
+        try:
+            critic = await run.pool.spawn(
+                parent=ToolScope(run_id=scope.run_id, tenant_id=scope.tenant_id, project_id=scope.project_id,
+                                 ledger_run_id=getattr(scope, "ledger_run_id", None)),
+                briefing=Briefing(
+                    objective=_CRITIC_INSTRUCTIONS + "\n" + "\n".join(f"- {d}" for d in descriptions),
+                    assigned_role="critic", input_refs=input_refs,
+                    expected_output_schema=_verdict_schema([v.claim.uri for v in mine], source_uris, MAX_STATEMENT),
+                ),
+                agent=gate.critic, lease=lease, depth=1, node_id=f"{node.node_id}{_CRITIC_SUFFIX}",
+            )
+        except MaxDepthExceeded as exc:
+            return (f"critic_failed: spawn_refused: {describe_exception(exc)}", *unchanged)
+        # Whatever the critic said reaches the orchestrator under the critic's label.
+        labels.append(critic.provenance)
+        if critic.run_id:
+            run.children.add(critic.run_id)
+        if critic.status is not RunStatus.COMPLETED:
+            if critic.error == "budget_exceeded":
+                return ("budget_exceeded", *unchanged)
+            return (f"critic_failed: {critic.error or critic.status.value}", *unchanged)
+        verdict = json.loads(critic.output or "{}")
+        kind, reason = verdict["verdict"], verdict["reason"]
+        applied: list[dict[str, str]] = []
+        refused: list[dict[str, str]] = []
+        problem: str | None = None
+        if kind == "corrected":
+            corrected = verdict["corrected_answer"]
+            schema = _thawed(node.expected_output_schema) if node.expected_output_schema is not None else None
+            wrong = None if schema is None else schema_problem(corrected, schema)
+            if wrong is not None:
+                refused.append({"claim": "", "why": f"output_schema: {wrong}"})
+                problem = f"critic_failed: correction refused: output_schema: {wrong}"
+            else:
+                store = runner._ledger_store()
+                for correction in verdict.get("corrections", []):
+                    old = correction["claim"]
+                    contribution = NewContribution(
+                        run_id=critic.run_id, node_id=f"{node.node_id}{_CRITIC_SUFFIX}", agent_id=gate.critic.id,
+                        supporting=tuple(u[len(_SOURCE_URN):] for u in correction.get("supporting", [])),
+                        contradicting=tuple(u[len(_SOURCE_URN):] for u in correction.get("contradicting", [])),
+                        confidence=None, provenance=critic.provenance, why=reason)
+                    try:
+                        claim, _ = await scope._control.store(
+                            store.supersede, tenant_id=scope.tenant_id, project_id=scope.project_id,
+                            ledger_run_id=ledger_run_id, old_claim_id=old[len(_CLAIM_URN):],
+                            statement=correction["statement"], contribution=contribution)
+                    except (ClaimRefused, ValueError) as exc:
+                        refused.append({"claim": old, "why": describe_exception(exc)})
+                        problem = f"critic_failed: correction refused: {describe_exception(exc)}"
+                        break
+                    applied.append({"claim": old, "by": claim.uri})
+                    await scope._control.store(
+                        scope._events.emit, EventType.CLAIM_SUPERSEDED,
+                        {"claim_uri": claim.uri, "supersedes_uri": old, "why": reason})
+        elif kind == "escalate":
+            problem = f"critic_escalated: {reason}"
+        # The verdict is recorded last, on the node and on each of its claims, naming what
+        # was applied and what was refused (FR-105).
+        detail = {"verdict": kind, "reason": reason, "critic_run": critic.run_id, "applied": applied,
+                  "refused": refused, "paraphrases": verdict.get("paraphrases", [])}
+        now = datetime.now(timezone.utc)
+        rows = [EvidenceVerification(
+            verification_id=str(uuid.uuid4()), ledger_run_id=ledger_run_id, subject=judged_subject,
+            kind="critic", outcome=kind, detail=detail, provenance=critic.provenance,
+            tenant_id=scope.tenant_id, project_id=scope.project_id, created_at=now,
+        ) for judged_subject in [subject, *(v.claim.uri for v in mine)]]
+        await scope._control.store(runner._ledger_store().append_verifications, rows)
+        await scope._control.store(
+            scope._events.emit, EventType.CRITIC_VERDICT,
+            {"plan_id": plan.plan_id, "version": plan.version, "critic_run": critic.run_id, "verdict": kind,
+             "superseded": [a["claim"] for a in applied], "verification": rows[0].uri},
+            task_id=node.node_id,
+        )
+        if problem is not None:
+            return (problem, *unchanged)
+        if kind == "corrected":
+            return None, verdict["corrected_answer"], result.provenance.taking_in(critic.provenance), None
+        return None, answer, result.provenance, answer_ref
 
     async def _check(
         self, run: _Run, criterion: Any, node: Any, output: str | None, scope: ToolScope, role: AgentSpec,
