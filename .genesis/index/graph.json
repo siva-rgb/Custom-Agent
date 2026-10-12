@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "project": "agent-sdk",
-  "revision": "c35a3192a9ba957abe4ad3de99e9ef272dfae9b7",
-  "sourceHash": "79357bf4e71933aaea0448dc290cddb318f55ae7a9c0c4e54b522e12722537ee",
+  "revision": "eb69b1dc67b0585cf6872d91508543c464b3a234",
+  "sourceHash": "5cadfa6fadcacb870498998784572c1056b06e7a6a67a0345d960f4dcbcbd153",
   "provenance": {
     "tool": "genesis-graphizer",
     "method": "static-analysis",
@@ -202,7 +202,7 @@
         "extractor": "filesystem",
         "source": "agentsdk/gate.py"
       },
-      "contentHash": "d9369441035d3e0976812681eec8d09022e23c3482601959c2394ecc194a66c3"
+      "contentHash": "b8fa640cf1d884c74ac3437427bc820f61e62a51f206843cd744adbfd35600b6"
     },
     {
       "id": "file:agentsdk/handle.py",
@@ -1167,6 +1167,19 @@
       "contentHash": "c51bc23f7a2917bf6ea5bcb781094de9c89524a845a3a57e01b30ceb20953443"
     },
     {
+      "id": "file:tests/test_gate_caveats.py",
+      "type": "file",
+      "label": "tests/test_gate_caveats.py",
+      "path": "tests/test_gate_caveats.py",
+      "language": "python",
+      "confidence": 1,
+      "provenance": {
+        "extractor": "filesystem",
+        "source": "tests/test_gate_caveats.py"
+      },
+      "contentHash": "c22e3525af930dcc04f1af1fb071583eeb684b81225d0111a991018c7808ca9a"
+    },
+    {
       "id": "file:tests/test_golden_eval.py",
       "type": "file",
       "label": "tests/test_golden_eval.py",
@@ -1815,7 +1828,7 @@
       "confidence": 1,
       "provenance": {
         "extractor": "standard-library",
-        "source": "agentsdk/plan.py"
+        "source": "tests/test_gate_caveats.py"
       },
       "contentHash": "fa62f955e84d39b6e94f9a190ea0fd968b6df9468ca9183b928ff42a65308440"
     },
@@ -35058,6 +35071,454 @@
         "source": "tests/test_gate_carried.py"
       },
       "contentHash": "5cb9260520309203d878e9967eb629494aa491b409b36ffe0ab99ae745f66bb5"
+    },
+    {
+      "id": "symbol:tests/test_gate_caveats.py#class:Pages",
+      "type": "symbol",
+      "name": "Pages",
+      "qualifiedName": "Pages",
+      "kind": "class",
+      "line": 73,
+      "label": "Pages",
+      "path": "tests/test_gate_caveats.py",
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_gate_caveats.py"
+      },
+      "contentHash": "d75d2162b1c4c5a849eb15441b4b8f3c680dbda67a9cd1265a7dadadd1763ab9"
+    },
+    {
+      "id": "symbol:tests/test_gate_caveats.py#class:Planner",
+      "type": "symbol",
+      "name": "Planner",
+      "qualifiedName": "Planner",
+      "kind": "class",
+      "line": 63,
+      "label": "Planner",
+      "path": "tests/test_gate_caveats.py",
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_gate_caveats.py"
+      },
+      "contentHash": "f0614f60bbae8fe730394a49a0200208112c2a53d7af479c25f7eb9bca0f3dcb"
+    },
+    {
+      "id": "symbol:tests/test_gate_caveats.py#class:Scripted",
+      "type": "symbol",
+      "name": "Scripted",
+      "qualifiedName": "Scripted",
+      "kind": "class",
+      "line": 51,
+      "label": "Scripted",
+      "path": "tests/test_gate_caveats.py",
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_gate_caveats.py"
+      },
+      "contentHash": "6fc66a706f371bc23c886a497c55fc879428f39236a30bc7ab6412df745e5410"
+    },
+    {
+      "id": "symbol:tests/test_gate_caveats.py#function:_claim_in_a_ledger",
+      "type": "symbol",
+      "name": "_claim_in_a_ledger",
+      "qualifiedName": "_claim_in_a_ledger",
+      "kind": "function",
+      "line": 231,
+      "label": "_claim_in_a_ledger",
+      "path": "tests/test_gate_caveats.py",
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_gate_caveats.py"
+      },
+      "contentHash": "7f3f68f5ad274664bfeb348fcf9054896182a6fa50934742c4f036da2632e55f"
+    },
+    {
+      "id": "symbol:tests/test_gate_caveats.py#function:_row",
+      "type": "symbol",
+      "name": "_row",
+      "qualifiedName": "_row",
+      "kind": "function",
+      "line": 240,
+      "label": "_row",
+      "path": "tests/test_gate_caveats.py",
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_gate_caveats.py"
+      },
+      "contentHash": "1257aef074516a41f7c026823e15510f632dbeaa64a3007823ae2d32f0b09291"
+    },
+    {
+      "id": "symbol:tests/test_gate_caveats.py#function:_scope_a_tool_receives",
+      "type": "symbol",
+      "name": "_scope_a_tool_receives",
+      "qualifiedName": "_scope_a_tool_receives",
+      "kind": "function",
+      "line": 148,
+      "label": "_scope_a_tool_receives",
+      "path": "tests/test_gate_caveats.py",
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_gate_caveats.py"
+      },
+      "contentHash": "150c4039871d2ebc885aeaeac717e5b858699437edd7e09b740c199591405301"
+    },
+    {
+      "id": "symbol:tests/test_gate_caveats.py#function:_scope_a_tool_receives.see_scope",
+      "type": "symbol",
+      "name": "see_scope",
+      "qualifiedName": "_scope_a_tool_receives.see_scope",
+      "kind": "function",
+      "line": 151,
+      "label": "_scope_a_tool_receives.see_scope",
+      "path": "tests/test_gate_caveats.py",
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_gate_caveats.py"
+      },
+      "contentHash": "8d8e8575560bc394b2230e0a594829ef54bb4d031a9b45be83982127869a2b05"
+    },
+    {
+      "id": "symbol:tests/test_gate_caveats.py#function:_view",
+      "type": "symbol",
+      "name": "_view",
+      "qualifiedName": "_view",
+      "kind": "function",
+      "line": 303,
+      "label": "_view",
+      "path": "tests/test_gate_caveats.py",
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_gate_caveats.py"
+      },
+      "contentHash": "1a140ec0fba9df6c56872b0aa0f0b1ef338851943562abdfc3addcc6408da6ad"
+    },
+    {
+      "id": "symbol:tests/test_gate_caveats.py#function:exposures",
+      "type": "symbol",
+      "name": "exposures",
+      "qualifiedName": "exposures",
+      "kind": "function",
+      "line": 133,
+      "label": "exposures",
+      "path": "tests/test_gate_caveats.py",
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_gate_caveats.py"
+      },
+      "contentHash": "ad769ff522c3a8c3118c2b967c7e115017648533f97efc9e32c5995ac128f1d3"
+    },
+    {
+      "id": "symbol:tests/test_gate_caveats.py#function:fetch",
+      "type": "symbol",
+      "name": "fetch",
+      "qualifiedName": "fetch",
+      "kind": "function",
+      "line": 94,
+      "label": "fetch",
+      "path": "tests/test_gate_caveats.py",
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_gate_caveats.py"
+      },
+      "contentHash": "8a0f155fa3ae2623b88fe4899ca8dcc366ca5389484a36edbbb3ce5ddfb20a32"
+    },
+    {
+      "id": "symbol:tests/test_gate_caveats.py#function:fetch.resolve",
+      "type": "symbol",
+      "name": "resolve",
+      "qualifiedName": "fetch.resolve",
+      "kind": "function",
+      "line": 95,
+      "label": "fetch.resolve",
+      "path": "tests/test_gate_caveats.py",
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_gate_caveats.py"
+      },
+      "contentHash": "b2e5b94450b9f5c8245f71d3aa33f232d6495a2de998454b78f19dd266396625"
+    },
+    {
+      "id": "symbol:tests/test_gate_caveats.py#function:Pages.__aenter__",
+      "type": "symbol",
+      "name": "__aenter__",
+      "qualifiedName": "Pages.__aenter__",
+      "kind": "function",
+      "line": 74,
+      "label": "Pages.__aenter__",
+      "path": "tests/test_gate_caveats.py",
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_gate_caveats.py"
+      },
+      "contentHash": "2c57b36697e84828c879542e9d94c2e6df710f9dcaee7746b0729af0b84cb896"
+    },
+    {
+      "id": "symbol:tests/test_gate_caveats.py#function:Pages.__aexit__",
+      "type": "symbol",
+      "name": "__aexit__",
+      "qualifiedName": "Pages.__aexit__",
+      "kind": "function",
+      "line": 79,
+      "label": "Pages.__aexit__",
+      "path": "tests/test_gate_caveats.py",
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_gate_caveats.py"
+      },
+      "contentHash": "47393198d064f37d68e89f764f11ce1bf18a8bcd2272651d29e7e4ff5c183be9"
+    },
+    {
+      "id": "symbol:tests/test_gate_caveats.py#function:Pages._handle",
+      "type": "symbol",
+      "name": "_handle",
+      "qualifiedName": "Pages._handle",
+      "kind": "function",
+      "line": 83,
+      "label": "Pages._handle",
+      "path": "tests/test_gate_caveats.py",
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_gate_caveats.py"
+      },
+      "contentHash": "815d9f6f498030fcaee4ed73ddb0d789091ef44aecde0d5bff78b345dc64503b"
+    },
+    {
+      "id": "symbol:tests/test_gate_caveats.py#function:Planner.__init__",
+      "type": "symbol",
+      "name": "__init__",
+      "qualifiedName": "Planner.__init__",
+      "kind": "function",
+      "line": 64,
+      "label": "Planner.__init__",
+      "path": "tests/test_gate_caveats.py",
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_gate_caveats.py"
+      },
+      "contentHash": "eacba44d60a67abf538f81a364cfa6a9e72a67c9429f513ed7f9b10df3f2e9bd"
+    },
+    {
+      "id": "symbol:tests/test_gate_caveats.py#function:Planner.send",
+      "type": "symbol",
+      "name": "send",
+      "qualifiedName": "Planner.send",
+      "kind": "function",
+      "line": 67,
+      "label": "Planner.send",
+      "path": "tests/test_gate_caveats.py",
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_gate_caveats.py"
+      },
+      "contentHash": "7dab4c8a218ab8d739071276ac852cc84f41c72fab11dfc2c8916c0e75765061"
+    },
+    {
+      "id": "symbol:tests/test_gate_caveats.py#function:remove_what_the_test_wrote",
+      "type": "symbol",
+      "name": "remove_what_the_test_wrote",
+      "qualifiedName": "remove_what_the_test_wrote",
+      "kind": "function",
+      "line": 108,
+      "label": "remove_what_the_test_wrote",
+      "path": "tests/test_gate_caveats.py",
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_gate_caveats.py"
+      },
+      "contentHash": "7fea9c6392333222f07d3a8074b41616c8d84a1842785815354b75947854fed5"
+    },
+    {
+      "id": "symbol:tests/test_gate_caveats.py#function:respond",
+      "type": "symbol",
+      "name": "respond",
+      "qualifiedName": "respond",
+      "kind": "function",
+      "line": 46,
+      "label": "respond",
+      "path": "tests/test_gate_caveats.py",
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_gate_caveats.py"
+      },
+      "contentHash": "d55fa1c2f6e0631d70681cea43b7e678deb75904f9b6ee69382a8abb83846035"
+    },
+    {
+      "id": "symbol:tests/test_gate_caveats.py#function:Scripted.send",
+      "type": "symbol",
+      "name": "send",
+      "qualifiedName": "Scripted.send",
+      "kind": "function",
+      "line": 54,
+      "label": "Scripted.send",
+      "path": "tests/test_gate_caveats.py",
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_gate_caveats.py"
+      },
+      "contentHash": "1cfca00bf586c444f9ff8a556c6c9d8f41559808a68c4e05d5226a14860824d1"
+    },
+    {
+      "id": "symbol:tests/test_gate_caveats.py#function:test_a_claim_only_a_critic_vouched_for_fires_low_confidence",
+      "type": "symbol",
+      "name": "test_a_claim_only_a_critic_vouched_for_fires_low_confidence",
+      "qualifiedName": "test_a_claim_only_a_critic_vouched_for_fires_low_confidence",
+      "kind": "function",
+      "line": 314,
+      "label": "test_a_claim_only_a_critic_vouched_for_fires_low_confidence",
+      "path": "tests/test_gate_caveats.py",
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_gate_caveats.py"
+      },
+      "contentHash": "4bfba0eb12f3989b15d8205fa0c3f2464146459bab579d1b7296cdda09f48a79"
+    },
+    {
+      "id": "symbol:tests/test_gate_caveats.py#function:test_every_tool_the_sdk_ships_runs_without_calling_record_validation",
+      "type": "symbol",
+      "name": "test_every_tool_the_sdk_ships_runs_without_calling_record_validation",
+      "qualifiedName": "test_every_tool_the_sdk_ships_runs_without_calling_record_validation",
+      "kind": "function",
+      "line": 182,
+      "label": "test_every_tool_the_sdk_ships_runs_without_calling_record_validation",
+      "path": "tests/test_gate_caveats.py",
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_gate_caveats.py"
+      },
+      "contentHash": "e6045073d92dae2238331bdf571b5f77ac64f254bd005654cf0104f1064a1836"
+    },
+    {
+      "id": "symbol:tests/test_gate_caveats.py#function:test_every_tool_the_sdk_ships_runs_without_calling_record_validation.watched",
+      "type": "symbol",
+      "name": "watched",
+      "qualifiedName": "test_every_tool_the_sdk_ships_runs_without_calling_record_validation.watched",
+      "kind": "function",
+      "line": 186,
+      "label": "test_every_tool_the_sdk_ships_runs_without_calling_record_validation.watched",
+      "path": "tests/test_gate_caveats.py",
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_gate_caveats.py"
+      },
+      "contentHash": "31c60e2b0b1c690b8f047393f7abdad0f137edc8d60c14ca52f9f5bf0ade34aa"
+    },
+    {
+      "id": "symbol:tests/test_gate_caveats.py#function:test_migration_0013_applies_once_and_every_recorded_checksum_matches",
+      "type": "symbol",
+      "name": "test_migration_0013_applies_once_and_every_recorded_checksum_matches",
+      "qualifiedName": "test_migration_0013_applies_once_and_every_recorded_checksum_matches",
+      "kind": "function",
+      "line": 261,
+      "label": "test_migration_0013_applies_once_and_every_recorded_checksum_matches",
+      "path": "tests/test_gate_caveats.py",
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_gate_caveats.py"
+      },
+      "contentHash": "a6742697c29ae7ce8eefeba1b7c3fea8f32a085ee7d79a7fe53c428c333a89bb"
+    },
+    {
+      "id": "symbol:tests/test_gate_caveats.py#function:test_no_field_of_a_tools_scope_but_runner_exposes_the_runner_or_a_verification_writer",
+      "type": "symbol",
+      "name": "test_no_field_of_a_tools_scope_but_runner_exposes_the_runner_or_a_verification_writer",
+      "qualifiedName": "test_no_field_of_a_tools_scope_but_runner_exposes_the_runner_or_a_verification_writer",
+      "kind": "function",
+      "line": 162,
+      "label": "test_no_field_of_a_tools_scope_but_runner_exposes_the_runner_or_a_verification_writer",
+      "path": "tests/test_gate_caveats.py",
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_gate_caveats.py"
+      },
+      "contentHash": "baacf0af81a9623bbfc6993f172cb9a8c7b8c5eac0f2210f4e1fa27ec33c2766"
+    },
+    {
+      "id": "symbol:tests/test_gate_caveats.py#function:test_no_module_the_sdk_ships_calls_record_validation_but_the_one_defining_it",
+      "type": "symbol",
+      "name": "test_no_module_the_sdk_ships_calls_record_validation_but_the_one_defining_it",
+      "qualifiedName": "test_no_module_the_sdk_ships_calls_record_validation_but_the_one_defining_it",
+      "kind": "function",
+      "line": 176,
+      "label": "test_no_module_the_sdk_ships_calls_record_validation_but_the_one_defining_it",
+      "path": "tests/test_gate_caveats.py",
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_gate_caveats.py"
+      },
+      "contentHash": "f9041427621012e432d3d9597a9e458204f2e7f6634f8090e81aa7eb47d8be7d"
+    },
+    {
+      "id": "symbol:tests/test_gate_caveats.py#function:test_the_readme_states_the_criteria_order_and_the_custom_tool_limit",
+      "type": "symbol",
+      "name": "test_the_readme_states_the_criteria_order_and_the_custom_tool_limit",
+      "qualifiedName": "test_the_readme_states_the_criteria_order_and_the_custom_tool_limit",
+      "kind": "function",
+      "line": 297,
+      "label": "test_the_readme_states_the_criteria_order_and_the_custom_tool_limit",
+      "path": "tests/test_gate_caveats.py",
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_gate_caveats.py"
+      },
+      "contentHash": "bf16f3581235f5bfcb54fcd8627b6d9372794acd9298dcbd45f60c98af084156"
+    },
+    {
+      "id": "symbol:tests/test_gate_caveats.py#function:test_the_walk_fails_when_another_field_holds_one",
+      "type": "symbol",
+      "name": "test_the_walk_fails_when_another_field_holds_one",
+      "qualifiedName": "test_the_walk_fails_when_another_field_holds_one",
+      "kind": "function",
+      "line": 168,
+      "label": "test_the_walk_fails_when_another_field_holds_one",
+      "path": "tests/test_gate_caveats.py",
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_gate_caveats.py"
+      },
+      "contentHash": "249ed01be51e5241254f3e3a9d0bea6b70d907cb2cd55b82343cb841aa138fc8"
+    },
+    {
+      "id": "symbol:tests/test_gate_caveats.py#function:test_with_the_stores_check_bypassed_the_database_refuses_a_verification_of_another_ledgers_claim",
+      "type": "symbol",
+      "name": "test_with_the_stores_check_bypassed_the_database_refuses_a_verification_of_another_ledgers_claim",
+      "qualifiedName": "test_with_the_stores_check_bypassed_the_database_refuses_a_verification_of_another_ledgers_claim",
+      "kind": "function",
+      "line": 247,
+      "label": "test_with_the_stores_check_bypassed_the_database_refuses_a_verification_of_another_ledgers_claim",
+      "path": "tests/test_gate_caveats.py",
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_gate_caveats.py"
+      },
+      "contentHash": "1e7645c47e82857fbe0eae7d2fa3de55a6cdb54b46c313c7186e324251ef744f"
     },
     {
       "id": "symbol:tests/test_golden_eval.py#class:LiveRun",
@@ -84144,6 +84605,398 @@
       "contentHash": "eb30c1eebe1a6a29104a1de9731236b0c9d5d47e1b5d7a8e7abf6a93941d527c"
     },
     {
+      "id": "defines:file:tests/test_gate_caveats.py->symbol:tests/test_gate_caveats.py#class:Pages:",
+      "type": "defines",
+      "source": "file:tests/test_gate_caveats.py",
+      "target": "symbol:tests/test_gate_caveats.py#class:Pages",
+      "line": 73,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_gate_caveats.py"
+      },
+      "contentHash": "b8c0d3816bbf3fdcfe32e78557f38759a7e44029b6574193540976d0d44fd606"
+    },
+    {
+      "id": "defines:file:tests/test_gate_caveats.py->symbol:tests/test_gate_caveats.py#class:Planner:",
+      "type": "defines",
+      "source": "file:tests/test_gate_caveats.py",
+      "target": "symbol:tests/test_gate_caveats.py#class:Planner",
+      "line": 63,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_gate_caveats.py"
+      },
+      "contentHash": "928ab0df900f3fed2f63f5d13e9a12787b4b1a0afc55d52c673cbbc95943c565"
+    },
+    {
+      "id": "defines:file:tests/test_gate_caveats.py->symbol:tests/test_gate_caveats.py#class:Scripted:",
+      "type": "defines",
+      "source": "file:tests/test_gate_caveats.py",
+      "target": "symbol:tests/test_gate_caveats.py#class:Scripted",
+      "line": 51,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_gate_caveats.py"
+      },
+      "contentHash": "780f5ecc1a41337df1f1edc3ca46774e85a2cdd3359584257fb573d49d4a252a"
+    },
+    {
+      "id": "defines:file:tests/test_gate_caveats.py->symbol:tests/test_gate_caveats.py#function:_claim_in_a_ledger:",
+      "type": "defines",
+      "source": "file:tests/test_gate_caveats.py",
+      "target": "symbol:tests/test_gate_caveats.py#function:_claim_in_a_ledger",
+      "line": 231,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_gate_caveats.py"
+      },
+      "contentHash": "c942588b1ad7933cd05aa8f866f1dd0ce0f382df314e09cca0fca4cc5c03035c"
+    },
+    {
+      "id": "defines:file:tests/test_gate_caveats.py->symbol:tests/test_gate_caveats.py#function:_row:",
+      "type": "defines",
+      "source": "file:tests/test_gate_caveats.py",
+      "target": "symbol:tests/test_gate_caveats.py#function:_row",
+      "line": 240,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_gate_caveats.py"
+      },
+      "contentHash": "4ecd0f5bd41f889770286fb8cdb29b0ea7ab955e25b92d3d7433aee4158ad03d"
+    },
+    {
+      "id": "defines:file:tests/test_gate_caveats.py->symbol:tests/test_gate_caveats.py#function:_scope_a_tool_receives:",
+      "type": "defines",
+      "source": "file:tests/test_gate_caveats.py",
+      "target": "symbol:tests/test_gate_caveats.py#function:_scope_a_tool_receives",
+      "line": 148,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_gate_caveats.py"
+      },
+      "contentHash": "c052d89e5e704f9eb4e6c19b6d4574131214efa27e437dc840dee1c1e29426f5"
+    },
+    {
+      "id": "defines:file:tests/test_gate_caveats.py->symbol:tests/test_gate_caveats.py#function:_scope_a_tool_receives.see_scope:",
+      "type": "defines",
+      "source": "file:tests/test_gate_caveats.py",
+      "target": "symbol:tests/test_gate_caveats.py#function:_scope_a_tool_receives.see_scope",
+      "line": 151,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_gate_caveats.py"
+      },
+      "contentHash": "ce8a57a7cc70a130abdcbce4a66a532c4b26cf71955a2061f846e62437a24faf"
+    },
+    {
+      "id": "defines:file:tests/test_gate_caveats.py->symbol:tests/test_gate_caveats.py#function:_view:",
+      "type": "defines",
+      "source": "file:tests/test_gate_caveats.py",
+      "target": "symbol:tests/test_gate_caveats.py#function:_view",
+      "line": 303,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_gate_caveats.py"
+      },
+      "contentHash": "8a535a4011573bc4b437c0748648568b1ede0c44cca446ac824e7c2df5317f69"
+    },
+    {
+      "id": "defines:file:tests/test_gate_caveats.py->symbol:tests/test_gate_caveats.py#function:exposures:",
+      "type": "defines",
+      "source": "file:tests/test_gate_caveats.py",
+      "target": "symbol:tests/test_gate_caveats.py#function:exposures",
+      "line": 133,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_gate_caveats.py"
+      },
+      "contentHash": "8038a1a24e4f7bf94642df5d87ad6da2abf5fbf78fe1337506e052870703a47a"
+    },
+    {
+      "id": "defines:file:tests/test_gate_caveats.py->symbol:tests/test_gate_caveats.py#function:fetch:",
+      "type": "defines",
+      "source": "file:tests/test_gate_caveats.py",
+      "target": "symbol:tests/test_gate_caveats.py#function:fetch",
+      "line": 94,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_gate_caveats.py"
+      },
+      "contentHash": "69f9b96a1552b23d09ebc54abf0c789491f8356171851fed61b359bfe93c524a"
+    },
+    {
+      "id": "defines:file:tests/test_gate_caveats.py->symbol:tests/test_gate_caveats.py#function:fetch.resolve:",
+      "type": "defines",
+      "source": "file:tests/test_gate_caveats.py",
+      "target": "symbol:tests/test_gate_caveats.py#function:fetch.resolve",
+      "line": 95,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_gate_caveats.py"
+      },
+      "contentHash": "1dffa059abbbcf6bffd2e15da9c3008edc8e72ef3beb4d01200106c8c9b2cd25"
+    },
+    {
+      "id": "defines:file:tests/test_gate_caveats.py->symbol:tests/test_gate_caveats.py#function:Pages.__aenter__:",
+      "type": "defines",
+      "source": "file:tests/test_gate_caveats.py",
+      "target": "symbol:tests/test_gate_caveats.py#function:Pages.__aenter__",
+      "line": 74,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_gate_caveats.py"
+      },
+      "contentHash": "1f9a205540cceb2a2a76f670429cbf4cf4732e31ab1d6ac7350d1e46711c20f5"
+    },
+    {
+      "id": "defines:file:tests/test_gate_caveats.py->symbol:tests/test_gate_caveats.py#function:Pages.__aexit__:",
+      "type": "defines",
+      "source": "file:tests/test_gate_caveats.py",
+      "target": "symbol:tests/test_gate_caveats.py#function:Pages.__aexit__",
+      "line": 79,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_gate_caveats.py"
+      },
+      "contentHash": "8fb28477ce2e2abaad321fd565bff24a1af4ee59561dc76cc57a521e32f46078"
+    },
+    {
+      "id": "defines:file:tests/test_gate_caveats.py->symbol:tests/test_gate_caveats.py#function:Pages._handle:",
+      "type": "defines",
+      "source": "file:tests/test_gate_caveats.py",
+      "target": "symbol:tests/test_gate_caveats.py#function:Pages._handle",
+      "line": 83,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_gate_caveats.py"
+      },
+      "contentHash": "3bc1f06dcd0e693177fea0d80a48e3e65a165f8845104bef97db90b41f9b9a7d"
+    },
+    {
+      "id": "defines:file:tests/test_gate_caveats.py->symbol:tests/test_gate_caveats.py#function:Planner.__init__:",
+      "type": "defines",
+      "source": "file:tests/test_gate_caveats.py",
+      "target": "symbol:tests/test_gate_caveats.py#function:Planner.__init__",
+      "line": 64,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_gate_caveats.py"
+      },
+      "contentHash": "1bd2f4e918a692426d8b5e9bc2a65a9290d5222f272217c40fef4deb3620af44"
+    },
+    {
+      "id": "defines:file:tests/test_gate_caveats.py->symbol:tests/test_gate_caveats.py#function:Planner.send:",
+      "type": "defines",
+      "source": "file:tests/test_gate_caveats.py",
+      "target": "symbol:tests/test_gate_caveats.py#function:Planner.send",
+      "line": 67,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_gate_caveats.py"
+      },
+      "contentHash": "c67c22309f3ad9784ca3d04c809f296c8926ae666fed8a420d413757aa8a612c"
+    },
+    {
+      "id": "defines:file:tests/test_gate_caveats.py->symbol:tests/test_gate_caveats.py#function:remove_what_the_test_wrote:",
+      "type": "defines",
+      "source": "file:tests/test_gate_caveats.py",
+      "target": "symbol:tests/test_gate_caveats.py#function:remove_what_the_test_wrote",
+      "line": 108,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_gate_caveats.py"
+      },
+      "contentHash": "1266a280f55f9cddb935d145ec4e5895feaf35b1dcc3d2b917d2f3633e0be9a0"
+    },
+    {
+      "id": "defines:file:tests/test_gate_caveats.py->symbol:tests/test_gate_caveats.py#function:respond:",
+      "type": "defines",
+      "source": "file:tests/test_gate_caveats.py",
+      "target": "symbol:tests/test_gate_caveats.py#function:respond",
+      "line": 46,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_gate_caveats.py"
+      },
+      "contentHash": "a97534e693e68d972a4ddf8ae6cad79d362d41fe96b3e8aa2690e0b57cb2818f"
+    },
+    {
+      "id": "defines:file:tests/test_gate_caveats.py->symbol:tests/test_gate_caveats.py#function:Scripted.send:",
+      "type": "defines",
+      "source": "file:tests/test_gate_caveats.py",
+      "target": "symbol:tests/test_gate_caveats.py#function:Scripted.send",
+      "line": 54,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_gate_caveats.py"
+      },
+      "contentHash": "055d79a4a44ccea400201ee66c23dc08a5ed37c7682169cd1d66e3f04eb49183"
+    },
+    {
+      "id": "defines:file:tests/test_gate_caveats.py->symbol:tests/test_gate_caveats.py#function:test_a_claim_only_a_critic_vouched_for_fires_low_confidence:",
+      "type": "defines",
+      "source": "file:tests/test_gate_caveats.py",
+      "target": "symbol:tests/test_gate_caveats.py#function:test_a_claim_only_a_critic_vouched_for_fires_low_confidence",
+      "line": 314,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_gate_caveats.py"
+      },
+      "contentHash": "0a9f1ae88853ae4b57f57d9f9806ca27f1900f2b53661f459e864e8c48ee6e78"
+    },
+    {
+      "id": "defines:file:tests/test_gate_caveats.py->symbol:tests/test_gate_caveats.py#function:test_every_tool_the_sdk_ships_runs_without_calling_record_validation:",
+      "type": "defines",
+      "source": "file:tests/test_gate_caveats.py",
+      "target": "symbol:tests/test_gate_caveats.py#function:test_every_tool_the_sdk_ships_runs_without_calling_record_validation",
+      "line": 182,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_gate_caveats.py"
+      },
+      "contentHash": "5bd911b08605eb43c5eefd042c3293cd0971e3f26258b242049ebf2a9a47fbbf"
+    },
+    {
+      "id": "defines:file:tests/test_gate_caveats.py->symbol:tests/test_gate_caveats.py#function:test_every_tool_the_sdk_ships_runs_without_calling_record_validation.watched:",
+      "type": "defines",
+      "source": "file:tests/test_gate_caveats.py",
+      "target": "symbol:tests/test_gate_caveats.py#function:test_every_tool_the_sdk_ships_runs_without_calling_record_validation.watched",
+      "line": 186,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_gate_caveats.py"
+      },
+      "contentHash": "9e0810d20d77eaba7ec320584907763719411805e802dd7ebdb86828afd4e2e7"
+    },
+    {
+      "id": "defines:file:tests/test_gate_caveats.py->symbol:tests/test_gate_caveats.py#function:test_migration_0013_applies_once_and_every_recorded_checksum_matches:",
+      "type": "defines",
+      "source": "file:tests/test_gate_caveats.py",
+      "target": "symbol:tests/test_gate_caveats.py#function:test_migration_0013_applies_once_and_every_recorded_checksum_matches",
+      "line": 261,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_gate_caveats.py"
+      },
+      "contentHash": "ba4e83f085a1092db426af9e5dd9a52f9bfe8e3125c01aaac8f9fafaaf651947"
+    },
+    {
+      "id": "defines:file:tests/test_gate_caveats.py->symbol:tests/test_gate_caveats.py#function:test_no_field_of_a_tools_scope_but_runner_exposes_the_runner_or_a_verification_writer:",
+      "type": "defines",
+      "source": "file:tests/test_gate_caveats.py",
+      "target": "symbol:tests/test_gate_caveats.py#function:test_no_field_of_a_tools_scope_but_runner_exposes_the_runner_or_a_verification_writer",
+      "line": 162,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_gate_caveats.py"
+      },
+      "contentHash": "4d8f01722101d16bb3621dcf66c570d08dbdb077f80ac1ba16a6b0cbdbd9de34"
+    },
+    {
+      "id": "defines:file:tests/test_gate_caveats.py->symbol:tests/test_gate_caveats.py#function:test_no_module_the_sdk_ships_calls_record_validation_but_the_one_defining_it:",
+      "type": "defines",
+      "source": "file:tests/test_gate_caveats.py",
+      "target": "symbol:tests/test_gate_caveats.py#function:test_no_module_the_sdk_ships_calls_record_validation_but_the_one_defining_it",
+      "line": 176,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_gate_caveats.py"
+      },
+      "contentHash": "5220f686e301a01106af109fa3f27875183adb049e28bdf0cc98d84f84180f2a"
+    },
+    {
+      "id": "defines:file:tests/test_gate_caveats.py->symbol:tests/test_gate_caveats.py#function:test_the_readme_states_the_criteria_order_and_the_custom_tool_limit:",
+      "type": "defines",
+      "source": "file:tests/test_gate_caveats.py",
+      "target": "symbol:tests/test_gate_caveats.py#function:test_the_readme_states_the_criteria_order_and_the_custom_tool_limit",
+      "line": 297,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_gate_caveats.py"
+      },
+      "contentHash": "929da078168825dddc942d7a27eeb2cdd4fadb076a269e32a79d31440978b8cd"
+    },
+    {
+      "id": "defines:file:tests/test_gate_caveats.py->symbol:tests/test_gate_caveats.py#function:test_the_walk_fails_when_another_field_holds_one:",
+      "type": "defines",
+      "source": "file:tests/test_gate_caveats.py",
+      "target": "symbol:tests/test_gate_caveats.py#function:test_the_walk_fails_when_another_field_holds_one",
+      "line": 168,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_gate_caveats.py"
+      },
+      "contentHash": "ffc2209604e011ab5eccd26338f631d67be241240e8072d554c9764c6327c9ee"
+    },
+    {
+      "id": "defines:file:tests/test_gate_caveats.py->symbol:tests/test_gate_caveats.py#function:test_with_the_stores_check_bypassed_the_database_refuses_a_verification_of_another_ledgers_claim:",
+      "type": "defines",
+      "source": "file:tests/test_gate_caveats.py",
+      "target": "symbol:tests/test_gate_caveats.py#function:test_with_the_stores_check_bypassed_the_database_refuses_a_verification_of_another_ledgers_claim",
+      "line": 247,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-stdlib-ast",
+        "source": "tests/test_gate_caveats.py"
+      },
+      "contentHash": "7cc214f6fd1457281d3cde5d4731aca512b5b6e11dee78f093277e2b76a1d213"
+    },
+    {
       "id": "defines:file:tests/test_golden_eval.py->symbol:tests/test_golden_eval.py#class:LiveRun:",
       "type": "defines",
       "source": "file:tests/test_golden_eval.py",
@@ -118877,6 +119730,351 @@
         "source": "tests/test_gate_carried.py"
       },
       "contentHash": "c21bde978865c09ae599deebcd1ecdc22c2c3d5dca4567d17f26b0185f89bbf6"
+    },
+    {
+      "id": "imports:file:tests/test_gate_caveats.py->file:agentsdk/__init__.py:agentsdk",
+      "type": "imports",
+      "source": "file:tests/test_gate_caveats.py",
+      "target": "file:agentsdk/__init__.py",
+      "specifier": "agentsdk",
+      "line": 24,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-imports",
+        "source": "tests/test_gate_caveats.py"
+      },
+      "contentHash": "71be6e5c05a8ae6cde1b44554c6b6c973b0368cf01834e19c62f858a41ce4a2a"
+    },
+    {
+      "id": "imports:file:tests/test_gate_caveats.py->file:agentsdk/builtin_tools.py:agentsdk.builtin_tools",
+      "type": "imports",
+      "source": "file:tests/test_gate_caveats.py",
+      "target": "file:agentsdk/builtin_tools.py",
+      "specifier": "agentsdk.builtin_tools",
+      "line": 25,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-imports",
+        "source": "tests/test_gate_caveats.py"
+      },
+      "contentHash": "0d760fdb9e72767397b75a81c076f2e752b4c4a44570bdf2b4f956fb73940929"
+    },
+    {
+      "id": "imports:file:tests/test_gate_caveats.py->file:agentsdk/config.py:agentsdk.config",
+      "type": "imports",
+      "source": "file:tests/test_gate_caveats.py",
+      "target": "file:agentsdk/config.py",
+      "specifier": "agentsdk.config",
+      "line": 26,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-imports",
+        "source": "tests/test_gate_caveats.py"
+      },
+      "contentHash": "a8e6dc10e734163829f797a74e00b01b830a761496cd849da081350ffa174125"
+    },
+    {
+      "id": "imports:file:tests/test_gate_caveats.py->file:agentsdk/gate.py:agentsdk.gate",
+      "type": "imports",
+      "source": "file:tests/test_gate_caveats.py",
+      "target": "file:agentsdk/gate.py",
+      "specifier": "agentsdk.gate",
+      "line": 27,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-imports",
+        "source": "tests/test_gate_caveats.py"
+      },
+      "contentHash": "fc46ef648237a88a5633a0eddacae6d69eabeee3f9c4a3fcdd691031183641a7"
+    },
+    {
+      "id": "imports:file:tests/test_gate_caveats.py->file:agentsdk/ledger.py:agentsdk.ledger",
+      "type": "imports",
+      "source": "file:tests/test_gate_caveats.py",
+      "target": "file:agentsdk/ledger.py",
+      "specifier": "agentsdk.ledger",
+      "line": 28,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-imports",
+        "source": "tests/test_gate_caveats.py"
+      },
+      "contentHash": "7ace3d0da90b091f05abc044303e7a3ad530de929bb01ab782015272b95dbc5b"
+    },
+    {
+      "id": "imports:file:tests/test_gate_caveats.py->file:agentsdk/migrate.py:agentsdk.migrate",
+      "type": "imports",
+      "source": "file:tests/test_gate_caveats.py",
+      "target": "file:agentsdk/migrate.py",
+      "specifier": "agentsdk.migrate",
+      "line": 29,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-imports",
+        "source": "tests/test_gate_caveats.py"
+      },
+      "contentHash": "9eb7768e986af17cde626a96d8ab081fd164f8b952eb39e80ff351069db0913b"
+    },
+    {
+      "id": "imports:file:tests/test_gate_caveats.py->file:agentsdk/model.py:agentsdk.model",
+      "type": "imports",
+      "source": "file:tests/test_gate_caveats.py",
+      "target": "file:agentsdk/model.py",
+      "specifier": "agentsdk.model",
+      "line": 30,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-imports",
+        "source": "tests/test_gate_caveats.py"
+      },
+      "contentHash": "5ab2d3f5242a1d8982005a066488215b43e8e4c61f0a5ad8e0b9b151a0a60db6"
+    },
+    {
+      "id": "imports:file:tests/test_gate_caveats.py->file:agentsdk/orchestrator.py:agentsdk.orchestrator",
+      "type": "imports",
+      "source": "file:tests/test_gate_caveats.py",
+      "target": "file:agentsdk/orchestrator.py",
+      "specifier": "agentsdk.orchestrator",
+      "line": 31,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-imports",
+        "source": "tests/test_gate_caveats.py"
+      },
+      "contentHash": "49a77156cb05efa2382e2112be757fe15f5d59e876f34aed81e95236eca0d2ae"
+    },
+    {
+      "id": "imports:file:tests/test_gate_caveats.py->file:agentsdk/postgres.py:agentsdk.postgres",
+      "type": "imports",
+      "source": "file:tests/test_gate_caveats.py",
+      "target": "file:agentsdk/postgres.py",
+      "specifier": "agentsdk.postgres",
+      "line": 32,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-imports",
+        "source": "tests/test_gate_caveats.py"
+      },
+      "contentHash": "068404d815f34772fffff1e9c5ab1e2e9e8d9427a473fa7bc78d68c9b7059956"
+    },
+    {
+      "id": "imports:file:tests/test_gate_caveats.py->file:agentsdk/primitives.py:agentsdk.primitives",
+      "type": "imports",
+      "source": "file:tests/test_gate_caveats.py",
+      "target": "file:agentsdk/primitives.py",
+      "specifier": "agentsdk.primitives",
+      "line": 33,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-imports",
+        "source": "tests/test_gate_caveats.py"
+      },
+      "contentHash": "e7d9c42048627e6e63d83703541abdc901fe9e749f5295e47da2adc384fa39ec"
+    },
+    {
+      "id": "imports:file:tests/test_gate_caveats.py->file:agentsdk/scope.py:agentsdk.scope",
+      "type": "imports",
+      "source": "file:tests/test_gate_caveats.py",
+      "target": "file:agentsdk/scope.py",
+      "specifier": "agentsdk.scope",
+      "line": 34,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-imports",
+        "source": "tests/test_gate_caveats.py"
+      },
+      "contentHash": "a3fb8a46ac924beb8e5f7bca457178886945378c0a6a5ea868d26f75dbbc49bc"
+    },
+    {
+      "id": "imports:file:tests/test_gate_caveats.py->file:agentsdk/tools.py:agentsdk.tools",
+      "type": "imports",
+      "source": "file:tests/test_gate_caveats.py",
+      "target": "file:agentsdk/tools.py",
+      "specifier": "agentsdk.tools",
+      "line": 35,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-imports",
+        "source": "tests/test_gate_caveats.py"
+      },
+      "contentHash": "7a99dd1c7d13597001660ad422d891de4c93e3c29cbf3717482af27cca76a99c"
+    },
+    {
+      "id": "imports:file:tests/test_gate_caveats.py->package:pypi:psycopg:psycopg",
+      "type": "imports",
+      "source": "file:tests/test_gate_caveats.py",
+      "target": "package:pypi:psycopg",
+      "specifier": "psycopg",
+      "line": 20,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-imports",
+        "source": "tests/test_gate_caveats.py"
+      },
+      "contentHash": "a2ef392948a0f81e30663d8d36b0eee2491e2a802bf4fa80fc6ba99c654e9614"
+    },
+    {
+      "id": "imports:file:tests/test_gate_caveats.py->package:pypi:pytest:pytest",
+      "type": "imports",
+      "source": "file:tests/test_gate_caveats.py",
+      "target": "package:pypi:pytest",
+      "specifier": "pytest",
+      "line": 21,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-imports",
+        "source": "tests/test_gate_caveats.py"
+      },
+      "contentHash": "b2059eaf6074332a29b33ab87fe80a187930452a4c28400934f7bdef16026924"
+    },
+    {
+      "id": "imports:file:tests/test_gate_caveats.py->runtime:python:__future__:__future__",
+      "type": "imports",
+      "source": "file:tests/test_gate_caveats.py",
+      "target": "runtime:python:__future__",
+      "specifier": "__future__",
+      "line": 9,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-imports",
+        "source": "tests/test_gate_caveats.py"
+      },
+      "contentHash": "4a94bcc45680d8db73517e1ed7097fb94eeb99191c12f7cbf11fceb264448da9"
+    },
+    {
+      "id": "imports:file:tests/test_gate_caveats.py->runtime:python:asyncio:asyncio",
+      "type": "imports",
+      "source": "file:tests/test_gate_caveats.py",
+      "target": "runtime:python:asyncio",
+      "specifier": "asyncio",
+      "line": 11,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-imports",
+        "source": "tests/test_gate_caveats.py"
+      },
+      "contentHash": "0dc0ee5b94492e8db75e230b6237a32df388bf3edac9d40d5dc3f78daf8ff51d"
+    },
+    {
+      "id": "imports:file:tests/test_gate_caveats.py->runtime:python:copy:copy",
+      "type": "imports",
+      "source": "file:tests/test_gate_caveats.py",
+      "target": "runtime:python:copy",
+      "specifier": "copy",
+      "line": 12,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-imports",
+        "source": "tests/test_gate_caveats.py"
+      },
+      "contentHash": "8685589dcfc463c87e82db3c0be8a2113b31620953382c951a0c105dee1ac17b"
+    },
+    {
+      "id": "imports:file:tests/test_gate_caveats.py->runtime:python:dataclasses:dataclasses",
+      "type": "imports",
+      "source": "file:tests/test_gate_caveats.py",
+      "target": "runtime:python:dataclasses",
+      "specifier": "dataclasses",
+      "line": 13,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-imports",
+        "source": "tests/test_gate_caveats.py"
+      },
+      "contentHash": "9bc9f9f31d890965bce126399792a0228ccdb7b934655ec30d77f35a2a5b7f76"
+    },
+    {
+      "id": "imports:file:tests/test_gate_caveats.py->runtime:python:datetime:datetime",
+      "type": "imports",
+      "source": "file:tests/test_gate_caveats.py",
+      "target": "runtime:python:datetime",
+      "specifier": "datetime",
+      "line": 18,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-imports",
+        "source": "tests/test_gate_caveats.py"
+      },
+      "contentHash": "8ba323474f906d8a137bc65ed5caca5bdf1a2f02123e059cb56715a13a3988b0"
+    },
+    {
+      "id": "imports:file:tests/test_gate_caveats.py->runtime:python:json:json",
+      "type": "imports",
+      "source": "file:tests/test_gate_caveats.py",
+      "target": "runtime:python:json",
+      "specifier": "json",
+      "line": 14,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-imports",
+        "source": "tests/test_gate_caveats.py"
+      },
+      "contentHash": "30549f505fd82a520519131db3f81b52a6745f715c31d8de03e68541b40e5519"
+    },
+    {
+      "id": "imports:file:tests/test_gate_caveats.py->runtime:python:os:os",
+      "type": "imports",
+      "source": "file:tests/test_gate_caveats.py",
+      "target": "runtime:python:os",
+      "specifier": "os",
+      "line": 15,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-imports",
+        "source": "tests/test_gate_caveats.py"
+      },
+      "contentHash": "36e9251b1cc598e76a1c0b241842792fb4909b0f27819f5691a6a9e2ff80e8ee"
+    },
+    {
+      "id": "imports:file:tests/test_gate_caveats.py->runtime:python:pathlib:pathlib",
+      "type": "imports",
+      "source": "file:tests/test_gate_caveats.py",
+      "target": "runtime:python:pathlib",
+      "specifier": "pathlib",
+      "line": 16,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-imports",
+        "source": "tests/test_gate_caveats.py"
+      },
+      "contentHash": "1a24a36787b9d0b4fbec2fa0de6baf3cde3ddff1dd8b9a7b08df66db9601400f"
+    },
+    {
+      "id": "imports:file:tests/test_gate_caveats.py->runtime:python:uuid:uuid",
+      "type": "imports",
+      "source": "file:tests/test_gate_caveats.py",
+      "target": "runtime:python:uuid",
+      "specifier": "uuid",
+      "line": 17,
+      "resolved": true,
+      "confidence": 1,
+      "provenance": {
+        "extractor": "python-imports",
+        "source": "tests/test_gate_caveats.py"
+      },
+      "contentHash": "ad23182495b2e3ab9057e82fd0815f2ea0d48ebfa4d4f9f3818e64768a662080"
     },
     {
       "id": "imports:file:tests/test_golden_eval.py->file:agentsdk/__init__.py:agentsdk",

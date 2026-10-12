@@ -1,0 +1,22 @@
+{
+  "task": "M26a-gate-caveats",
+  "gate": "unit",
+  "command": ".venv\\Scripts\\python.exe -m pytest tests/test_gate_caveats.py -q",
+  "started_at": "2026-10-12T12:11:01.980Z",
+  "observed_at": "2026-10-12T12:11:04.845Z",
+  "exit_code": 0,
+  "signal": null,
+  "stdout": "........                                                                 [100%]\r\n8 passed in 2.01s\r\n",
+  "stderr": "",
+  "revision": {
+    "commit": "eb69b1dc67b0585cf6872d91508543c464b3a234",
+    "dirty": true
+  },
+  "source_hash": "22f32a7f4fbf77f2071ff93974e9e591dfd0e269bb1beb83af435f3780e69a60",
+  "environment": {
+    "node": "v20.10.0",
+    "platform": "win32",
+    "arch": "x64"
+  },
+  "hash": "725da96cf0a5d61f6f9ca155ebe7b0a0fd16c9464841b03990f75f0ac79b0938"
+}

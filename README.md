@@ -110,6 +110,8 @@ Stated plainly, because an SDK that overstates itself costs you a week:
 |---|---|
 | Within orchestration (plans run as DAGs of child runs, with deterministic acceptance criteria and replanning, since M19): the critic itself, so a gated node whose signals fire fails `criterion_not_available` (M26); loop nodes; and any behaviour for a node's `timeout` and `retry_policy`, which are stored but not acted on | Critic in M27; loops in Phase 5A; timeout and retry not yet scheduled |
 | The gate judges the claims a node's own child recorded; a run that child spawned itself is outside them (a node's child does not spawn today). A node gated only because the policy gates every node, and that recorded no claim, is cleared | Declared (M26) |
+| Every deterministic criterion of a node runs before a critic criterion is judged or refused, so with no critic configured a `tool_succeeds` criterion's side effects happen before the node fails `criterion_not_available` | Declared (M26a) |
+| No model can record an externally validated outcome: `Runner.record_validation` is in no tool registry and no tool the SDK ships calls it. A custom tool is first-party code in your process and reaches the Runner through its scope, as it reaches the ledger store, so it could call `record_validation`; in-process code is outside the threat model | Declared (M26a) |
 | Streaming of model tokens as they are generated (a run's events do stream, through `RunHandle.events()`) | Later; not yet scheduled |
 | Native MCP (Model Context Protocol) support | Phase 4 |
 | Human approval workflows | Phase 4. The approval step exists and auto-allows |

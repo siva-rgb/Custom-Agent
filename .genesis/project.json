@@ -9,7 +9,7 @@
     "non_goals": [],
     "trust_boundary": "local repository",
     "created_at": "2026-09-05T14:48:57.894Z",
-    "updated_at": "2026-10-12T09:33:08.035Z"
+    "updated_at": "2026-10-12T12:33:00.963Z"
   },
   "policy": {
     "ponytail": "full",
@@ -23,19 +23,19 @@
     }
   },
   "lifecycle": {
-    "phase": "build",
-    "status": "active",
-    "active_task": "M27-critic",
+    "phase": "verify",
+    "status": "ready",
+    "active_task": null,
     "blocker": null,
-    "next_action": "Run the task pre-flight."
+    "next_action": "Review completed work and choose the next bounded outcome."
   },
   "commands": {},
   "workflow": {
     "type": "new-product",
     "started_at": "2026-09-05T14:48:57.897Z",
     "spec_check": {
-      "at": "2026-10-11T14:17:26.805Z",
-      "source_hash": "fff3eb71822acbdc84041fa2d1eed2a887c0e26a145ec1537bf31efeda835436",
+      "at": "2026-10-12T09:38:35.108Z",
+      "source_hash": "530a27c68814a790b6d635c31b55d6a98c6cf84933de55a2c3770b500f6c44b2",
       "requirements": [
         "AC-1",
         "AC-10",
@@ -118,6 +118,7 @@
         "AC-80",
         "AC-81",
         "AC-82",
+        "AC-83",
         "AC-9",
         "FR-1",
         "FR-10",
@@ -132,6 +133,7 @@
         "FR-108",
         "FR-109",
         "FR-11",
+        "FR-110",
         "FR-12",
         "FR-13",
         "FR-14",
@@ -260,14 +262,14 @@
       ]
     },
     "plan_check": {
-      "at": "2026-10-11T17:07:11.609Z",
-      "source_hash": "af9713067d7a4eb25070082e0fae1447ad69ce0cc234264b3eef7f13b2f90def"
+      "at": "2026-10-12T09:38:36.239Z",
+      "source_hash": "4d083d2f106d228ad0919f214f76dfe777904a2ea13ea12e34ba74553988af18"
     },
     "plan_approval": {
       "human": "siva-rgb (owner)",
-      "reason": "M25a done; M26 to M28 resumed and requeued (DECISION-4cf55a17)",
-      "at": "2026-10-11T17:07:11.778Z",
-      "source_hash": "af9713067d7a4eb25070082e0fae1447ad69ce0cc234264b3eef7f13b2f90def"
+      "reason": "M26a added before M27; M27 and M28 paused until it is done",
+      "at": "2026-10-12T09:38:36.497Z",
+      "source_hash": "4d083d2f106d228ad0919f214f76dfe777904a2ea13ea12e34ba74553988af18"
     }
   },
   "artifacts": [
@@ -358,6 +360,7 @@
         "AC-80",
         "AC-81",
         "AC-82",
+        "AC-83",
         "AC-9",
         "FR-1",
         "FR-10",
@@ -372,6 +375,7 @@
         "FR-108",
         "FR-109",
         "FR-11",
+        "FR-110",
         "FR-12",
         "FR-13",
         "FR-14",
@@ -498,12 +502,12 @@
         "NFR-8",
         "NFR-9"
       ],
-      "source_hash": "fff3eb71822acbdc84041fa2d1eed2a887c0e26a145ec1537bf31efeda835436",
+      "source_hash": "530a27c68814a790b6d635c31b55d6a98c6cf84933de55a2c3770b500f6c44b2",
       "approval": {
         "human": "siva-rgb (owner)",
-        "reason": "FR-109 and AC-82 for M25a (DECISION-4cf55a17)",
-        "at": "2026-10-11T14:17:26.953Z",
-        "source_hash": "fff3eb71822acbdc84041fa2d1eed2a887c0e26a145ec1537bf31efeda835436"
+        "reason": "FR-110 and AC-83 for M26a; FR-102, FR-103 and AC-78 amended (DECISION-512ecd10)",
+        "at": "2026-10-12T09:38:35.365Z",
+        "source_hash": "530a27c68814a790b6d635c31b55d6a98c6cf84933de55a2c3770b500f6c44b2"
       }
     }
   ],
@@ -1534,6 +1538,14 @@
       "status": "accepted",
       "source": null,
       "recorded_at": "2026-10-12T06:37:34.610Z"
+    },
+    {
+      "id": "DECISION-512ecd10",
+      "title": "M26a: the gate caveats settled before M27 (owner)",
+      "text": "Owner decision 2026-10-12 after M26 round 1 (KNOWLEDGE-306e8bfc): complete M26, then M26a before M27 as FR-110 and AC-83. (1) Narrow FR-103 and AC-78 to the model: record_validation is in no tool registry and no shipped tool calls it; a custom tool reaches the Runner through _runner and is first-party in-process code outside the threat model (DECISION-2bad84bb), declared; the test walks scope field values, not names, and runs every shipped tool with record_validation watched. (2) Make 0012 comment true with migration 0013: UNIQUE (claim_id, tenant_id, project_id, ledger_run_id) on claims and a composite foreign key from the verification claim subject, so the schema refuses a cross-tenant or cross-ledger claim row with the store check bypassed; 0012 is not edited because its checksum is recorded. (3) README states the criteria order. (4) low_confidence fires on a claim only a critic contributed to. Ordering by CLI as DECISION-4cf55a17: M27 requeued, M27 and M28 paused, M26a added, spec and plan signed by the owner, and after M26a M27 and M28 resumed and requeued and the plan re-signed.",
+      "status": "accepted",
+      "source": null,
+      "recorded_at": "2026-10-12T09:38:22.926Z"
     }
   ],
   "knowledge": [
@@ -2440,6 +2452,14 @@
       "source": null,
       "tags": [],
       "recorded_at": "2026-10-12T09:33:07.727Z"
+    },
+    {
+      "id": "KNOWLEDGE-462abb1d",
+      "title": "M26a round 1 approved; six follow-ups and the suite time go to M27 pre-flight",
+      "text": "Opus 5 approved M26a round 1 at 12:26:41Z on source hash 22f32a7f, gates recomputed (unit 8, regression 1989). 0013 verified on throwaway schemas with the store out of the loop: through 0012 cross-ledger, cross-tenant and cross-project claim subjects land; through 0013 each is refused by verifications_claim_in_ledger while a same-ledger claim and a node subject land; claims.claim_id being the primary key makes the composite foreign key airtight; all 12 checksums match. Follow-ups for M27 pre-flight (owner): (1) Runner.record_validation docstring still says no tool reaches the Runner, the withdrawn guarantee; (2) rename the approved M26 test test_record_validation_is_reachable_from_no_tool, whose name asserts what M26a withdrew; (3) AC-83 says every shipped tool runs with record_validation watched when four of nine do, the static check over agentsdk being the stronger proof; (4) the approved M26 signal oracle still encodes the pre-amendment low_confidence rule and passes only because its generator never builds a critic-only claim; (5) 0013 cannot apply on a database where M26 already recorded a cross-ledger claim subject (ADD CONSTRAINT validates existing rows; the DO block rolls back cleanly), stated in README and SPEC since 0013 cannot be edited once applied; (6) the walk docstring claims more than depth 1: a writer wrapped one level deeper escapes, and ledger._store.__self__ is the Runner, the declared reach. Owner also asked for the suite time (8m06s against the 9m50s gate limit) to be profiled at M27 pre-flight before anything changes.",
+      "source": null,
+      "tags": [],
+      "recorded_at": "2026-10-12T12:33:00.697Z"
     }
   ],
   "tasks": [
@@ -2462,9 +2482,9 @@
           "status": "pass",
           "evidence": {
             "human": "siva-rgb (owner)",
-            "reason": "FR-109 and AC-82 for M25a (DECISION-4cf55a17)",
-            "source_hash": "5ba6ed8b05a4b9c21eec9d4f273f82b853b7b1ba27cfde1a8356b1128df3b9f7",
-            "observed_at": "2026-10-11T14:17:26.953Z"
+            "reason": "FR-110 and AC-83 for M26a; FR-102, FR-103 and AC-78 amended (DECISION-512ecd10)",
+            "source_hash": "d229c9ef4c076eaec2776ac3b65aff2b1f3ada353cab3ae4fb5d58bdbd4ea56a",
+            "observed_at": "2026-10-12T09:38:35.365Z"
           }
         }
       ],
@@ -2474,7 +2494,7 @@
       "failures": [],
       "limitations": [],
       "created_at": "2026-09-05T14:48:57.897Z",
-      "updated_at": "2026-10-11T14:17:26.953Z"
+      "updated_at": "2026-10-12T09:38:35.365Z"
     },
     {
       "id": "M1-primitives",
@@ -4310,7 +4330,7 @@
     {
       "id": "M27-critic",
       "outcome": "The critic runs at most once per gated node execution, its verdict decides the node, corrections supersede claims, and nothing it touches gets cleaner",
-      "state": "active",
+      "state": "paused",
       "risk": "high",
       "owner": null,
       "scope": [],
@@ -4359,7 +4379,7 @@
     {
       "id": "M28-calibration-and-exit",
       "outcome": "The calibration report suggests and never applies a threshold, and the gate holds under contention on both stores",
-      "state": "queued",
+      "state": "paused",
       "risk": "medium",
       "owner": null,
       "scope": [],
@@ -4463,6 +4483,67 @@
       "limitations": [],
       "created_at": "2026-10-11T14:17:27.109Z",
       "updated_at": "2026-10-11T17:07:10.237Z"
+    },
+    {
+      "id": "M26a-gate-caveats",
+      "outcome": "No model can record an external outcome, the schema refuses a verification of another ledger's claim, and a claim only a critic vouched for fires low_confidence",
+      "state": "done",
+      "risk": "medium",
+      "owner": null,
+      "scope": [],
+      "dependencies": [],
+      "requirements": [
+        "FR-110",
+        "AC-83",
+        "FR-103",
+        "NFR-25",
+        "NFR-26"
+      ],
+      "gates": [
+        {
+          "id": "unit",
+          "command": ".venv\\Scripts\\python.exe -m pytest tests/test_gate_caveats.py -q",
+          "mandatory": true,
+          "status": "pass",
+          "evidence": {
+            "path": ".genesis/evidence/M26a-gate-caveats-unit.json",
+            "source_hash": "22f32a7f4fbf77f2071ff93974e9e591dfd0e269bb1beb83af435f3780e69a60",
+            "hash": "725da96cf0a5d61f6f9ca155ebe7b0a0fd16c9464841b03990f75f0ac79b0938",
+            "observed_at": "2026-10-12T12:11:04.845Z"
+          }
+        },
+        {
+          "id": "regression",
+          "command": ".venv\\Scripts\\python.exe -m pytest -q",
+          "mandatory": true,
+          "status": "pass",
+          "evidence": {
+            "path": ".genesis/evidence/M26a-gate-caveats-regression.json",
+            "source_hash": "22f32a7f4fbf77f2071ff93974e9e591dfd0e269bb1beb83af435f3780e69a60",
+            "hash": "1bcf32890aa7f9d9b23cb99c134bed43e6555d9442af4f617ccab54ef8273275",
+            "observed_at": "2026-10-12T12:17:30.802Z"
+          }
+        },
+        {
+          "id": "independent-review",
+          "command": "",
+          "mandatory": true,
+          "status": "pass",
+          "evidence": {
+            "human": "Opus 5",
+            "reason": "Verified first hand, not from the recorded evidence. My own gate run: unit 8 passed in 2.01s, regression 1989 passed in 384.56s, source hash 22f32a7f, no stray python. M22 to M26a gate files 342 passed in 92.13s. Migration 0013 probed with a control: on a scratch schema carrying migrations through 0012 only, cross-ledger, cross-tenant and cross-project claim subjects all land; through 0013 all three are refused by verifications_claim_in_ledger while the legitimate row still lands and a node subject with subject_claim NULL is unaffected. Idempotent over three applications with an identical constraint set, applies over pre-existing valid claim and verification rows, every recorded checksum matches the file and 0013 is recorded. The amended signal rule is correct on 10 hand cases and 2000 generated claims with the critic exclusion intact. Both README rows accurate, the criteria order checked against the orchestrator code. The static check has teeth: a planted mention of record_validation in orchestrator.py fails it, and the file was restored byte for byte. Store at baseline, 0 advisory locks, no scratch schema left. Caveats, none blocking: (1) the docstring of record_validation in api.py line 464 still says the Runner is one no tool reaches, the statement this task withdrew, and should be corrected; (2) AC-83 says every shipped tool runs under the watch but only 4 of 9 do, the web search tool and the four file tools do not, and only the static check covers them; (3) the walk is one level deep, which I judge the right depth since the deeper path lands on the same Runner that _runner already declares, but a store held one level down, and a property or non-field attribute, both escape it, shown with planted controls; (4) the surviving M26 test named record_validation is reachable from no tool now misleads and should be renamed; (5) the M26 oracle in test_verifications still encodes the pre-amendment rule for a claim with no non-critic contribution, passing only because its generator never builds one; (6) 0013 refuses to apply where a pre-0013 cross-ledger row already exists, cleanly rather than partially, which no note mentions.",
+            "source_hash": "22f32a7f4fbf77f2071ff93974e9e591dfd0e269bb1beb83af435f3780e69a60",
+            "observed_at": "2026-10-12T12:26:41.765Z"
+          }
+        }
+      ],
+      "next_action": "Run the task pre-flight.",
+      "blocker": null,
+      "notes": [],
+      "failures": [],
+      "limitations": [],
+      "created_at": "2026-10-12T09:38:35.622Z",
+      "updated_at": "2026-10-12T12:33:00.961Z"
     }
   ],
   "learning_proposals": [],
@@ -5385,17 +5466,53 @@
       "human": "Fable 5.1",
       "reason": "Verified first-hand: gate rerun green on source hash f17a7f2e (unit 58 passed, regression 1981 passed in 395.93s); full suite rerun in halves 946 plus 1035 passed; migration 0012 idempotent (two further applies changed nothing, all 11 checksums match). Probed on both stores: no verification read or append crosses a tenant, project or ledger (7 refused subjects each, nothing recorded), bypass controls land rows so the probes have teeth; node-subject rule is the same on both stores for a child orchestrator (accepted), a sibling top-level run (refused), a replanned version (v1 and v2 accepted, v3 refused); no method or SQL updates or deletes a verification; a claim view is identical after gate, critic and external rows; the gate row carries the claim and answer taint and a from_model mutant is caught; 20000 random views agree with an independent FR-102 oracle at both edges, None confidence and critic exclusion; the claim set is the child run (siblings excluded, replan judged afresh); deterministic criteria run first in plan order with no gate row on failure; the reservation is held through the gate (mutant killed by both the author test and my probe) and released at child end for ungated nodes; store failure gives node_error with lease released and no event; cancel during the gate completes the shielded write with row and event agreeing; a clean gated node makes the same model calls as an ungated one; an ungated plan sends identical requests and records identical events and rows versus c35a319 with gate_policy NULL. Caveats, none blocking: (1) FR-103 wording overstates: a custom tool declaring a ToolScope reaches the Runner through the private _runner field and can self-certify a claim via record_validation (probe landed a row); the same field already exposes the ledger store, the model cannot reach it, and the reachability test checks names only, so recommend hiding _runner from non built-in tools or narrowing the wording. (2) The schema alone backs only the node-subject tenancy: with the store check bypassed a claim row in another tenant or another ledger, and a node row whose subject_run is not the plan run, pass the foreign keys; the migration comment overstates the backing. (3) An orchestrator run whose ledger_run_id is re-pointed to a non-ancestor fails every gated node with node_error LookupError on both stores, loudly; not an advertised use. (4) Beyond the declared change, with no critic configured a tool_succeeds criterion after a critic criterion now executes before criterion_not_available, as FR-102 orders; worth a README line. (5) M27 edge: a claim whose only contributions are the critic own never fires low_confidence. (6) Half one of my suite run took 2223s against 396s under the gate, passed, cause not determined. Cleanup: 31 runs and 18 verifications deleted by recorded ids only; store at baseline; 0 advisory locks; orchestrator.py restored with identical SHA-256.",
       "revision": null
+    },
+    {
+      "id": "49d041e6-79cd-4d00-bbd2-f3c4d9ec6541",
+      "at": "2026-10-12T09:38:34.233Z",
+      "action": "requeue",
+      "task": "M27-critic",
+      "human": "siva-rgb (owner)",
+      "reason": "M26a goes first (DECISION-512ecd10)",
+      "revision": null
+    },
+    {
+      "id": "8d67b6e6-47e3-41a1-a720-ce64ec414918",
+      "at": "2026-10-12T09:38:34.530Z",
+      "action": "pause",
+      "task": "M27-critic",
+      "human": "siva-rgb (owner)",
+      "reason": "Held while M26a is built first (DECISION-512ecd10)",
+      "revision": null
+    },
+    {
+      "id": "7cfec808-5842-44b3-a16a-bd1747a68e97",
+      "at": "2026-10-12T09:38:34.804Z",
+      "action": "pause",
+      "task": "M28-calibration-and-exit",
+      "human": "siva-rgb (owner)",
+      "reason": "Held while M26a is built first (DECISION-512ecd10)",
+      "revision": null
+    },
+    {
+      "id": "c5637344-31fd-4beb-b4aa-26a22fd05a05",
+      "at": "2026-10-12T12:26:41.765Z",
+      "action": "approve",
+      "task": "M26a-gate-caveats",
+      "human": "Opus 5",
+      "reason": "Verified first hand, not from the recorded evidence. My own gate run: unit 8 passed in 2.01s, regression 1989 passed in 384.56s, source hash 22f32a7f, no stray python. M22 to M26a gate files 342 passed in 92.13s. Migration 0013 probed with a control: on a scratch schema carrying migrations through 0012 only, cross-ledger, cross-tenant and cross-project claim subjects all land; through 0013 all three are refused by verifications_claim_in_ledger while the legitimate row still lands and a node subject with subject_claim NULL is unaffected. Idempotent over three applications with an identical constraint set, applies over pre-existing valid claim and verification rows, every recorded checksum matches the file and 0013 is recorded. The amended signal rule is correct on 10 hand cases and 2000 generated claims with the critic exclusion intact. Both README rows accurate, the criteria order checked against the orchestrator code. The static check has teeth: a planted mention of record_validation in orchestrator.py fails it, and the file was restored byte for byte. Store at baseline, 0 advisory locks, no scratch schema left. Caveats, none blocking: (1) the docstring of record_validation in api.py line 464 still says the Runner is one no tool reaches, the statement this task withdrew, and should be corrected; (2) AC-83 says every shipped tool runs under the watch but only 4 of 9 do, the web search tool and the four file tools do not, and only the static check covers them; (3) the walk is one level deep, which I judge the right depth since the deeper path lands on the same Runner that _runner already declares, but a store held one level down, and a property or non-field attribute, both escape it, shown with planted controls; (4) the surviving M26 test named record_validation is reachable from no tool now misleads and should be renamed; (5) the M26 oracle in test_verifications still encodes the pre-amendment rule for a claim with no non-critic contribution, passing only because its generator never builds one; (6) 0013 refuses to apply where a pre-0013 cross-ledger row already exists, cleanly rather than partially, which no note mentions.",
+      "revision": null
     }
   ],
   "discovery": null,
   "checkpoint": {
-    "at": "2026-10-12T06:58:48.717Z",
+    "at": "2026-10-12T09:51:06.059Z",
     "revision": {
-      "commit": "c35a3192a9ba957abe4ad3de99e9ef272dfae9b7",
+      "commit": "eb69b1dc67b0585cf6872d91508543c464b3a234",
       "dirty": true,
-      "source_hash": "f17a7f2e8b2ec33b14ebdc2069879df93d9d728dc5fcaddacb66dc10558188bb"
+      "source_hash": "22f32a7f4fbf77f2071ff93974e9e591dfd0e269bb1beb83af435f3780e69a60"
     },
-    "active_task": "M26-verifications-and-signals",
+    "active_task": "M26a-gate-caveats",
     "next_action": "Run the task pre-flight."
   },
   "legacy": null

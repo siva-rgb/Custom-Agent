@@ -234,7 +234,8 @@ def signals_of(view: Any, policy: GatePolicy) -> dict[str, Any]:
         "unsupported": supporting == 0,
         "contradicted": contradicting > 0,
         "thin_support": 1 <= supporting < policy.min_sources,
-        "low_confidence": bool(confidences) and (lowest is None or lowest < policy.confidence_threshold),
+        # A claim only a critic contributed to has no stated confidence: below (FR-110).
+        "low_confidence": bool(view.contributions) and (lowest is None or lowest < policy.confidence_threshold),
     }
     return {
         "claim": view.claim.uri,
