@@ -1,0 +1,22 @@
+{
+  "task": "M30-approvals",
+  "gate": "unit",
+  "command": ".venv\\Scripts\\python.exe -m pytest tests/test_approvals.py -q",
+  "started_at": "2026-10-13T17:02:35.720Z",
+  "observed_at": "2026-10-13T17:02:56.450Z",
+  "exit_code": 0,
+  "signal": null,
+  "stdout": ".................................................                        [100%]\r\n49 passed in 19.70s\r\n",
+  "stderr": "",
+  "revision": {
+    "commit": "62cc198fdcce255d0841219dfa71a0a01e7fc781",
+    "dirty": true
+  },
+  "source_hash": "7634279ab6808ee0359b8a03910ee23dd70f8d1ec453cb832377e3fbb4b90c62",
+  "environment": {
+    "node": "v20.10.0",
+    "platform": "win32",
+    "arch": "x64"
+  },
+  "hash": "5856556919c9db4fe44e073a1894e5faea8add842ec66c337cb608f2366a4035"
+}

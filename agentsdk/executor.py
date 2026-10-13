@@ -33,6 +33,8 @@ from typing import Any
 import jsonschema
 
 from .errors import (
+    ToolApprovalCheckFailed,
+    ToolApprovalRejected,
     ToolCancelled,
     ToolError,
     ToolExecutionError,
@@ -44,7 +46,7 @@ from .errors import (
 )
 from .hooks import HookAction, RuntimeHook
 from .identity import PrincipalContext
-from .outcomes import Completed, Failed, ToolExecutionOutcome
+from .outcomes import ApprovalRequired, Completed, Failed, InterruptionKind, RunInterruption, ToolExecutionOutcome
 from .permissions import PermissionChecker
 from .primitives import (
     ContentProvenance,
@@ -54,7 +56,7 @@ from .primitives import (
     unstorable_reason,
 )
 from .timings import elapsed_ms, now_ns, wall_clock
-from .tools import DEFAULT_MAX_OUTPUT_CHARS, Tool, ToolOutput, ToolRegistry
+from .tools import DEFAULT_MAX_OUTPUT_CHARS, ApprovalPolicy, Tool, ToolOutput, ToolRegistry
 
 
 @dataclass
@@ -275,8 +277,8 @@ class ToolExecutor:
             )
 
         # --- 4. approval ------------------------------------------------------
-        # Stubbed to auto-allow. The call site exists so Phase 4's
-        # ApprovalManager slots in without reshaping this lifecycle.
+        # Decided below, after step 5 (FR-113): a hook may itself require approval, and
+        # the request must describe the call as it would run, a hook's MODIFY included.
 
         # --- 5. before_tool hook ----------------------------------------------
         outcome = self._hook.before_tool(tool_call)
@@ -287,7 +289,85 @@ class ToolExecutor:
         if outcome.action is HookAction.MODIFY and outcome.replacement is not None:
             tool_call = outcome.replacement
 
-        return PreparedCall(issued=issued, tool_call=tool_call, tool=tool, state=state)
+        prepared = PreparedCall(issued=issued, tool_call=tool_call, tool=tool, state=state)
+        try:
+            interruption = await self._approval(prepared, outcome.action is HookAction.REQUIRE_APPROVAL)
+        except Exception as exc:  # noqa: BLE001 - whatever cannot be decided fails the call
+            return await self._failed(
+                issued, ToolApprovalCheckFailed(describe_exception(exc)), state, tool_reached=False
+            )
+        if interruption is not None:
+            return ApprovalRequired(interruption=interruption, prepared=prepared)
+        return prepared
+
+    async def _approval(self, prepared: PreparedCall, hooked: bool) -> RunInterruption | None:
+        """FR-113: the interruption a call requires, or None. The first source that applies
+        is its trigger: the tool's declared policy, its predicate over the arguments, then
+        the hook. The request is checked storable before any store sees it, and the loop
+        sets its times and records it (FR-114)."""
+        tool, call = prepared.tool, prepared.tool_call
+        trigger = None
+        if tool.spec.approval_policy is ApprovalPolicy.REQUIRE_APPROVAL:
+            trigger = "policy"
+        elif tool.needs_approval is not None:
+            flagged = tool.needs_approval(dict(call.arguments))
+            if inspect.isawaitable(flagged):
+                flagged = await flagged
+            if flagged is True:
+                trigger = "predicate"
+        if trigger is None and hooked:
+            trigger = "hook"
+        if trigger is None:
+            return None
+        scope = self._scope
+        request: dict[str, Any] = {
+            "tool": tool.spec.name, "arguments": dict(call.arguments), "risk_class": tool.spec.risk_class.value,
+            "agent_id": getattr(scope, "agent_id", None), "node_id": getattr(scope, "node_id", None),
+            "trigger": trigger,
+        }
+        if tool.describe is not None:
+            described = await tool.describe(dict(call.arguments))
+            if not isinstance(described, dict):
+                raise ValueError(f"describe must return a JSON object, got {type(described).__name__}")
+            request["describe"] = described
+        reason = unstorable_reason(request)
+        if reason is not None:
+            raise ValueError(f"the approval request cannot be stored: {reason}")
+        run_id = getattr(scope, "run_id", None) or ""
+        return RunInterruption(
+            kind=InterruptionKind.TOOL_APPROVAL, run_id=run_id, request_payload=request,
+            tool_call_id=prepared.issued.id, tenant_id=getattr(scope, "tenant_id", None),
+            project_id=getattr(scope, "project_id", None),
+            top_run_id=getattr(scope, "ledger_run_id", None) or run_id or None,
+            node_id=getattr(scope, "node_id", None), tool_name=tool.spec.name,
+            agent_id=getattr(scope, "agent_id", None) or "unknown", trigger=trigger,
+        )
+
+    async def check_failed(self, prepared: PreparedCall, reason: str) -> Failed:
+        """FR-113, NFR-30: a call that requires approval but whose interruption could not
+        be recorded fails, never reaching step 6."""
+        return await self._failed(prepared.issued, ToolApprovalCheckFailed(reason), prepared.state, tool_reached=False)
+
+    async def rejected(self, prepared: PreparedCall, text: str, source_uri: str) -> Failed:
+        """FR-114: the result of a call whose approval was rejected, expired or refused by a
+        standing decision. It never reached step 6. Its text is the decision's, labelled by
+        that decision with the SDK's own trust: a principal wrote it, not the model."""
+        result = ToolResult(
+            tool_call_id=prepared.issued.id, content=text,
+            provenance=ContentProvenance.internal_tool(source_uri), is_error=True,
+        )
+        await self._safe_emit(
+            {
+                "tool_call_id": prepared.issued.id,
+                "name": prepared.issued.name,
+                "is_error": True,
+                "error_type": ToolApprovalRejected.__name__,
+                "original_length": len(text),
+                "truncated": False,
+                **_timings(prepared.state),
+            }
+        )
+        return Failed(error=ToolApprovalRejected(text), result=result)
 
     async def _run(self, prepared: PreparedCall) -> ToolExecutionOutcome:
         tool_call, tool, state = prepared.tool_call, prepared.tool, prepared.state

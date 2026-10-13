@@ -209,16 +209,26 @@ class ToolSpec:
             fields["configuration"] = self.configuration
         if self.concurrency_safe is True:
             fields["concurrency_safe"] = True
+        # FR-113 (M30): a tool whose calls need approval is a different tool to run.
+        if self.approval_policy is not ApprovalPolicy.AUTO:
+            fields["approval_policy"] = self.approval_policy.value
         payload = json.dumps(fields, sort_keys=True)
         return hashlib.sha256(payload.encode()).hexdigest()
 
 
 @dataclass(frozen=True)
 class Tool:
-    """A spec bound to an implementation. The callable may be sync or async."""
+    """A spec bound to an implementation. The callable may be sync or async.
+
+    FR-113 (M30): `needs_approval`, when set, is a predicate over a call's arguments,
+    sync or async, that requires approval when it returns True. `describe`, when set, is
+    an awaitable giving the approver a JSON object computed from the arguments without
+    side effects. Neither is part of the spec's hash: they are code, as `fn` is."""
 
     spec: ToolSpec
     fn: Callable[..., Any]
+    needs_approval: Callable[..., Any] | None = None
+    describe: Callable[..., Any] | None = None
 
     @property
     def name(self) -> str:

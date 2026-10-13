@@ -197,10 +197,13 @@ class PublishingSink:
 class RunHandle:
     """A run under way (FR-48, FR-49, FR-50). Returned by `Runner.start`."""
 
-    def __init__(self, run_id: str, control: RunControl, meter: Any) -> None:
+    def __init__(self, run_id: str, control: RunControl, meter: Any, *, runner: Any = None,
+                 tenant_id: str | None = None, project_id: str | None = None) -> None:
         self.run_id = run_id
         self._control = control
         self._meter = meter
+        # FR-115 (M30): approve and reject decide through the Runner that started the run.
+        self._runner, self._tenant_id, self._project_id = runner, tenant_id, project_id
         self._events: dict[int, RunEvent] = {}
         self._waiters: list[asyncio.Future[None]] = []
         self._ended = False
@@ -255,6 +258,31 @@ class RunHandle:
         cancellation is handed to that loop rather than applied from the calling
         thread (M12 review round 1, C1)."""
         self._control.request(reason)
+
+    async def approve(self, interruption_id: str, *, principal: Any, message: str | None = None,
+                      sticky: bool = False) -> Any:
+        """FR-115: Runner.decide for this run's interruption, approving."""
+        return await self._decide(interruption_id, True, principal, message, sticky)
+
+    async def reject(self, interruption_id: str, *, principal: Any, message: str | None = None,
+                     sticky: bool = False) -> Any:
+        """FR-115: Runner.decide for this run's interruption, rejecting."""
+        return await self._decide(interruption_id, False, principal, message, sticky)
+
+    async def _decide(self, interruption_id: str, approve: bool, principal: Any, message: str | None,
+                      sticky: bool) -> Any:
+        """An interruption whose top-level run is not this run is refused as unknown, so
+        one handle never decides another run's calls."""
+        from .interruptions import UnknownInterruption
+
+        if self._runner is None:
+            raise UnknownInterruption(f"no interruption {interruption_id} for this run")
+        store = self._runner._interruption_store()
+        view = await asyncio.to_thread(store.interruption, self._tenant_id, self._project_id, interruption_id)
+        if self.run_id not in (view.interruption.run_id, view.interruption.top_run_id):
+            raise UnknownInterruption(f"no interruption {interruption_id} for this run")
+        return await self._runner.decide(self._tenant_id, self._project_id, interruption_id, approve=approve,
+                                         principal=principal, message=message, sticky=sticky)
 
     async def _settled(self) -> None:
         """Wait until the run has ended, whatever cancels this wait meanwhile."""

@@ -91,7 +91,11 @@ class InputRequired(ToolExecutionOutcome):
 
 @dataclass(frozen=True)
 class ApprovalRequired(ToolExecutionOutcome):
+    """FR-113 (M30): a call that passed steps 1 to 5 and requires approval. `prepared` is
+    the call ready for step 6, which runs only once an approve decision is recorded."""
+
     interruption: RunInterruption
+    prepared: Any = None
 
 
 @dataclass(frozen=True)

@@ -229,9 +229,10 @@ def test_the_critic_table_counts_a_critic_row_by_its_own_node_executions_gate():
 
 FIXTURE = REPO / "tests" / "fixtures" / "nfr29_ungated_plan.json"
 _UUID = re.compile(r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}")
-# FR-57's timings and the cost fields: they differ by run, so they are excluded by name.
-_VARYING = {"started_at", "finished_at", "duration_ms", "latency_ms", "elapsed_ms", "created_at", "timestamp",
-            "occurred_at", "first_token_ms", "cost_usd", "budget_spend", "wall_ms", "queued_ms"}
+# FR-57's timings and the cost: they differ by run, so they are excluded -- only these four,
+# the ones the record holds, and only in event payloads, so a new field of the same name
+# anywhere else is still compared (M29 review).
+_VARYING = {"started_at", "duration_ms", "queued_ms", "cost_usd"}
 
 
 def _plain(value):
@@ -260,7 +261,9 @@ def _dropped(value):
 def normalised(record):
     """Every id substituted, inside text included, by a placeholder in order of first
     appearance; the varying fields dropped by name."""
-    text = json.dumps(_dropped(_plain(record)), sort_keys=True)
+    plain = _plain(record)
+    plain["events"] = [{**e, "payload": _dropped(e["payload"])} for e in plain["events"]]
+    text = json.dumps(plain, sort_keys=True)
     seen: dict[str, str] = {}
     return json.loads(_UUID.sub(lambda m: seen.setdefault(m.group(0), f"<id-{len(seen) + 1}>"), text))
 

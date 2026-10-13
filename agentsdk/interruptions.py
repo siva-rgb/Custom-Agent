@@ -232,6 +232,42 @@ def state_of(item: RunInterruption, decision: InterruptionDecision | None, now: 
     return "expired" if item.expires_at is not None and now >= item.expires_at else "pending"
 
 
+class ApprovalWaits:
+    """FR-115 (M30): the interruptions a Runner's runs are waiting on in this process, and
+    how to wake each. A decision is recorded in the store first; the wake only tells the
+    waiting run to read it, so a wake that is lost delays a decision and never loses it.
+    Safe from any thread: the wake is handed to the waiting run's own loop."""
+
+    def __init__(self) -> None:
+        self._lock = threading.Lock()
+        self._waiting: dict[str, tuple[Any, Any, str]] = {}
+
+    def register(self, interruption_ids: list[str], loop: Any, event: Any, run_id: str) -> None:
+        with self._lock:
+            for interruption_id in interruption_ids:
+                self._waiting[interruption_id] = (loop, event, run_id)
+
+    def unregister(self, interruption_ids: list[str]) -> None:
+        with self._lock:
+            for interruption_id in interruption_ids:
+                self._waiting.pop(interruption_id, None)
+
+    def waiting(self, interruption_id: str) -> bool:
+        with self._lock:
+            return interruption_id in self._waiting
+
+    def wake(self, interruption_id: str) -> None:
+        with self._lock:
+            entry = self._waiting.get(interruption_id)
+        if entry is None:
+            return
+        loop, event, _ = entry
+        try:
+            loop.call_soon_threadsafe(event.set)
+        except RuntimeError:  # the run's loop has closed; nothing is waiting any more
+            pass
+
+
 class InMemoryInterruptionStore:
     """FR-112's store for a Runner without persistence: every tenant's interruptions, one
     lock. `runs(tenant_id, project_id, run_id)` says whether a run exists in that tenant
@@ -250,28 +286,42 @@ class InMemoryInterruptionStore:
         if not self._runs(tenant_id, project_id, run_id):
             raise LookupError(f"run {run_id} is not a run of this tenant and project")
 
-    def append_interruption(self, item: RunInterruption) -> None:
+    def append_interruption(self, item: RunInterruption, decision: InterruptionDecision | None = None) -> None:
+        """Records an interruption and, with `decision` -- the standing decision covering it
+        (FR-114) -- its decision in the same step, so it is never seen pending. Everything
+        is checked before anything is recorded."""
         item = checked_interruption(item)
+        if decision is not None and (not isinstance(decision, InterruptionDecision)
+                                     or decision.interruption_id != item.interruption_id):
+            raise ValueError("a decision recorded with an interruption must be that interruption's")
         with self._lock:
             self._run(item.tenant_id, item.project_id, item.run_id)
             self._run(item.tenant_id, item.project_id, item.top_run_id)
             if item.interruption_id in self._interruptions:
                 raise ValueError(f"interruption {item.interruption_id} is already recorded")
+            if decision is not None:
+                self._decision_checked(item, decision)
             self._interruptions[item.interruption_id] = item
+            if decision is not None:
+                self._decisions[item.interruption_id] = decision
 
     def append_decision(self, decision: InterruptionDecision) -> None:
         if not isinstance(decision, InterruptionDecision):
             raise ValueError(f"a decision must be an InterruptionDecision, got {type(decision).__name__}")
         with self._lock:
-            item = self._interruptions.get(decision.interruption_id)
-            if item is None or (item.tenant_id, item.project_id) != (decision.tenant_id, decision.project_id):
-                raise UnknownInterruption(f"no interruption {decision.interruption_id} in this tenant and project")
-            if decision.standing_id is not None and not any(
-                    s.standing_id == decision.standing_id and s.run_id == item.run_id for s in self._standing):
-                raise LookupError(f"standing decision {decision.standing_id} is not one of this run's")
+            self._decision_checked(self._interruptions.get(decision.interruption_id), decision)
             if decision.interruption_id in self._decisions:
                 raise InterruptionAlreadyDecided(f"interruption {decision.interruption_id} is already decided")
             self._decisions[decision.interruption_id] = decision
+
+    def _decision_checked(self, item: RunInterruption | None, decision: InterruptionDecision) -> None:
+        """The decision is of an interruption in its own tenant and project, and a standing
+        decision it applies is one of that interruption's run. The caller holds the lock."""
+        if item is None or (item.tenant_id, item.project_id) != (decision.tenant_id, decision.project_id):
+            raise UnknownInterruption(f"no interruption {decision.interruption_id} in this tenant and project")
+        if decision.standing_id is not None and not any(
+                s.standing_id == decision.standing_id and s.run_id == item.run_id for s in self._standing):
+            raise LookupError(f"standing decision {decision.standing_id} is not one of this run's")
 
     def append_standing(self, standing: StandingDecision) -> StandingDecision:
         if not isinstance(standing, StandingDecision):
@@ -297,7 +347,9 @@ class InMemoryInterruptionStore:
     def interruptions(self, tenant_id: str, project_id: str, *, run_id: str | None = None,
                       pending_only: bool = False, now: datetime | None = None) -> list[InterruptionView]:
         now = now or datetime.now(timezone.utc)
-        top = None if run_id is None else canonical_id(run_id)
+        top = None if run_id is None else canonical_id(run_id) if isinstance(run_id, str) else None
+        if run_id is not None and top is None:
+            return []  # a run_id given but unreadable names no run, as PostgreSQL finds none
         with self._lock:
             found = [(i, self._decisions.get(i.interruption_id)) for i in self._interruptions.values()
                      if (i.tenant_id, i.project_id) == (tenant_id, project_id)

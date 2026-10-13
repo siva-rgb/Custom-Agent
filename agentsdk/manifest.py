@@ -51,6 +51,7 @@ def build_manifest(
     price_table_date: str | None = None,
     tools_sent: list[dict[str, str]] | None = None,
     gate_policy: dict[str, Any] | None = None,
+    approval_timeout: float | None = None,
 ) -> dict[str, Any]:
     # The spec hash covers what actually changes behaviour: identity,
     # instructions and the tool profile. A spec whose display name changed is
@@ -87,4 +88,6 @@ def build_manifest(
         # FR-101 (M26): the run's effective GatePolicy, its critic named by id and spec
         # hash, so two runs gated differently never share a manifest; None when ungated.
         "gate_policy": gate_policy,
+        # FR-112, FR-116 (M30): how long a call requiring approval waited at most.
+        "approval_timeout": approval_timeout,
     }

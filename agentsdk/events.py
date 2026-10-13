@@ -53,6 +53,9 @@ class EventType(str, Enum):
     # FR-105 (M27): a critic's verdict on a gated node -- the critic run, the verdict, the
     # claims it superseded and the verification recorded; on the orchestrator run's stream.
     CRITIC_VERDICT = "CriticVerdict"
+    # FR-114 (M30): a call that requires approval, and the decision about it.
+    APPROVAL_REQUESTED = "ApprovalRequested"
+    APPROVAL_DECIDED = "ApprovalDecided"
 
 
 @dataclass(frozen=True)

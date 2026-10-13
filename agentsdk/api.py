@@ -14,13 +14,14 @@ result or cancels it. `Runner.run()` is a run started that way and awaited.
 from __future__ import annotations
 
 import asyncio
+import math
 from datetime import datetime
 from decimal import Decimal
 from functools import partial
 from typing import Any, Mapping
 
 import uuid
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from enum import Enum
 
 from .compaction import ContextCompactor
@@ -44,7 +45,17 @@ from .scope import AttributedArtifacts, ToolScope
 from .evidence import InMemoryEvidenceStore, ResourceCache
 from .ledger import EvidenceLedger, InMemoryLedgerStore, RunLedger
 from .gate import EvidenceVerification, GatePolicy, NodeSubject
-from .interruptions import InMemoryInterruptionStore
+from .interruptions import (
+    ApprovalWaits,
+    InMemoryInterruptionStore,
+    InterruptionAlreadyDecided,
+    InterruptionDecision,
+    InterruptionExpired,
+    InterruptionNotWaiting,
+    InterruptionView,
+    StandingDecision,
+    UnknownInterruption,
+)
 from .calibration import CalibrationReport, _checked, calibrate
 from .claimlock import ClaimLock
 from .primitives import ContentProvenance, unstorable_reason
@@ -230,6 +241,8 @@ class RunConfig:
     # FR-101 (M26): the gate this run's plan nodes pass, recorded in its manifest. Set
     # by Orchestrator.config(); never carried to a child.
     gate_policy: GatePolicy | None = None
+    # FR-116 (M30): how long a call requiring approval waits before it expires, in seconds.
+    approval_timeout: float = 3600
 
     def __post_init__(self) -> None:
         # Before the range checks: a bool passes every one of them (True >= 1,
@@ -303,6 +316,9 @@ class RunConfig:
             raise ValueError(f"ledger_run_id must be None or a UUID as text, got {self.ledger_run_id!r}")
         if self.gate_policy is not None and not isinstance(self.gate_policy, GatePolicy):
             raise ValueError(f"gate_policy must be a GatePolicy or None, got {type(self.gate_policy).__name__}")
+        timeout = self.approval_timeout
+        if type(timeout) not in (int, float) or not math.isfinite(timeout) or timeout <= 0:
+            raise ValueError(f"approval_timeout must be a finite number of seconds over 0, got {timeout!r}")
         if self.context_policy is not None and not isinstance(self.context_policy, ContextPolicy):
             raise ValueError(f"context_policy must be a ContextPolicy or None, got {type(self.context_policy).__name__}")
         if self.scheduler_limits is not None and self.scheduler_limits.provider_concurrency_limits:
@@ -409,6 +425,8 @@ class Runner:
         self._memory_evidence: InMemoryEvidenceStore | None = None
         self._memory_ledger: InMemoryLedgerStore | None = None
         self._memory_interruptions: InMemoryInterruptionStore | None = None
+        # FR-115 (M30): the interruptions this Runner's runs are waiting on, in this process.
+        self._approvals = ApprovalWaits()
         # FR-95 (M24): one claim-lock per Runner, across its runs, and across processes
         # through the database when there is one.
         self._claim_lock = ClaimLock(persistence.dsn if persistence is not None else None)
@@ -504,6 +522,60 @@ class Runner:
                                        kinds=("gate", "critic", "external"))
         return calibrate(rows, tenant_id=tenant_id, project_id=project_id, since=since, min_outcomes=min_outcomes)
 
+    async def decide(
+        self, tenant_id: str, project_id: str, interruption_id: str, *, approve: bool, principal: PrincipalContext,
+        message: str | None = None, sticky: bool = False,
+    ) -> InterruptionDecision:
+        """FR-115: records a decision about a call waiting for approval, and wakes its run.
+
+        `principal` must name a user or a service: the agent alone may not decide.
+        `sticky` also records a standing decision for the interruption's run, agent and
+        tool, which decides that run's not yet decided calls the tool's policy flagged
+        (P4-D15). Refused with nothing recorded, tenancy first, so another tenant's
+        decided interruption reads as unknown: UnknownInterruption, then
+        InterruptionAlreadyDecided, InterruptionExpired, InterruptionNotWaiting. The
+        store's unique key settles a race: of two decisions, or a decision and the run's
+        own expiry, exactly one is recorded. A Runner method in no tool registry, which
+        no tool the SDK ships calls (AC-83). May be awaited on any loop or thread."""
+        from datetime import datetime, timezone
+
+        if type(approve) is not bool:
+            raise ValueError(f"approve must be a bool, got {approve!r}")
+        if type(sticky) is not bool:
+            raise ValueError(f"sticky must be a bool, got {sticky!r}")
+        made = InterruptionDecision(
+            decision_id=str(uuid.uuid4()), interruption_id=str(uuid.uuid4()), tenant_id=tenant_id,
+            project_id=project_id, decision="approve" if approve else "reject", source="principal",
+            message=message, principal=principal, decided_at=datetime.now(timezone.utc))
+        store = self._interruption_store()
+        view = await asyncio.to_thread(store.interruption, tenant_id, project_id, interruption_id)
+        if view.decision is not None:
+            raise InterruptionAlreadyDecided(f"interruption {interruption_id} is already decided")
+        item = view.interruption
+        if datetime.now(timezone.utc) >= item.expires_at:
+            raise InterruptionExpired(f"interruption {interruption_id} expired at {item.expires_at.isoformat()}")
+        if not self._approvals.waiting(item.interruption_id):
+            raise InterruptionNotWaiting(f"no run of this Runner is waiting on interruption {interruption_id}")
+        made = replace(made, interruption_id=item.interruption_id, decided_at=datetime.now(timezone.utc))
+        await asyncio.to_thread(store.append_decision, made)
+        if sticky:
+            await asyncio.to_thread(store.append_standing, StandingDecision(
+                standing_id=str(uuid.uuid4()), run_id=item.run_id, tenant_id=tenant_id, project_id=project_id,
+                agent_id=item.agent_id, tool_name=item.tool_name, decision=made.decision, principal=principal,
+                message=message, created_at=datetime.now(timezone.utc)))
+        self._approvals.wake(item.interruption_id)
+        return made
+
+    async def interruptions(
+        self, tenant_id: str, project_id: str, *, run_id: str | None = None, pending_only: bool = True,
+    ) -> list[InterruptionView]:
+        """FR-115: the interruptions of one tenant and project -- with `run_id`, those of
+        that run and every run beneath it -- through the store on a worker thread, each
+        marked `waiting` when a run of this Runner waits on it (P4-D14)."""
+        views = await asyncio.to_thread(
+            self._interruption_store().interruptions, tenant_id, project_id, run_id=run_id, pending_only=pending_only)
+        return [replace(v, waiting=self._approvals.waiting(v.interruption.interruption_id)) for v in views]
+
     def evidence_ledger(self, tenant_id: str, project_id: str, ledger_run_id: str) -> EvidenceLedger:
         """FR-94: the ledger of a top-level run, read within its tenant and project.
         Its methods are store calls: from a coroutine, call them on a worker thread."""
@@ -566,7 +638,8 @@ class Runner:
         # So a cancel() called from another thread can hand the cancellation to
         # the run's own loop (M12 review round 1, C1).
         control.loop = loop
-        handle = RunHandle(opened.scope.run_id, control, opened.meter)
+        handle = RunHandle(opened.scope.run_id, control, opened.meter, runner=self,
+                           tenant_id=config.tenant_id, project_id=config.project_id)
         events = PublishingSink(opened.events, handle._publish, loop)
         control.task = asyncio.ensure_future(self._drive(spec, task, config, opened, events, control))
         control.task.add_done_callback(handle._finished)
@@ -890,6 +963,7 @@ class Runner:
                     tool_spec_hashes=[s.schema_hash() for s in self._registry.specs()],
                     tools_sent=[{"name": s.name, "schema_hash": s.schema_hash()} for s in registry.specs()],
                     gate_policy=None if config.gate_policy is None else config.gate_policy.to_json(),
+                    approval_timeout=float(config.approval_timeout),
                     model_id=recorded_model or "unspecified",
                     **self._model_versions(recorded_model, client_key),
                     policy_version=type(spec.checker()).__name__,
@@ -1025,6 +1099,9 @@ class Runner:
             compactor=None if window is None else ContextCompactor(policy, window),
             artifacts=artifacts,
             agent_id=spec.id,
+            interruptions=self._interruption_store,
+            approval_waits=self._approvals,
+            approval_timeout=float(config.approval_timeout),
         )
 
         # Only what the caller set: a run that sets none of M9's options sends

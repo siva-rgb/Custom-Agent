@@ -86,7 +86,19 @@ class ToolPermissionDenied(ToolError):
 
 
 class ToolApprovalRequired(ToolError):
-    """Defined for Phase 4. Phase 0 stubs approval to auto-allow."""
+    """Defined for Phase 4 and kept for compatibility; M30 reports a call that requires
+    approval as the ApprovalRequired outcome, and its rejection as ToolApprovalRejected."""
+
+
+class ToolApprovalRejected(ToolError):
+    """FR-114 (M30): a call that required approval was rejected, its approval expired, or
+    a standing decision rejected it. It never reached step 6."""
+
+
+class ToolApprovalCheckFailed(ToolError):
+    """FR-113 (M30): whether a call needs approval could not be decided -- a predicate or
+    a describe that raised, or a request no store can hold -- so it failed with no
+    interruption."""
 
 
 class ToolTimeout(ToolError):

@@ -943,6 +943,8 @@ class PostgresRunStore:
         tools_sent = manifest.get("tools_sent")
         # FR-101 (0012): the gate policy; NULL for an ungated run and every one before it.
         gate_policy = manifest.get("gate_policy")
+        # FR-116 (0014): NULL for every manifest before M30.
+        approval_timeout = manifest.get("approval_timeout")
         conn.execute(
             """
                 INSERT INTO execution_manifests (
@@ -950,12 +952,13 @@ class PostgresRunStore:
                     instructions_hash, model_id, model_version,
                     model_adapter_version, tool_spec_hashes, policy_version,
                     max_output_tokens, reasoning_effort, pricing, scheduler_limits,
-                    budget_policy, budget_reservations, price_table_date, tools_sent, gate_policy
+                    budget_policy, budget_reservations, price_table_date, tools_sent, gate_policy,
+                    approval_timeout
                 )
                 -- Tenancy from the run row, as everywhere else. Inside
                 -- start_run the row is written in this same transaction, so
                 -- the SELECT sees it.
-                SELECT r.run_id, r.tenant_id, r.project_id, %s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s
+                SELECT r.run_id, r.tenant_id, r.project_id, %s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s
                 FROM runs r
                 WHERE r.run_id = %s AND r.tenant_id = %s AND r.project_id = %s
             """,
@@ -977,6 +980,7 @@ class PostgresRunStore:
                 manifest.get("price_table_date"),
                 Jsonb(tools_sent) if tools_sent is not None else None,
                 Jsonb(gate_policy) if gate_policy is not None else None,
+                approval_timeout,
                 scope.run_id,
                 scope.tenant_id,
                 scope.project_id,
@@ -1859,10 +1863,15 @@ class PostgresInterruptionStore:
                             (run_id, tenant_id, project_id)).fetchone() is None:
                 raise LookupError(f"run {run_id} is not a run of this tenant and project")
 
-    def append_interruption(self, item: Any) -> None:
-        from .interruptions import checked_interruption
+    def append_interruption(self, item: Any, decision: Any = None) -> None:
+        """Records an interruption and, with `decision` -- the standing decision covering it
+        (FR-114) -- its decision in the same transaction, so it is never seen pending."""
+        from .interruptions import InterruptionDecision, checked_interruption
 
         item = checked_interruption(item)
+        if decision is not None and (not isinstance(decision, InterruptionDecision)
+                                     or decision.interruption_id != item.interruption_id):
+            raise ValueError("a decision recorded with an interruption must be that interruption's")
         with _checkout(self._dsn) as conn:
             with conn.transaction():
                 self._run_checked(conn, item.tenant_id, item.project_id, item.run_id, item.top_run_id)
@@ -1873,36 +1882,45 @@ class PostgresInterruptionStore:
                     (item.interruption_id, item.tenant_id, item.project_id, item.run_id, item.top_run_id,
                      item.node_id, item.kind.value, item.tool_call_id, item.tool_name, item.agent_id, item.trigger,
                      Jsonb(item.request_payload), item.created_at, item.expires_at))
+                if decision is not None:
+                    self._decision_inserted(conn, decision)
 
     def append_decision(self, decision: Any) -> None:
-        from .interruptions import InterruptionAlreadyDecided, InterruptionDecision, UnknownInterruption
+        from .interruptions import InterruptionDecision
 
         if not isinstance(decision, InterruptionDecision):
             raise ValueError(f"a decision must be an InterruptionDecision, got {type(decision).__name__}")
         with _checkout(self._dsn) as conn:
             with conn.transaction():
-                found = conn.execute(
-                    "SELECT run_id FROM interruptions WHERE interruption_id = %s AND tenant_id = %s"
-                    " AND project_id = %s", (decision.interruption_id, decision.tenant_id, decision.project_id),
-                ).fetchone()
-                if found is None:
-                    raise UnknownInterruption(
-                        f"no interruption {decision.interruption_id} in this tenant and project")
-                if decision.standing_id is not None and conn.execute(
-                        "SELECT 1 FROM standing_decisions WHERE standing_id = %s AND run_id = %s AND tenant_id = %s"
-                        " AND project_id = %s", (decision.standing_id, found[0], decision.tenant_id,
-                                                 decision.project_id)).fetchone() is None:
-                    raise LookupError(f"standing decision {decision.standing_id} is not one of this run's")
-                inserted = conn.execute(
-                    "INSERT INTO interruption_decisions (decision_id, interruption_id, tenant_id, project_id,"
-                    " decision, source, message, principal, standing_id, decided_at)"
-                    " VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s) ON CONFLICT (interruption_id) DO NOTHING",
-                    (decision.decision_id, decision.interruption_id, decision.tenant_id, decision.project_id,
-                     decision.decision, decision.source, decision.message,
-                     None if decision.principal is None else Jsonb(decision.principal.to_json()),
-                     decision.standing_id, decision.decided_at)).rowcount
-                if not inserted:
-                    raise InterruptionAlreadyDecided(f"interruption {decision.interruption_id} is already decided")
+                self._decision_inserted(conn, decision)
+
+    @staticmethod
+    def _decision_inserted(conn: Any, decision: Any) -> None:
+        """Checks and inserts one decision inside the caller's transaction."""
+        from .interruptions import InterruptionAlreadyDecided, UnknownInterruption
+
+        found = conn.execute(
+            "SELECT run_id FROM interruptions WHERE interruption_id = %s AND tenant_id = %s"
+            " AND project_id = %s", (decision.interruption_id, decision.tenant_id, decision.project_id),
+        ).fetchone()
+        if found is None:
+            raise UnknownInterruption(
+                f"no interruption {decision.interruption_id} in this tenant and project")
+        if decision.standing_id is not None and conn.execute(
+                "SELECT 1 FROM standing_decisions WHERE standing_id = %s AND run_id = %s AND tenant_id = %s"
+                " AND project_id = %s", (decision.standing_id, found[0], decision.tenant_id,
+                                         decision.project_id)).fetchone() is None:
+            raise LookupError(f"standing decision {decision.standing_id} is not one of this run's")
+        inserted = conn.execute(
+            "INSERT INTO interruption_decisions (decision_id, interruption_id, tenant_id, project_id,"
+            " decision, source, message, principal, standing_id, decided_at)"
+            " VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s) ON CONFLICT (interruption_id) DO NOTHING",
+            (decision.decision_id, decision.interruption_id, decision.tenant_id, decision.project_id,
+             decision.decision, decision.source, decision.message,
+             None if decision.principal is None else Jsonb(decision.principal.to_json()),
+             decision.standing_id, decision.decided_at)).rowcount
+        if not inserted:
+            raise InterruptionAlreadyDecided(f"interruption {decision.interruption_id} is already decided")
 
     def append_standing(self, standing: Any) -> Any:
         from .interruptions import StandingDecision

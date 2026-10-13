@@ -217,8 +217,20 @@ def golden_specs():
 
 
 def test_a_tool_that_declares_nothing_keeps_its_pre_m10_schema_hash():
-    """AC-32. Every manifest ever written names tools by these hashes."""
-    hashes = [spec.schema_hash() for spec in golden_specs()]
+    """AC-32. Every manifest ever written names tools by these hashes.
+
+    M30 (FR-113): approval_policy was inert before M30, so a spec declaring
+    REQUIRE_APPROVAL ran exactly as an AUTO one and hashed as one. Since M30 it waits
+    for approval, a different tool to run, and its hash differs. So each golden spec is
+    hashed with its approval_policy at the default, which reproduces the pre-M10
+    hashes exactly, and the specs declaring REQUIRE_APPROVAL are asserted to differ."""
+    import dataclasses
+
+    specs = list(golden_specs())
+    hashes = [dataclasses.replace(spec, approval_policy=ApprovalPolicy.AUTO).schema_hash() for spec in specs]
+    declaring = [s for s in specs if s.approval_policy is ApprovalPolicy.REQUIRE_APPROVAL]
+    assert declaring and all(
+        s.schema_hash() != dataclasses.replace(s, approval_policy=ApprovalPolicy.AUTO).schema_hash() for s in declaring)
     assert len(hashes) == 1944
     assert hashes[0] == GOLDEN_FIRST
     assert hashlib.sha256("".join(hashes).encode()).hexdigest() == GOLDEN_SHA256, (

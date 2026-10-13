@@ -88,6 +88,16 @@ persisted so you can reconstruct exactly what happened afterwards.
   beside them, and suggests the smallest threshold that would have flagged every
   incorrect claim. The suggestion is only reported: the threshold you configured
   stays until you change it.
+- **Waits for a person's approval before a call that needs one** (M30): a tool
+  that declares `approval_policy=REQUIRE_APPROVAL`, a `needs_approval` predicate
+  over a call's arguments, or a hook returning `REQUIRE_APPROVAL` makes the call
+  wait. Every approval of a turn is asked at once and recorded in the database;
+  an application lists them with `Runner.interruptions()` and decides with
+  `Runner.decide()` or the run handle's `approve()`/`reject()`, as a named user or
+  service. Calls keep the order the model gave them, the model is not called
+  while any waits, a rejection's reason reaches the model, an approval may be
+  made sticky for the rest of the run, and an undecided call expires after
+  `RunConfig.approval_timeout` (an hour by default).
 - **Fetches each page once, however many agents ask** (M24's claim-lock): one
   holder per page and per statement, across the tasks of a process and the
   processes sharing the database; the others wait, then take the holder's
@@ -130,7 +140,7 @@ Stated plainly, because an SDK that overstates itself costs you a week:
 | No model can record an externally validated outcome: `Runner.record_validation` is in no tool registry and no tool the SDK ships calls it. A custom tool is first-party code in your process and reaches the Runner through its scope, as it reaches the ledger store, so it could call `record_validation`; in-process code is outside the threat model | Declared (M26a) |
 | Streaming of model tokens as they are generated (a run's events do stream, through `RunHandle.events()`) | Later; not yet scheduled |
 | Native MCP (Model Context Protocol) support | Phase 4 |
-| Human approval workflows | Phase 4. The approval step exists and auto-allows |
+| Approvals inside an orchestrated plan listed on, and decided from, the top-level run; a paused run resuming after its process restarts | Phase 4 (M32); Phase 6 |
 | Sandboxed tool execution | Phase 5 |
 | Pause and resume; durable interruptions (cancel is built) | Phase 6 |
 | The execution manifest's `tools_sent` records the tools a run's agent is sent, written at run start with the rest of its configuration, so a run that ends before its first request records a set it never sent | Declared (M21) |

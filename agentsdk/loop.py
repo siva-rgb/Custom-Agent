@@ -29,9 +29,10 @@ import jsonschema
 
 import asyncio
 import dataclasses
+import uuid
 from collections.abc import Callable, Sequence
 from contextlib import nullcontext
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from decimal import Decimal
 from typing import Any
 
@@ -43,7 +44,7 @@ from .handle import RunControl
 from .hooks import HookAction, RuntimeHook
 from .identity import PrincipalContext
 from .model import ModelClient, ModelRequest, ModelResponse, StopReason, Usage
-from .outcomes import Completed, Failed, ToolExecutionOutcome
+from .outcomes import ApprovalRequired, Completed, Failed, RunInterruption, ToolExecutionOutcome
 from .primitives import Message, Role, ToolCall, ToolResult
 from .primitives import unstorable_reason
 from .budget import tokens_of
@@ -145,6 +146,9 @@ class AgentLoop:
         compactor: Any | None = None,
         artifacts: Any | None = None,
         agent_id: str | None = None,
+        interruptions: Callable[[], Any] | None = None,
+        approval_waits: Any | None = None,
+        approval_timeout: float = 3600.0,
     ) -> None:
         self._model = model_client
         self._sessions = session_store
@@ -178,6 +182,12 @@ class AgentLoop:
         self._compactor = compactor
         self._artifacts = artifacts
         self._agent_id = agent_id
+        # FR-114, FR-115 (M30): where interruptions are recorded, the Runner's registry of
+        # the runs waiting on them, and how long one waits. A loop built without a store
+        # fails a call that requires approval rather than run it.
+        self._interruptions = interruptions
+        self._approval_waits = approval_waits
+        self._approval_timeout = approval_timeout
 
     async def run(
         self,
@@ -508,10 +518,31 @@ class AgentLoop:
         """
         outcomes: dict[int, ToolExecutionOutcome] = {}
         prepared: dict[int, PreparedCall] = {}
+        approvals: dict[int, RunInterruption] = {}
         try:
-            for batch in self._batches(list(enumerate(tool_calls))):
-                await self._run_batch(batch, principal_context, outcomes, prepared)
+            batches = self._batches(list(enumerate(tool_calls)))
+            for position, batch in enumerate(batches):
+                await self._prepare_batch(batch, principal_context, outcomes, prepared, approvals)
+                if not any(index in approvals for index, _ in batch):
+                    await self._run_ready(batch, outcomes, prepared)
+                    continue
+                # FR-114, P4-D13: from the first call requiring approval, every call of the
+                # turn is prepared, every approval of the turn is asked at once, and the
+                # calls run in issue order once every decision is in.
+                for later in batches[position + 1:]:
+                    await self._prepare_batch(later, principal_context, outcomes, prepared, approvals)
+                decisions = await self._approve(run_id, approvals, prepared, outcomes)
+                for later in batches[position:]:
+                    for index, _ in later:
+                        decision = decisions.get(index)
+                        if decision is not None and decision.decision == "reject" and index not in outcomes:
+                            outcomes[index] = await self._executor.rejected(
+                                prepared[index], _rejection_text(decision), f"urn:agentsdk:decision:{decision.decision_id}")
+                    await self._run_ready(later, outcomes, prepared)
+                break
         except asyncio.CancelledError:
+            # FR-116, P4-D14: a cancelled wait decides each pending interruption cancel.
+            await self._cancel_approvals(approvals)
             try:
                 for index, call in enumerate(tool_calls):
                     if index not in outcomes:
@@ -556,15 +587,37 @@ class AgentLoop:
         except Exception:  # noqa: BLE001
             return False
 
-    async def _run_batch(
+    async def _prepare_batch(
         self,
         batch: list[tuple[int, ToolCall]],
         principal_context: PrincipalContext | None,
         outcomes: dict[int, ToolExecutionOutcome],
         prepared: dict[int, PreparedCall],
+        approvals: dict[int, RunInterruption],
     ) -> None:
-        """Every call's steps 1 to 5 in issue order on this thread, then steps 6 to
-        9 concurrently under the run's slots (FR-44), filling `outcomes` by index.
+        """Every call's steps 1 to 5 in issue order on this thread (FR-44): the call
+        ready for step 6, the outcome of one that stopped before it, or, for one that
+        requires approval, its call and its interruption (FR-113)."""
+        control = self._control
+        for index, call in batch:
+            control.checkpoint()
+            item = await self._executor.prepare(call, principal_context)
+            if isinstance(item, PreparedCall):
+                prepared[index] = item
+            elif isinstance(item, ApprovalRequired):
+                prepared[index] = item.prepared
+                approvals[index] = item.interruption
+            else:
+                outcomes[index] = item
+
+    async def _run_ready(
+        self,
+        batch: list[tuple[int, ToolCall]],
+        outcomes: dict[int, ToolExecutionOutcome],
+        prepared: dict[int, PreparedCall],
+    ) -> None:
+        """Steps 6 to 9 of a batch's prepared calls that have no outcome yet, concurrently
+        under the run's slots (FR-44), filling `outcomes` by index.
 
         Each call yields its own outcome through the executor's total boundary,
         so one failing changes no other. A BaseException escaping a call, or the
@@ -573,14 +626,9 @@ class AgentLoop:
         that finished are kept, so a cancelled batch pairs only the rest.
         """
         control = self._control
-        for index, call in batch:
-            control.checkpoint()
-            item = await self._executor.prepare(call, principal_context)
-            if isinstance(item, PreparedCall):
-                prepared[index] = item
-            else:
-                outcomes[index] = item
-        ready = [index for index, _ in batch if index in prepared]
+        ready = [index for index, _ in batch if index in prepared and index not in outcomes]
+        if not ready:
+            return
         # A cancellation that arrived while a failure above was being recorded
         # stops the batch here, before any of its calls reaches step 6.
         control.checkpoint()
@@ -598,6 +646,182 @@ class AgentLoop:
             for index, task in tasks.items():
                 if task.done() and not task.cancelled() and task.exception() is None:
                     outcomes[index] = task.result()
+
+    async def _approve(
+        self,
+        run_id: str,
+        approvals: dict[int, RunInterruption],
+        prepared: dict[int, PreparedCall],
+        outcomes: dict[int, ToolExecutionOutcome],
+    ) -> dict[int, Any]:
+        """FR-114: records the turn's interruptions, applies standing decisions to the ones
+        the tool's policy flagged (P4-D15), and waits until every one is decided or has
+        expired. The run acts only on what the store holds: it re-reads on each wake, at
+        least every five seconds, and at the earliest expiry (FR-115). Returns each
+        call's decision by index. A call whose interruption cannot be recorded fails, and
+        is neither waited on nor run (NFR-30)."""
+        if self._interruptions is None:
+            for index in list(approvals):
+                outcomes[index] = await self._executor.check_failed(
+                    prepared[index], "no interruption store: a call that requires approval cannot run")
+                del approvals[index]
+            return {}
+        store = self._interruptions()
+        # Registered before any is recorded: an interruption is listed as pending from the
+        # moment it is recorded, so it must be decidable from that moment too.
+        loop = asyncio.get_running_loop()
+        event = asyncio.Event()
+        ids = [item.interruption_id for item in approvals.values()]
+        waits = self._approval_waits
+        if waits is not None:
+            waits.register(ids, loop, event, run_id)
+        try:
+            return await self._approved(run_id, store, event, approvals, prepared, outcomes)
+        finally:
+            if waits is not None:
+                waits.unregister(ids)
+
+    async def _approved(
+        self,
+        run_id: str,
+        store: Any,
+        event: asyncio.Event,
+        approvals: dict[int, RunInterruption],
+        prepared: dict[int, PreparedCall],
+        outcomes: dict[int, ToolExecutionOutcome],
+    ) -> dict[int, Any]:
+        """_approve's body, run while the turn's interruptions are registered as waited on."""
+        from datetime import datetime, timedelta, timezone
+
+        from .interruptions import InterruptionAlreadyDecided, InterruptionDecision
+
+        control = self._control
+        now = datetime.now(timezone.utc)
+        first = approvals[min(approvals)]
+        tenant_id, project_id = first.tenant_id, first.project_id
+        decided: dict[int, Any] = {}
+        requested = False
+
+        async def standing_for(candidates: list[RunInterruption]) -> dict[str, Any]:
+            """P4-D15: each candidate's decision by the run's latest standing decision for
+            its agent and tool -- only for a call the tool's own policy flagged."""
+            policy = [c for c in candidates if c.trigger == "policy"]
+            if not policy:
+                return {}
+            latest = {}
+            for row in await control.store(store.standing, tenant_id, project_id, run_id):
+                latest[(row.agent_id, row.tool_name)] = row
+            found = {}
+            for item in policy:
+                row = latest.get((item.agent_id, item.tool_name))
+                if row is not None:
+                    found[item.interruption_id] = InterruptionDecision(
+                        decision_id=str(uuid.uuid4()), interruption_id=item.interruption_id,
+                        tenant_id=tenant_id, project_id=project_id, decision=row.decision, source="standing",
+                        message=row.message, standing_id=row.standing_id, decided_at=datetime.now(timezone.utc))
+            return found
+
+        # Recorded in issue order. One a standing decision covers is recorded with that
+        # decision in one step, so it is never listed as pending (FR-114).
+        staged = {index: replace(approvals[index], created_at=now,
+                                 expires_at=now + timedelta(seconds=self._approval_timeout))
+                  for index in sorted(approvals)}
+        try:
+            covered = await standing_for(list(staged.values()))
+        except Exception:  # noqa: BLE001 - unread standing decisions: each call is asked instead
+            covered = {}
+        items: dict[int, RunInterruption] = {}
+        for index, item in staged.items():
+            standing = covered.get(item.interruption_id)
+            try:
+                await control.store(store.append_interruption, item, standing)
+            except Exception as exc:  # noqa: BLE001 - not recorded, so it neither waits nor runs
+                outcomes[index] = await self._executor.check_failed(prepared[index], describe_exception(exc))
+                continue
+            items[index] = item
+            if standing is not None:
+                decided[index] = standing
+        approvals.clear()
+        approvals.update(items)
+        if not items:
+            return {}
+
+        async def apply_standing() -> None:
+            """A sticky decision made while the turn waits decides its siblings (P4-D15)."""
+            open_items = [items[i] for i in items if i not in decided]
+            for interruption_id, decision in (await standing_for(open_items)).items():
+                try:
+                    await control.store(store.append_decision, decision)
+                except InterruptionAlreadyDecided:
+                    pass  # decided meanwhile: the store's row is read below
+
+        # The wait: until every interruption of the turn is decided or has expired.
+        while True:
+            event.clear()
+            try:
+                await apply_standing()
+            except Exception:  # noqa: BLE001 - a store failure leaves the calls undecided
+                pass
+            for index, item in items.items():
+                if index in decided:
+                    continue
+                try:
+                    view = await control.store(store.interruption, tenant_id, project_id, item.interruption_id)
+                except Exception:  # noqa: BLE001 - unread is undecided: the call waits (NFR-30)
+                    continue
+                if view.decision is not None:
+                    decided[index] = view.decision
+                elif datetime.now(timezone.utc) >= item.expires_at:
+                    expiry = InterruptionDecision(
+                        decision_id=str(uuid.uuid4()), interruption_id=item.interruption_id,
+                        tenant_id=tenant_id, project_id=project_id, decision="reject", source="expiry",
+                        decided_at=datetime.now(timezone.utc))
+                    try:
+                        await control.store(store.append_decision, expiry)
+                        decided[index] = expiry
+                    except InterruptionAlreadyDecided:
+                        pass  # a principal decided first: adopted on the next read
+                    except Exception:  # noqa: BLE001 - unrecorded, so still undecided
+                        pass
+            if len(decided) == len(items):
+                break
+            if not requested:
+                # Each interruption no standing decision settled is asked for, once.
+                for index in sorted(items):
+                    if index not in decided:
+                        await control.store(self._events.emit, EventType.APPROVAL_REQUESTED, _requested(items[index]))
+                requested = True
+            pending = [items[i].expires_at for i in items if i not in decided]
+            wait = min([5.0] + [max(0.0, (e - datetime.now(timezone.utc)).total_seconds()) for e in pending])
+            control.checkpoint()
+            try:
+                await asyncio.wait_for(event.wait(), timeout=max(wait, 0.01))
+            except asyncio.TimeoutError:
+                pass
+        for index in sorted(decided):
+            await control.store(self._events.emit, EventType.APPROVAL_DECIDED, _decided(items[index], decided[index]))
+        return decided
+
+    async def _cancel_approvals(self, approvals: dict[int, RunInterruption]) -> None:
+        """FR-116: each recorded interruption of the turn not yet decided is decided
+        cancel. A store that refuses leaves it undecided; the cancellation goes on."""
+        if not approvals or self._interruptions is None:
+            return
+        from datetime import datetime, timezone
+
+        from .interruptions import InterruptionDecision
+
+        store = self._interruptions()
+        for item in approvals.values():
+            if item.expires_at is None:
+                continue  # never recorded
+            try:
+                await self._control.store(store.append_decision, InterruptionDecision(
+                    decision_id=str(uuid.uuid4()), interruption_id=item.interruption_id, tenant_id=item.tenant_id,
+                    project_id=item.project_id, decision="reject", source="cancel",
+                    decided_at=datetime.now(timezone.utc)))
+            except Exception:  # noqa: BLE001 - decided already, or the store refused: the cancellation decides
+                pass
 
     def _price(self, request: ModelRequest, usage: Usage) -> Decimal | None:
         """One call's cost, or None. The pricer is the caller's, so it is
@@ -648,17 +872,39 @@ def _recordable(model: str | None) -> str | None:
 
 
 def _results(outcomes: dict[int, ToolExecutionOutcome], count: int) -> list[ToolResult]:
+    """Each call's result in issue order. By here every call has a Completed or Failed
+    outcome: one that required approval ran, was rejected, or was cancelled (FR-114)."""
     results = []
     for index in range(count):
         outcome = outcomes[index]
         if isinstance(outcome, (Completed, Failed)):
             results.append(outcome.result)
-        else:  # pragma: no cover - unreachable until Phase 4
+        else:  # pragma: no cover - the loop settles every approval before its results
             raise AssertionError(
-                f"Phase 0 ToolExecutor returned {type(outcome).__name__}; "
-                "only Completed and Failed are reachable"
+                f"ToolExecutor returned {type(outcome).__name__} with no result; "
+                "only Completed and Failed carry one"
             )
     return results
+
+
+def _rejection_text(decision: Any) -> str:
+    """FR-114: what a rejected call returns to the model."""
+    if decision.source == "expiry":
+        return "approval expired"
+    return f"rejected: {decision.message}" if decision.message else "rejected"
+
+
+def _requested(item: RunInterruption) -> dict[str, Any]:
+    """ApprovalRequested: the interruption, never the arguments (FR-114)."""
+    return {"interruption": item.interruption_id, "tool_call_id": item.tool_call_id, "tool_name": item.tool_name,
+            "agent_id": item.agent_id, "node_id": item.node_id, "trigger": item.trigger}
+
+
+def _decided(item: RunInterruption, decision: Any) -> dict[str, Any]:
+    principal = decision.principal
+    return {"interruption": item.interruption_id, "tool_call_id": item.tool_call_id, "tool_name": item.tool_name,
+            "decision": decision.decision, "source": decision.source,
+            "decided_by": None if principal is None else (principal.user_principal or principal.service_principal)}
 
 
 async def _wait_all_or_cancel(tasks: list[asyncio.Future[Any]]) -> None:

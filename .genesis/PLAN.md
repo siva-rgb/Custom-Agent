@@ -290,15 +290,15 @@
 
 ### M30-approvals — A call requiring approval waits for a recorded decision, in issue order, and runs at most once and only when approved
 
-- state/risk: active / high
+- state/risk: done / high
 - requirements: FR-113, FR-114, FR-115, FR-116, FR-117, AC-86, NFR-30, NFR-31, NFR-32
 - scope: not bounded
-- gates: unit: .venv\Scripts\python.exe -m pytest tests/test_approvals.py -q, regression: .venv\Scripts\python.exe -m pytest -q, independent-review: pending
+- gates: unit: .venv\Scripts\python.exe -m pytest tests/test_approvals.py -q, regression: .venv\Scripts\python.exe -m pytest -q, independent-review: pass
 - next: Run the task pre-flight.
 
 ### M31-write-tools — write_file and edit_file change files only as approved, atomically, confined to their root
 
-- state/risk: queued / high
+- state/risk: active / high
 - requirements: FR-118, FR-119, AC-87, NFR-30, NFR-33, NFR-14
 - scope: not bounded
 - gates: unit: .venv\Scripts\python.exe -m pytest tests/test_write_tools.py -q, regression: .venv\Scripts\python.exe -m pytest -q, independent-review: pending

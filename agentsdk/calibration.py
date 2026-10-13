@@ -141,11 +141,12 @@ def calibrate(rows: Iterable[Any], *, tenant_id: str, project_id: str, since: da
     # the critic's node row, with the same critic_run, names that execution (FR-111). A
     # claim shared by several nodes is never counted against another node's gate.
     gated = {g.subject for g in gates}
+    # A row naming no critic_run joins nothing, never another such row on None (M29 review).
     executions = {r.detail.get("critic_run"): r.subject for r in rows
-                  if r.kind == "critic" and r.claim_id is None}
+                  if r.kind == "critic" and r.claim_id is None and r.detail.get("critic_run") is not None}
     critic = {verdict: _counts() for verdict in OUTCOMES["critic"]}
     for r in rows:
-        if (r.kind == "critic" and r.claim_id is not None
+        if (r.kind == "critic" and r.claim_id is not None and r.detail.get("critic_run") is not None
                 and executions.get(r.detail.get("critic_run")) in gated):
             critic[r.outcome][outcome_of(r.subject)] += 1
 
