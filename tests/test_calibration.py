@@ -97,8 +97,12 @@ def external(name, verdict, minutes):
     return row("external", subject, verdict, {"source": "fixture", "detail": "known answer"}, minutes)
 
 
-def critic(name, verdict, minutes):
-    return row("critic", CLAIM[name], verdict, {"verdict": verdict, "reason": "r"}, minutes)
+def critic(name, verdict, minutes, gated):
+    """A critic's rows as the orchestrator writes them: one on the node execution the gate
+    row `gated` judged, one on the claim, sharing a critic_run (FR-111: a critic row counts
+    only when its own execution's gate row is read)."""
+    detail = {"verdict": verdict, "reason": "r", "critic_run": str(uuid.uuid4())}
+    return [row("critic", gated.subject, verdict, detail, minutes), row("critic", CLAIM[name], verdict, detail, minutes)]
 
 
 # Computed by hand in the tests below. A judged twice; E judged with no outcome; F has an
@@ -109,7 +113,8 @@ NODE_OUTCOME = row("external", NodeSubject(run_id=LEDGER, plan_id=str(uuid.uuid4
                    "correct", {"source": "human", "detail": "looked right"}, 9)
 OUTCOMES = [external("A", "incorrect", 3), external("A", "correct", 4), external("B", "incorrect", 3),
             external("C", "incorrect", 3), external("D", "correct", 3), external("F", "correct", 3), NODE_OUTCOME]
-CRITICS = [critic("A", "approved", 2), critic("C", "corrected", 2), critic("E", "escalate", 3)]
+CRITICS = [*critic("A", "approved", 2, GATES[0]), *critic("C", "corrected", 2, GATES[0]),
+           *critic("E", "escalate", 3, GATES[1])]
 
 
 def report(rows, min_outcomes=4, **kwargs):
@@ -130,9 +135,10 @@ def test_each_signal_is_counted_fired_and_quiet_by_external_outcome_as_computed_
         "contradicted": {"fired": counts(correct=1), "quiet": counts(2, 2, 1)},
         "thin_support": {"fired": counts(), "quiet": counts(3, 2, 1)},
         "low_confidence": {"fired": counts(1, 1), "quiet": counts(2, 1, 1)},
-        "no_claims": {"fired": counts(), "quiet": counts(3, 2, 1)},
     }
-    assert list(made.signals) == list(SIGNALS)
+    # no_claims fires on a node, never on a claim: counted by gate row instead (FR-111).
+    assert list(made.signals) == [s for s in SIGNALS if s != "no_claims"]
+    assert made.no_claims_fired == 0
 
 
 def test_each_threshold_counts_the_incorrect_and_correct_claims_it_would_flag():
@@ -193,7 +199,7 @@ def test_critic_verdicts_are_reported_separately_and_never_move_the_suggestion()
     assert (with_critics.suggested_threshold, with_critics.thresholds, with_critics.signals) == (
         without.suggested_threshold, without.thresholds, without.signals)
     # Even a critic that approved every incorrect claim many times over.
-    flood = [critic(name, "approved", 5) for name in "BC" for _ in range(30)]
+    flood = [r for name in "BC" for _ in range(30) for r in critic(name, "approved", 5, GATES[0])]
     assert report([*GATES, *OUTCOMES, *flood]).suggested_threshold == without.suggested_threshold
 
 

@@ -1,0 +1,22 @@
+{
+  "task": "M29-carried-and-records",
+  "gate": "unit",
+  "command": ".venv\\Scripts\\python.exe -m pytest tests/test_interruption_record.py -q",
+  "started_at": "2026-10-13T12:25:19.599Z",
+  "observed_at": "2026-10-13T12:25:26.198Z",
+  "exit_code": 0,
+  "signal": null,
+  "stdout": "........................                                                 [100%]\r\n24 passed in 4.90s\r\n",
+  "stderr": "",
+  "revision": {
+    "commit": "8c7345fcd0b32b7e5b345cbe0fcd73a3ab3900e7",
+    "dirty": true
+  },
+  "source_hash": "9b084719cfc3d27d22e188725796a88978e93f23bd670c794b5cbefe17bc4eb4",
+  "environment": {
+    "node": "v20.10.0",
+    "platform": "win32",
+    "arch": "x64"
+  },
+  "hash": "3d457b1f513c1a910e590c132effcf0f843b34598f691fdcf9fbc14e60359eed"
+}

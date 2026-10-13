@@ -48,6 +48,10 @@ _TRACKED = (
     ("claim_contributions", "contribution_id"),
     # M26 (FR-100): verifications, so a test that leaves one behind fails AC-44.
     ("verifications", "verification_id"),
+    # M29 (FR-112): interruptions and their decisions, likewise.
+    ("interruptions", "interruption_id"),
+    ("interruption_decisions", "decision_id"),
+    ("standing_decisions", "standing_id"),
 )
 _RUN_TABLES = tuple(table for table, _ in _TRACKED)
 

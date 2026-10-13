@@ -9,7 +9,7 @@
     "non_goals": [],
     "trust_boundary": "local repository",
     "created_at": "2026-09-05T14:48:57.894Z",
-    "updated_at": "2026-10-12T18:27:43.258Z"
+    "updated_at": "2026-10-13T13:46:57.330Z"
   },
   "policy": {
     "ponytail": "full",
@@ -23,19 +23,19 @@
     }
   },
   "lifecycle": {
-    "phase": "verify",
-    "status": "ready",
-    "active_task": null,
+    "phase": "build",
+    "status": "active",
+    "active_task": "M30-approvals",
     "blocker": null,
-    "next_action": "Review completed work and choose the next bounded outcome."
+    "next_action": "Run the task pre-flight."
   },
   "commands": {},
   "workflow": {
     "type": "new-product",
     "started_at": "2026-09-05T14:48:57.897Z",
     "spec_check": {
-      "at": "2026-10-12T16:38:16.715Z",
-      "source_hash": "b3ba503883b99ab0440593b04033f99a228fc1a4c73e21d44b6027698d167bcf",
+      "at": "2026-10-13T10:05:06.028Z",
+      "source_hash": "a81a562d4e55ad12fd54785891be477d5051cf2fd131040217e4acbdffebd98a",
       "requirements": [
         "AC-1",
         "AC-10",
@@ -119,6 +119,11 @@
         "AC-81",
         "AC-82",
         "AC-83",
+        "AC-84",
+        "AC-85",
+        "AC-86",
+        "AC-87",
+        "AC-88",
         "AC-9",
         "FR-1",
         "FR-10",
@@ -134,7 +139,18 @@
         "FR-109",
         "FR-11",
         "FR-110",
+        "FR-111",
+        "FR-112",
+        "FR-113",
+        "FR-114",
+        "FR-115",
+        "FR-116",
+        "FR-117",
+        "FR-118",
+        "FR-119",
         "FR-12",
+        "FR-120",
+        "FR-121",
         "FR-13",
         "FR-14",
         "FR-15",
@@ -253,6 +269,10 @@
         "NFR-28",
         "NFR-29",
         "NFR-3",
+        "NFR-30",
+        "NFR-31",
+        "NFR-32",
+        "NFR-33",
         "NFR-4",
         "NFR-5",
         "NFR-6",
@@ -262,14 +282,14 @@
       ]
     },
     "plan_check": {
-      "at": "2026-10-12T16:41:20.849Z",
-      "source_hash": "4d083d2f106d228ad0919f214f76dfe777904a2ea13ea12e34ba74553988af18"
+      "at": "2026-10-13T10:05:41.323Z",
+      "source_hash": "dfe1a1c81bdfdf508ccd1eaf9f0f3d3fec8daa87c4c884bfc5a16f8301327c61"
     },
     "plan_approval": {
       "human": "siva-rgb (owner)",
-      "reason": "Plan re-signed to reactivate M28 after the pre-flight spec amendments. Signed with owner permission (DECISION-df1790f1).",
-      "at": "2026-10-12T16:41:21.031Z",
-      "source_hash": "4d083d2f106d228ad0919f214f76dfe777904a2ea13ea12e34ba74553988af18"
+      "reason": "Phase 4 increment 1 plan: M29 to M32 as P4-D12 orders them, each with unit, regression and independent-review gates.",
+      "at": "2026-10-13T10:05:41.492Z",
+      "source_hash": "dfe1a1c81bdfdf508ccd1eaf9f0f3d3fec8daa87c4c884bfc5a16f8301327c61"
     }
   },
   "artifacts": [
@@ -361,6 +381,11 @@
         "AC-81",
         "AC-82",
         "AC-83",
+        "AC-84",
+        "AC-85",
+        "AC-86",
+        "AC-87",
+        "AC-88",
         "AC-9",
         "FR-1",
         "FR-10",
@@ -376,7 +401,18 @@
         "FR-109",
         "FR-11",
         "FR-110",
+        "FR-111",
+        "FR-112",
+        "FR-113",
+        "FR-114",
+        "FR-115",
+        "FR-116",
+        "FR-117",
+        "FR-118",
+        "FR-119",
         "FR-12",
+        "FR-120",
+        "FR-121",
         "FR-13",
         "FR-14",
         "FR-15",
@@ -495,6 +531,10 @@
         "NFR-28",
         "NFR-29",
         "NFR-3",
+        "NFR-30",
+        "NFR-31",
+        "NFR-32",
+        "NFR-33",
         "NFR-4",
         "NFR-5",
         "NFR-6",
@@ -502,12 +542,12 @@
         "NFR-8",
         "NFR-9"
       ],
-      "source_hash": "b3ba503883b99ab0440593b04033f99a228fc1a4c73e21d44b6027698d167bcf",
+      "source_hash": "a81a562d4e55ad12fd54785891be477d5051cf2fd131040217e4acbdffebd98a",
       "approval": {
         "human": "siva-rgb (owner)",
-        "reason": "M28 pre-flight: FR-104, FR-105 and AC-79 amended for the M27 caveats (DECISION-df1790f1); FR-107 and FR-108 clarified (DECISION-4f1acdb2). Signed with owner permission.",
-        "at": "2026-10-12T16:38:23.901Z",
-        "source_hash": "b3ba503883b99ab0440593b04033f99a228fc1a4c73e21d44b6027698d167bcf"
+        "reason": "Phase 4 increment 1 (FR-111 to FR-121, NFR-30 to NFR-33, AC-84 to AC-88), second draft after the read-only review, with its nine spec-level choices accepted.",
+        "at": "2026-10-13T10:05:06.178Z",
+        "source_hash": "a81a562d4e55ad12fd54785891be477d5051cf2fd131040217e4acbdffebd98a"
       }
     }
   ],
@@ -1570,6 +1610,46 @@
       "status": "accepted",
       "source": null,
       "recorded_at": "2026-10-12T15:20:57.089Z"
+    },
+    {
+      "id": "DECISION-005d0bfd",
+      "title": "Phase 4 P4-D1 to P4-D4: two increments, interruptions recorded now, an approval exit signal, a phase-4 branch (owner)",
+      "text": "Owner decisions 2026-10-13, after the RunState study (KNOWLEDGE-5b3b78e5). P4-D1: Phase 4 is specified in two increments, each starting with the items carried into it (M28 review: corrected_answer unguarded, the two report wording items, the NFR-29 test). Increment 1: interruptions, the basic ApprovalManager and Tier 2 write and edit tools behind it. Increment 2: native MCP, the tool catalog (ADR-28), credential brokering (ADR-27) and tenant-scoped skills and instruction bundles; scanning child output for instruction-shaped text is placed when increment 2 is specified. P4-D2: every interruption and every decision is a database row from increment 1, so the record is complete and Phase 6 builds on it; resuming needs the same process, and a paused run whose process ends is recorded as failed. ADR-29 is kept: durable, restart-surviving resume stays Phase 6. P4-D3: increment 1 exit signal is approval under contention: an orchestrated plan whose children call write and edit tools needing approval in parallel, some approved, some rejected, some sticky, one decided twice concurrently, one expired; on both stores each call runs at most once and only when approved, every decision is recorded and bound to its tenant and project, a rejection reaches the model, and nothing runs while paused. P4-D4: Phase 4 is built on a new branch phase-4 from the approved phase-2 tip (8c7345f); phase-2 stays as the record of Phases 2 and 3, and merging into main is a separate owner decision. The publish filter covers main and phase-2 and must be extended before phase-4 is published.",
+      "status": "accepted",
+      "source": null,
+      "recorded_at": "2026-10-13T07:24:25.075Z"
+    },
+    {
+      "id": "DECISION-e03027a0",
+      "title": "Phase 4 increment 1: deciding, turn shape, sticky decisions and waiting (P4-D5 to P4-D8, owner)",
+      "text": "Owner decisions 2026-10-13. P4-D5: an application decides a pending approval through Runner.decide(tenant_id, project_id, interruption_id, approve or reject, principal, message), recorded as a row bound to the tenant, project and deciding principal and usable once, a second decision on the same interruption refused; RunHandle.approve and reject are shortcuts to it. It is never a tool, so no model can approve its own call. P4-D6: in a turn with a call needing approval, the calls needing none run as usual and the model is not called again until every pending call of the turn is decided; an approved call then runs, and a rejected one returns a tool error result, rejected: <message>, so the model can adapt (as OpenAI resolves an interrupted turn, KNOWLEDGE-5b3b78e5). P4-D7: a decision may be sticky for the rest of the run, for one agent and one tool, recorded as its own row naming who made it; an exact per-call decision overrides it, and nothing outlives the run. P4-D8: each interruption has an expiry, a RunConfig field defaulting to one hour; an expired one is recorded and treated as a rejection, approval expired. A waiting child keeps its node budget reservation, waiting charges no tokens, and cancelling the run cancels its pending interruptions, recorded.",
+      "status": "accepted",
+      "source": null,
+      "recorded_at": "2026-10-13T07:29:43.047Z"
+    },
+    {
+      "id": "DECISION-2402caab",
+      "title": "Phase 4 increment 1: trigger, Tier 2 tools, orchestration and milestones (P4-D9 to P4-D12, owner)",
+      "text": "Owner decisions 2026-10-13. P4-D9: a call needs approval when any of three sources says so: the tool declared ApprovalPolicy (Tier 2 tools default to REQUIRE_APPROVAL), an optional per-tool predicate over the arguments, or a RuntimeHook returning REQUIRE_APPROVAL. It is decided at executor step 4, after permission, so a denied call is never asked about. P4-D10: increment 1 ships write_file, which creates or replaces a file, and edit_file, which replaces one exact, unique string and is refused if it is absent or ambiguous. Both are confined like the M10 file tools, write atomically (a temporary file, then a rename), refuse links and paths outside the root, and put the change and its before and after hashes in the approval request. Delete, move and apply_patch are not in increment 1. P4-D11: an approval needed inside an orchestrated plan is recorded against the child and listed on the top-level run; the child and its node wait while other nodes keep running, the plan settles only when its nodes do, decisions use the interruption id whatever the depth, and the node keeps its reservation (P4-D8). P4-D12: four milestones. M29: the M28 carried items, and the interruption and decision records (a migration) with no behaviour change. M30: the ApprovalManager in single runs, with Runner.decide, sticky decisions and expiry (example 24). M31: write_file and edit_file (example 25). M32: approvals inside orchestration and the exit signal under contention (example 26). Examples run offline on both stores and live.",
+      "status": "accepted",
+      "source": null,
+      "recorded_at": "2026-10-13T07:29:43.208Z"
+    },
+    {
+      "id": "DECISION-af27465a",
+      "title": "Phase 4 increment 1 after the spec review: issue order, a stopped paused run, sticky scope (P4-D13 to P4-D15, owner)",
+      "text": "Owner decisions 2026-10-13 after the read-only spec review of the first draft (Sonnet 5). P4-D13 refines P4-D6: every call of a turn is prepared and every approval of the turn is asked at once; calls before the first pending call run immediately, and from the first pending call onward the calls run in issue order once every decision is in, an approved call running and a rejected one returning its rejection, so side effects keep the order the model gave. P4-D14 amends P4-D2: an orderly stop of a paused run, by cancellation or shutdown, ends it cancelled with each pending interruption decided cancel, as any cancelled run; after a crash the rows stay as they were, Runner.interruptions marks them as not waiting, and decide refuses them; recovering them is Phase 6. P4-D15 refines P4-D7: a sticky decision, approve or reject, decides every not yet decided call of that agent and tool in the run, siblings pending in the same turn included, but only calls that needed approval because of the tool declared policy; a call flagged by an argument predicate or a hook is always asked; a call already decided keeps its decision.",
+      "status": "accepted",
+      "source": null,
+      "recorded_at": "2026-10-13T09:41:29.030Z"
+    },
+    {
+      "id": "DECISION-d9ddaf0f",
+      "title": "Phase 4 increment 1: the spec-level choices of the second draft accepted (owner)",
+      "text": "Owner accepted on 2026-10-13, after the read-only spec review of the first draft, the nine choices the second draft of FR-111 to FR-121 makes beyond P4-D1 to P4-D15: (1) the interruption is created after before_tool (step 5), not at step 4, so a hook can require approval and the request shows the call as it will run; HALT from before_tool stays ignored; (2) a deciding principal must name a user or a service; (3) every call requiring approval gets an interruption row, one decided by a standing decision included; (4) the waiting run acts only on what the store holds, re-reading on each wake and at least every five seconds; (5) a rejection text is labelled by its decision with the SDK internal trust, since a principal wrote it; (6) a child waiting for approval keeps its concurrency slot; (7) a run top-level run is its ledger_run_id; (8) the write tools refuse a target changed since its request was described or held open by another handle, refuse a target that is itself a link while allowing in-root links in the path, use a withheld temporary file, and declare the window between re-hash and replace; (9) the M28 report items are settled by no_claims_fired and a critic table joined by node execution.",
+      "status": "accepted",
+      "source": null,
+      "recorded_at": "2026-10-13T10:05:05.654Z"
     }
   ],
   "knowledge": [
@@ -2500,6 +2580,30 @@
       "source": null,
       "tags": [],
       "recorded_at": "2026-10-12T18:27:43.063Z"
+    },
+    {
+      "id": "KNOWLEDGE-5b3b78e5",
+      "title": "Before the Phase 4 spec: how the OpenAI Agents SDK pauses and resumes a run (RunState, openai-agents 0.23.1)",
+      "text": "Read from the openai-agents 0.23.1 wheel source (agents/run_state.py, 5472 lines; run_context.py; _run_state_agent_identity.py; run_internal/turn_resolution.py) and the official human-in-the-loop docs, 2026-10-13. (1) Only tool approval interrupts: a tool declares needs_approval, a bool or a callable of context, arguments and call id; the run then returns, not raises, with result.interruptions, and result.to_state() gives a RunState. Approval is run-wide: an interruption inside a nested agent-as-tool surfaces on the outer run. (2) The snapshot is the whole in-memory run as one JSON document: turn, current agent reference, original and pending input, every model response, generated and session items, usage, approval records, tool invocations, the application context with metadata, guardrail results, current step, last processed response, trace, sandbox state and any pending session write. It carries $schemaVersion, now 1.18 after 18 bumps; older released versions stay readable and newer ones are refused fail-fast. (3) No code is serialized: agents and tools are found again by name from the root agent passed to from_json, walked breadth first, with duplicate names given stable identities; the application configuration must be unchanged between pause and resume, and MCP calls need recipient bindings. (4) On resume the model is not called again: the interrupted turn is resolved from the recorded last processed response, approved calls execute, a rejected call returns a rejection message to the model, then the loop continues. (5) Decisions are per call id, with sticky always_approve and always_reject scoped to one agent and an optional rejection message, all stored in the snapshot. (6) Trust boundary: from_json and from_string do not authenticate the snapshot or who approved; the docs now say keep snapshots server-side and apply only authorized, single-use decisions (openai-agents-python PR 5105, Sep 2026). Related bugs: interruptions returned mutable aliases of the pending approvals (PR 4409), and approval was not honoured on resume when a context was passed (issue 4244). Independently restored copies must not be resumed concurrently against one session. (7) For this SDK: the store is already the record (NFR-3: runs, messages, events, manifests, plan states), and outcomes.py already defines RunInterruption with a resume_token, InterruptionKind (tool_approval and four others) and ApprovalRequired, while executor step 4 auto-allows (ADR-29: in process in Phase 4, durable in Phase 6). The design questions for P4: a store-derived pause, with a paused run row and a pending interruption row, versus a versioned snapshot blob; resume executing the recorded call without a new model call; decisions as server-side rows bound to tenant, project and principal, single-use; at most one resume at a time (an advisory lock, as the claim-lock); refusing resume when the agent spec hash or tool set changed since the pause; whether the node lease and budget stay held while waiting; expiry; and how an interruption inside an orchestrated child surfaces on the parent run.",
+      "source": null,
+      "tags": [],
+      "recorded_at": "2026-10-13T06:53:27.701Z"
+    },
+    {
+      "id": "KNOWLEDGE-8ff12ea9",
+      "title": "Facts the Phase 4 increment 1 spec review measured in the code, and what the second draft changed",
+      "text": "Read-only review of the first draft by Sonnet 5, 2026-10-13, claims checked first-hand by the orchestrator. Measured: batches of one turn run strictly one after another (loop.py _execute_tool_calls) and _results asserts only Completed and Failed are reachable, as tests/test_primitives.py asserts; executor step 4 is an empty stub and before_tool handles only REJECT and MODIFY, so REQUIRE_APPROVAL and HALT are ignored today; ToolSpec.approval_policy is never read and not in schema_hash; ApprovalRequired and RunInterruption exist unused; RunHandle.cancel crosses threads with call_soon_threadsafe while store writes must run on a worker thread (FR-81), so decide is a coroutine; tool functions receive only their arguments and an optional scope, so an approved hash needs a typed channel; the M10 file tools bind only CreateFileW, GetFinalPathNameByHandleW, GetFileInformationByHandleEx, ReadFile and CloseHandle, and open without delete sharing; runs has only a primary key, so a composite key to it needs an ALTER in 0014; a child holds its max_concurrent_subagents slot for its whole run and its RunConfig carries no approval settings; the orchestrator spawns at depth 1 and critic runs have no tools; GateEvaluated is the precedent for a node event on the orchestrator stream. The first draft blocked on eight points: waiting inside prepare would serialise approvals and contradict P4-D6; decide could not be thread-safe as cancel is; no channel for the approved hash; NFR-33 falsely said no new Win32 calls; the composite keys needed an ALTER and sticky semantics were untestable; stored-text checks and fault injection were missing; the crash rule contradicted P4-D2; and orchestration plumbing was unspecified. The owner then decided P4-D13 to P4-D15 (DECISION-af27465a) and the second draft settled every finding.",
+      "source": null,
+      "tags": [],
+      "recorded_at": "2026-10-13T10:05:05.881Z"
+    },
+    {
+      "id": "KNOWLEDGE-7ebaabe3",
+      "title": "M29 round 1 approved; two schema and listing findings go to M30 pre-flight",
+      "text": "Opus 5 approved M29 round 1 at 12:47:43Z on source hash 9b084719, gates recomputed detached (unit 24, regression 2060). Verified: _STORABLE agrees with unstorable_reason on 4001 strings and an approved verdict with an empty or blank corrected_answer still passes; the NFR-29 fixture has 266 leaves, 13 dropped (timing and cost), 3 ids substituted, 246 of 253 compared literally, and killed three of four mutants including a one-word tool description change; tenancy held in 100 checks on both stores through the API and raw SQL; 0014 applies over M28-shaped rows and is idempotent; 16 illegal row shapes refused and all 6 legal ones accepted; the new tables held 0 rows after the suite. Findings, confirmed by the orchestrator in the code, owner chose to settle them at M30 pre-flight: (1) interruption_decisions.standing_id references standing_decisions by a single column while every other 0014 reference is tenant-composite, so the schema alone lets a decision name another tenant standing decision, the defect 0013 fixed for claims one migration earlier; the Python guard that closes it in both stores is untested (two mutants survived); fix by migration 0015 adding UNIQUE (standing_id, tenant_id, project_id) and a composite key, and a test of the guard. (2) InMemoryInterruptionStore.interruptions treats a run_id canonical_id cannot read as no filter and returns the whole tenant, while interruption() one method below treats it as not found and PostgreSQL returns nothing; fix to return nothing. Lower priority: the non tool_approval refusal is untested in memory; the fixture exclusion by field name is wider than needed; the critic join would match rows lacking critic_run on None; AC-85 no-update pin is a name regex; standing seq values differ between stores, only order is specified; the fixture pins requests and events, not stored rows.",
+      "source": null,
+      "tags": [],
+      "recorded_at": "2026-10-13T13:46:56.950Z"
     }
   ],
   "tasks": [
@@ -2522,9 +2626,9 @@
           "status": "pass",
           "evidence": {
             "human": "siva-rgb (owner)",
-            "reason": "M28 pre-flight: FR-104, FR-105 and AC-79 amended for the M27 caveats (DECISION-df1790f1); FR-107 and FR-108 clarified (DECISION-4f1acdb2). Signed with owner permission.",
-            "source_hash": "4f33326ae2de3b04a0b9d95465036863be9797783716f12e05fca039dc84b581",
-            "observed_at": "2026-10-12T16:38:23.901Z"
+            "reason": "Phase 4 increment 1 (FR-111 to FR-121, NFR-30 to NFR-33, AC-84 to AC-88), second draft after the read-only review, with its nine spec-level choices accepted.",
+            "source_hash": "f08a45b21d44e144e8c859854da7993bf3e83b0aa38c1a358e07ce60ef22da90",
+            "observed_at": "2026-10-13T10:05:06.178Z"
           }
         }
       ],
@@ -2534,7 +2638,7 @@
       "failures": [],
       "limitations": [],
       "created_at": "2026-09-05T14:48:57.897Z",
-      "updated_at": "2026-10-12T16:38:23.901Z"
+      "updated_at": "2026-10-13T10:05:06.178Z"
     },
     {
       "id": "M1-primitives",
@@ -4614,6 +4718,214 @@
       "limitations": [],
       "created_at": "2026-10-12T09:38:35.622Z",
       "updated_at": "2026-10-12T12:33:00.961Z"
+    },
+    {
+      "id": "M29-carried-and-records",
+      "outcome": "M28 carried items settled, and interruptions and decisions recorded in both stores with no behaviour change",
+      "state": "done",
+      "risk": "medium",
+      "owner": null,
+      "scope": [],
+      "dependencies": [],
+      "requirements": [
+        "FR-111",
+        "FR-112",
+        "AC-84",
+        "AC-85",
+        "NFR-29",
+        "NFR-31",
+        "NFR-32"
+      ],
+      "gates": [
+        {
+          "id": "unit",
+          "command": ".venv\\Scripts\\python.exe -m pytest tests/test_interruption_record.py -q",
+          "mandatory": true,
+          "status": "pass",
+          "evidence": {
+            "path": ".genesis/evidence/M29-carried-and-records-unit.json",
+            "source_hash": "9b084719cfc3d27d22e188725796a88978e93f23bd670c794b5cbefe17bc4eb4",
+            "hash": "3d457b1f513c1a910e590c132effcf0f843b34598f691fdcf9fbc14e60359eed",
+            "observed_at": "2026-10-13T12:25:26.198Z"
+          }
+        },
+        {
+          "id": "regression",
+          "command": ".venv\\Scripts\\python.exe -m pytest -q",
+          "mandatory": true,
+          "status": "pass",
+          "evidence": {
+            "path": ".genesis/evidence/M29-carried-and-records-regression.json",
+            "source_hash": "9b084719cfc3d27d22e188725796a88978e93f23bd670c794b5cbefe17bc4eb4",
+            "hash": "77ac9c384ca7072feb43cb0ce56c7702188c82e772346ade03256cb4cdc1a00a",
+            "observed_at": "2026-10-13T12:31:29.873Z"
+          }
+        },
+        {
+          "id": "independent-review",
+          "command": "",
+          "mandatory": true,
+          "status": "pass",
+          "evidence": {
+            "human": "Opus 5",
+            "reason": "Re-derived FR-111, FR-112, AC-84, AC-85, NFR-29, NFR-31, NFR-32 and P4-D1 to P4-D15 from SPEC.md. Ran the gate myself in the background: unit 24 passed, regression 2060 passed in 361.58s on source hash 9b084719, and the M26 to M29 gate files, 137 passed. No behaviour change confirmed: agentsdk holds no caller of the new store, and after the full suite the three tables hold zero rows and no manifest has a non-NULL approval_timeout, shown non-vacuous by a control row written and removed. The NFR-29 fixture has teeth: 266 leaves of which 13 are dropped and every one is a timing or cost field, only 3 UUIDs substituted, 246 of 253 leaves compared literally, and 3 of 4 behaviour mutants killed. Tenancy: 100 checks on both stores, plus raw SQL on the live tables, refused every cross-tenant write, read, decision and listing, each with a control. Racing two decisions on both stores recorded exactly one, the loser raising InterruptionAlreadyDecided and not a driver error, with one row in the database. 0014 applied over an M28 database rebuilt in a scratch schema, idempotent across three applications, every check and composite key enforced and every legal shape still accepted. The tightened verdict schema agreed with unstorable_reason on 4001 generated strings, so no over-refusal. 23 of 26 of my own mutants killed. Caveats for M30 pre-flight, all latent because nothing calls the store yet: the in-memory store ignores the run filter when run_id is not a canonical UUID and lists the whole tenant where Postgres returns nothing; the standing_id foreign key is single-column, so raw SQL can name another tenant standing decision, which both stores refuse in Python but no test pins, as two surviving mutants show; a kind other than tool_approval is unpinned in memory; the no-update rule is pinned by a name regex only.",
+            "source_hash": "9b084719cfc3d27d22e188725796a88978e93f23bd670c794b5cbefe17bc4eb4",
+            "observed_at": "2026-10-13T12:47:43.209Z"
+          }
+        }
+      ],
+      "next_action": "Run the task pre-flight.",
+      "blocker": null,
+      "notes": [],
+      "failures": [],
+      "limitations": [],
+      "created_at": "2026-10-13T10:05:19.768Z",
+      "updated_at": "2026-10-13T13:46:57.329Z"
+    },
+    {
+      "id": "M30-approvals",
+      "outcome": "A call requiring approval waits for a recorded decision, in issue order, and runs at most once and only when approved",
+      "state": "active",
+      "risk": "high",
+      "owner": null,
+      "scope": [],
+      "dependencies": [],
+      "requirements": [
+        "FR-113",
+        "FR-114",
+        "FR-115",
+        "FR-116",
+        "FR-117",
+        "AC-86",
+        "NFR-30",
+        "NFR-31",
+        "NFR-32"
+      ],
+      "gates": [
+        {
+          "id": "unit",
+          "command": ".venv\\Scripts\\python.exe -m pytest tests/test_approvals.py -q",
+          "mandatory": true,
+          "status": "pending",
+          "evidence": null
+        },
+        {
+          "id": "regression",
+          "command": ".venv\\Scripts\\python.exe -m pytest -q",
+          "mandatory": true,
+          "status": "pending",
+          "evidence": null
+        },
+        {
+          "id": "independent-review",
+          "command": "",
+          "mandatory": true,
+          "status": "pending",
+          "evidence": null
+        }
+      ],
+      "next_action": "Run the task pre-flight.",
+      "blocker": null,
+      "notes": [],
+      "failures": [],
+      "limitations": [],
+      "created_at": "2026-10-13T10:05:19.914Z",
+      "updated_at": "2026-10-13T10:05:19.915Z"
+    },
+    {
+      "id": "M31-write-tools",
+      "outcome": "write_file and edit_file change files only as approved, atomically, confined to their root",
+      "state": "queued",
+      "risk": "high",
+      "owner": null,
+      "scope": [],
+      "dependencies": [],
+      "requirements": [
+        "FR-118",
+        "FR-119",
+        "AC-87",
+        "NFR-30",
+        "NFR-33",
+        "NFR-14"
+      ],
+      "gates": [
+        {
+          "id": "unit",
+          "command": ".venv\\Scripts\\python.exe -m pytest tests/test_write_tools.py -q",
+          "mandatory": true,
+          "status": "pending",
+          "evidence": null
+        },
+        {
+          "id": "regression",
+          "command": ".venv\\Scripts\\python.exe -m pytest -q",
+          "mandatory": true,
+          "status": "pending",
+          "evidence": null
+        },
+        {
+          "id": "independent-review",
+          "command": "",
+          "mandatory": true,
+          "status": "pending",
+          "evidence": null
+        }
+      ],
+      "next_action": "Run the task pre-flight.",
+      "blocker": null,
+      "notes": [],
+      "failures": [],
+      "limitations": [],
+      "created_at": "2026-10-13T10:05:20.070Z",
+      "updated_at": "2026-10-13T10:05:20.070Z"
+    },
+    {
+      "id": "M32-approval-contention",
+      "outcome": "Approvals inside orchestration hold under contention on both stores",
+      "state": "queued",
+      "risk": "high",
+      "owner": null,
+      "scope": [],
+      "dependencies": [],
+      "requirements": [
+        "FR-120",
+        "FR-121",
+        "AC-88",
+        "NFR-30",
+        "NFR-31",
+        "NFR-22",
+        "NFR-33"
+      ],
+      "gates": [
+        {
+          "id": "unit",
+          "command": ".venv\\Scripts\\python.exe -m pytest tests/test_approval_contention.py -q",
+          "mandatory": true,
+          "status": "pending",
+          "evidence": null
+        },
+        {
+          "id": "regression",
+          "command": ".venv\\Scripts\\python.exe -m pytest -q",
+          "mandatory": true,
+          "status": "pending",
+          "evidence": null
+        },
+        {
+          "id": "independent-review",
+          "command": "",
+          "mandatory": true,
+          "status": "pending",
+          "evidence": null
+        }
+      ],
+      "next_action": "Run the task pre-flight.",
+      "blocker": null,
+      "notes": [],
+      "failures": [],
+      "limitations": [],
+      "created_at": "2026-10-13T10:05:20.227Z",
+      "updated_at": "2026-10-13T10:05:20.228Z"
     }
   ],
   "learning_proposals": [],
@@ -5634,6 +5946,15 @@
       "task": "M28-calibration-and-exit",
       "human": "Fable 5.1",
       "reason": "Gates recomputed first-hand on hash 46d03d73: unit 16 passed, regression 2034 passed (497s), not stale, no stray process. Item 1: own fixture of 3 gate rows (one with no claims), 7 outcomes incl a tie, a node outcome and an unjudged claim recomputed by hand, matched exactly; 300 orderings and all 24 tie interleavings agree; 11 of 13 in-memory mutants caught, the 2 survivors equivalent. Item 2 on Postgres: two projects sharing a tenant plus a second tenant, outcomes equal the SQL truth, since exact, whole-database counts and a digest of every verification unchanged over 6 reports while a control write moves them. Item 3: 20 extra seeds in memory and 3 on Postgres all pass with one lost race each; the expected set is computed from the corpus and three controls (doubtful page confident, no barrier, racer approves) each fail the checks; the two supersede calls overlap on Postgres but not in memory, the race being forced at the briefing. Item 4: _RECORDABLE equals the ledger _text over every code point in four forms, 0 mismatches, and the real schema_problem agrees on 14 samples incl 4000/4001 and zero-width-space-only; 9 file mutants killed. Item 5: the loser node row is corrected with applied empty and refused already-superseded, one wrong-to-right chain, both stores. Items 6, 7 verified; item 8 live run passed 9 of 9 with two real lost races, rows removed by id. Caveats, not blockers: (1) the new label test shows the orchestrator reports clause only in aggregate, labels.append dropped survives it, though single-node probes show the code right for every outcome; (2) corrected_answer has no NUL or surrogate guard, a lone surrogate escape ends the node output_not_stored after the verdict is recorded; (3) example 23 offline cannot see taking_in dropped, the label test can; (4) no_claims never fires per claim, and a critic row before its gate row in the since window counts under its outcome; all files restored by SHA-256.",
+      "revision": null
+    },
+    {
+      "id": "455e4199-93d6-4054-b055-39f95e61be33",
+      "at": "2026-10-13T12:47:43.209Z",
+      "action": "approve",
+      "task": "M29-carried-and-records",
+      "human": "Opus 5",
+      "reason": "Re-derived FR-111, FR-112, AC-84, AC-85, NFR-29, NFR-31, NFR-32 and P4-D1 to P4-D15 from SPEC.md. Ran the gate myself in the background: unit 24 passed, regression 2060 passed in 361.58s on source hash 9b084719, and the M26 to M29 gate files, 137 passed. No behaviour change confirmed: agentsdk holds no caller of the new store, and after the full suite the three tables hold zero rows and no manifest has a non-NULL approval_timeout, shown non-vacuous by a control row written and removed. The NFR-29 fixture has teeth: 266 leaves of which 13 are dropped and every one is a timing or cost field, only 3 UUIDs substituted, 246 of 253 leaves compared literally, and 3 of 4 behaviour mutants killed. Tenancy: 100 checks on both stores, plus raw SQL on the live tables, refused every cross-tenant write, read, decision and listing, each with a control. Racing two decisions on both stores recorded exactly one, the loser raising InterruptionAlreadyDecided and not a driver error, with one row in the database. 0014 applied over an M28 database rebuilt in a scratch schema, idempotent across three applications, every check and composite key enforced and every legal shape still accepted. The tightened verdict schema agreed with unstorable_reason on 4001 generated strings, so no over-refusal. 23 of 26 of my own mutants killed. Caveats for M30 pre-flight, all latent because nothing calls the store yet: the in-memory store ignores the run filter when run_id is not a canonical UUID and lists the whole tenant where Postgres returns nothing; the standing_id foreign key is single-column, so raw SQL can name another tenant standing decision, which both stores refuse in Python but no test pins, as two surviving mutants show; a kind other than tool_approval is unpinned in memory; the no-update rule is pinned by a name regex only.",
       "revision": null
     }
   ],

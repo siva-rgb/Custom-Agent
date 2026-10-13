@@ -1,4 +1,4 @@
-# Product specification — custom-agent-sdk (Phase 0 to Phase 3)
+# Product specification — custom-agent-sdk (Phase 0 to Phase 4)
 
 > Status: draft. A coding agent must not implement product code until this specification is approved through Genesis.
 
@@ -381,6 +381,243 @@ order, because each builds on the type and the migration the last one added.
   The report names the outcomes it read and their date range, and reads no other tenant or project (NFR-25).
 - FR-108: The exit signal (P3-D3, increment 2) is a test and an example. `scripts/23_gate_contention.py` runs example 21's contention under a `GatePolicy` with a scripted critic, so overlapping subagents fetch overlapping pages and record overlapping claims while their nodes are gated. Its corpus fixes by construction which first executions' signals fire, a claim shared by several nodes carrying the same signals for each, so the expected critic runs are known before the run and not read back from what it recorded. It checks against the store, on both stores: the critic ran for exactly that expected set of first executions, and for every node execution at most once; a correction that lost a race to another node's critic failed its node and replanned as FR-105 states; every claim, node output and corrected answer is at least as tainted as every source and input it rests on, before and after the critic; every verification is in the run's own tenant and project; and increment 1's checks of FR-96 still hold. It then records external outcomes for the run's claims and prints the calibration report. Live, with gateway readers and a real critic as example 22 runs live, it checks only what must hold whatever the models decide: at most one critic run per node execution, no taint lowered, every verification in the run's tenant and project, and FR-96's checks; the exact expected set of critic runs is checked offline, where the corpus fixes it (DECISION-4f1acdb2).
 
+### Phase 4, increment 1: approvals and the write tools (M29 to M32)
+
+Phase 4 adds what an agent needs before it is trusted to act. Its first increment builds three
+things:
+- the interruption model ADR-29 typed in Phase 0;
+- a basic approval manager on it (ADR-23, moved from Phase 5 so MCP has one when it arrives);
+- the first tools that change something, which need approval by default.
+
+**The design rests on a prior study.** The owner studied how the OpenAI Agents SDK pauses and
+resumes a run before any requirement here was written (KNOWLEDGE-5b3b78e5). That SDK serialises
+the whole run into a versioned snapshot, does not authenticate a restored one, and resumes by
+running the recorded calls without asking the model again. This SDK keeps its store as the
+record instead: a pause and each decision are rows, never a client-held snapshot.
+
+**The decisions.** The owner accepted P4-D1 to P4-D12 on 2026-10-13 (DECISION-005d0bfd,
+DECISION-e03027a0, DECISION-2402caab). After a read-only review of the first draft, the owner
+added P4-D13 to P4-D15 (DECISION-af27465a).
+
+| Decision | P4-D1 to P4-D15, 2026-10-13 |
+|---|---|
+| P4-D1 Increments | Two. Increment 1: interruptions, the approval manager, and Tier 2 write and edit tools behind it. Increment 2: native MCP, the tool catalog (ADR-28), credential brokering (ADR-27) and tenant-scoped skills and instruction bundles. Each starts with the items carried into it |
+| P4-D2 Durability | Every interruption and every decision is a database row from increment 1. Resuming needs the process that paused; restart-surviving resume stays Phase 6 (ADR-29). Amended by P4-D14 |
+| P4-D3 Exit signal | Approval under contention: an orchestrated plan whose children call write and edit tools needing approval in parallel, some approved, some rejected, some covered by a sticky decision, one decided twice at once, one expired. Each call runs at most once and only when approved |
+| P4-D4 Branch | A new `phase-4` branch from the approved `phase-2` tip; merging into `main` is a separate owner decision |
+| P4-D5 Deciding | `Runner.decide`, a row bound to tenant, project and the deciding principal, usable once; `RunHandle` shortcuts. Never a tool |
+| P4-D6 Turn shape | The model is not called again until every pending call of the turn is decided; a rejected call returns `rejected: <message>` to the model. Refined by P4-D13 |
+| P4-D7 Sticky | A decision may cover the rest of the run, for one agent and one tool, recorded as its own row; nothing outlives the run. Refined by P4-D15 |
+| P4-D8 Waiting | Each interruption expires (default one hour) and then counts as a rejection, `approval expired`. A waiting node keeps its reservation; waiting charges no tokens; cancelling the run cancels its pending interruptions |
+| P4-D9 Trigger | Any of: the tool's declared `ApprovalPolicy`, a per-tool predicate over the arguments, or a `RuntimeHook` returning `REQUIRE_APPROVAL`. Decided after permission, so a denied call is never asked about |
+| P4-D10 Write tools | `write_file` and `edit_file`, confined like M10's file tools, atomic, refusing links and paths outside the root, with the change and its before and after hashes in the approval request |
+| P4-D11 Orchestration | An approval inside a plan is recorded against the child and listed on the top-level run; the node waits, other nodes run, and decisions use the interruption id at any depth |
+| P4-D12 Milestones | M29 carried items and the records (migration `0014`), no behaviour change; M30 the approval manager in single runs (example 24); M31 the write tools (example 25); M32 approvals in orchestration and the exit signal (example 26). Examples run offline on both stores and live |
+| P4-D13 Issue order | Every approval of a turn is asked at once; calls before the first pending call run at once, and from it onward the calls run in issue order once every decision is in, so side effects keep the model's order |
+| P4-D14 A stopped pause | An orderly stop of a paused run ends it `cancelled`, each pending interruption decided `cancel`; after a crash the rows stay, are listed as not waiting, and cannot be decided; recovery is Phase 6 |
+| P4-D15 Sticky scope | A sticky decision, approve or reject, decides every not yet decided call of that agent and tool in the run, siblings pending in the same turn included, but only calls flagged by the tool's declared policy; a call flagged by a predicate or a hook is always asked; a decided call keeps its decision |
+
+#### M29: the carried items and the interruption record
+
+- FR-111: The items carried from M28's review (KNOWLEDGE-3be8acc4) are settled first, as the owner decided (DECISION-005d0bfd). Each repair comes with a test that fails without it.
+  - **Every string of a verdict is constrained by its schema.** M28 guarded the reason and statements and left `corrected_answer` a bare string. A lone surrogate there failed the node `output_not_stored` after the verdict was recorded, and a NUL was stored in the answer's artifact.
+    - `_verdict_schema` now gives `corrected_answer` a storable-text pattern unconditionally: no NUL and no lone surrogate, the empty string allowed. Under the `corrected` branch it uses `_RECORDABLE`, so a correction's answer holds more than whitespace.
+    - Every other string is already an enum or `_RECORDABLE`. That includes a node with no claims, whose corrections and paraphrases allow no items.
+    - A test walks the schema and asserts that every string-typed node carries an enum or a pattern.
+    - A failing verdict is invalid and is re-asked once at the child's schema check (FR-71).
+    - An `approved` verdict whose `corrected_answer` is `""` still passes.
+  - **The report's `no_claims` count.**
+    - FR-107's per-signal counts are counted over claims, and `no_claims` fires on a node, so its fired column was always zero. The report now leaves `no_claims` out of `signals` and reports `no_claims_fired`: the number of gate rows read in range whose `detail["fired"]` contains it.
+    - FR-107 and AC-80 are amended to match.
+    - `tests/test_calibration.py`'s assertions of the `signals` keys (`test_each_signal_is_counted...`, lines 128 to 135) are edited, and listed for review.
+  - **The report's critic table counts by node execution.**
+    - A `critic` row on a claim counts only when the gate row of the same node execution is in range. That gate row is found through the critic's node row with the same `critic_run`, whose subject names the plan, version and node.
+    - A claim shared by several nodes is therefore never counted against another node's gate.
+  - **NFR-29 is pinned by a test.**
+    - **The fixture:** a committed fixture holds the requests and the event sequence of a fixed, sequential ungated plan run with scripted agents.
+    - **The comparison:** the test runs that plan twice, once with no `GatePolicy` and once with a `GatePolicy` that gates nothing, and compares both runs to the fixture.
+    - **Normalising:**
+      - every run, plan, artifact and claim id is substituted wherever it appears, inside text included, by a stable placeholder in order of first appearance;
+      - FR-57's timing fields and the cost fields are excluded by name;
+      - in the second run, so is the manifest's `gate_policy` column, as NFR-29 itself allows.
+
+  Declared, stated in the README's limits: example 23's taint checks compare against the critic's rows, but in its corpus the critic is tainted exactly as the pages are, so they cannot tell a missing critic label. `tests/test_critic.py`'s test that taints the critic's result alone is what pins AC-79's label clauses.
+- FR-112: An interruption and its decision are records in both stores before anything raises or waits on one (P4-D2). Migration `0014` makes these changes:
+  - **`runs` gains `UNIQUE (run_id, tenant_id, project_id)`.** It is the only change to an existing table, and it lets every new row reference its run by a composite key, so no row can name another tenant's or project's run.
+  - **`interruptions`, one row per call that required approval:**
+    - its id, the key;
+    - the run, the top-level run, and the node id when the run is a plan's child;
+    - its kind (`tool_approval` only, in this increment);
+    - the tool call id, tool name and agent id;
+    - its trigger: `policy`, `predicate` or `hook`, the first that applied in that order;
+    - the request (FR-113);
+    - `created_at` and `expires_at`.
+
+    It carries `UNIQUE (interruption_id, tenant_id, project_id)` for the next table. Nothing is keyed on `(run_id, tool_call_id)`, because a model may reuse a call id across turns.
+  - **`interruption_decisions`, at most one row per interruption,** enforced by a unique key on the interruption, so the database itself refuses a second decision:
+    - the decision, `approve` or `reject`, and its source: `principal`, `standing`, `expiry` or `cancel`;
+    - the message, the deciding principal (null for expiry and cancellation) and the standing decision applied, if any;
+    - `decided_at`.
+  - **`standing_decisions`, one row per sticky decision (P4-D15):**
+    - the run, agent id and tool name;
+    - the decision, the message and the principal;
+    - a `seq` that orders them, so a later one wins without a tie;
+    - `created_at`.
+  - **`execution_manifests` gains `approval_timeout`,** recorded per run as its other limits are.
+
+  Rows are written once and never updated or deleted. An interruption's state is read from the store: decided when its decision row exists, otherwise expired once `expires_at` has passed, otherwise pending.
+  - **Types:** `RunInterruption` gains the fields the row holds, all with defaults, so Phase 0's construction still works; `resume_token` stays None. New public frozen types:
+    - `InterruptionDecision`, a decision row;
+    - `StandingDecision`, a standing decision row;
+    - `InterruptionView`, an interruption with its decision or none, its state, and `waiting`: whether a run in this `Runner` is waiting on it (P4-D14).
+  - **Store calls** run on a worker thread (FR-81).
+  - **The test harness:** `tests/conftest.py`'s tracked tables gain the three tables, so a test session still leaves the store as it found it (NFR-16); listed for review.
+  - **No behaviour change in M29:** nothing writes these tables until M30.
+
+#### M30: the approval manager in single runs
+
+- FR-113: A call requires approval when, after permission (step 3), any of three sources says so (P4-D9). The trigger recorded is the first source that applied, in this order:
+  - its `ToolSpec.approval_policy` is `REQUIRE_APPROVAL`;
+  - its `Tool` carries a `needs_approval` predicate that returns True for the call's arguments;
+  - the run's `RuntimeHook.before_tool` returns `REQUIRE_APPROVAL`.
+
+  **The hook decides the placement.** Because the hook runs at step 5, the interruption is created after step 5 and before step 6, so the request describes the call as it would execute, a hook's `MODIFY` included. `HALT` from `before_tool` is still treated as `CONTINUE`, as today.
+  - **The request holds:**
+    - the tool name and its arguments;
+    - the risk class, agent id and node id;
+    - the trigger;
+    - the tool's `describe` output when its `Tool` provides one. That is an awaitable that computes, from the arguments and without side effects, a JSON object for the approver, such as M31's hashes. A tool doing file work runs it on the file-tool pool (FR-45).
+  - **Refusals before any interruption is written:** a predicate or `describe` that raises fails the call `ToolApprovalCheckFailed`, with no interruption. So does a request that `unstorable_reason` refuses, so no store holds a request another cannot.
+  - **`approval_policy`** joins `ToolSpec.schema_hash()` when it is not the default, as the M10 and M11 fields do.
+  - **The outcome:** `ToolExecutor.prepare` returns the existing `ApprovalRequired(interruption)` outcome for such a call, and never waits itself.
+- FR-114: A turn with a call requiring approval runs as P4-D13 states.
+  - **Before the first pending call:** batches run as FR-44 runs them.
+  - **The batch in which a call first requires approval:**
+    - the remaining calls of the turn are prepared, steps 1 to 5 in issue order. So, in such a turn, `before_tool` sees a later call before an earlier one has run;
+    - a standing decision covering a call is applied as the turn's interruptions are recorded (P4-D15). Its interruption row is still written, with a decision of source `standing`, so the record shows why it ran or did not;
+    - the turn's other interruptions are recorded, each emitting `ApprovalRequested` with the interruption id, tool name, agent id, node id and trigger. The arguments go in the row only, as `ToolCalled` keeps them in history only;
+    - the run waits, at a cancellation checkpoint, until every interruption of the turn is decided or expires.
+  - **Then, from that batch onward:** the calls run in issue order, grouped into batches as FR-44 groups them.
+    - An approved call runs steps 6 to 9 once.
+    - A rejected or expired call never reaches step 6. Its result is a `Failed` outcome carrying the new `ToolApprovalRejected` error, with text `rejected: <message>`, `rejected`, or `approval expired`.
+    - Each decision's `ApprovalDecided` event precedes its call's `ToolCalled` event.
+  - **The rejection text's label:** it names its decision, with `source_uri` set to the decision's urn and the SDK's internal trust. Its text is the deciding principal's, not the model's.
+  - **Results** reach the model in issue order, and the model is called only once every call has a result.
+  - **Cancellation while waiting:** each pending interruption is decided `cancel`, and each unfinished call gets FR-50's `ToolCancelled` result.
+  - **What waiting costs:** no tokens, and no turn. A node's reservation stays held, since its child is still running.
+  - **Two calls on one file in one turn:** both are described before either runs, so the second is refused `changed since approval` (FR-118), and its model sees why.
+  - **Code and tests that change:** `_results` (`loop.py`), which today asserts that only `Completed` and `Failed` are reachable, handles the new outcomes. `tests/test_primitives.py`'s assertion of that (line 157) is edited, listed for review.
+- FR-115: `Runner.decide(tenant_id, project_id, interruption_id, *, approve, principal, message=None, sticky=False)` is a coroutine that records a decision and returns its `InterruptionDecision` (P4-D5).
+  - **Arguments:**
+    - `principal` is a `PrincipalContext` naming a `user_principal` or a `service_principal`; the agent alone may not decide;
+    - `message` must be text `unstorable_reason` accepts;
+    - `sticky` also records a standing decision for the interruption's run, agent and tool, which applies as P4-D15 states.
+  - **What it refuses**, recording nothing. The checks run in this order, tenancy first, so another tenant's decided row reads as unknown:
+    - an interruption outside the given tenant and project, raising `UnknownInterruption`, a `LookupError`, exactly as for an id that does not exist;
+    - one already decided, raising `InterruptionAlreadyDecided`;
+    - one past `expires_at`, raising `InterruptionExpired`;
+    - one no run in this `Runner` is waiting on, raising `InterruptionNotWaiting` (P4-D14).
+  - **The write and the wake:**
+    - the decision row is inserted under the unique key, so of two simultaneous `decide` calls, or a `decide` and the run's own expiry, exactly one row is recorded. The loser of the race raises `InterruptionAlreadyDecided` if it is a `decide`; the waiting run adopts the existing row;
+    - the write runs on a worker thread. The waiting run is woken by `call_soon_threadsafe` on its own loop, so `decide` may be awaited on any loop or thread.
+  - **The waiting run acts only on what the store holds.** On each wake it re-reads its interruptions, and in any case at least every five seconds and at the earliest `expires_at`, so a lost wake delays a decision but never loses it.
+  - **Shortcuts:** `RunHandle.approve(interruption_id, *, principal, message=None, sticky=False)` and `RunHandle.reject(...)` are coroutines that call `decide` for the handle's tenant and project. They refuse, as unknown, an interruption whose top-level run is not the handle's run.
+  - **Listing:** `Runner.interruptions(tenant_id, project_id, *, run_id=None, pending_only=True)` returns `InterruptionView`s through the store on a worker thread. With `run_id` it returns those of that run and every run beneath it.
+  - **Never a tool:** like `Runner.record_validation`, it is a `Runner` method in no tool registry. AC-83's scope walk and its static check over every shipped tool are extended to `decide` and `interruptions`.
+- FR-116: `RunConfig.approval_timeout` sets how long an interruption waits: seconds as a finite `int` or `float` over 0, not a `bool`, defaulting to 3600 (P4-D8).
+  - **Expiry:** an interruption not decided by its `expires_at` is decided by the waiting run, with a decision of source `expiry`, and counts as a rejection.
+  - **Cancellation:** cancelling a waiting run records a `cancel` decision for each pending interruption, then ends the run `cancelled` (FR-46) with no call run.
+  - **When the run's process ends:**
+    - an orderly end, by cancellation or by the event loop's shutdown cancelling the run, does the same (P4-D14);
+    - a crash leaves the run row `running` and its interruptions undecided. `Runner.interruptions` lists them with `waiting` False, and `decide` refuses them. This is declared: restart-surviving resume is Phase 6.
+- FR-117: `scripts/24_approvals.py` runs one agent through a turn of three calls, in issue order:
+  - one the example approves;
+  - one needing no approval;
+  - one it rejects with a message.
+
+  A later turn's call is approved as sticky, and the next call of that tool is decided `standing`. A call flagged by a predicate is still asked. A last call is left to expire under a short `approval_timeout`. It checks, against the store:
+  - each call ran at most once, and only when approved;
+  - the calls ran in issue order;
+  - every decision names its source, and its principal where one decided;
+  - the rejection's message reached the model;
+  - no model call happened while a call was pending.
+
+  It runs offline on both stores and live.
+
+#### M31: write_file and edit_file
+
+- FR-118: `write_file_tool(root, *, max_bytes=1_000_000, name="write_file", approval_policy=REQUIRE_APPROVAL)` and `edit_file_tool(root, *, max_bytes=1_000_000, name="edit_file", approval_policy=REQUIRE_APPROVAL)` are the first tools that change anything (P4-D10).
+  - **Shared with M10's file tools:**
+    - Windows only;
+    - the same root and spelling checks (`_components`);
+    - handle-decided confinement;
+    - refusals that never name a path outside the root;
+    - the file-tool thread pool.
+  - **Their declared properties:** `risk_class` `WRITE`, `read_only` False, `idempotent` False and `concurrency_safe` False.
+  - **The arguments:**
+    - `write_file {path, content}` creates or replaces a file with `content`, encoded as UTF-8 with no byte-order mark added.
+    - `edit_file {path, old, new}` reads the file as UTF-8, its byte-order mark kept if it has one. It replaces `old` with `new` only if `old` occurs exactly once, counting overlapping occurrences. Every byte outside the replaced span, line endings included, is written back unchanged.
+  - **What they refuse:**
+    - a missing parent directory, since neither creates directories;
+    - a path that resolves outside the root (M10's rule) or whose target is itself a reparse point. The target is opened without following one, as `FILE_FLAG_OPEN_REPARSE_POINT` does, so an in-root link is refused as a target but still allowed in the path, as M10 allows it;
+    - a target with more than one hard link;
+    - an 8.3 short name or a directory;
+    - content, or a file to edit, that is not valid UTF-8 or is over `max_bytes`.
+  - **`describe`** (FR-113) gives the approver:
+    - the relative path;
+    - the target's SHA-256 before, null for a new file;
+    - the SHA-256 after, and the byte counts;
+    - for `edit_file`, the line where `old` begins.
+  - **How a write is made:**
+    - **The approved request:** the executor passes it to the tool through a typed `approved` parameter, as it passes `scope`, never through the model's arguments.
+    - **The sequence:**
+      1. Holding a handle on the parent directory without delete sharing, the tool reads the target and hashes it.
+      2. The hash must still equal the approved `before`; otherwise the call is refused `changed since approval`, with nothing written.
+      3. It writes the new content into a new file beside the target, named `.<name>.agentsdk-<uuid>.tmp` and opened create-new, then flushes it.
+      4. It moves that file over the target with `MoveFileExW(MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH)`, so a reader sees the old file or the new one, never a part.
+    - **On any failure the temporary file is deleted,** and a replace that fails with a sharing violation (an open handle, the SDK's own `read_file` included) is refused `target in use`. `list_directory`, `glob_files` and `grep_files` withhold the temporary names.
+    - **The result** names the new hash and size.
+  - **Declared:** the window between the re-hash and the replace cannot be closed from user mode, so a writer outside the SDK can still change the file inside it. The same holds for M10's time-of-check windows.
+- FR-119: `scripts/25_write_tools.py` has an agent edit a file and create another under approval, in a temporary root. It shows three refusals:
+  - an escape through a junction;
+  - an edit whose `old` text occurs twice;
+  - a write to a file changed between its approval and its execution.
+
+  It runs offline on both stores and live.
+
+#### M32: approvals inside orchestration, and the exit signal
+
+- FR-120: A call requiring approval inside a plan's child is recorded against the child run, with its top-level run and node id (P4-D11). A run's top-level run is its `RunConfig.ledger_run_id`, which `SubagentPool` sets on every child (FR-90), or the run itself when that is unset.
+  - **Events:**
+    - **Where they go:** the `Runner` keeps, per process, a registry of its live runs' event sinks. `ApprovalRequested` and `ApprovalDecided` are emitted on the child's stream and, through that registry, on the top-level run's stream, with the node id as `task_id`. This follows `GateEvaluated`'s precedent of a node's event on the orchestrator's stream.
+    - **New members:** both join `EventType`.
+  - **Deciding from the top:**
+    - `Runner.interruptions(run_id=<top-level>)` lists those of every run beneath it, at any depth;
+    - `RunHandle.approve` on the top-level handle decides them.
+  - **Inheritance:** a child inherits its parent run's `approval_timeout` through the pool, as it inherits its limits.
+  - **While a child waits:**
+    - it keeps its node's reservation (P4-D8) and its `max_concurrent_subagents` slot. Other nodes keep running only while slots remain, so a plan whose waiting children fill every slot admits no new child until one is decided; stated;
+    - the plan settles only once every node has.
+  - **Cancelling:** cancelling the top-level run cancels its children (NFR-22), and every pending interruption beneath it is decided `cancel`.
+  - **Expiry** is per interruption: an expired call is a rejection its child's model sees, not a node failure.
+  - **Critic runs** (`<node>#critic`) have no tools (FR-104), so they cannot be interrupted; asserted.
+- FR-121: The exit signal (P4-D3) is a test and an example. `scripts/26_approval_contention.py` runs an orchestrated plan of children, fewer than `max_concurrent_subagents`. Each child calls `write_file` or `edit_file` under approval, in parallel, in one temporary root.
+  - **The scripted approver:**
+    - approves some calls and rejects some with a message;
+    - makes one decision sticky;
+    - lets one call expire under a child's short timeout.
+
+    Two threads decide one interruption at the same moment.
+  - **Checked against the store, on both stores:**
+    - every call ran at most once, only after an approve decision (exact or standing), and in its child's issue order;
+    - exactly one of the two simultaneous decisions was recorded, and the other raised `InterruptionAlreadyDecided`;
+    - every interruption has exactly one decision, bound to its run's tenant and project;
+    - every rejection's message reached its child's model;
+    - no call reached step 6 while its interruption was undecided;
+    - the files in the root are exactly what the approved calls wrote.
+  - **Repetitions:** the test runs it 10 times, with the children's start order shuffled and random delays (KNOWLEDGE-14f3ec8b).
+  - **Live,** with gateway models and the scripted approver, it checks only what must hold whatever the models decide.
+
 ## Non-functional requirements
 
 - NFR-1: Provider-agnostic. Switching between `openai.*`, `bedrock.*`, `azure.*`, and `vertex_ai.*` models is a configuration change only — no SDK source file changes, no new adapter.
@@ -413,6 +650,10 @@ order, because each builds on the type and the migration the last one added.
 - NFR-27: Phase 3's second increment adds no runtime dependency (NFR-6, NFR-24). The signals and the calibration report use the standard library.
 - NFR-28: The gate never makes content cleaner. No verification, verdict, correction or external outcome lowers the taint or raises the trust of any claim, node output or answer (P3-D3, P3-D15): a corrected answer and a superseding claim carry at least the taint of what they replace and of everything the critic was briefed with. Verifications are append-only and bound to their tenant and project (NFR-25, NFR-26).
 - NFR-29: Ungated plans are unchanged. A run whose `Orchestrator` has no `GatePolicy`, and whose plan carries no `critic` criterion, sends the same requests and records the same events and rows as before increment 2, apart from what FR-99 changes for every run -- `agent_spec_hash`'s value and encoding (P2), and `SourceUncached` on a waited fetch answered with a non-2xx status (C5) -- and the NULL in the manifest column FR-101 adds. The existing tests pass unchanged, and any edit a test needs is listed and justified in the review prompt: the increment already expects `tests/test_claim_lock.py`'s caveat-2 test (FR-99 P1), `tests/conftest.py`'s list of tracked tables (the verifications table, for AC-44), and `tests/test_distribution.py`'s expected exports and examples.
+- NFR-30: Nothing requiring approval runs unapproved. A call that requires approval reaches executor step 6 only after an `approve` decision for it is recorded in the store -- by a principal, or as a standing decision applied under P4-D15 -- and at most once. A rejected, expired or cancelled call never reaches step 6, and no store failure or cancellation lets one through: a failure to write the interruption fails the call, and a failure to write or read a decision leaves it undecided until its run ends.
+- NFR-31: Decisions never cross tenancy. No interruption, decision or standing decision is readable or decidable from another tenant or project, an interruption outside the caller's tenant and project is reported exactly as an unknown one, and every decision names the principal that made it, or its `standing`, `expiry` or `cancel` source (NFR-25).
+- NFR-32: Runs that require no approval are unchanged. A run in which no call requires approval sends the same requests and records the same events as before M30, apart from the fields FR-112 adds to `RunInterruption` and the manifest's `approval_timeout`. One behaviour does change, deliberately: a `before_tool` hook returning `REQUIRE_APPROVAL`, ignored until M30, now requires approval. The existing tests pass unchanged, and the edits FR-111, FR-112 and FR-114 name (`tests/test_calibration.py`, `tests/conftest.py`, `tests/test_primitives.py`) and `tests/test_distribution.py`'s exports and `EXPECTED_EXAMPLES` are listed and justified in the review prompts.
+- NFR-33: Phase 4's first increment adds no runtime dependency (NFR-6, NFR-27). The write tools bind, through `ctypes` as M10's tools do, the Win32 calls they need beyond M10's: `CreateFileW` with write access and create-new disposition, `WriteFile`, `FlushFileBuffers`, `MoveFileExW` and `DeleteFileW`.
 
 ## Constraints
 
@@ -432,7 +673,9 @@ order, because each builds on the type and the migration the last one added.
 - Tools receive no run context in the first increment, so a tool cannot yet write an artifact on its own run's behalf; the second increment decides how a tool reaches its run.
 - No claim reused across runs: reuse waits for governed learning (I-23, P3-D2).
 - No verification raises trust or clears taint, and no paraphrase is merged (P3-D15, P3-D16). Calibration suggests and never applies a threshold (P3-D19); an automatically adapting threshold waits for governed learning (I-23).
-- No MCP, tool catalog, credential brokering, or approval manager (Phase 4).
+- No MCP, tool catalog or credential brokering before Phase 4's second increment; the approval manager is Phase 4's first (P4-D1). Phase 4 approves tool calls only: no approval of a plan, a message or a claim's trust in increment 1, and no standing decision outlives its run (P4-D7).
+- A paused run resumes only in the `Runner` that paused it; restart-surviving resume and recovering a run paused at a crash are Phase 6 (P4-D2, P4-D14, ADR-29).
+- Phase 4's first increment ships no delete, move or patch tool, and its write tools create no directories (P4-D10).
 - No sandbox or workspace (Phase 5).
 - No durable interruptions, replay, or idempotency (Phase 6).
 - No context compaction in the first increment. The owner moved it from Phase 7 to Phase 2's second increment on 2026-09-14.
@@ -562,6 +805,93 @@ found the defects, turned into assertions.
 - AC-80: FR-107: over a fixture of gate rows, critic verdicts and external outcomes, the report's counts per signal and per threshold equal those computed by hand; `suggested_threshold` is the smallest value that flags every incorrect claim, and None below `min_outcomes`, with no incorrect outcome, and when a claim at confidence 0.95 or above is incorrect; a confidence exactly at a threshold is not flagged by it; a claim with two outcomes counts by its latest; critic verdicts never move the suggested threshold; a second tenant's outcomes never enter the report; and producing a report changes no row and no configuration.
 - AC-81: FR-108, the exit signal, on both stores: example 23's contention under a gate, repeated 10 times with the agents' start order shuffled and random delays injected (KNOWLEDGE-14f3ec8b), runs the critic for exactly the expected set of first executions its corpus fixes, and at most once for any node execution; no claim, output or corrected answer is less tainted than what it rests on; every verification is in the run's tenant and project; AC-74's checks still hold; and no new runtime dependency appears in the package's requirements (NFR-27).
 
+### Phase 4, increment 1
+
+- AC-84: FR-111, on both stores:
+  - **The verdict schema:**
+    - a verdict whose `corrected_answer` holds a NUL or a lone surrogate is re-asked and then fails the node `critic_failed: output_contract_violation`, with no critic row written. So is a `corrected` verdict whose answer is only whitespace;
+    - an `approved` verdict with `corrected_answer` `""` passes;
+    - every string-typed node of the verdict schema carries an enum or a pattern.
+  - **The report:**
+    - `signals` has no `no_claims` entry, and `no_claims_fired` counts the gate rows whose `detail["fired"]` contains it;
+    - a critic row whose node execution's gate row is out of range is not counted, even when another node's in-range gate judged the same claim.
+  - **NFR-29:** both the ungated run and the run under a `GatePolicy` that gates nothing equal the committed fixture after FR-111's normalisation.
+- AC-85: FR-112, on both stores:
+  - **Read-back:** an interruption, its decision and a standing decision read back field for field.
+  - **Refusals:**
+    - a second decision for one interruption is refused, and on PostgreSQL by the unique key;
+    - a row naming another tenant's or project's run is refused by the composite key `runs` now carries.
+  - **State:** an undecided interruption past `expires_at` reads as expired.
+  - **No updates:** no store method updates or deletes a row.
+  - **No behaviour change:** the suite passes, with only the edits NFR-32 lists.
+- AC-86: FR-113 to FR-117, on both stores with scripted models:
+  - **The trigger:**
+    - each of the three sources alone requires approval, and records itself as the trigger;
+    - a permission-denied call is never asked about;
+    - a hook's `MODIFY` is what the request shows and what runs;
+    - `HALT` from `before_tool` is still ignored;
+    - a predicate, a `describe` or a request that cannot be stored fails the call with no interruption;
+    - `approval_policy` changes `schema_hash()` only when it is not the default.
+  - **The turn:**
+    - in a turn [approval call, free call, approval call], the free call runs only after both decisions, and all three run in issue order;
+    - in a turn [free call, approval call], the free call runs before the wait;
+    - the model is not called while any call is pending;
+    - an approved call runs exactly once, and a rejected one returns `rejected: <message>`, labelled by its decision.
+  - **Duplicate ids:** two turns reusing one tool call id get two interruptions.
+  - **Sticky decisions:**
+    - a sticky approval decides a sibling pending in the same turn and the next call of that tool by that agent, but not another agent's or another tool's calls, and not a call flagged by a predicate or a hook;
+    - a sticky rejection likewise;
+    - a call decided before a sticky decision keeps its decision.
+  - **Expiry and cancellation:**
+    - an interruption past `approval_timeout` is decided `expiry` and returns `approval expired`;
+    - `approval_timeout` refuses `0`, a negative number, `inf`, `nan` and `True`;
+    - cancelling a waiting run decides `cancel` for each pending interruption and ends it `cancelled` with no call run.
+  - **`Runner.decide`:**
+    - it refuses, raising the named exception with nothing recorded:
+      - another tenant's interruption, as `UnknownInterruption`, even when it is decided;
+      - a decided one;
+      - an expired one;
+      - one no run is waiting on;
+      - a principal naming neither a user nor a service;
+    - `RunHandle.approve` refuses another run's interruption;
+    - `Runner.interruptions` from another tenant or project returns nothing;
+    - two `decide` calls, and a `decide` racing the run's expiry, record exactly one decision;
+    - `decide` awaited on another thread's loop wakes the run;
+    - a wake that is dropped still leads the run to the decision within five seconds.
+  - **Store failures:** with a fault injected, each case leaves no call run unapproved:
+    - writing the interruption fails the call;
+    - writing a decision fails `decide`, and the call stays undecided;
+    - reading decisions leaves the call waiting.
+  - **Never a tool:** AC-83's walk and static check find no route from a tool to `decide` or `interruptions`.
+  - **Example 24** runs offline on both stores and live.
+- AC-87: FR-118 and FR-119, on Windows with Developer Mode:
+  - **Writes and edits:**
+    - `write_file` creates and replaces, and `edit_file` replaces one unique occurrence;
+    - a byte-order mark and CRLF line endings outside the span survive an edit;
+    - `old` occurring twice, overlapping (`aa` in `aaa`) or not, is refused.
+  - **Refusals,** each with nothing written and no temporary file left:
+    - an absent `old`;
+    - a missing parent;
+    - `..`, an absolute path, a device name or an 8.3 name;
+    - a symlink, junction or hard-linked target;
+    - a path through a link resolving outside the root;
+    - a directory;
+    - non-UTF-8 or oversized content or file;
+    - a target held open (`target in use`).
+  - **No path outside the root is named** by any refusal.
+  - **Changed since approval:** a target changed after `describe` and before execution is refused `changed since approval`.
+  - **Atomicity:** a reader polling the target during writes reads only the old or the new content. A failed open counts as no read.
+  - **Withheld names:** list, glob and grep never show a temporary name.
+  - **Default policy:** both tools require approval by default.
+  - **Example 25** runs offline on both stores and live.
+- AC-88: FR-120 and FR-121, the exit signal, on both stores:
+  - **Example 26** holds every check of FR-121 ten times, with the children's start order shuffled and random delays.
+  - **A depth-2 chain:** a child's call needing approval inside a run spawned through `SubagentPool.spawn(depth=2)` is listed by `Runner.interruptions(run_id=<top-level>)`, emitted on the top-level stream, and decided through the top-level handle.
+  - **Children inherit the parent's `approval_timeout`.**
+  - **Cancellation:** cancelling the top-level run decides `cancel` for every pending interruption beneath it.
+  - **Critic runs** never record an interruption.
+  - **NFR-33:** no new runtime dependency appears in the package's requirements.
+
 ## Risks
 
 - **A published history publishes every file ever committed.** Removing a file from the tree does not remove it from history, so an exclusion applied only to the current tree publishes the excluded file anyway. Mitigation: decide what is published per commit, not per tree, before the first push.
@@ -595,6 +925,8 @@ found the defects, turned into assertions.
 - **A tracer provider's shutdown can block exit** for up to 30 s behind a blocking exporter. Mitigation: example 13 shuts its provider down with a timeout.
 
 ## Open questions
+
+- Second draft 2026-10-13, for the owner: Phase 4's first increment is specified above as FR-111 to FR-121, NFR-30 to NFR-33 and AC-84 to AC-88, from P4-D1 to P4-D12 (DECISION-005d0bfd, DECISION-e03027a0, DECISION-2402caab) and, after the read-only review of the first draft, P4-D13 to P4-D15 (DECISION-af27465a). Choices it makes beyond those decisions: (1) the interruption is created after `before_tool` (step 5), not at step 4 as P4-D9 says, so a hook can require approval and the request shows the call as it will run; `HALT` from `before_tool` stays ignored; (2) a deciding principal must name a user or a service; (3) every call requiring approval gets an interruption row, one decided by a standing decision included; (4) the waiting run acts only on what the store holds, re-reading on each wake and at least every five seconds; (5) a rejection's text is labelled by its decision with the SDK's internal trust, since a principal wrote it; (6) a child waiting for approval keeps its concurrency slot, so waiting children can fill a plan's slots; (7) a run's top-level run is its `ledger_run_id`; (8) the write tools refuse a target changed since its request was described or held open by another handle, refuse a target that is itself a link while allowing in-root links in the path, and use a withheld temporary file; the window between re-hash and replace is declared; (9) M28's two report items are settled by `no_claims_fired` and a critic table joined by node execution. Increment 2 (MCP, the catalog, credentials, skills, and where to scan child output for instruction-shaped text) is specified after increment 1.
 
 - Resolved 2026-10-11: Phase 3's second increment is specified above as FR-99 to FR-108, NFR-27 to NFR-29 and AC-77 to AC-81, with M25a's FR-109 and AC-82 and M26a's FR-110 and AC-83 added after the reviews, from the owner decisions P3-D13 to P3-D22 (DECISION-f9888168, DECISION-581a647b). Every item of the former outline is answered there: the signals and the manual threshold (P3-D18), external outcomes and calibration (P3-D19), the one-pass cap (P3-D13), the criterion's contract and the outcome mapping (P3-D14, P3-D17, P3-D20), trust (P3-D15) and paraphrases (P3-D16).
 

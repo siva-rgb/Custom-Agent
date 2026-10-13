@@ -1831,3 +1831,164 @@ class PostgresLedgerStore:
                 contribution_id=cid, claim_id=str(r[1]), recorded_at=r[8],
             ))
         return contributions
+
+
+class PostgresInterruptionStore:
+    """FR-112's durable store: interruptions, their decisions and standing decisions
+    (migration 0014).
+
+    Insert-only. Every statement is filtered by tenant and project, and every row
+    references its run with its own tenant and project, so the schema refuses a row of
+    another tenant's run; the store checks first, to say so as LookupError. The unique
+    key on interruption_decisions.interruption_id makes the database refuse a second
+    decision, raised as InterruptionAlreadyDecided. Synchronous: callers on an event loop
+    use a worker thread (FR-81).
+    """
+
+    _COLUMNS = ("i.interruption_id, i.run_id, i.top_run_id, i.node_id, i.kind, i.tool_call_id, i.tool_name,"
+                " i.agent_id, i.trigger, i.request, i.created_at, i.expires_at, i.tenant_id, i.project_id,"
+                " d.decision_id, d.decision, d.source, d.message, d.principal, d.standing_id, d.decided_at")
+
+    def __init__(self, dsn: str) -> None:
+        self._dsn = dsn
+
+    @staticmethod
+    def _run_checked(conn: Any, tenant_id: str, project_id: str, *run_ids: str) -> None:
+        for run_id in run_ids:
+            if conn.execute("SELECT 1 FROM runs WHERE run_id = %s AND tenant_id = %s AND project_id = %s",
+                            (run_id, tenant_id, project_id)).fetchone() is None:
+                raise LookupError(f"run {run_id} is not a run of this tenant and project")
+
+    def append_interruption(self, item: Any) -> None:
+        from .interruptions import checked_interruption
+
+        item = checked_interruption(item)
+        with _checkout(self._dsn) as conn:
+            with conn.transaction():
+                self._run_checked(conn, item.tenant_id, item.project_id, item.run_id, item.top_run_id)
+                conn.execute(
+                    "INSERT INTO interruptions (interruption_id, tenant_id, project_id, run_id, top_run_id, node_id,"
+                    " kind, tool_call_id, tool_name, agent_id, trigger, request, created_at, expires_at)"
+                    " VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)",
+                    (item.interruption_id, item.tenant_id, item.project_id, item.run_id, item.top_run_id,
+                     item.node_id, item.kind.value, item.tool_call_id, item.tool_name, item.agent_id, item.trigger,
+                     Jsonb(item.request_payload), item.created_at, item.expires_at))
+
+    def append_decision(self, decision: Any) -> None:
+        from .interruptions import InterruptionAlreadyDecided, InterruptionDecision, UnknownInterruption
+
+        if not isinstance(decision, InterruptionDecision):
+            raise ValueError(f"a decision must be an InterruptionDecision, got {type(decision).__name__}")
+        with _checkout(self._dsn) as conn:
+            with conn.transaction():
+                found = conn.execute(
+                    "SELECT run_id FROM interruptions WHERE interruption_id = %s AND tenant_id = %s"
+                    " AND project_id = %s", (decision.interruption_id, decision.tenant_id, decision.project_id),
+                ).fetchone()
+                if found is None:
+                    raise UnknownInterruption(
+                        f"no interruption {decision.interruption_id} in this tenant and project")
+                if decision.standing_id is not None and conn.execute(
+                        "SELECT 1 FROM standing_decisions WHERE standing_id = %s AND run_id = %s AND tenant_id = %s"
+                        " AND project_id = %s", (decision.standing_id, found[0], decision.tenant_id,
+                                                 decision.project_id)).fetchone() is None:
+                    raise LookupError(f"standing decision {decision.standing_id} is not one of this run's")
+                inserted = conn.execute(
+                    "INSERT INTO interruption_decisions (decision_id, interruption_id, tenant_id, project_id,"
+                    " decision, source, message, principal, standing_id, decided_at)"
+                    " VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s) ON CONFLICT (interruption_id) DO NOTHING",
+                    (decision.decision_id, decision.interruption_id, decision.tenant_id, decision.project_id,
+                     decision.decision, decision.source, decision.message,
+                     None if decision.principal is None else Jsonb(decision.principal.to_json()),
+                     decision.standing_id, decision.decided_at)).rowcount
+                if not inserted:
+                    raise InterruptionAlreadyDecided(f"interruption {decision.interruption_id} is already decided")
+
+    def append_standing(self, standing: Any) -> Any:
+        from .interruptions import StandingDecision
+
+        if not isinstance(standing, StandingDecision):
+            raise ValueError(f"a standing decision must be a StandingDecision, got {type(standing).__name__}")
+        with _checkout(self._dsn) as conn:
+            with conn.transaction():
+                self._run_checked(conn, standing.tenant_id, standing.project_id, standing.run_id)
+                [seq] = conn.execute(
+                    "INSERT INTO standing_decisions (standing_id, tenant_id, project_id, run_id, agent_id, tool_name,"
+                    " decision, message, principal, created_at) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)"
+                    " RETURNING seq",
+                    (standing.standing_id, standing.tenant_id, standing.project_id, standing.run_id,
+                     standing.agent_id, standing.tool_name, standing.decision, standing.message,
+                     Jsonb(standing.principal.to_json()), standing.created_at)).fetchone()
+        return dataclasses.replace(standing, seq=seq)
+
+    def _views(self, conn: Any, where: str, params: tuple[Any, ...], now: Any) -> list[Any]:
+        from .interruptions import InterruptionDecision, InterruptionView, principal_from_json, state_of
+        from .outcomes import InterruptionKind, RunInterruption
+
+        views = []
+        for r in conn.execute(
+                f"SELECT {self._COLUMNS} FROM interruptions i LEFT JOIN interruption_decisions d"
+                f" ON d.interruption_id = i.interruption_id WHERE {where} ORDER BY i.created_at, i.interruption_id",
+                params).fetchall():
+            item = RunInterruption(
+                kind=InterruptionKind(r[4]), run_id=str(r[1]), request_payload=r[9], interruption_id=str(r[0]),
+                tool_call_id=r[5], created_at=r[10], tenant_id=r[12], project_id=r[13], top_run_id=str(r[2]),
+                node_id=r[3], tool_name=r[6], agent_id=r[7], trigger=r[8], expires_at=r[11])
+            decision = None if r[14] is None else InterruptionDecision(
+                decision_id=str(r[14]), interruption_id=str(r[0]), tenant_id=r[12], project_id=r[13],
+                decision=r[15], source=r[16], message=r[17], principal=principal_from_json(r[18]),
+                standing_id=None if r[19] is None else str(r[19]), decided_at=r[20])
+            views.append(InterruptionView(item, decision, state_of(item, decision, now)))
+        return views
+
+    def interruptions(self, tenant_id: str, project_id: str, *, run_id: str | None = None,
+                      pending_only: bool = False, now: Any = None) -> list[Any]:
+        from .artifacts import canonical_id
+
+        now = now or datetime.now(timezone.utc)
+        with _checkout(self._dsn) as conn:
+            if run_id is None:
+                views = self._views(conn, "i.tenant_id = %s AND i.project_id = %s", (tenant_id, project_id), now)
+            else:
+                top = canonical_id(run_id) if isinstance(run_id, str) else None
+                if top is None:
+                    return []
+                # The run and every run beneath it, within this tenant and project.
+                views = self._views(
+                    conn,
+                    "i.tenant_id = %s AND i.project_id = %s AND i.run_id IN (WITH RECURSIVE down (run_id, depth) AS ("
+                    " SELECT run_id, 0 FROM runs WHERE run_id = %s AND tenant_id = %s AND project_id = %s"
+                    " UNION ALL SELECT r.run_id, down.depth + 1 FROM runs r JOIN down ON r.parent_run_id = down.run_id"
+                    " WHERE r.tenant_id = %s AND r.project_id = %s AND down.depth < 64) SELECT run_id FROM down)",
+                    (tenant_id, project_id, top, tenant_id, project_id, tenant_id, project_id), now)
+        return [v for v in views if v.state == "pending"] if pending_only else views
+
+    def interruption(self, tenant_id: str, project_id: str, interruption_id: str, now: Any = None) -> Any:
+        from .artifacts import canonical_id
+        from .interruptions import UnknownInterruption
+
+        key = canonical_id(interruption_id) if isinstance(interruption_id, str) else None
+        if key is not None:
+            with _checkout(self._dsn) as conn:
+                views = self._views(conn, "i.interruption_id = %s AND i.tenant_id = %s AND i.project_id = %s",
+                                    (key, tenant_id, project_id), now or datetime.now(timezone.utc))
+            if views:
+                return views[0]
+        raise UnknownInterruption(f"no interruption {interruption_id} in this tenant and project")
+
+    def standing(self, tenant_id: str, project_id: str, run_id: str) -> list[Any]:
+        from .artifacts import canonical_id
+        from .interruptions import StandingDecision, principal_from_json
+
+        key = canonical_id(run_id) if isinstance(run_id, str) else None
+        if key is None:
+            return []
+        with _checkout(self._dsn) as conn:
+            rows = conn.execute(
+                "SELECT standing_id, run_id, agent_id, tool_name, decision, principal, created_at, message, seq"
+                " FROM standing_decisions WHERE tenant_id = %s AND project_id = %s AND run_id = %s ORDER BY seq",
+                (tenant_id, project_id, key)).fetchall()
+        return [StandingDecision(
+            standing_id=str(r[0]), run_id=str(r[1]), tenant_id=tenant_id, project_id=project_id, agent_id=r[2],
+            tool_name=r[3], decision=r[4], principal=principal_from_json(r[5]), created_at=r[6], message=r[7],
+            seq=r[8]) for r in rows]

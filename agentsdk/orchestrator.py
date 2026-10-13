@@ -57,19 +57,23 @@ _GATE_ALL_QUESTION = "Is the answer supported by its sources?"
 # Text the ledger can record (its _text): something besides whitespace, and no NUL or lone
 # surrogate, which neither TEXT nor JSONB stores (M27 review caveat).
 _RECORDABLE = r"^[^\x00\ud800-\udfff]*[^\s\x00\ud800-\udfff][^\x00\ud800-\udfff]*$"
+# Text any store can hold, the empty string included: no NUL or lone surrogate (FR-111).
+_STORABLE = r"^[^\x00\ud800-\udfff]*$"
 
 
 def _verdict_schema(claims: list[str], sources: list[str], max_text: int) -> dict[str, Any]:
     """FR-104: the verdict a critic answers, built for one node: a correction names one of
     its claims and cites only the sources it was briefed with, a paraphrase groups only its
     claims, and text and counts stay within what the ledger records, so a valid verdict can
-    always be recorded."""
+    always be recorded. Every string the schema admits is an enum or carries a pattern
+    (FR-111): a list with no member to name allows no items, and its item schema still
+    carries one."""
     cited = {"type": "array", "uniqueItems": True, "maxItems": 50,
-             "items": {"type": "string", "enum": sources} if sources else {"type": "string"}}
+             "items": {"type": "string", "enum": sources} if sources else {"type": "string", "pattern": _RECORDABLE}}
     if not sources:
         cited["maxItems"] = 0
     text = {"type": "string", "minLength": 1, "maxLength": max_text, "pattern": _RECORDABLE}
-    mine = {"type": "string", "enum": claims} if claims else {"type": "string"}
+    mine = {"type": "string", "enum": claims} if claims else {"type": "string", "pattern": _RECORDABLE}
     correction = {
         "type": "object", "required": ["claim", "statement"], "additionalProperties": False,
         "properties": {"claim": mine, "statement": text, "supporting": cited, "contradicting": cited},
@@ -79,9 +83,10 @@ def _verdict_schema(claims: list[str], sources: list[str], max_text: int) -> dic
         "properties": {
             "verdict": {"type": "string", "enum": ["approved", "corrected", "escalate"]},
             "reason": text,
-            # Any text, empty included, beside a verdict that does not use it: models fill
-            # every field. Only a correction must carry an answer (the "then" below).
-            "corrected_answer": {"type": "string"},
+            # Any storable text, empty included, beside a verdict that does not use it:
+            # models fill every field. Only a correction must carry an answer, one with
+            # more than whitespace (the "then" below; M28 review, FR-111).
+            "corrected_answer": {"type": "string", "pattern": _STORABLE},
             "corrections": {"type": "array", "items": correction, "maxItems": len(claims)},
             # A node with fewer than two claims has nothing to group.
             "paraphrases": {"type": "array", **({} if len(claims) > 1 else {"maxItems": 0}), "items": {
@@ -89,7 +94,7 @@ def _verdict_schema(claims: list[str], sources: list[str], max_text: int) -> dic
         },
         "if": {"properties": {"verdict": {"const": "corrected"}}, "required": ["verdict"]},
         "then": {"required": ["corrected_answer"],
-                 "properties": {"corrected_answer": {"type": "string", "minLength": 1}}},
+                 "properties": {"corrected_answer": {"type": "string", "minLength": 1, "pattern": _RECORDABLE}}},
     }
 
 _INSTRUCTIONS = (

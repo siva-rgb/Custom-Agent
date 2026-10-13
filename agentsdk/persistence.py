@@ -18,6 +18,7 @@ from .events import EventSink
 from .postgres import (
     PostgresArtifactStore,
     PostgresEvidenceStore,
+    PostgresInterruptionStore,
     PostgresLedgerStore,
     PostgresRunStateStore,
     PostgresEventStore,
@@ -122,3 +123,7 @@ class Persistence:
     def ledger_store(self) -> PostgresLedgerStore:
         """The Postgres store of evidence ledgers (FR-92, M23)."""
         return PostgresLedgerStore(self.dsn)
+
+    def interruption_store(self) -> PostgresInterruptionStore:
+        """The Postgres store of interruptions and decisions (FR-112, M29)."""
+        return PostgresInterruptionStore(self.dsn)

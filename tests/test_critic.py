@@ -622,6 +622,27 @@ async def test_a_reason_or_statement_the_ledger_cannot_record_is_refused_by_the_
     assert view.contributions[0].why == " the page\nsays so "
 
 
+@pytest.mark.parametrize("store", ["memory", "postgres"])
+async def test_a_corrected_answer_the_store_cannot_hold_is_re_asked_and_records_no_verdict(store):
+    """AC-84 (M29, FR-111): the corrected answer is constrained like every other string of
+    the verdict. Before, a NUL was stored in the answer's artifact and a lone surrogate
+    failed the node after the verdict was recorded (M28 review)."""
+    for answer in ("The Rhine\u0000", "The Rhine \ud800", "  \n"):
+        def bad(claims, sources, attempt, answer=answer):
+            return json.dumps({"verdict": "corrected", "reason": "r", "corrected_answer": answer, "corrections": []})
+
+        critic = Critic({"x": bad})
+        async with Pages() as pages:
+            orchestrator, runner = setup(pages, {"nodes": [node("n", [READ, doubted("The Rhine.")], "x")]},
+                                         critic=critic, store=store)
+            result = await orchestrate(runner, orchestrator)
+        [(status, reason), *_] = finished(result, "n")
+        assert status == "failed" and reason == "critic_failed: output_contract_violation", (repr(answer), reason)
+        assert critic.runs == 1 and len(critic.requests) == 2, "re-asked exactly once"
+        assert await verifications(runner, result.run_id, kinds=("critic",)) == []
+        assert events(result, EventType.CRITIC_VERDICT) == []
+
+
 async def test_paraphrases_name_only_the_nodes_own_claims_even_when_it_has_none():
     """FR-104 (P3-D16): paraphrases are groups of this node's claim uris. A node with no
     claims -- judged for no_claims -- has none to group (M27 review caveat)."""

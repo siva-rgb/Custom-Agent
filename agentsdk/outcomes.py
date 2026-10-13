@@ -33,6 +33,10 @@ class RunInterruption:
     Approval is one *kind* of interruption, not its own mechanism. Phase 0
     defines the type and never persists or raises one; Phase 4 handles it in
     process; Phase 6 makes it durable across restarts.
+
+    FR-112 (M29) adds the fields its row holds, all defaulted so Phase 0's
+    construction still works: the interruption store requires them on append.
+    `request_payload` is the request (FR-113); `resume_token` stays None.
     """
 
     kind: InterruptionKind
@@ -43,6 +47,14 @@ class RunInterruption:
     tool_call_id: str | None = None
     created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
     resume_token: str | None = None
+    tenant_id: str | None = None
+    project_id: str | None = None
+    top_run_id: str | None = None
+    node_id: str | None = None
+    tool_name: str | None = None
+    agent_id: str | None = None
+    trigger: str | None = None
+    expires_at: datetime | None = None
 
 
 @dataclass(frozen=True)

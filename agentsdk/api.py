@@ -44,6 +44,7 @@ from .scope import AttributedArtifacts, ToolScope
 from .evidence import InMemoryEvidenceStore, ResourceCache
 from .ledger import EvidenceLedger, InMemoryLedgerStore, RunLedger
 from .gate import EvidenceVerification, GatePolicy, NodeSubject
+from .interruptions import InMemoryInterruptionStore
 from .calibration import CalibrationReport, _checked, calibrate
 from .claimlock import ClaimLock
 from .primitives import ContentProvenance, unstorable_reason
@@ -407,6 +408,7 @@ class Runner:
         self._memory_states: InMemoryRunStateStore | None = None
         self._memory_evidence: InMemoryEvidenceStore | None = None
         self._memory_ledger: InMemoryLedgerStore | None = None
+        self._memory_interruptions: InMemoryInterruptionStore | None = None
         # FR-95 (M24): one claim-lock per Runner, across its runs, and across processes
         # through the database when there is one.
         self._claim_lock = ClaimLock(persistence.dsn if persistence is not None else None)
@@ -438,6 +440,16 @@ class Runner:
         if self._memory_ledger is None:
             self._memory_ledger = InMemoryLedgerStore(self._evidence_store(), nodes=self._node_of_ledger)
         return self._memory_ledger
+
+    def _interruption_store(self) -> Any:
+        """Where this Runner's interruptions and decisions are kept (FR-112): the database,
+        or one in-memory store for the Runner's life."""
+        if self._persistence is not None:
+            return self._persistence.interruption_store()
+        if self._memory_interruptions is None:
+            self._memory_interruptions = InMemoryInterruptionStore(
+                runs=self._admits, parent=lambda tenant, project, run: self._parents.get((tenant, project, run)))
+        return self._memory_interruptions
 
     def _node_of_ledger(self, tenant_id: str, project_id: str, ledger_run_id: str, subject: Any) -> bool:
         """FR-100, in memory: the node is stored for its run in this tenant and project, and
