@@ -58,6 +58,8 @@ EXPECTED_EXAMPLES = {
     "23_gate_contention.py",
     # FR-117 (M30): approvals.
     "24_approvals.py",
+    # FR-119 (M31): the write tools.
+    "25_write_tools.py",
 }
 
 

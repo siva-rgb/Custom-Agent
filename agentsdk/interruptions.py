@@ -14,6 +14,7 @@ M29 adds the record only. Nothing writes it until M30's approval manager.
 
 from __future__ import annotations
 
+import copy
 import threading
 from dataclasses import dataclass, replace
 from datetime import datetime, timezone
@@ -232,6 +233,10 @@ def state_of(item: RunInterruption, decision: InterruptionDecision | None, now: 
     return "expired" if item.expires_at is not None and now >= item.expires_at else "pending"
 
 
+def _copied(item: RunInterruption) -> RunInterruption:
+    return replace(item, request_payload=copy.deepcopy(item.request_payload))
+
+
 class ApprovalWaits:
     """FR-115 (M30): the interruptions a Runner's runs are waiting on in this process, and
     how to wake each. A decision is recorded in the store first; the wake only tells the
@@ -301,7 +306,8 @@ class InMemoryInterruptionStore:
                 raise ValueError(f"interruption {item.interruption_id} is already recorded")
             if decision is not None:
                 self._decision_checked(item, decision)
-            self._interruptions[item.interruption_id] = item
+            # Held as a copy and handed out as copies: no caller's object aliases the record.
+            self._interruptions[item.interruption_id] = _copied(item)
             if decision is not None:
                 self._decisions[item.interruption_id] = decision
 
@@ -354,7 +360,8 @@ class InMemoryInterruptionStore:
             found = [(i, self._decisions.get(i.interruption_id)) for i in self._interruptions.values()
                      if (i.tenant_id, i.project_id) == (tenant_id, project_id)
                      and (top is None or self._beneath(tenant_id, project_id, i.run_id, top))]
-        views = [InterruptionView(i, d, state_of(i, d, now)) for i, d in sorted(found, key=lambda p: p[0].created_at)]
+        views = [InterruptionView(_copied(i), d, state_of(i, d, now))
+                 for i, d in sorted(found, key=lambda p: p[0].created_at)]
         return [v for v in views if v.state == "pending"] if pending_only else views
 
     def interruption(self, tenant_id: str, project_id: str, interruption_id: str,
@@ -365,7 +372,7 @@ class InMemoryInterruptionStore:
             if item is None or (item.tenant_id, item.project_id) != (tenant_id, project_id):
                 raise UnknownInterruption(f"no interruption {interruption_id} in this tenant and project")
             decision = self._decisions.get(key)
-        return InterruptionView(item, decision, state_of(item, decision, now))
+        return InterruptionView(_copied(item), decision, state_of(item, decision, now))
 
     def standing(self, tenant_id: str, project_id: str, run_id: str) -> list[StandingDecision]:
         key = canonical_id(run_id) if isinstance(run_id, str) else None

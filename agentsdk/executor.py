@@ -24,6 +24,7 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
+import copy
 import dataclasses
 import inspect
 from collections.abc import Callable
@@ -56,7 +57,7 @@ from .primitives import (
     unstorable_reason,
 )
 from .timings import elapsed_ms, now_ns, wall_clock
-from .tools import DEFAULT_MAX_OUTPUT_CHARS, ApprovalPolicy, Tool, ToolOutput, ToolRegistry
+from .tools import DEFAULT_MAX_OUTPUT_CHARS, ApprovalPolicy, ApprovedCall, Tool, ToolOutput, ToolRegistry
 
 
 @dataclass
@@ -95,6 +96,24 @@ class PreparedCall:
     tool_call: ToolCall
     tool: Tool
     state: _CallState
+    # FR-118 (M31): the request a person approved, for a call that required approval.
+    approved: ApprovedCall | None = None
+
+
+def _with_approved(fn: Any, arguments: dict[str, Any], approved: ApprovedCall | None) -> dict[str, Any]:
+    """FR-118: the call's arguments, plus the approved request for a tool that declares a
+    parameter annotated ApprovedCall. It overrides anything a model sent under that name."""
+    try:
+        parameters = inspect.signature(fn).parameters.values()
+    except (TypeError, ValueError):
+        return arguments
+    for parameter in parameters:
+        annotation = parameter.annotation
+        named = isinstance(annotation, str) and "ApprovedCall" in annotation
+        typed = annotation is ApprovedCall
+        if named or typed:
+            return {**arguments, parameter.name: approved}
+    return arguments
 
 
 def _with_scope(fn: Any, arguments: dict[str, Any], scope: Any) -> dict[str, Any]:
@@ -310,23 +329,32 @@ class ToolExecutor:
         if tool.spec.approval_policy is ApprovalPolicy.REQUIRE_APPROVAL:
             trigger = "policy"
         elif tool.needs_approval is not None:
-            flagged = tool.needs_approval(dict(call.arguments))
+            flagged = tool.needs_approval(copy.deepcopy(call.arguments))
             if inspect.isawaitable(flagged):
                 flagged = await flagged
-            if flagged is True:
+            # Fail closed (M30 review caveat 2): an answer that is not a bool is not a no.
+            if type(flagged) is not bool:
+                raise ValueError(f"needs_approval must answer True or False, got {flagged!r}")
+            if flagged:
                 trigger = "predicate"
         if trigger is None and hooked:
             trigger = "hook"
         if trigger is None:
             return None
         scope = self._scope
+        # What runs is exactly what was approved (M30 review caveat 1): the arguments are
+        # copied once, deeply, and the call runs that copy; the request holds another, so
+        # neither a hook keeping its replacement nor a reader of the record can change it.
+        frozen = copy.deepcopy(call.arguments)
+        prepared.tool_call = dataclasses.replace(call, arguments=frozen)
+        call = prepared.tool_call
         request: dict[str, Any] = {
-            "tool": tool.spec.name, "arguments": dict(call.arguments), "risk_class": tool.spec.risk_class.value,
+            "tool": tool.spec.name, "arguments": copy.deepcopy(frozen), "risk_class": tool.spec.risk_class.value,
             "agent_id": getattr(scope, "agent_id", None), "node_id": getattr(scope, "node_id", None),
             "trigger": trigger,
         }
         if tool.describe is not None:
-            described = await tool.describe(dict(call.arguments))
+            described = await tool.describe(copy.deepcopy(frozen))
             if not isinstance(described, dict):
                 raise ValueError(f"describe must return a JSON object, got {type(described).__name__}")
             request["describe"] = described
@@ -334,7 +362,7 @@ class ToolExecutor:
         if reason is not None:
             raise ValueError(f"the approval request cannot be stored: {reason}")
         run_id = getattr(scope, "run_id", None) or ""
-        return RunInterruption(
+        interruption = RunInterruption(
             kind=InterruptionKind.TOOL_APPROVAL, run_id=run_id, request_payload=request,
             tool_call_id=prepared.issued.id, tenant_id=getattr(scope, "tenant_id", None),
             project_id=getattr(scope, "project_id", None),
@@ -342,6 +370,8 @@ class ToolExecutor:
             node_id=getattr(scope, "node_id", None), tool_name=tool.spec.name,
             agent_id=getattr(scope, "agent_id", None) or "unknown", trigger=trigger,
         )
+        prepared.approved = ApprovedCall(interruption_id=interruption.interruption_id, request=copy.deepcopy(request))
+        return interruption
 
     async def check_failed(self, prepared: PreparedCall, reason: str) -> Failed:
         """FR-113, NFR-30: a call that requires approval but whose interruption could not
@@ -376,7 +406,7 @@ class ToolExecutor:
         state.ran = True
         state.started_at, state.started_ns = wall_clock(), now_ns()
         try:
-            value = await self._invoke(tool, tool_call.arguments)
+            value = await self._invoke(tool, tool_call.arguments, prepared.approved)
         except asyncio.TimeoutError:
             return await self._failed(
                 tool_call, ToolTimeout(f"tool {tool_call.name!r} exceeded its timeout"), state
@@ -517,13 +547,13 @@ class ToolExecutor:
         except Exception:  # noqa: BLE001
             pass
 
-    async def _invoke(self, tool: Any, arguments: dict[str, Any]) -> Any:
+    async def _invoke(self, tool: Any, arguments: dict[str, Any], approved: ApprovedCall | None = None) -> Any:
         async def _run() -> Any:
             # Await whatever is awaitable rather than inspecting the callable:
             # iscoroutinefunction() is False for a wrapper or a class with an
             # async __call__, which would silently return an un-awaited
             # coroutine as if it were the tool's result.
-            value = tool.fn(**_with_scope(tool.fn, arguments, self._scope))
+            value = tool.fn(**_with_approved(tool.fn, _with_scope(tool.fn, arguments, self._scope), approved))
             if inspect.isawaitable(value):
                 value = await value
             return value

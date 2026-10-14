@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import hashlib
 import json
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any
@@ -214,6 +214,17 @@ class ToolSpec:
             fields["approval_policy"] = self.approval_policy.value
         payload = json.dumps(fields, sort_keys=True)
         return hashlib.sha256(payload.encode()).hexdigest()
+
+
+@dataclass(frozen=True)
+class ApprovedCall:
+    """FR-118 (M31): the request a person approved, handed by the executor to a tool that
+    declares a parameter annotated ApprovedCall -- as it hands a RunScope -- so a tool can
+    check that what it is about to change is still what the approver saw. Never one of the
+    model's arguments: the executor sets it, overriding anything sent under that name."""
+
+    interruption_id: str
+    request: Mapping[str, Any]
 
 
 @dataclass(frozen=True)

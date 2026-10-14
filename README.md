@@ -97,7 +97,15 @@ persisted so you can reconstruct exactly what happened afterwards.
   service. Calls keep the order the model gave them, the model is not called
   while any waits, a rejection's reason reaches the model, an approval may be
   made sticky for the rest of the run, and an undecided call expires after
-  `RunConfig.approval_timeout` (an hour by default).
+  `RunConfig.approval_timeout` (an hour by default). What runs is exactly what
+  was approved: the arguments are copied when the request is made.
+- **Writes and edits files, only as approved** (M31): `write_file_tool(root)`
+  creates or replaces a UTF-8 file and `edit_file_tool(root)` replaces text that
+  occurs exactly once, both confined to `root` as the read tools are (Windows
+  only). Each needs approval by default and shows the approver the path and the
+  file's hash before and after; a file that changed since then is not written. A
+  write goes to a hidden temporary file that then replaces the target in one step,
+  so a reader sees the old file or the new one, and nothing is left behind.
 - **Fetches each page once, however many agents ask** (M24's claim-lock): one
   holder per page and per statement, across the tasks of a process and the
   processes sharing the database; the others wait, then take the holder's
@@ -137,6 +145,8 @@ Stated plainly, because an SDK that overstates itself costs you a week:
 | Every deterministic criterion of a node runs before a critic criterion is judged or refused, so with no critic configured a `tool_succeeds` criterion's side effects happen before the node fails `criterion_not_available` | Declared (M26a) |
 | On a database where M26 already recorded a verification naming a claim of another ledger, migration 0013 cannot apply until that row is removed: adding its key checks every existing row, and the migration rolls back whole | Declared (M27) |
 | Example 23's taint checks compare each corrected claim and answer with the critic's own rows, but in its corpus the critic is tainted exactly as the pages are, so they cannot tell a missing critic label; `tests/test_critic.py`'s test that taints the critic's result alone is what pins it | Declared (M29) |
+| A write tool re-reads its target's hash just before replacing it, but a program outside the SDK can still change the file between that read and the replace; the window cannot be closed from user mode | Declared (M31) |
+| A write to a file another program holds open (without delete sharing) is refused `target in use` rather than retried; the model sees the refusal and may try again | Declared (M31) |
 | No model can record an externally validated outcome: `Runner.record_validation` is in no tool registry and no tool the SDK ships calls it. A custom tool is first-party code in your process and reaches the Runner through its scope, as it reaches the ledger store, so it could call `record_validation`; in-process code is outside the threat model | Declared (M26a) |
 | Streaming of model tokens as they are generated (a run's events do stream, through `RunHandle.events()`) | Later; not yet scheduled |
 | Native MCP (Model Context Protocol) support | Phase 4 |

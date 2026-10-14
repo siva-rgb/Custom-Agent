@@ -700,7 +700,6 @@ class AgentLoop:
         first = approvals[min(approvals)]
         tenant_id, project_id = first.tenant_id, first.project_id
         decided: dict[int, Any] = {}
-        requested = False
 
         async def standing_for(candidates: list[RunInterruption]) -> dict[str, Any]:
             """P4-D15: each candidate's decision by the run's latest standing decision for
@@ -741,6 +740,10 @@ class AgentLoop:
             items[index] = item
             if standing is not None:
                 decided[index] = standing
+            else:
+                # Asked as soon as it is recorded (M30 review caveat 3): an approver who
+                # decides before the run first reads still finds it asked (FR-114).
+                await control.store(self._events.emit, EventType.APPROVAL_REQUESTED, _requested(item))
         approvals.clear()
         approvals.update(items)
         if not items:
@@ -785,12 +788,6 @@ class AgentLoop:
                         pass
             if len(decided) == len(items):
                 break
-            if not requested:
-                # Each interruption no standing decision settled is asked for, once.
-                for index in sorted(items):
-                    if index not in decided:
-                        await control.store(self._events.emit, EventType.APPROVAL_REQUESTED, _requested(items[index]))
-                requested = True
             pending = [items[i].expires_at for i in items if i not in decided]
             wait = min([5.0] + [max(0.0, (e - datetime.now(timezone.utc)).total_seconds()) for e in pending])
             control.checkpoint()

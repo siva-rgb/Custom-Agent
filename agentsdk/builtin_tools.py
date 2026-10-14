@@ -25,6 +25,8 @@ from __future__ import annotations
 import asyncio
 import codecs
 import concurrent.futures
+import hashlib
+import uuid
 import contextvars
 import fnmatch
 import functools
@@ -47,7 +49,7 @@ import httpx
 
 from .evidence import DEFAULT_FRESHNESS_SECONDS, CacheScope, ResourceCacheKey, canonical_uri
 from .primitives import unstorable_reason
-from .tools import ResultProvenance, Tool, ToolOutput, ToolSpec
+from .tools import ApprovalPolicy, ApprovedCall, ResultProvenance, RiskClass, Tool, ToolOutput, ToolSpec
 from .version import __version__
 
 if TYPE_CHECKING:
@@ -155,6 +157,10 @@ class _FileSystem:
     _SHARE = 0x1 | 0x2  # read and write, NOT delete: no rename under an open handle
     _OPEN_EXISTING = 3
     _BACKUP_SEMANTICS = 0x02000000  # lets CreateFileW open a directory
+    _OPEN_REPARSE_POINT = 0x00200000  # opens a link itself, not what it points to
+    _GENERIC_WRITE = 0x40000000
+    _CREATE_NEW = 1
+    _ATTRIBUTE_NORMAL = 0x80
 
     def __init__(self) -> None:
         self._k32: Any = None
@@ -175,6 +181,15 @@ class _FileSystem:
             k.ReadFile.argtypes = [w.HANDLE, w.LPVOID, w.DWORD, ctypes.POINTER(w.DWORD), w.LPVOID]
             k.CloseHandle.restype = w.BOOL
             k.CloseHandle.argtypes = [w.HANDLE]
+            # FR-118 (M31): the write path.
+            k.WriteFile.restype = w.BOOL
+            k.WriteFile.argtypes = [w.HANDLE, w.LPCVOID, w.DWORD, ctypes.POINTER(w.DWORD), w.LPVOID]
+            k.FlushFileBuffers.restype = w.BOOL
+            k.FlushFileBuffers.argtypes = [w.HANDLE]
+            k.MoveFileExW.restype = w.BOOL
+            k.MoveFileExW.argtypes = [w.LPCWSTR, w.LPCWSTR, w.DWORD]
+            k.DeleteFileW.restype = w.BOOL
+            k.DeleteFileW.argtypes = [w.LPCWSTR]
             self._k32 = k
         return self._k32
 
@@ -191,6 +206,65 @@ class _FileSystem:
 
     def close(self, handle: int) -> None:
         self.kernel32().CloseHandle(handle)
+
+    def open_target(self, path: str) -> int | None:
+        """FR-118: open a file or directory WITHOUT following a link at it, or None when
+        nothing is there. Shared for reading and writing but not delete, as open_handle."""
+        import ctypes
+
+        handle = self.kernel32().CreateFileW(
+            _extended(path), self._ACCESS, self._SHARE, None, self._OPEN_EXISTING,
+            self._BACKUP_SEMANTICS | self._OPEN_REPARSE_POINT, None,
+        )
+        if handle is None or handle == ctypes.c_void_p(-1).value:
+            error = ctypes.get_last_error()
+            if error in (2, 3):  # ERROR_FILE_NOT_FOUND, ERROR_PATH_NOT_FOUND
+                return None
+            raise OSError(error, "cannot open")
+        return handle
+
+    def attributes(self, handle: int) -> int:
+        """The FILE_ATTRIBUTE_ flags of what the handle holds (FileBasicInfo)."""
+        import ctypes
+
+        buffer = ctypes.create_string_buffer(40)
+        if not self.kernel32().GetFileInformationByHandleEx(handle, 0, buffer, 40):  # FileBasicInfo
+            raise OSError(ctypes.get_last_error(), "no file information")
+        return int.from_bytes(buffer.raw[32:36], "little")
+
+    def create_new(self, path: str) -> int:
+        """A new file for writing, failing if anything is there, shared with no one."""
+        import ctypes
+
+        handle = self.kernel32().CreateFileW(
+            _extended(path), self._GENERIC_WRITE, 0, None, self._CREATE_NEW, self._ATTRIBUTE_NORMAL, None
+        )
+        if handle is None or handle == ctypes.c_void_p(-1).value:
+            raise OSError(ctypes.get_last_error(), "cannot create")
+        return handle
+
+    def write_all(self, handle: int, data: bytes) -> None:
+        import ctypes
+        from ctypes import wintypes as w
+
+        written, view = w.DWORD(), memoryview(data)
+        while view:
+            chunk = bytes(view[: 1 << 20])
+            if not self.kernel32().WriteFile(handle, chunk, len(chunk), ctypes.byref(written), None):
+                raise OSError(ctypes.get_last_error(), "cannot write")
+            view = view[written.value:]
+        if not self.kernel32().FlushFileBuffers(handle):
+            raise OSError(ctypes.get_last_error(), "cannot flush")
+
+    def replace(self, source: str, target: str) -> None:
+        """Move `source` over `target` in one step, written through to the disk."""
+        import ctypes
+
+        if not self.kernel32().MoveFileExW(_extended(source), _extended(target), 0x1 | 0x8):
+            raise OSError(ctypes.get_last_error(), "cannot replace")
+
+    def delete(self, path: str) -> None:
+        self.kernel32().DeleteFileW(_extended(path))
 
     def final_path(self, handle: int) -> str:
         import ctypes
@@ -235,7 +309,7 @@ class _FileSystem:
                 attributes = int.from_bytes(raw[offset + 56:offset + 60], "little")
                 length = int.from_bytes(raw[offset + 60:offset + 64], "little")
                 name = raw[offset + 68:offset + 68 + length].decode("utf-16-le", errors="surrogatepass")
-                if name not in (".", ".."):
+                if name not in (".", "..") and not _TEMPORARY.search(name):
                     entries.append((name, attributes))
                 if not following:
                     break
@@ -282,6 +356,11 @@ _RESERVED = {"CON", "PRN", "AUX", "NUL", "CONIN$", "CONOUT$", "CLOCK$"} | {
 _FORBIDDEN = set('<>:"|?*') | {chr(code) for code in range(32)}
 _SHORT_NAME = re.compile(r"~\d")
 _REPARSE_POINT, _DIRECTORY = 0x400, 0x10
+# FR-118 (M31): the name of a write tool's temporary file, withheld from every listing.
+_TEMPORARY = re.compile(r"^\..*\.agentsdk-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.tmp$")
+_LINK_TARGET = "file refused: it is a link; give the path of the file itself"
+_CHANGED = "file refused: it changed since approval, so it was not written"
+_IN_USE = "file refused: the target is in use -- another handle holds it open -- so it was not replaced"
 _WALK_ENTRIES = 100_000
 _WALK_SECONDS = 20.0
 _LINE_CHARS = 300
@@ -772,6 +851,195 @@ def grep_tool(root: Any, *, max_matches: int = 200, max_file_bytes: int = 1_000_
         {"text": {"type": "string", "minLength": 1, "maxLength": 1000}, "path": {**_PATH, "default": "."}},
         ["text"], base, {"max_matches": matches, "max_file_bytes": file_bytes}, grep_files,
     )
+
+
+# =============================================================================
+# The write tools (FR-118, M31)
+# =============================================================================
+
+
+def _sha(data: bytes) -> str:
+    return hashlib.sha256(data).hexdigest()
+
+
+class _Target:
+    """A file to write: its parent directory held open without delete sharing, so the
+    parent cannot be swapped for a link while the write is made, and its name in it."""
+
+    def __init__(self, root: _Root, path: Any) -> None:
+        parts = _components(path)
+        if not parts:
+            raise _Refused(_NOT_ALLOWED)
+        *directories, self.name = parts
+        self.relative = "/".join(parts)
+        self.handle, self.parent = _open_inside(root, directories, None)
+        try:
+            if not _fs.standard_info(self.handle)[2]:
+                raise _Refused("path refused: its parent is not a directory")
+            if _SHORT_NAME.search(self.name) and self.name.casefold() not in {
+                    name.casefold() for name, _ in _fs.list_handle(self.handle, _WALK_ENTRIES)}:
+                raise _Refused(_NOT_ALLOWED)  # an 8.3 alias, not a name the directory holds
+        except BaseException:
+            _fs.close(self.handle)
+            raise
+        self.path = root.join(self.parent, self.name)
+
+    def close(self) -> None:
+        _fs.close(self.handle)
+
+    def current(self, max_bytes: int) -> bytes | None:
+        """The target's bytes, or None when there is no file yet. A link, a directory, a
+        file with more than one hard link or one over `max_bytes` is refused."""
+        handle = _fs.open_target(self.path)
+        if handle is None:
+            return None
+        try:
+            if _fs.attributes(handle) & _REPARSE_POINT:
+                raise _Refused(_LINK_TARGET)
+            size, links, is_dir = _fs.standard_info(handle)
+            if is_dir:
+                raise _Refused("not a file: a directory cannot be written")
+            if links > 1:
+                raise _Refused(_HARD_LINK)
+            if size > max_bytes:
+                raise _Refused(f"file refused: it is over {max_bytes} bytes")
+            data = _fs.read(handle, max_bytes + 1)
+        finally:
+            _fs.close(handle)
+        if len(data) > max_bytes:
+            raise _Refused(f"file refused: it is over {max_bytes} bytes")
+        return data
+
+    def write(self, data: bytes) -> None:
+        """A new file beside the target, flushed, then moved over it in one replace: a
+        reader sees the old file or the new one, never a part. Nothing is left behind."""
+        temporary = self.parent.rstrip("\\") + "\\" + f".{self.name}.agentsdk-{uuid.uuid4()}.tmp"
+        handle = _fs.create_new(temporary)
+        try:
+            try:
+                _fs.write_all(handle, data)
+            finally:
+                _fs.close(handle)
+            _fs.replace(temporary, self.path)
+        except OSError as exc:
+            _fs.delete(temporary)
+            if exc.args and exc.args[0] in (5, 32):  # access denied, sharing violation
+                raise _Refused(_IN_USE) from None
+            raise
+        except BaseException:
+            _fs.delete(temporary)
+            raise
+
+
+def _text_of(data: bytes) -> tuple[bytes, str]:
+    """(byte-order mark, text) of a UTF-8 file, or a refusal."""
+    mark = b"\xef\xbb\xbf" if data.startswith(b"\xef\xbb\xbf") else b""
+    try:
+        return mark, data[len(mark):].decode("utf-8")
+    except UnicodeDecodeError:
+        raise _Refused("file refused: it is not UTF-8 text") from None
+
+
+def _edited(data: bytes | None, old: str, new: str) -> tuple[bytes, int]:
+    """The file with its one occurrence of `old` replaced, counting overlapping ones, and
+    the line it began on. Every other byte, line endings included, is kept."""
+    if data is None:
+        raise _Refused(_NOT_FOUND)
+    mark, text = _text_of(data)
+    starts = [i for i in range(len(text) - len(old) + 1) if text.startswith(old, i)]
+    if not starts:
+        raise _Refused("the text to replace was not found in the file")
+    if len(starts) > 1:
+        raise _Refused(f"the text to replace occurs {len(starts)} times; give text that occurs exactly once")
+    at = starts[0]
+    return mark + (text[:at] + new + text[at + len(old):]).encode("utf-8"), text.count("\n", 0, at) + 1
+
+
+def _change(root: _Root, max_bytes: int, arguments: Mapping[str, Any], kind: str) -> tuple[_Target, bytes | None, bytes, dict[str, Any]]:
+    target = _Target(root, arguments.get("path"))
+    try:
+        before = target.current(max_bytes)
+        detail: dict[str, Any] = {}
+        if kind == "write":
+            after = arguments["content"].encode("utf-8")
+        else:
+            after, detail["line"] = _edited(before, arguments["old"], arguments["new"])
+        if len(after) > max_bytes:
+            raise _Refused(f"content refused: it is over {max_bytes} bytes")
+    except BaseException:
+        target.close()
+        raise
+    return target, before, after, detail
+
+
+@_guarded
+def _describe_change(root: _Root, max_bytes: int, kind: str, arguments: Mapping[str, Any]) -> dict[str, Any]:
+    """FR-113, FR-118: what the approver is shown -- computed, with no side effect."""
+    target, before, after, detail = _change(root, max_bytes, arguments, kind)
+    target.close()
+    return {"path": target.relative, "before": None if before is None else _sha(before), "after": _sha(after),
+            "bytes_before": None if before is None else len(before), "bytes_after": len(after), **detail}
+
+
+@_guarded
+def _apply_change(root: _Root, max_bytes: int, kind: str, arguments: Mapping[str, Any],
+                  approved: ApprovedCall | None) -> str:
+    """FR-118: the write, made only if the target is still what the approver saw."""
+    target, before, after, _ = _change(root, max_bytes, arguments, kind)
+    try:
+        if approved is not None:
+            shown = (approved.request or {}).get("describe") or {}
+            if "before" not in shown or shown["before"] != (None if before is None else _sha(before)):
+                raise _Refused(_CHANGED)
+        target.write(after)
+    finally:
+        target.close()
+    return f"wrote {target.relative}: {len(after)} bytes, sha256 {_sha(after)}"
+
+
+def _write_tool(kind: str, name: str, description: str, properties: dict[str, Any], root: Any, max_bytes: int,
+                approval_policy: ApprovalPolicy) -> Tool:
+    base, limit = _Root(root), _positive("max_bytes", max_bytes)
+    if not isinstance(approval_policy, ApprovalPolicy):
+        raise ValueError(f"approval_policy must be an ApprovalPolicy, got {approval_policy!r}")
+
+    async def describe(arguments: dict[str, Any]) -> dict[str, Any]:
+        return await _on_file_pool(_describe_change, base, limit, kind, arguments)
+
+    async def run(approved: ApprovedCall | None = None, **arguments: Any) -> str:
+        return await _on_file_pool(_apply_change, base, limit, kind, arguments, approved)
+
+    return Tool(
+        spec=ToolSpec(
+            name=name, description=description,
+            input_schema={"type": "object", "properties": properties, "required": list(properties),
+                          "additionalProperties": False},
+            risk_class=RiskClass.WRITE, read_only=False, idempotent=False, approval_policy=approval_policy,
+            configuration={"root": base.path, "max_bytes": limit},
+            # It changes the disk: one call at a time (FR-44).
+            concurrency_safe=False,
+        ),
+        fn=run, describe=describe,
+    )
+
+
+def write_file_tool(root: Any, *, max_bytes: int = 1_000_000, name: str = "write_file",
+                    approval_policy: ApprovalPolicy = ApprovalPolicy.REQUIRE_APPROVAL) -> Tool:
+    """Create or replace a UTF-8 text file under `root`, atomically (FR-118). Needs approval
+    by default; the approver is shown the before and after hashes."""
+    return _write_tool("write", name, "Create or replace a text file inside the root folder. Needs approval.",
+                       {"path": _PATH, "content": {"type": "string"}}, root, max_bytes, approval_policy)
+
+
+def edit_file_tool(root: Any, *, max_bytes: int = 1_000_000, name: str = "edit_file",
+                   approval_policy: ApprovalPolicy = ApprovalPolicy.REQUIRE_APPROVAL) -> Tool:
+    """Replace the one occurrence of a text in a UTF-8 file under `root`, atomically
+    (FR-118); refused when the text is absent or occurs more than once."""
+    return _write_tool(
+        "edit", name,
+        "Replace text that occurs exactly once in a text file inside the root folder. Needs approval.",
+        {"path": _PATH, "old": {"type": "string", "minLength": 1}, "new": {"type": "string"}},
+        root, max_bytes, approval_policy)
 
 
 # =============================================================================

@@ -9,7 +9,7 @@
     "non_goals": [],
     "trust_boundary": "local repository",
     "created_at": "2026-09-05T14:48:57.894Z",
-    "updated_at": "2026-10-13T18:02:55.810Z"
+    "updated_at": "2026-10-14T05:00:03.187Z"
   },
   "policy": {
     "ponytail": "full",
@@ -25,7 +25,7 @@
   "lifecycle": {
     "phase": "build",
     "status": "active",
-    "active_task": "M31-write-tools",
+    "active_task": "M32-approval-contention",
     "blocker": null,
     "next_action": "Run the task pre-flight."
   },
@@ -2612,6 +2612,14 @@
       "source": null,
       "tags": [],
       "recorded_at": "2026-10-13T18:02:55.621Z"
+    },
+    {
+      "id": "KNOWLEDGE-86b899ad",
+      "title": "M31 round 1 approved; a model-reachable pool stall and three follow-ups go to M32 pre-flight",
+      "text": "Sonnet 5 approved M31 round 1 at 04:36:42Z on source hash 9c531471, gates recomputed (unit 39, regression 2148). Process incident, disclosed by the reviewer and verified by the orchestrator: two of its mutation runs overlapped, breaking the one-session rule, left agentsdk/executor.py with a mutant line and leaked an example 25 run into example-tenant; it reversed all three, and every file is byte-identical to the baseline apart from CLI-written .genesis records, no if False remains in agentsdk, the live contentHash equals the gate source_hash, example-tenant runs 19 to 19, total runs 10351 to 10351, the interruption tables at 0 rows and no orphan temporary files. Verified: about 90 confinement paths (dot-dot spellings, extended and device prefixes, UNC, device names, streams, 8.3 aliases, trailing dots, junctions, symlinks, dangling links and hard links at the target and in the path) with the outside tree unchanged and no refusal naming an outside path; a junction swapped after describe, and one swapped just after the pre-open check, both refused, with controls showing a naive writer and a copy without the final-path check escaping; mutating the model arguments, ToolCall.arguments and a listed request never changed what was written, and a model-sent or hook-injected approved was refused or overridden. Correction by the orchestrator to one reviewer caveat: removing the _open_inside final-path check survives the M31 gate file but is killed by the M10 test of a link swapped between check and open, which runs in the regression gate. Follow-ups, owner chose M32 pre-flight: (1) model-reachable: edit_file counts overlapping occurrences by testing every position, quadratic, with no cap on old; a 1 MB file and a 500000-character old took 14.84 s on a pool thread, during describe, before anyone is asked, and the pool has four threads; cap the length of old. (2) Any name matching the temporary-file shape is withheld from list, glob and grep, so a model can hide a file there, and a crash leaves temporary files nothing sweeps; withhold only names this process created, and sweep orphans. (3) The README limitation understates the refusal: any open reader, even one sharing delete, blocked the replace in 43 of 60 writes; say so. (4) The M30 sticky early wake is unpinned: removing it leaves the tests passing at 40 s rather than 5 s because the five-second re-read masks it; pin it with a timing bound. Also weak: the non-bool predicate mutant was killed by a hang, not an assertion. Example 25 live was not probed by the reviewer (covered offline on both stores).",
+      "source": null,
+      "tags": [],
+      "recorded_at": "2026-10-14T05:00:02.685Z"
     }
   ],
   "tasks": [
@@ -4858,7 +4866,7 @@
     {
       "id": "M31-write-tools",
       "outcome": "write_file and edit_file change files only as approved, atomically, confined to their root",
-      "state": "active",
+      "state": "done",
       "risk": "high",
       "owner": null,
       "scope": [],
@@ -4876,22 +4884,37 @@
           "id": "unit",
           "command": ".venv\\Scripts\\python.exe -m pytest tests/test_write_tools.py -q",
           "mandatory": true,
-          "status": "pending",
-          "evidence": null
+          "status": "pass",
+          "evidence": {
+            "path": ".genesis/evidence/M31-write-tools-unit.json",
+            "source_hash": "9c531471a1d346c5193e938fe8ca90f359b5dae967b71e737dd9779d2ad06553",
+            "hash": "0e93279747446ea6799c9dc924f69b4903e4f2e040ee679b0328c77b66c3aad5",
+            "observed_at": "2026-10-14T03:54:16.780Z"
+          }
         },
         {
           "id": "regression",
           "command": ".venv\\Scripts\\python.exe -m pytest -q",
           "mandatory": true,
-          "status": "pending",
-          "evidence": null
+          "status": "pass",
+          "evidence": {
+            "path": ".genesis/evidence/M31-write-tools-regression.json",
+            "source_hash": "9c531471a1d346c5193e938fe8ca90f359b5dae967b71e737dd9779d2ad06553",
+            "hash": "852270d2074e94370d023d263aa4558c7c521701d7aff8cd25870f30ecfe7004",
+            "observed_at": "2026-10-14T04:02:07.574Z"
+          }
         },
         {
           "id": "independent-review",
           "command": "",
           "mandatory": true,
-          "status": "pending",
-          "evidence": null
+          "status": "pass",
+          "evidence": {
+            "human": "Sonnet 5",
+            "reason": "Round 1 approve. Gates run first-hand: unit 39 passed, regression 2148 passed, source hash 9c531471. Confinement: about 90 escape paths (dot dot, absolute, device, ADS, 8.3, trailing dot or space, symlink, junction, hard link at target and at components, links swapped after describe, after the realpath check, and during the replace, grandparent or parent rename while held) all refused or contained, outside tree byte-identical, no refusal names a path; controls: a naive writer and a mutant without the final-path check both escape under the same probes. Approval integrity: changed-since-approval, mutated model args, mutated store view, hook-injected approved, two edits in one turn all behave; mutants that drop the check or the argument copy are caught. Atomic: polling reader saw only whole old or new; no temp left after failing flush, write, replace, KeyboardInterrupt. Pool: all fs calls on agentsdk-file-tool threads, a write queued behind a saturated pool times out and never starts. Caveats not blockers: (1) edit_file old has no length cap and the count is quadratic: 1 MB file with a 500000-char old took 14.8 s on a pool thread in describe before any approval; (2) a process crash leaves a hidden .tmp that nothing cleans, and a model can write a file named like a temp name that list glob grep then hide; (3) a reader holding the target open even with delete sharing makes the replace fail in use (43 of 60 writes against a polling reader); (4) test gaps: mutating the final-path check in _open_inside survives the suite (no seam on the write path) and removing the early sticky wake survives because the 5 s poll wakes the run; non-bool predicate regression hangs rather than fails; (5) _apply_change compares only before, not the approved after; sticky approvals cover content the approver never saw by P4-D15; reparse-point non-links such as cloud placeholders are refused as links. Item 9 live example 25 not probed (cost; confinement is code-level and the offline example runs in the gate on both stores).",
+            "source_hash": "9c531471a1d346c5193e938fe8ca90f359b5dae967b71e737dd9779d2ad06553",
+            "observed_at": "2026-10-14T04:36:42.524Z"
+          }
         }
       ],
       "next_action": "Run the task pre-flight.",
@@ -4900,12 +4923,12 @@
       "failures": [],
       "limitations": [],
       "created_at": "2026-10-13T10:05:20.070Z",
-      "updated_at": "2026-10-13T10:05:20.070Z"
+      "updated_at": "2026-10-14T05:00:03.186Z"
     },
     {
       "id": "M32-approval-contention",
       "outcome": "Approvals inside orchestration hold under contention on both stores",
-      "state": "queued",
+      "state": "active",
       "risk": "high",
       "owner": null,
       "scope": [],
@@ -5987,6 +6010,15 @@
       "task": "M30-approvals",
       "human": "Fable 5.1",
       "reason": "Round 1 approved on source hash 7634279a, gates recomputed in the background (unit 49 passed, regression 2109 passed in 452s). Verified first-hand on both stores with 134 probe checks plus three mutant controls that each detected the defect they target: NFR-30 held under store faults at recording, reading, standing and both decision writes, under cancellation at every await (standing read, append of the 2nd interruption, the wait, the re-read, an async describe, an async predicate, and a failing cancel write), under 12 decision-versus-expiry races and 10 two-decider races (exactly one row each, ran iff approve), and under mixed concurrency_safe batches; issue order, at-most-once, duplicate call ids and several turns; refusal order tenancy first on both stores, expired before not-waiting, handle and other-Runner refusals; sticky scope (siblings, later turns, exact decisions kept, sticky reject, predicate and hook calls still asked, other agent, tool or run rows never applied, a matching row mid-wait applied); the 5s re-read with the wake dropped (4.5s), the earliest expiry (7s timeout expired at 7.03s); ApprovalDecided before ToolCalled, rejection text and urn label, manifest approval_timeout 90 and 3600, 0015 replayed three times in a scratch schema identical to the live constraints; NFR-32 by diffing requests and events of a no-approval run against 62cc198 (724 leaves, only event timestamps differ) with the hook REQUIRE_APPROVAL the one change; AC-32 edit honest: golden literals unchanged, the 972 non-declaring specs hash exactly as at 62cc198 element by element, only the 972 declaring ones differ. Example 24 passed offline and live (run removed by id). Caveats, none blocking: (1) step 6 runs prepared.tool_call, the hook replacement object itself, while the request keeps a shallow dict copy, so a hook that keeps its replacement and mutates it during the wait, or a predicate that mutates a nested value, changes what runs versus what was approved; recommend copying the arguments when the request is built and running from that copy. (2) a needs_approval predicate returning a truthy non-bool such as 1 or yes is treated as no approval because of the flagged is True test; a non-bool should rather fail the call ToolApprovalCheckFailed. (3) ApprovalRequested is not emitted for an interruption a store-polling approver decides between its recording and the first read loop (3 of 5 rounds on memory, 0 of 5 on Postgres); the row and ApprovalDecided are complete. (4) decide with sticky whose standing write fails raises although the decision row is recorded; the run adopts it on the 5s re-read. Rows left by a failing cancel write stay pending with waiting False and undecidable, as declared for a crash.",
+      "revision": null
+    },
+    {
+      "id": "bb027013-47a5-4471-be7c-c0e094548bf1",
+      "at": "2026-10-14T04:36:42.524Z",
+      "action": "approve",
+      "task": "M31-write-tools",
+      "human": "Sonnet 5",
+      "reason": "Round 1 approve. Gates run first-hand: unit 39 passed, regression 2148 passed, source hash 9c531471. Confinement: about 90 escape paths (dot dot, absolute, device, ADS, 8.3, trailing dot or space, symlink, junction, hard link at target and at components, links swapped after describe, after the realpath check, and during the replace, grandparent or parent rename while held) all refused or contained, outside tree byte-identical, no refusal names a path; controls: a naive writer and a mutant without the final-path check both escape under the same probes. Approval integrity: changed-since-approval, mutated model args, mutated store view, hook-injected approved, two edits in one turn all behave; mutants that drop the check or the argument copy are caught. Atomic: polling reader saw only whole old or new; no temp left after failing flush, write, replace, KeyboardInterrupt. Pool: all fs calls on agentsdk-file-tool threads, a write queued behind a saturated pool times out and never starts. Caveats not blockers: (1) edit_file old has no length cap and the count is quadratic: 1 MB file with a 500000-char old took 14.8 s on a pool thread in describe before any approval; (2) a process crash leaves a hidden .tmp that nothing cleans, and a model can write a file named like a temp name that list glob grep then hide; (3) a reader holding the target open even with delete sharing makes the replace fail in use (43 of 60 writes against a polling reader); (4) test gaps: mutating the final-path check in _open_inside survives the suite (no seam on the write path) and removing the early sticky wake survives because the 5 s poll wakes the run; non-bool predicate regression hangs rather than fails; (5) _apply_change compares only before, not the approved after; sticky approvals cover content the approver never saw by P4-D15; reparse-point non-links such as cloud placeholders are refused as links. Item 9 live example 25 not probed (cost; confinement is code-level and the offline example runs in the gate on both stores).",
       "revision": null
     }
   ],

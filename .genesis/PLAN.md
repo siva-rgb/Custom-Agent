@@ -298,15 +298,15 @@
 
 ### M31-write-tools — write_file and edit_file change files only as approved, atomically, confined to their root
 
-- state/risk: active / high
+- state/risk: done / high
 - requirements: FR-118, FR-119, AC-87, NFR-30, NFR-33, NFR-14
 - scope: not bounded
-- gates: unit: .venv\Scripts\python.exe -m pytest tests/test_write_tools.py -q, regression: .venv\Scripts\python.exe -m pytest -q, independent-review: pending
+- gates: unit: .venv\Scripts\python.exe -m pytest tests/test_write_tools.py -q, regression: .venv\Scripts\python.exe -m pytest -q, independent-review: pass
 - next: Run the task pre-flight.
 
 ### M32-approval-contention — Approvals inside orchestration hold under contention on both stores
 
-- state/risk: queued / high
+- state/risk: active / high
 - requirements: FR-120, FR-121, AC-88, NFR-30, NFR-31, NFR-22, NFR-33
 - scope: not bounded
 - gates: unit: .venv\Scripts\python.exe -m pytest tests/test_approval_contention.py -q, regression: .venv\Scripts\python.exe -m pytest -q, independent-review: pending

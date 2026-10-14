@@ -558,12 +558,20 @@ class Runner:
             raise InterruptionNotWaiting(f"no run of this Runner is waiting on interruption {interruption_id}")
         made = replace(made, interruption_id=item.interruption_id, decided_at=datetime.now(timezone.utc))
         await asyncio.to_thread(store.append_decision, made)
-        if sticky:
-            await asyncio.to_thread(store.append_standing, StandingDecision(
-                standing_id=str(uuid.uuid4()), run_id=item.run_id, tenant_id=tenant_id, project_id=project_id,
-                agent_id=item.agent_id, tool_name=item.tool_name, decision=made.decision, principal=principal,
-                message=message, created_at=datetime.now(timezone.utc)))
+        # The run is woken once its decision is recorded, whatever happens to a sticky
+        # decision after it (M30 review caveat 4).
         self._approvals.wake(item.interruption_id)
+        if sticky:
+            try:
+                await asyncio.to_thread(store.append_standing, StandingDecision(
+                    standing_id=str(uuid.uuid4()), run_id=item.run_id, tenant_id=tenant_id, project_id=project_id,
+                    agent_id=item.agent_id, tool_name=item.tool_name, decision=made.decision, principal=principal,
+                    message=message, created_at=datetime.now(timezone.utc)))
+            except Exception as exc:
+                raise RuntimeError(
+                    f"the decision on interruption {interruption_id} was recorded, but its standing decision was "
+                    f"not: {describe_exception(exc)}") from exc
+            self._approvals.wake(item.interruption_id)
         return made
 
     async def interruptions(
