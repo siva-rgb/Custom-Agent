@@ -68,8 +68,37 @@ def _run_ids() -> dict[str, set]:
         return found
 
 
+# M32 round 1: one test session at a time on the shared database. Reviewers ran two at once
+# at M31 and M32, so AC-44 compared one session's rows against another's, and a mutant was
+# left in the source. A session holds this advisory lock throughout, and one started while
+# it is held stops at once. A session started by a test of this one -- a subprocess, which
+# inherits the variable -- is let in, as the suite has always done (AC-65). The variable is
+# not checked: this guards against an accident, not against a session that sets it on purpose
+# (M32 round 2, declared).
+_SESSION_LOCK = (20_261_014, 32)
+_SESSION_VARIABLE = "AGENTSDK_TEST_SESSION"
+
+
 @pytest.fixture(scope="session", autouse=True)
-def the_store_is_left_as_it_was_found():
+def one_test_session_at_a_time():
+    if os.environ.get(_SESSION_VARIABLE):
+        yield
+        return
+    assert _DSN, "AC-44 compares the store before and after the session: DATABASE_URL must be set"
+    conn = psycopg.connect(_DSN, autocommit=True)
+    try:
+        if not conn.execute("SELECT pg_try_advisory_lock(%s, %s)", _SESSION_LOCK).fetchone()[0]:
+            pytest.exit("another test session is running against this database; run one at a time (AC-44)",
+                        returncode=3)
+        os.environ[_SESSION_VARIABLE] = str(os.getpid())
+        yield
+    finally:
+        os.environ.pop(_SESSION_VARIABLE, None)
+        conn.close()
+
+
+@pytest.fixture(scope="session", autouse=True)
+def the_store_is_left_as_it_was_found(one_test_session_at_a_time):
     assert _DSN, "AC-44 compares the store before and after the session: DATABASE_URL must be set"
     # So the tables exist to be read on a database this session is the first to use.
     apply_schema(_DSN)

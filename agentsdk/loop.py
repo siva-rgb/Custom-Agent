@@ -149,6 +149,7 @@ class AgentLoop:
         interruptions: Callable[[], Any] | None = None,
         approval_waits: Any | None = None,
         approval_timeout: float = 3600.0,
+        emit_top: Callable[..., Any] | None = None,
     ) -> None:
         self._model = model_client
         self._sessions = session_store
@@ -188,6 +189,8 @@ class AgentLoop:
         self._interruptions = interruptions
         self._approval_waits = approval_waits
         self._approval_timeout = approval_timeout
+        # FR-120 (M32): for a run beneath another, its top-level run's stream as well.
+        self._emit_top = emit_top
 
     async def run(
         self,
@@ -743,7 +746,7 @@ class AgentLoop:
             else:
                 # Asked as soon as it is recorded (M30 review caveat 3): an approver who
                 # decides before the run first reads still finds it asked (FR-114).
-                await control.store(self._events.emit, EventType.APPROVAL_REQUESTED, _requested(item))
+                await self._emit_approval(EventType.APPROVAL_REQUESTED, _requested(item), item.node_id)
         approvals.clear()
         approvals.update(items)
         if not items:
@@ -796,8 +799,16 @@ class AgentLoop:
             except asyncio.TimeoutError:
                 pass
         for index in sorted(decided):
-            await control.store(self._events.emit, EventType.APPROVAL_DECIDED, _decided(items[index], decided[index]))
+            await self._emit_approval(EventType.APPROVAL_DECIDED, _decided(items[index], decided[index]),
+                                      items[index].node_id)
         return decided
+
+    async def _emit_approval(self, event_type: str, payload: dict[str, Any], node_id: str | None) -> None:
+        """An approval event, with the node id as task_id, on this run's stream and, for a
+        run beneath another, on its top-level run's stream (FR-120)."""
+        await self._control.store(self._events.emit, event_type, payload, task_id=node_id)
+        if self._emit_top is not None:
+            await self._emit_top(event_type, payload, node_id)
 
     async def _cancel_approvals(self, approvals: dict[int, RunInterruption]) -> None:
         """FR-116: each recorded interruption of the turn not yet decided is decided

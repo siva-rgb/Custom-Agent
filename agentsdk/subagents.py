@@ -220,6 +220,9 @@ class SubagentPool:
             briefed_inputs=tuple(briefed),
             node_id=node_id,
             context_policy=self._policy,
+            # FR-120 (M32): a child waits for approval as long as its parent would.
+            **({"approval_timeout": inherited} if (inherited := self._runner._approval_timeout_of(parent.run_id))
+               is not None else {}),
         )
         provenances = [p for _, p in briefed]
         result = await self._runner.run(agent, task, config)

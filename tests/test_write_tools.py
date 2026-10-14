@@ -392,15 +392,18 @@ async def test_a_reader_polling_the_target_sees_only_the_old_or_the_new_content(
     assert seen and seen <= set(contents), {len(s) for s in seen}
 
 
-async def test_list_glob_and_grep_withhold_temporary_names(root):
-    hidden = f".f.txt.agentsdk-{uuid.uuid4()}.tmp"
-    (root / hidden).write_text("needle", encoding="utf-8")
+async def test_list_glob_and_grep_show_a_file_merely_named_like_a_temporary_one(root):
+    """Edited at M32's pre-flight (M31 review follow-up 2): withholding every name of this
+    shape let a model hide a file there. Only a write's own temporary file, while in
+    flight, is withheld now (tests/test_approval_contention.py)."""
+    lookalike = f".f.txt.agentsdk-{uuid.uuid4()}.tmp"
+    (root / lookalike).write_text("needle", encoding="utf-8")
     (root / "shown.txt").write_text("needle", encoding="utf-8")
     listed = await list_directory_tool(root).fn(path=".")
     globbed = await glob_tool(root).fn(pattern="**/*")
     grepped = await grep_tool(root).fn(text="needle")
     for output in (listed, globbed, grepped):
-        assert "shown.txt" in output and hidden not in output and ".agentsdk-" not in output
+        assert "shown.txt" in output and lookalike in output
 
 
 async def test_without_an_approved_request_the_tool_writes_with_no_before_check(root):

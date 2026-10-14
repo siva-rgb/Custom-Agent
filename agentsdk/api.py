@@ -427,6 +427,10 @@ class Runner:
         self._memory_interruptions: InMemoryInterruptionStore | None = None
         # FR-115 (M30): the interruptions this Runner's runs are waiting on, in this process.
         self._approvals = ApprovalWaits()
+        # FR-120 (M32): every run of this Runner under way in this process -- its event sink,
+        # control and configuration -- so a child's approval is asked on its top-level
+        # run's stream too, and a child inherits its parent's approval_timeout.
+        self._live: dict[str, tuple[Any, RunControl, RunConfig]] = {}
         # FR-95 (M24): one claim-lock per Runner, across its runs, and across processes
         # through the database when there is one.
         self._claim_lock = ClaimLock(persistence.dsn if persistence is not None else None)
@@ -720,6 +724,41 @@ class Runner:
         """The run itself, to a terminal status: the total boundary run() documents."""
         control.started = True
         control.started_at, control.started_ns = wall_clock(), now_ns()
+        scope, meter = opened.scope, opened.meter
+        self._live[scope.run_id] = (events, control, config)
+        try:
+            return await self._driven(spec, task, config, opened, events, control)
+        finally:
+            self._live.pop(scope.run_id, None)
+
+    def _top_emitter(self, run_id: str, top_run_id: str, control: RunControl) -> Any:
+        """FR-120: for a run beneath another, a way to emit an approval event on its
+        top-level run's stream as well as its own; None for a top-level run."""
+        if top_run_id == run_id:
+            return None
+
+        async def emit_top(event_type: str, payload: dict[str, Any], task_id: str | None) -> None:
+            live = self._live.get(top_run_id)
+            if live is not None:
+                await control.store(live[0].emit, event_type, payload, task_id=task_id)
+
+        return emit_top
+
+    def _approval_timeout_of(self, run_id: str) -> float | None:
+        """FR-120: the approval_timeout of a run under way in this process, for its child."""
+        live = self._live.get(str(run_id))
+        return None if live is None else live[2].approval_timeout
+
+    async def _driven(
+        self,
+        spec: AgentSpec,
+        task: str,
+        config: RunConfig,
+        opened: _OpenedRun,
+        events: EventSink,
+        control: RunControl,
+    ) -> RunResult:
+        """_drive's body, run while the run is registered as live."""
         scope, meter = opened.scope, opened.meter
         try:
             return await self._run(
@@ -1110,6 +1149,7 @@ class Runner:
             interruptions=self._interruption_store,
             approval_waits=self._approvals,
             approval_timeout=float(config.approval_timeout),
+            emit_top=self._top_emitter(run_id, ledger_run_id, control),
         )
 
         # Only what the caller set: a run that sets none of M9's options sends

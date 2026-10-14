@@ -60,6 +60,8 @@ EXPECTED_EXAMPLES = {
     "24_approvals.py",
     # FR-119 (M31): the write tools.
     "25_write_tools.py",
+    # FR-121 (M32): approvals under contention, the exit signal.
+    "26_approval_contention.py",
 }
 
 

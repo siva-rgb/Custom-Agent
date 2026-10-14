@@ -106,6 +106,14 @@ persisted so you can reconstruct exactly what happened afterwards.
   file's hash before and after; a file that changed since then is not written. A
   write goes to a hidden temporary file that then replaces the target in one step,
   so a reader sees the old file or the new one, and nothing is left behind.
+- **Asks for approvals made anywhere in an orchestrated plan on the top-level
+  run** (M32): a child's call that needs approval is recorded against the child,
+  announced on the top-level run's event stream with its node, listed by
+  `Runner.interruptions(run_id=<top-level>)` and decided through the top-level
+  handle, however deep the child. A waiting child keeps its node's budget and its
+  concurrency slot while the other nodes run, inherits its parent's
+  `approval_timeout`, and is cancelled -- its approvals recorded `cancel` -- with
+  the top-level run.
 - **Fetches each page once, however many agents ask** (M24's claim-lock): one
   holder per page and per statement, across the tasks of a process and the
   processes sharing the database; the others wait, then take the holder's
@@ -146,11 +154,11 @@ Stated plainly, because an SDK that overstates itself costs you a week:
 | On a database where M26 already recorded a verification naming a claim of another ledger, migration 0013 cannot apply until that row is removed: adding its key checks every existing row, and the migration rolls back whole | Declared (M27) |
 | Example 23's taint checks compare each corrected claim and answer with the critic's own rows, but in its corpus the critic is tainted exactly as the pages are, so they cannot tell a missing critic label; `tests/test_critic.py`'s test that taints the critic's result alone is what pins it | Declared (M29) |
 | A write tool re-reads its target's hash just before replacing it, but a program outside the SDK can still change the file between that read and the replace; the window cannot be closed from user mode | Declared (M31) |
-| A write to a file another program holds open (without delete sharing) is refused `target in use` rather than retried; the model sees the refusal and may try again | Declared (M31) |
+| A write is refused `target in use` when any other program reading it, or otherwise holding it open, has it open at the moment of the replace -- in M31's review 43 of 60 writes were refused with one reader polling -- so on a machine with editors or indexers it is common; it is not retried, and the model sees the refusal and may try again | Declared (M31, corrected M32) |
 | No model can record an externally validated outcome: `Runner.record_validation` is in no tool registry and no tool the SDK ships calls it. A custom tool is first-party code in your process and reaches the Runner through its scope, as it reaches the ledger store, so it could call `record_validation`; in-process code is outside the threat model | Declared (M26a) |
 | Streaming of model tokens as they are generated (a run's events do stream, through `RunHandle.events()`) | Later; not yet scheduled |
 | Native MCP (Model Context Protocol) support | Phase 4 |
-| Approvals inside an orchestrated plan listed on, and decided from, the top-level run; a paused run resuming after its process restarts | Phase 4 (M32); Phase 6 |
+| A paused run resuming after its process restarts | Phase 6 |
 | Sandboxed tool execution | Phase 5 |
 | Pause and resume; durable interruptions (cancel is built) | Phase 6 |
 | The execution manifest's `tools_sent` records the tools a run's agent is sent, written at run start with the rest of its configuration, so a run that ends before its first request records a set it never sent | Declared (M21) |

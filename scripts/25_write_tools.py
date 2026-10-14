@@ -158,7 +158,7 @@ async def demonstrate(runner: Runner, root: Path, outside: Path, model: str, liv
              and shown["t0-1"]["before"] is None and shown["t0-1"]["after"] == sha(b"We sail on Tuesday.\n")),
             ("the junction escape and the ambiguous edit were refused before anyone was asked",
              "t1-0" not in views and "t1-1" not in views and returned["t1-0"].is_error and returned["t1-1"].is_error
-             and "occurs 2 times" in returned["t1-1"].content and b"Tuesday, the day" in plan),
+             and "occurs more than once" in returned["t1-1"].content and b"Tuesday, the day" in plan),
             ("a file changed after the approver saw it was not written, and the other writer's text is kept",
              "changed since approval" in returned["t2-0"].content
              and summary.read_text(encoding="utf-8") == OTHER_WRITER),

@@ -1,0 +1,22 @@
+{
+  "task": "M32-approval-contention",
+  "gate": "unit",
+  "command": ".venv\\Scripts\\python.exe -m pytest tests/test_approval_contention.py -q",
+  "started_at": "2026-10-14T11:21:11.551Z",
+  "observed_at": "2026-10-14T11:22:40.501Z",
+  "exit_code": 0,
+  "signal": null,
+  "stdout": "........................                                                 [100%]\r\n24 passed in 87.97s (0:01:27)\r\n",
+  "stderr": "",
+  "revision": {
+    "commit": "c2437ee1a5a85eb7790cb71b1efd2a2f6f1dfe97",
+    "dirty": true
+  },
+  "source_hash": "76f708c4de9b70e852fdaf14a175c29d79bb073cb60f43d3e8dde3fc8d075360",
+  "environment": {
+    "node": "v20.10.0",
+    "platform": "win32",
+    "arch": "x64"
+  },
+  "hash": "19b8410cb3cf5db2029c2c8d9bbbdae5adfb408b9705cd6f8343385f074fa745"
+}

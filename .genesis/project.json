@@ -9,7 +9,7 @@
     "non_goals": [],
     "trust_boundary": "local repository",
     "created_at": "2026-09-05T14:48:57.894Z",
-    "updated_at": "2026-10-14T05:00:03.187Z"
+    "updated_at": "2026-10-14T16:38:18.097Z"
   },
   "policy": {
     "ponytail": "full",
@@ -23,11 +23,11 @@
     }
   },
   "lifecycle": {
-    "phase": "build",
-    "status": "active",
-    "active_task": "M32-approval-contention",
+    "phase": "verify",
+    "status": "ready",
+    "active_task": null,
     "blocker": null,
-    "next_action": "Run the task pre-flight."
+    "next_action": "Review completed work and choose the next bounded outcome."
   },
   "commands": {},
   "workflow": {
@@ -1650,6 +1650,22 @@
       "status": "accepted",
       "source": null,
       "recorded_at": "2026-10-13T10:05:05.654Z"
+    },
+    {
+      "id": "DECISION-deac9a26",
+      "title": "M32 round 1: the exit signal is repaired before increment 1 closes, with a round 2 review (owner)",
+      "text": "The owner chose to repair C1 to C8 of the M32 round 1 review before task complete, since P4-D3 makes the exit signal the evidence that Phase 4 increment 1 is finished: the contention bullet requires the race and compares; base.txt edits do not commute and run in one turn; executions are counted at the tool, not by call id; every view decision is guarded so a missing one is a FAIL; the event waits in the gate tests are bounded so a missing emit fails rather than hangs; task_id is asserted on the child own stream; the critic test runs a critic; the sweep matches the exact temporary-file shape of its own target. The owner also chose a conftest guard: a pytest session refuses to start while another holds the session lock on the development database, since reviewers broke the one-session rule at M31 and M32. That edit to an approved file is listed for round 2.",
+      "status": "accepted",
+      "source": null,
+      "recorded_at": "2026-10-14T07:28:40.980Z"
+    },
+    {
+      "id": "DECISION-e75ad00a",
+      "title": "M32 round 3: witnesses on every bullet of the exit signal; example 23 live recorded for the next phase (owner)",
+      "text": "The owner chose for round 3: a witness on the rejection bullet (at least one principal rejection, b.txt decided by a principal offline), on the issue-order bullet (some writer with two executions), and on the rest of example 26; the approval screen records its own failures rather than swallowing them, with a check that every decision it meant to make was recorded; a test that a late screen fails the signal; and two small carried items, the guard test without DATABASE_URL and a case-insensitive sweep. Example 23 live unwitnessed bullets are fixed at the next phase pre-flight. AGENTSDK_TEST_SESSION stays unchecked, declared as a guard against accidents in the conftest comment.",
+      "status": "accepted",
+      "source": null,
+      "recorded_at": "2026-10-14T11:13:29.200Z"
     }
   ],
   "knowledge": [
@@ -2620,6 +2636,30 @@
       "source": null,
       "tags": [],
       "recorded_at": "2026-10-14T05:00:02.685Z"
+    },
+    {
+      "id": "KNOWLEDGE-e504b980",
+      "title": "M32 round 1 approved, but three exit-signal bullets were vacuous; repaired in round 2 before increment 1 closes",
+      "text": "Opus 5 approved M32 round 1 (control f18a9465) on source hash fa7fc52d, gates recomputed (unit 17, regression 2165). No reachable behavioural defect: its own orchestrated probe saw five approved calls replaced at MoveFileExW in issue order, a rejected one never ran, decisions fired exactly at expires_at across eight repetitions matched disk, cancellation at two depths decided every pending interruption cancel on both stores with _live empty, and the M31 pool stall is closed (0.016 s against 14.84 s). Findings, confirmed by the orchestrator from source: C1 the contention bullet of scripts/26 reads not race or ..., so it passes with no contention (the reviewer replaced the race with a sleep and every check passed); C2 base.txt two edits commute, so files == expected pins no order; C3 the ran-once clause compares call keys with their own set, so it sees duplicate ids, not duplicate executions (an executor running every approved call twice passed the signal); C6 v.decision is dereferenced unguarded, so a view with no decision, the NFR-30 failure itself, raises AttributeError instead of a FAIL; C4 removing the top-level emit hangs the test on handle.events() rather than failing it; C5 task_id on the child own stream is unpinned; C7 the critic test is a tautology that never runs a critic (pinned elsewhere at tests/test_critic.py); C8 the sweep prefix test can match a sibling target whose name extends this one. Fourth recurrence of a check written against something it shares with the thing it checks (M24 example 21, M26 gate-row provenance, M27 taint, M32 exit signal): make it a standing review question. Process: the reviewer killed a gate at 150 s, leaving 49 SYN-m32 runs, and removed them by id; verified by the orchestrator: interruption tables 0/0/0, runs 10351, example-tenant 19, no SYN-m32 rows, no advisory locks, no mutant markers. Second round running with a one-session-rule slip. While recording, genesis control requeue --help requeued the task: that CLI takes --help as an argument, never pass it.",
+      "source": null,
+      "tags": [],
+      "recorded_at": "2026-10-14T07:28:40.596Z"
+    },
+    {
+      "id": "KNOWLEDGE-f9084878",
+      "title": "M32 round 2 rejected: the rejection bullet of the exit signal had no witness; every check needs one",
+      "text": "Fable 5.1 rejected M32 round 2 at 10:13:09Z on source hash d5dc57af. C1 to C8 hold: 16 runtime mutants on memory and 5 on Postgres each failed on the named label, C4 fails in about 15 to 31 s on the until bound, C7 in 1.6 s, the sweep reaches no other target orphan across ten name shapes, and the session guard stops a second session before any store read and is released within 0.05 s after taskkill, pytest.exit and CTRL_BREAK; AC-65 nested session still passes. F1, confirmed by the orchestrator from source: every rejection reason reached its writer is all() over principal rejections, true when there are none, and the approval screen swallowed the InterruptionExpired of a late reject, so a screen late for b.txt reported a clean sweep on both stores without any SDK mutation. The orchestrator found the same hole in the issue-order bullet: true with no executions, and with no writer having two. Lesson, fifth recurrence (M24 example 21, M26, M27, M32 C1, M32 F1): every bullet of a signal needs a witness that what it checks happened, and all() over a filtered list is the shape to look for. Example 23 offline is witnessed (len(lost) == 1, expected critic runs) but its live lost-race and judged-once bullets pass when no race occurs; owner chose to record it and fix at the next phase pre-flight by reporting such live bullets as not exercised. Carried as declared: counted defines undecided as membership in the pending listing; duplicate decisions are pinned only through the race label; AGENTSDK_TEST_SESSION admits any session that sets it, by design a guard against accidents only. The reviewer mutated no repository file: every mutant was a runtime monkeypatch; the store is at baseline (10351 runs, 19 example-tenant, interruption tables 0). Harness note: project.json keeps round 1 independent-review evidence as pass while KICKOFF computes stale.",
+      "source": null,
+      "tags": [],
+      "recorded_at": "2026-10-14T11:13:29.034Z"
+    },
+    {
+      "id": "KNOWLEDGE-d2afcab0",
+      "title": "M32 round 3 approved, closing Phase 4 increment 1; three exit-signal caveats go to increment 2 pre-flight",
+      "text": "Sonnet 5 approved M32 round 3 at 14:07:30Z on source hash 76f708c4 (unit 24, regression 2172), the cheapest of fourteen rounds at about 120k tokens and 18 minutes; it touched no source file, and its first cleanup hit a foreign-key error and was rerun, verified by the orchestrator to leave the store at baseline (10351 runs, 19 example-tenant, interruption tables 0, no locks). Caveats, owner chose increment 2 pre-flight, reproduced by the orchestrator relay: (1) checks 1 to 7 run live and 8 to 11 offline only, so a single skipped approval, or a, d and base together, passes the live run and is caught only offline; a files check is impossible live because a real model writes freely. (2) The rejection witness, a principal rejection with a reason, is met without b.txt if the race losing reject carries a message: it passed on 3 of 6 seeds with b.txt never decided; today decide_twice passes no message, so the protection is an accident of one omitted keyword; the shared bullet should name b.txt itself, as the offline sources bullet does. (3) re.IGNORECASE folds Unicode beyond NTFS (the Kelvin sign), cosmetic: it deletes only stale garbage. Also at the same pre-flight: example 23 live lost-race and judged-once bullets (DECISION-e75ad00a). Correction to the relay: control bac66b5a is not corrupted; its bytes are e2 80 94, a real em dash, at HEAD and now; the mojibake was a cp1252 console decoding UTF-8. Lesson, sixth recurrence: a witness must name its subject, not a property its subject happens to have.",
+      "source": null,
+      "tags": [],
+      "recorded_at": "2026-10-14T16:38:15.589Z"
     }
   ],
   "tasks": [
@@ -4928,7 +4968,7 @@
     {
       "id": "M32-approval-contention",
       "outcome": "Approvals inside orchestration hold under contention on both stores",
-      "state": "active",
+      "state": "done",
       "risk": "high",
       "owner": null,
       "scope": [],
@@ -4947,22 +4987,37 @@
           "id": "unit",
           "command": ".venv\\Scripts\\python.exe -m pytest tests/test_approval_contention.py -q",
           "mandatory": true,
-          "status": "pending",
-          "evidence": null
+          "status": "pass",
+          "evidence": {
+            "path": ".genesis/evidence/M32-approval-contention-unit.json",
+            "source_hash": "76f708c4de9b70e852fdaf14a175c29d79bb073cb60f43d3e8dde3fc8d075360",
+            "hash": "19b8410cb3cf5db2029c2c8d9bbbdae5adfb408b9705cd6f8343385f074fa745",
+            "observed_at": "2026-10-14T11:22:40.501Z"
+          }
         },
         {
           "id": "regression",
           "command": ".venv\\Scripts\\python.exe -m pytest -q",
           "mandatory": true,
-          "status": "pending",
-          "evidence": null
+          "status": "pass",
+          "evidence": {
+            "path": ".genesis/evidence/M32-approval-contention-regression.json",
+            "source_hash": "76f708c4de9b70e852fdaf14a175c29d79bb073cb60f43d3e8dde3fc8d075360",
+            "hash": "598a8b5684330fa76b51866c410cdf60dd4310fc704f4856093417a4aeb81cdf",
+            "observed_at": "2026-10-14T11:32:09.176Z"
+          }
         },
         {
           "id": "independent-review",
           "command": "",
           "mandatory": true,
-          "status": "pending",
-          "evidence": null
+          "status": "pass",
+          "evidence": {
+            "human": "Sonnet 5",
+            "reason": "Round 3 approve. Re-ran the full suite myself with the cache off: 2172 passed in 585s. Ran example 26 live once: all 7 checks passed, run removed by id, store back to 10351 runs, 19 in example-tenant, interruption tables 0, 0 advisory locks. Built the absence of each check with runtime patches in the live shape and offline: plan cancelled, call run twice, ran while flagged undecided, approvals turned into rejects, an approve that never landed (a, d, base), another person rejecting a.txt first, a view with no decision, a reject without a message, a reject turned into an approve, b.txt never decided, c.txt never decided, executions seen in reverse; each reported FAIL on the expected label and none raised. Task 3: the race losing reject carries message None on every seed I printed, so the rejection witness cannot be met without b.txt today. Case rules: an upper-case stale orphan is swept, a fresh one and a prefix-sibling survive, reserved in any case including in a subfolder, near-miss names allowed. Caveats, none a finding: (1) on the live path nothing witnesses a.txt, d.txt, base.txt or e.txt being decided if the screen skips them (UNDECIDED edit passes all 7 live checks); offline the folder and sources checks catch it, and FR-121 lists no such live check; (2) the rejection witness is any reason-carrying principal rejection, not b.txt, so it would be satisfied if decide_twice ever passed a message (I patched that in and b.txt never decided passed on 5 of 8 seeds); latent; (3) re.IGNORECASE folds Unicode beyond NTFS, so the sweep of k.txt deleted a stale orphan of a target named with the Kelvin sign; garbage older than a minute, cosmetic; (4) the conftest diff adds one assert before connect, a clearer failure only, and the ordering dependency holds; (5) stored independent-review pass in project.json is round 1 evidence, not mine.",
+            "source_hash": "76f708c4de9b70e852fdaf14a175c29d79bb073cb60f43d3e8dde3fc8d075360",
+            "observed_at": "2026-10-14T14:07:30.747Z"
+          }
         }
       ],
       "next_action": "Run the task pre-flight.",
@@ -4971,7 +5026,7 @@
       "failures": [],
       "limitations": [],
       "created_at": "2026-10-13T10:05:20.227Z",
-      "updated_at": "2026-10-13T10:05:20.228Z"
+      "updated_at": "2026-10-14T16:38:18.096Z"
     }
   ],
   "learning_proposals": [],
@@ -6019,6 +6074,60 @@
       "task": "M31-write-tools",
       "human": "Sonnet 5",
       "reason": "Round 1 approve. Gates run first-hand: unit 39 passed, regression 2148 passed, source hash 9c531471. Confinement: about 90 escape paths (dot dot, absolute, device, ADS, 8.3, trailing dot or space, symlink, junction, hard link at target and at components, links swapped after describe, after the realpath check, and during the replace, grandparent or parent rename while held) all refused or contained, outside tree byte-identical, no refusal names a path; controls: a naive writer and a mutant without the final-path check both escape under the same probes. Approval integrity: changed-since-approval, mutated model args, mutated store view, hook-injected approved, two edits in one turn all behave; mutants that drop the check or the argument copy are caught. Atomic: polling reader saw only whole old or new; no temp left after failing flush, write, replace, KeyboardInterrupt. Pool: all fs calls on agentsdk-file-tool threads, a write queued behind a saturated pool times out and never starts. Caveats not blockers: (1) edit_file old has no length cap and the count is quadratic: 1 MB file with a 500000-char old took 14.8 s on a pool thread in describe before any approval; (2) a process crash leaves a hidden .tmp that nothing cleans, and a model can write a file named like a temp name that list glob grep then hide; (3) a reader holding the target open even with delete sharing makes the replace fail in use (43 of 60 writes against a polling reader); (4) test gaps: mutating the final-path check in _open_inside survives the suite (no seam on the write path) and removing the early sticky wake survives because the 5 s poll wakes the run; non-bool predicate regression hangs rather than fails; (5) _apply_change compares only before, not the approved after; sticky approvals cover content the approver never saw by P4-D15; reparse-point non-links such as cloud placeholders are refused as links. Item 9 live example 25 not probed (cost; confinement is code-level and the offline example runs in the gate on both stores).",
+      "revision": null
+    },
+    {
+      "id": "f18a9465-98d5-4fb5-a9a8-0f36ddfbbe3d",
+      "at": "2026-10-14T06:49:03.846Z",
+      "action": "approve",
+      "task": "M32-approval-contention",
+      "human": "Opus 5",
+      "reason": "Verified first-hand on both stores: a child approval recorded against the child with its top run and node, asked on the top-level stream, decided from the top at depth 2; nothing ran unapproved, twice, after a reject, an expiry or a cancel; five approvals in one turn ran in issue order observed at the replace; cancelling a plan with interruptions at depths 1 and 2 decided every one cancel and ran nothing; cross-tenant and cross-plan listing and deciding refused on both stores; Runner _live leaked after no failure, cancel or completion; the pre-flight repairs hold, the edit search takes 16 ms at the worst shape the schema admits against 14.84 s at M31, the sweep touched only stale write-tool temporaries in the target own directory and nothing outside the root, in-flight names were safe across 24 concurrent writes and a failed replace, and the wake bound fails in 5.8 s when the wake is lost. Gates recomputed green on one source hash: regression 2165 in 591 s, unit 17 in 75 s. Example 26 live passed all 5 checks. No behaviour defect found; the caveats are all in the signal. C1, the serious one: the exit signal simultaneous-decision check is guarded by not race, so with the two deciding threads removed from the example every check still printed PASS and the exit-signal gate tests passed, exit 0, while the control that lets the store take a second decision does FAIL, so that guard is the only hole. C2: issue order is never exercised, since no writer issues two calls in one turn and the two base.txt edits sit in separate turns and commute, so the check label overstates it. C3: the ran once clause is keyed on recorded call ids, so a mutant running every approved call twice passed every exit-signal check and was killed only by two other tests in the file. C4: the top-level emit is killed only by a hang, with nothing failing after 150 s. C5: the node id on the child own stream is unpinned. C6: the undecided mutant is killed by an AttributeError in the example reporting rather than a named FAIL. C7: the critic test asserts that a tool-less critic has no tools. C8: the sweep also removes a stale temporary of a sibling target whose name begins with this target name, and in-flight names are global to the process. If the owner counts exit-signal completeness as part of the increment exit criterion, C1 should be repaired before increment 1 is closed.",
+      "revision": null
+    },
+    {
+      "id": "66f750a9-0860-45b4-9d21-b1138ac84391",
+      "at": "2026-10-14T07:27:58.352Z",
+      "action": "requeue",
+      "task": "M32-approval-contention",
+      "human": null,
+      "reason": null,
+      "revision": null
+    },
+    {
+      "id": "1aece286-a8f2-4708-a4c1-09b202b73b78",
+      "at": "2026-10-14T07:29:01.335Z",
+      "action": "resume",
+      "task": "M32-approval-contention",
+      "human": null,
+      "reason": "round 2: exit-signal repairs C1 to C8 and the session guard, DECISION-deac9a26",
+      "revision": null
+    },
+    {
+      "id": "54a16e83-a32c-42d7-b0fc-c292569539dd",
+      "at": "2026-10-14T10:13:09.775Z",
+      "action": "reject",
+      "task": "M32-approval-contention",
+      "human": "Fable 5.1",
+      "reason": "Round 2 repairs C1 to C8 and they hold first-hand: 16 runtime mutants on the memory store and 5 on Postgres each fail on the named label (a call run before its decision, run twice, a turn reordered, no race, a sequential race passes as declared, a lost rejection text, a decision stamped in another tenancy, files differing, no ApprovedCall injection, no sticky, no changed-since-approval check, a lazily described call, a duplicate decision); C4 fails in 15 s not by a hang, C5 fails on task_id None on the child stream, C7 fails on the interruption assertion in 1.6 s; the sweep keeps every other shape; a second session is refused with exit 3 before any store read and the lock is released on a hard kill, pytest.exit and CTRL_BREAK; the AC-65 nested session runs; gates recomputed unit 20 passed 74 s and regression 2168 passed 503 s on hash d5dc57af; example 26 live 6 of 6, 11 runs removed by run id. Rejected for one bullet still vacuous in the class this round exists to remove: the rejection-reason check is an all() over principal rejections with no witness, so when b.txt is never rejected by a principal (its reject raises and the screen swallows it, so it expires) all 10 checks still pass on both stores, and the live block has the same hole whenever the model never issues the b call. One-clause repair: require a principal rejection, bool(rejections) and offline the B source equal to principal; then round 3. Caveats: counted judges undecided by presence in the pending listing rather than by a missing decision; exactly one decision is read from a view that holds at most one; the sweep is case-sensitive on a case-insensitive filesystem; the inherited variable admits any session that sets it.",
+      "revision": null
+    },
+    {
+      "id": "3eb9d636-1d6b-4b73-b473-203604247bc9",
+      "at": "2026-10-14T11:13:29.343Z",
+      "action": "resume",
+      "task": "M32-approval-contention",
+      "human": null,
+      "reason": "round 3: F1 witnesses, DECISION recorded this session",
+      "revision": null
+    },
+    {
+      "id": "70c5ebc6-8962-41b2-b445-5453fd1033ac",
+      "at": "2026-10-14T14:07:30.747Z",
+      "action": "approve",
+      "task": "M32-approval-contention",
+      "human": "Sonnet 5",
+      "reason": "Round 3 approve. Re-ran the full suite myself with the cache off: 2172 passed in 585s. Ran example 26 live once: all 7 checks passed, run removed by id, store back to 10351 runs, 19 in example-tenant, interruption tables 0, 0 advisory locks. Built the absence of each check with runtime patches in the live shape and offline: plan cancelled, call run twice, ran while flagged undecided, approvals turned into rejects, an approve that never landed (a, d, base), another person rejecting a.txt first, a view with no decision, a reject without a message, a reject turned into an approve, b.txt never decided, c.txt never decided, executions seen in reverse; each reported FAIL on the expected label and none raised. Task 3: the race losing reject carries message None on every seed I printed, so the rejection witness cannot be met without b.txt today. Case rules: an upper-case stale orphan is swept, a fresh one and a prefix-sibling survive, reserved in any case including in a subfolder, near-miss names allowed. Caveats, none a finding: (1) on the live path nothing witnesses a.txt, d.txt, base.txt or e.txt being decided if the screen skips them (UNDECIDED edit passes all 7 live checks); offline the folder and sources checks catch it, and FR-121 lists no such live check; (2) the rejection witness is any reason-carrying principal rejection, not b.txt, so it would be satisfied if decide_twice ever passed a message (I patched that in and b.txt never decided passed on 5 of 8 seeds); latent; (3) re.IGNORECASE folds Unicode beyond NTFS, so the sweep of k.txt deleted a stale orphan of a target named with the Kelvin sign; garbage older than a minute, cosmetic; (4) the conftest diff adds one assert before connect, a clearer failure only, and the ordering dependency holds; (5) stored independent-review pass in project.json is round 1 evidence, not mine.",
       "revision": null
     }
   ],

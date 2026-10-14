@@ -285,11 +285,13 @@ class _FileSystem:
         raw = buffer.raw
         return int.from_bytes(raw[8:16], "little"), int.from_bytes(raw[16:20], "little"), raw[21] != 0
 
-    def list_handle(self, handle: int, limit: int) -> list[tuple[str, int]]:
-        """(name, attributes) of the entries of the directory the handle holds.
+    def list_handle(self, handle: int, limit: int, *, times: bool = False) -> list[Any]:
+        """(name, attributes) of the entries of the directory the handle holds -- with
+        `times`, (name, attributes, last write as Unix seconds).
 
         Enumerated through the handle, not a path: what is listed is the
-        directory that was checked.
+        directory that was checked. A write tool's temporary file is withheld
+        while its write is in flight (FR-118, M32 pre-flight).
         """
         import ctypes
 
@@ -309,8 +311,12 @@ class _FileSystem:
                 attributes = int.from_bytes(raw[offset + 56:offset + 60], "little")
                 length = int.from_bytes(raw[offset + 60:offset + 64], "little")
                 name = raw[offset + 68:offset + 68 + length].decode("utf-16-le", errors="surrogatepass")
-                if name not in (".", "..") and not _TEMPORARY.search(name):
-                    entries.append((name, attributes))
+                if name not in (".", "..") and name not in _IN_FLIGHT:
+                    if times:
+                        written = int.from_bytes(raw[offset + 24:offset + 32], "little")
+                        entries.append((name, attributes, (written - 116_444_736_000_000_000) / 10_000_000))
+                    else:
+                        entries.append((name, attributes))
                 if not following:
                     break
                 offset += following
@@ -357,8 +363,20 @@ _FORBIDDEN = set('<>:"|?*') | {chr(code) for code in range(32)}
 _SHORT_NAME = re.compile(r"~\d")
 _REPARSE_POINT, _DIRECTORY = 0x400, 0x10
 # FR-118 (M31): the name of a write tool's temporary file, withheld from every listing.
-_TEMPORARY = re.compile(r"^\..*\.agentsdk-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.tmp$")
+_UUID = r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}"
+# Ignoring case, as the file system does: a name the sweep would match is refused (M32 round 2).
+_TEMPORARY = re.compile(r"^\..*\.agentsdk-" + _UUID + r"\.tmp$", re.IGNORECASE)
 _LINK_TARGET = "file refused: it is a link; give the path of the file itself"
+_RESERVED_NAME = "path refused: that name is reserved for the write tools' temporary files"
+# The temporary files of writes in flight in this process, withheld from every listing.
+_IN_FLIGHT: set[str] = set()
+_IN_FLIGHT_LOCK = threading.Lock()
+# An orphan -- left by a crash -- is swept when its target is next written, once it is
+# older than this, so another process's write in flight is never removed (M32 pre-flight).
+_ORPHAN_SECONDS = 60.0
+# FR-118 (M32 pre-flight): the longest text edit_file replaces; uniqueness is then decided
+# in linear time, before anyone is asked (M31 review follow-up 1).
+_MAX_OLD = 10_000
 _CHANGED = "file refused: it changed since approval, so it was not written"
 _IN_USE = "file refused: the target is in use -- another handle holds it open -- so it was not replaced"
 _WALK_ENTRIES = 100_000
@@ -871,6 +889,8 @@ class _Target:
         if not parts:
             raise _Refused(_NOT_ALLOWED)
         *directories, self.name = parts
+        if _TEMPORARY.search(self.name):
+            raise _Refused(_RESERVED_NAME)
         self.relative = "/".join(parts)
         self.handle, self.parent = _open_inside(root, directories, None)
         try:
@@ -913,7 +933,29 @@ class _Target:
     def write(self, data: bytes) -> None:
         """A new file beside the target, flushed, then moved over it in one replace: a
         reader sees the old file or the new one, never a part. Nothing is left behind."""
-        temporary = self.parent.rstrip("\\") + "\\" + f".{self.name}.agentsdk-{uuid.uuid4()}.tmp"
+        self._sweep()
+        hidden = f".{self.name}.agentsdk-{uuid.uuid4()}.tmp"
+        temporary = self.parent.rstrip("\\") + "\\" + hidden
+        with _IN_FLIGHT_LOCK:
+            _IN_FLIGHT.add(hidden)
+        try:
+            self._written(temporary, data)
+        finally:
+            with _IN_FLIGHT_LOCK:
+                _IN_FLIGHT.discard(hidden)
+
+    def _sweep(self) -> None:
+        """Orphans of this target -- temporary files a crash left -- older than a minute. Its
+        own exact shape only: a target whose name extends this one's has temporary files
+        starting the same (M32 round 1, C8). Matched ignoring case, as the file system
+        matches names (round 2)."""
+        own = re.compile(re.escape(f".{self.name}.agentsdk-") + _UUID + r"\.tmp", re.IGNORECASE)
+        now = time.time()
+        for name, _, written in _fs.list_handle(self.handle, _WALK_ENTRIES, times=True):
+            if own.fullmatch(name) and now - written > _ORPHAN_SECONDS:
+                _fs.delete(self.parent.rstrip("\\") + "\\" + name)
+
+    def _written(self, temporary: str, data: bytes) -> None:
         handle = _fs.create_new(temporary)
         try:
             try:
@@ -945,13 +987,15 @@ def _edited(data: bytes | None, old: str, new: str) -> tuple[bytes, int]:
     the line it began on. Every other byte, line endings included, is kept."""
     if data is None:
         raise _Refused(_NOT_FOUND)
+    if len(old) > _MAX_OLD:
+        raise _Refused(f"the text to replace is at most {_MAX_OLD} characters")
     mark, text = _text_of(data)
-    starts = [i for i in range(len(text) - len(old) + 1) if text.startswith(old, i)]
-    if not starts:
+    # Linear: the first occurrence, then any other starting after it, overlapping included.
+    at = text.find(old)
+    if at < 0:
         raise _Refused("the text to replace was not found in the file")
-    if len(starts) > 1:
-        raise _Refused(f"the text to replace occurs {len(starts)} times; give text that occurs exactly once")
-    at = starts[0]
+    if text.find(old, at + 1) >= 0:
+        raise _Refused("the text to replace occurs more than once; give text that occurs exactly once")
     return mark + (text[:at] + new + text[at + len(old):]).encode("utf-8"), text.count("\n", 0, at) + 1
 
 
@@ -1038,7 +1082,7 @@ def edit_file_tool(root: Any, *, max_bytes: int = 1_000_000, name: str = "edit_f
     return _write_tool(
         "edit", name,
         "Replace text that occurs exactly once in a text file inside the root folder. Needs approval.",
-        {"path": _PATH, "old": {"type": "string", "minLength": 1}, "new": {"type": "string"}},
+        {"path": _PATH, "old": {"type": "string", "minLength": 1, "maxLength": _MAX_OLD}, "new": {"type": "string"}},
         root, max_bytes, approval_policy)
 
 
