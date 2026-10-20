@@ -52,6 +52,7 @@ def build_manifest(
     tools_sent: list[dict[str, str]] | None = None,
     gate_policy: dict[str, Any] | None = None,
     approval_timeout: float | None = None,
+    mcp_servers: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
     # The spec hash covers what actually changes behaviour: identity,
     # instructions and the tool profile. A spec whose display name changed is
@@ -90,4 +91,7 @@ def build_manifest(
         "gate_policy": gate_policy,
         # FR-112, FR-116 (M30): how long a call requiring approval waited at most.
         "approval_timeout": approval_timeout,
+        # FR-123 (M33): each MCP server, by alias, command or URL, and the names -- never the
+        # values -- of what it is given (NFR-37); an empty list for a Runner with none.
+        "mcp_servers": mcp_servers,
     }

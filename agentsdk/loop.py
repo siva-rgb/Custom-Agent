@@ -150,6 +150,7 @@ class AgentLoop:
         approval_waits: Any | None = None,
         approval_timeout: float = 3600.0,
         emit_top: Callable[..., Any] | None = None,
+        tools_refresh: Callable[[], Any] | None = None,
     ) -> None:
         self._model = model_client
         self._sessions = session_store
@@ -191,6 +192,9 @@ class AgentLoop:
         self._approval_timeout = approval_timeout
         # FR-120 (M32): for a run beneath another, its top-level run's stream as well.
         self._emit_top = emit_top
+        # FR-125 (M33): rebuilds the run's MCP tools before each request, returning the
+        # events to record; None for a run that uses no MCP server.
+        self._tools_refresh = tools_refresh
 
     async def run(
         self,
@@ -229,6 +233,9 @@ class AgentLoop:
         for turn in range(1, max_turns + 1):
             control.turns = turn
             control.checkpoint()
+            if self._tools_refresh is not None:
+                for event_type, payload in await self._tools_refresh():
+                    await store(self._events.emit, event_type, payload)
             history = await store(self._sessions.history, run_id)
             compactor = self._compactor
             if compactor is not None:

@@ -378,15 +378,18 @@ async def contend(runner, orchestrator, corpus: Corpus, *, planner: str, reader:
     say(f"second tenant {other.run_id}: {[e.value for e, _ in other_sources]}")
 
     first = {node_id for version, node_id in judged if version == 1}
+    # FR-122 (M33): None where the check's subject never happened -- no judgement, no lost
+    # race. Live, a model may not bring them about, so it says so; offline it is a failure.
     checks = [
         ("the plan and the second tenant completed",
          top.status is RunStatus.COMPLETED and other.status is RunStatus.COMPLETED),
         ("every node execution was judged by the critic at most once, and only one whose signals fired",
-         len(judged) == len(set(judged)) and set(judged) == fired
+         None if not judged else len(judged) == len(set(judged)) and set(judged) == fired
          and (critic is None or len(critic.started) == len(judged))),
         ("a correction that lost its race failed its node, which replanned and was judged afresh",
-         all(e.payload["reason"].startswith("critic_failed: correction refused:") and e.task_id in reruns
-             and (e.payload["version"] + 1, e.task_id) in set(judged) for e in lost)),
+         None if not lost else all(e.payload["reason"].startswith("critic_failed: correction refused:")
+                                   and e.task_id in reruns and (e.payload["version"] + 1, e.task_id) in set(judged)
+                                   for e in lost)),
         ("every page's statement is one claim, contributed by every node that read the page",
          all(held(corpus.facts[p], {f"reader-{n}" for n in range(READERS) if p in pages_of(n, corpus)})
              for p in corpus.pages)),
@@ -518,13 +521,27 @@ def live():
         close_pools()
 
 
+def report(checks, live: bool) -> tuple[list[str], list[str]]:
+    """Each check's line, and the failures. A check whose subject never happened (None) is
+    `[SKIP] not exercised` live, and a failure offline, where every subject is arranged."""
+    lines, failed = [], []
+    for label, passed in checks:
+        if passed is None and live:
+            lines.append(f"[SKIP] not exercised: {label}")
+            continue
+        lines.append(f"[{'PASS' if passed else 'FAIL'}] {label}")
+        if not passed:
+            failed.append(label)
+    return lines, failed
+
+
 if __name__ == "__main__":
     sys.stdout.reconfigure(errors="replace")
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--offline", action="store_true", help="run in memory with local pages and scripted agents")
-    checks = asyncio.run(offline())[0] if parser.parse_args().offline else live()
-    for label, passed in checks:
-        print(f"[{'PASS' if passed else 'FAIL'}] {label}")
-    failed = [label for label, passed in checks if not passed]
+    offline_run = parser.parse_args().offline
+    lines, failed = report(asyncio.run(offline())[0] if offline_run else live(), live=not offline_run)
+    for line in lines:
+        print(line)
     if failed:
         raise SystemExit(f"failed: {failed}")

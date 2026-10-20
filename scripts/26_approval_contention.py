@@ -268,8 +268,12 @@ async def demonstrate(runner: Runner, orchestrator: Orchestrator, root: Path, *,
     executed = [(by_id[i].interruption.run_id, by_id[i].interruption.tool_call_id) for i, _ in executions if i in by_id]
     written_ok = [(child, cid) for child, cid, _, _ in calls
                   if (child, cid) in returned and not returned[(child, cid)].is_error]
-    rejections = [v for v in views if decided(v.interruption.interruption_id, "reject")
-                  and v.decision.source == "principal"]
+    def argument(view, name):
+        return view.interruption.request_payload["arguments"].get(name)
+
+    b_rejected = [v for v in views if argument(v, "path") == "b.txt" and decided(v.interruption.interruption_id, "reject")
+                  and v.decision.source == "principal" and v.decision.message]
+    scripted = {args["path"] for turns in WRITERS.values() for calls in turns for _, args in calls}
     raced = by_id.get(race.get("interruption"))
     writers = {child for child, _ in executed}
     # Every check below has a witness: something that must have happened for the check to
@@ -299,14 +303,19 @@ async def demonstrate(runner: Runner, orchestrator: Orchestrator, root: Path, *,
         ("every interruption has exactly one decision, in the run's tenant and project",
          bool(views) and all(decided(v.interruption.interruption_id) and (v.decision.tenant_id, v.decision.project_id)
                              == (tenant, project) for v in views)),
-        # Witnessed by a rejection with a reason: the race's losing reject has none.
-        ("a person rejected a call with a reason, and every rejection's reason reached its writer",
-         any(v.decision.message for v in rejections) and all(getattr(returned.get((v.interruption.run_id, v.interruption.tool_call_id)), "content", None)
-             == (f"rejected: {v.decision.message}" if v.decision.message else "rejected") for v in rejections)),
+        # FR-122 (M33): the subject named, not a property it has -- b.txt itself, rejected by a
+        # person, so another rejection carrying a reason cannot stand in for it.
+        ("b.txt was rejected by a person, and its reason reached its writer",
+         bool(b_rejected) and all(
+             getattr(returned.get((v.interruption.run_id, v.interruption.tool_call_id)), "content", None)
+             == f"rejected: {v.decision.message}" for v in b_rejected)),
+        # FR-122: a skipped approval shows live too, where the folder is not checked.
+        ("every scripted path but late.txt was decided by a person or a standing decision",
+         all(any(argument(v, "path") == path and decided(v.interruption.interruption_id)
+                 and v.decision.source in ("principal", "standing") for v in views)
+             for path in scripted - {"late.txt"})),
     ]
     if not live:
-        def argument(view, name):
-            return view.interruption.request_payload["arguments"].get(name)
 
         c_won = any(argument(v, "path") == "c.txt" and decided(v.interruption.interruption_id, "approve")
                     for v in views)

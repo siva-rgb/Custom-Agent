@@ -18,8 +18,11 @@ paths. That list missed a call site three times (KNOWLEDGE-c0f23fea).
 from __future__ import annotations
 
 import asyncio
+import gc
+import io
 import os
 import sys
+import threading
 
 import psycopg
 import pytest
@@ -173,3 +176,42 @@ def no_store_call_runs_on_the_event_loop(request):
             f"{', '.join(sorted(set(on_loop)))} (FR-20, FR-81)",
             pytrace=False,
         )
+
+
+def _dump_asyncio_tasks(nodeid: str, fd: int | None) -> None:
+    """Every task of every running event loop, with its stack: what faulthandler cannot show."""
+    out = io.StringIO()
+    out.write(f"\n--- asyncio tasks of {nodeid}, still running at faulthandler_timeout ---\n")
+    for loop in [o for o in gc.get_objects() if isinstance(o, asyncio.AbstractEventLoop) and o.is_running()]:
+        for task in list(asyncio.all_tasks(loop)):
+            out.write(f"{task!r}\n")
+            task.print_stack(file=out)
+    data = out.getvalue().encode("utf-8", "replace")
+    if fd is not None:
+        os.write(fd, data)
+    else:
+        sys.__stderr__.write(data.decode("utf-8"))
+
+
+@pytest.fixture(autouse=True)
+def asyncio_tasks_dumped_on_a_stall(request):
+    """M33 round 3: faulthandler_timeout dumps thread stacks only, so a stalled asyncio test
+    shows the event loop polling, not the coroutine that waits. On the same timeout this
+    prints every running loop's tasks, to the stream pytest's own fault handler writes to."""
+    timeout = float(request.config.getini("faulthandler_timeout") or 0)
+    if not timeout:
+        yield
+        return
+    try:  # pytest's private stash key: a pytest that moves it costs the stream, not every test
+        from _pytest.faulthandler import fault_handler_stderr_fd_key
+    except ImportError:
+        fd = None
+    else:
+        fd = request.config.stash.get(fault_handler_stderr_fd_key, None)
+    timer = threading.Timer(timeout, _dump_asyncio_tasks, args=(request.node.nodeid, fd))
+    timer.daemon = True
+    timer.start()
+    try:
+        yield
+    finally:
+        timer.cancel()

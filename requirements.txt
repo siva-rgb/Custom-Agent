@@ -28,12 +28,13 @@ cryptography==50.0.1       # M10 AC-30: a throwaway CA and certificate, so the f
                            # tool's TLS path is tested with the host name checked
 
 # --- examples --------------------------------------------------------------
-# Not an SDK dependency (NFR-9): pyproject.toml keeps it in the `examples`
-# extra and scripts/requirements.txt lists it too. Listed here because the
-# regression gate needs it: AC-18 runs scripts/06_mcp_tools.py against a real
-# MCP server. Must stay below the `# --- test` line, which is where the FR-22
-# test stops reading runtime dependencies.
-mcp==2.2.0
+# Not an SDK dependency (NFR-9, NFR-34): pyproject.toml keeps it in the `mcp`
+# and `examples` extras and scripts/requirements.txt lists it too. Listed here
+# because the regression gate needs it: AC-18 runs scripts/06_mcp_tools.py, and
+# M33's gate native MCP, against real MCP servers. Must stay below the
+# `# --- test` line, which is where the FR-22 test stops reading runtime
+# dependencies.
+mcp==2.3.0
 
 # --- telemetry -------------------------------------------------------------
 # Not an SDK dependency (NFR-19, P2-D12): pyproject.toml keeps these in the

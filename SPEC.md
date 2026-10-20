@@ -57,7 +57,7 @@ reasonably expect more.
 - FR-22: The SDK is installable as a package from a `pyproject.toml` that declares the same runtime dependencies as `requirements.txt`, puts test and example dependencies in optional extras, and ships `schema.sql` and every file in `migrations/` as package data, so `apply_schema` works from an installed copy and not only from a checkout.
 - FR-23: A `scripts/` directory holds runnable examples, one activity per file, written against the public API: a minimal agent; custom tools (schemas, validation failures, async tools, timeouts, tool errors); permissions and runtime hooks; persistence and trace reconstruction; switching models; bridging tools from an MCP server; recording a delegated child run under its parent (FR-21); and testing an agent offline with a scripted model client.
 - FR-24: Every example runs in two modes: live against the configured gateway (and the database, where the example is about persistence), and offline with `--offline`, using a scripted `ModelClient`, no network and no database, so an example can be checked without credentials.
-- FR-25: The MCP example states plainly that the SDK has no native MCP support (Phase 4), bridges an MCP server's tools into `Tool` objects itself, and relabels their results with MCP-origin, untrusted `ContentProvenance` through a `RuntimeHook` -- because the executor records every tool result as a trusted internal tool, which is wrong for content from an external server (ADR-26).
+- FR-25: The MCP example states plainly that the SDK has no native MCP support (Phase 4), bridges an MCP server's tools into `Tool` objects itself, and relabels their results with MCP-origin, untrusted `ContentProvenance` through a `RuntimeHook` -- because the executor records every tool result as a trusted internal tool, which is wrong for content from an external server (ADR-26). Amended by FR-126 (M33): once `agentsdk.mcp` exists, the example says it bridges by hand to show the mechanism, and points to native support, instead of stating that there is none.
 
 ### Honest results (M9)
 
@@ -401,7 +401,7 @@ added P4-D13 to P4-D15 (DECISION-af27465a).
 
 | Decision | P4-D1 to P4-D15, 2026-10-13 |
 |---|---|
-| P4-D1 Increments | Two. Increment 1: interruptions, the approval manager, and Tier 2 write and edit tools behind it. Increment 2: native MCP, the tool catalog (ADR-28), credential brokering (ADR-27) and tenant-scoped skills and instruction bundles. Each starts with the items carried into it |
+| P4-D1 Increments | Two. Increment 1: interruptions, the approval manager, and Tier 2 write and edit tools behind it. Increment 2: native MCP, the tool catalog (ADR-28), credential brokering (ADR-27) and tenant-scoped skills and instruction bundles. Each starts with the items carried into it. Amended by P4-D16: brokering and skills are a third increment |
 | P4-D2 Durability | Every interruption and every decision is a database row from increment 1. Resuming needs the process that paused; restart-surviving resume stays Phase 6 (ADR-29). Amended by P4-D14 |
 | P4-D3 Exit signal | Approval under contention: an orchestrated plan whose children call write and edit tools needing approval in parallel, some approved, some rejected, some covered by a sticky decision, one decided twice at once, one expired. Each call runs at most once and only when approved |
 | P4-D4 Branch | A new `phase-4` branch from the approved `phase-2` tip; merging into `main` is a separate owner decision |
@@ -618,6 +618,255 @@ added P4-D13 to P4-D15 (DECISION-af27465a).
   - **Repetitions:** the test runs it 10 times, with the children's start order shuffled and random delays (KNOWLEDGE-14f3ec8b).
   - **Live,** with gateway models and the scripted approver, it checks only what must hold whatever the models decide.
 
+### Phase 4, increment 2: native MCP and the tool catalog (M33 to M37)
+
+Increment 2 lets an agent use tools from MCP servers natively. Until now example 06 bridged them
+by hand. The tools come from programs the SDK does not control, so every result is untrusted. A
+tool runs only once a person has accepted it, and does not run after it changes. The approval
+manager of increment 1 decides each call by default.
+
+**The design rests on a prior study** (KNOWLEDGE-07544107). MCP's current revision, 2026-07-28,
+is stateless:
+- the `initialize` handshake and protocol sessions are gone;
+- a server must answer `server/discover`;
+- a server asks for more input by returning an `input_required` result, which the client
+  answers by retrying the request (Multi Round-Trip Requests).
+
+Most servers still speak the earlier, handshake-based revisions. The official `mcp` Python
+library (2.3.0) probes and falls back between the two. The specification makes tool annotations
+untrusted and asks that a person be able to deny calls. The attacks to design against are:
+- tool poisoning;
+- a tool changed after approval;
+- a tool name shadowing another server's;
+- injection through results;
+- leaked credentials.
+
+**The decisions.** The owner accepted P4-D16 to P4-D27 on 2026-10-15 (DECISION-eb739963,
+DECISION-23aa8fd0, DECISION-b91d2e0d). P4-D16 amends P4-D1: credential brokering and skills
+become a third Phase 4 increment. After a read-only review of the first draft, the owner added
+P4-D28 to P4-D31 (DECISION-2f4fb823), and the facts that review measured are recorded in
+KNOWLEDGE-9593410e.
+
+| Decision | P4-D16 to P4-D31, 2026-10-15 and 2026-10-18 |
+|---|---|
+| P4-D16 Split | Increment 2 is native MCP and the tool catalog with snapshots (ADR-28), inseparable because the defence against a changed tool needs the catalog. Credential brokering (ADR-27) and tenant-scoped skills and instruction bundles are a third increment, specified once MCP exists |
+| P4-D17 Era | Dual-era: probe `server/discover`, fall back to the `initialize` handshake |
+| P4-D18 Transports | stdio and Streamable HTTP; not the deprecated HTTP+SSE |
+| P4-D19 Features | Tools (list, call, `outputSchema`, `isError`, list changes); input-required results as an interruption kind; elicitation in form and url mode through the interruption path; resources and prompts |
+| P4-D20 Approval | A per-server policy, `require` by default, or `never`, with per-tool overrides; the approver sees the full arguments; annotations never relax approval unless the server is configured as trusted |
+| P4-D21 Changed tools | Catalog snapshots hash each tool's description, schema and annotations; a tool whose hash changed is unavailable, with the reason recorded, until the owner accepts it; no standing decision for an old hash carries over. Refined by P4-D29 and P4-D31 |
+| P4-D22 Naming | `<alias>__<tool>` from the configured alias, never `serverInfo.name`; per server an allow list, then a deny list; tool profiles name qualified tools. Refined by P4-D30 |
+| P4-D23 HTTP auth | Configured static headers for HTTP and environment variables for stdio, never in model context or a stored row; no OAuth client before the credential broker |
+| P4-D24 Dependency | An optional extra, `agentsdk[mcp]`, pinned `mcp==2.3.0`; the core imports without it |
+| P4-D25 Launch | Servers come only from code-level configuration, never from a model or a file found at run time; the exact command, arguments and environment variable names go into the `ExecutionManifest`; no sandbox before Phase 5 |
+| P4-D26 Exit signal | Hostile servers under orchestration: a plan's children use real local servers over stdio and HTTP, one changing a tool mid-run, one with a poisoned description, one shadowing another's tool name, one returning injection text, one asking for input. The change is blocked, names never collide, every result is untrusted, approvals and input requests are honoured, on both stores, ten times |
+| P4-D27 Milestones | M33 the carried items and the stdio client (example 27); M34 the catalog, the approval policy and blocking a changed tool (example 28); M35 Streamable HTTP, resources and prompts (example 29); M36 input-required results and elicitation (example 30); M37 the exit signal (example 31). Examples run offline on both stores and live |
+| P4-D28 Connections | One connection per server alias, tenant and project, on one event loop, shared by that tenancy's runs; no server-side state crosses tenants; a crash restarts the connection once in its lifetime |
+| P4-D29 First sight | A tool seen for the first time is unusable until its hash is accepted, as a changed one is |
+| P4-D30 Who is sent MCP tools | Only agents whose `tool_profile` names the qualified tool, or `<alias>__*`, in every run whether or not it carries a `ContextPolicy`; other tools keep DECISION-ca1ad3e0 |
+| P4-D31 Acceptance | Any user or service principal accepts per tool hash, per tenant and project; acceptance in code names its tenant, project and service principal in the server's config |
+
+#### M33: the carried items and the stdio client
+
+- FR-122: The items carried from M32's review are settled first (KNOWLEDGE-d2afcab0, DECISION-e75ad00a). Each repair comes with a test that fails without it.
+  - **Example 26's rejection check names its subject.** The shared check requires b.txt's interruption decided `reject` by a principal, with its message reaching its writer, rather than any rejection carrying a reason. So it holds live too, whatever `decide_twice` passes.
+  - **A live run sees a skipped approval.** A shared check requires every scripted path other than late.txt to have at least one interruption decided by a principal or a standing decision. The checks example 26 runs live are pure functions of its records, so the test runs them over an offline run whose screen skips one path, and they fail.
+  - **The sweep compares names as the file system does.** `_sweep` and the reserved-name check compare through `CompareStringOrdinal` with `bIgnoreCase`, bound in `_FileSystem` (NFR-33's rule), rather than `re.IGNORECASE`. Python folds more than NTFS does: the Kelvin sign, for one.
+  - **Example 23's live checks report what they did not see.** A live check whose event may not occur reports `[SKIP] not exercised: <label>` instead of passing: the lost race, and the critic judging each node execution at most once with no judgement made. Offline, each of these must be exercised, so a skip is a failure there. `tests/test_gate_contention.py`'s assertion over the printed labels is edited, and listed for review.
+- FR-123: MCP servers are configured in code (P4-D25) and handed to the `Runner`: `Runner(..., mcp_servers=[...])`. The types live in a new package, `agentsdk.mcp`, added to `pyproject.toml`'s `packages`.
+  - **`StdioServer(alias, command, args=(), env=None, cwd=None, **common)`** launches a program. `env` maps names to values the program receives on top of a minimal inherited environment: `SYSTEMROOT`, `PATH`, `PATHEXT`, `TEMP` and `TMP`.
+  - **`HttpServer(alias, url, headers=None, **common)`** (M35).
+  - **The common fields:**
+    - **`alias`:** `[a-z][a-z0-9-]{0,23}`, unique per `Runner`. It names the server everywhere, `serverInfo.name` never (P4-D22).
+    - **`allow` and `deny`:** tuples of tool names. With `allow`, only those are offered; then `deny` removes some.
+    - **`approval`** and **`approval_overrides`** (FR-128).
+    - **`trusted`:** False by default (P4-D20).
+    - **`accept`:** acceptance in code (FR-127).
+    - **`call_timeout`:** seconds per round trip, default 60.
+    - **`protocol`:** `auto` (P4-D17), `legacy`, or a pinned revision string.
+  - **Validation:** invalid fields raise `ValueError` when the config is built. So do a duplicate alias, and an `env` value or header that `unstorable_reason` refuses.
+  - **What is recorded:** migration `0016` gives the manifest an `mcp_servers` column, recording per server:
+    - its alias and kind;
+    - the command and arguments, or the URL without its query;
+    - the names of its `env` variables and headers, never their values (NFR-37);
+    - `trusted`, `allow`, `deny`, the approval policy and `protocol`.
+  - **The extra:** `agentsdk.mcp`'s config types import nothing outside the standard library. A `Runner` given servers imports the `mcp` library when it is constructed, and raises `ImportError` naming the `agentsdk[mcp]` extra when it is missing (NFR-34).
+  - **Methods with no server:** `Runner.accept_tools`, `Runner.respond` and the `mcp_*` methods raise `UnknownMcpServer`, a `LookupError`, for an alias the `Runner` was not given, including when it was given none.
+  - **Pins:** `mcp==2.3.0` replaces `2.2.0` in the `examples` extra, `scripts/requirements.txt` and `requirements.txt`. `tests/test_distribution.py`'s two assertions of the pin are edited, and listed for review.
+- FR-124: A connection serves one server for one tenant and project on one event loop (P4-D28), and is opened when a run of that tenancy on that loop first needs it.
+  - **Sharing:** that tenancy's concurrent runs on that loop share it, and no other tenancy's run ever uses it. A run on another loop opens its own.
+  - **Closing:** `Runner` gains `aclose()` and `async with` support, which close every connection. A stdio server's stdin is closed, it is given two seconds to exit, and then it is terminated. The `mcp` library places it in a Job Object with kill-on-close, so its children end with it (NFR-39).
+  - **The era:** connecting uses the library's `mode="auto"`, which probes `server/discover` and falls back to `initialize`. The era found is kept per connection.
+  - **Events** (new `EventType` members) are emitted on the run whose need opened or read the connection:
+    - `McpServerConnected`: the alias, the era, and the server's name and version, as data;
+    - `McpServerUnavailable`: the alias and the failure's class.
+  - **A connection whose server exits:**
+    - calls in flight on it fail `ToolExecutionError("mcp server <alias> exited")`;
+    - the next call starts the server again, once in the connection's life;
+    - after a second exit, that server's tools fail for that tenancy until `aclose`.
+  - **A server that cannot be reached:** its tools are absent from the turn's tools, and `McpServerUnavailable` is emitted. A run whose profile names them still runs.
+  - **Its stderr** is read and dropped, never treated as an error or as content (the spec's rule), and never logged.
+  - **The loop thread:** the library's I/O runs on the event loop, and no store call is made on it (FR-81).
+- FR-125: Each tool a server lists becomes a `Tool` named `<alias>__<name>`.
+  - **Where tools live:** MCP tools are never registered in the `Runner`'s `ToolRegistry`. Each turn, a run's tools are its existing view (FR-77, DECISION-ca1ad3e0), plus the MCP tools of its tenancy's connections that are:
+    - named by its agent's `tool_profile`, either qualified or as `<alias>__*` (P4-D30);
+    - usable under the catalog (FR-127).
+
+    The executor resolves against the same view, so a tool absent from it is unknown at step 1.
+  - **What is skipped:** `tools/list` is read to its last page, at most 1000 tools per server. A tool is left out, with the reason on `McpToolSkipped`, when:
+    - its qualified name does not match `[A-Za-z0-9_-]{1,64}`, the widest form the model APIs accept;
+    - it is outside `allow`, or inside `deny`;
+    - one listing names it twice. Both copies are skipped;
+    - its qualified name equals a registered tool's. The registered tool wins;
+    - its input schema is not a JSON Schema object FR-5's validator accepts.
+  - **Its spec:**
+    - its description is the server's, verbatim. It is data the model reads, and the catalog hashes it (FR-127);
+    - its `risk_class` is `DESTRUCTIVE`, with `read_only`, `idempotent` and `concurrency_safe` False, unless FR-128 reads its annotations;
+    - its `timeout_seconds` is None, so the executor sets no deadline. The client applies `call_timeout` to each round trip and never to a wait for input (FR-133);
+    - its `configuration` records the alias and the tool's `tool_hash`, so `schema_hash` changes with it, and the manifest's `tools_sent` records it as sent (migration `0009`).
+  - **A call:**
+    - **Validation:** the arguments are checked against the server's input schema at step 2 (FR-5). For an MCP tool the check runs on a worker thread, since the schema is the server's.
+    - **A success:** its text blocks are joined with newlines. An embedded resource contributes its text. An image, audio or blob block becomes the placeholder `[<type> content omitted: <mime type>, <size> bytes]`.
+    - **Structured content:** with an `outputSchema`, `structured_content` is validated against it, on a worker thread. A mismatch fails the call `ToolExecutionError("output does not match its schema")`, and valid structured content is appended as JSON.
+    - **Errors:** an `is_error` result fails the call with its text, which the model sees (the spec's rule). A JSON-RPC error fails it with the error's code and message. A round trip past `call_timeout` fails it `ToolTimeout`.
+    - **Cancellation:** cancelling the run cancels the call, and the library sends `notifications/cancelled`.
+  - **Provenance:**
+    - the tool returns a `ToolOutput` whose `source_uri` is `mcp://<alias>/<name>`;
+    - its declared `result_provenance` is `Origin.MCP_RESOURCE`, `TrustZone.UNTRUSTED`, `InstructionAuthority.DATA_ONLY` and `EXTERNAL_CONTENT`, whatever `trusted` says (NFR-35);
+    - an error raised while it ran carries the same labels (FR-40);
+    - results are cut at `max_output_chars` (FR-41).
+- FR-126: `scripts/27_mcp.py` gives an agent the tools of a local stdio server written in the same file. Its tools are accepted in code (FR-127), and it shows these:
+  - a qualified name;
+  - a filtered tool;
+  - an `is_error` result reaching the model;
+  - an untrusted result in the run's history;
+  - the server's command in the manifest.
+
+  It runs offline on both stores and live. Example 06 stays the by-hand bridge. Its statement that the SDK has no native MCP support becomes a pointer to `agentsdk.mcp` (FR-25 is amended).
+
+#### M34: the catalog, the approval policy and a changed tool
+
+- FR-127: Every tool is usable only under an accepted hash (ADR-28, P4-D21, P4-D29). Migration `0017` adds two tables. Rows are written once, never updated or deleted, and every row carries its tenant and project (NFR-2).
+  - **`mcp_tool_versions`:** one row per tool version a tenancy's connection has seen:
+    - the alias, the tool name and `tool_hash`, the SHA-256 of the canonical JSON of its description, input schema, output schema and annotations;
+    - that JSON, as the entry;
+    - `first_seen_at`.
+
+    It is unique on tenant, project, alias and `tool_hash`. Prompts and resource templates (M35) are versioned the same way, with a `kind` column.
+  - **`mcp_tool_acceptances`:** one row per accepted `tool_hash`, with the alias, tool name, accepting principal and `accepted_at`, referencing its version row by the composite key.
+  - **A tool is usable only while its current `tool_hash` is accepted** for the run's tenant and project.
+    - **First sight or a change:** a tool seen for the first time, or with a new hash, is unavailable, and `McpToolBlocked` is emitted. It records the alias and name, the new hash, and the last accepted hash with the parts that differ from it (description, input schema, output schema, annotations), or none on first sight.
+    - **Accepting:** `Runner.accept_tools(tenant_id, project_id, alias, tool_hashes, *, principal)` returns the acceptance rows. Its refusals, in this order:
+      1. a principal naming no user or service, `ValueError`;
+      2. an alias the `Runner` was not given, `UnknownMcpServer`;
+      3. a hash with no version row in that tenancy, `UnknownToolVersion`, a `LookupError`, exactly as for one in another tenancy.
+
+      A hash already accepted is returned unchanged. Like `decide`, it is never a tool.
+    - **Accepting in code:** a server's `accept=McpAcceptance(tenant_id, project_id, principal, tool_hashes)` records its rows when that tenancy's connection first lists the tool. Its principal must be a service principal. Several are allowed, one per tenancy.
+  - **When the catalog is read:**
+    - at connection;
+    - on a list-changed notification. On the 2026-07-28 era, the client opens `subscriptions/listen` with `toolsListChanged` after connecting, when the server offers it, and reopens it at the next read if it closes. On the legacy era it uses `notifications/tools/list_changed`;
+    - when the listing's `ttlMs` has passed;
+    - before a turn's first call to the server, when the listing is older than 60 seconds or `ttlMs` was absent.
+
+    Time is read from the catalog's clock, which tests replace. Reads of one connection are serialised. A call in flight finishes against the version it was sent under.
+  - **What a run sees:** each turn's tools are rebuilt from the latest read (FR-125). A call to a tool blocked since the model saw it is refused at step 1, `ToolBlocked("<alias>__<name> is not accepted in its current version")`, a new `ToolError` that is exported, and its model sees why.
+  - **The store fails closed:** a failure to read acceptances leaves the tool unavailable (NFR-36).
+  - **Declared:** a server that changes a tool without notifying, inside the window, is caught at the next read. Its result is untrusted either way.
+- FR-128: A server's `approval` is `require` (the default), `never`, or `by_annotations`, which only a `trusted` server may use. `approval_overrides` maps tool names to one of the three (P4-D20).
+  - **How they map:** `require` sets the tool's `approval_policy` to `REQUIRE_APPROVAL`, so FR-113 to FR-116 decide each call. `by_annotations` requires approval unless the tool's annotations say `readOnlyHint` true.
+  - **What annotations change:** for a trusted server only, they set the tool's spec:
+    - `readOnlyHint` true makes it `READ_ONLY` and `read_only`;
+    - otherwise `destructiveHint` false makes it `WRITE`;
+    - `idempotentHint` sets `idempotent`;
+    - `concurrency_safe` is True only for a read-only tool.
+
+    For an untrusted server they are recorded in the catalog and change nothing.
+  - **The approval request** (FR-113) holds:
+    - the full arguments;
+    - the alias;
+    - the tool's `tool_hash`;
+    - its description as accepted.
+  - **Standing decisions are bound to a tool hash.** Migration `0017` gives `standing_decisions` a nullable `tool_hash`. A standing decision on an MCP tool records the request's hash, and applies only to a request with the same hash (P4-D15's matching, `loop.py`, gains that condition). So a call after an accepted change is asked again.
+- FR-129: `scripts/28_mcp_catalog.py` runs one agent against a server that changes a tool's description between two turns, and shows the following:
+  - the first sight accepted by a principal;
+  - the change blocked and named;
+  - the old sticky approval not applied;
+  - the new hash accepted;
+  - the call asked again.
+
+  It runs offline on both stores and live.
+
+#### M35: Streamable HTTP, resources and prompts
+
+- FR-130: `HttpServer(alias, url, headers=None, ...)` connects over Streamable HTTP (P4-D18).
+  - **The URL:** `https`, or `http` to a loopback address only. No user information, query credentials or fragment are allowed in the URL.
+  - **Headers** are sent on every request. Their values never reach a row, an event, the manifest, a span, a log line or an exception's text (NFR-37).
+  - **Redirects** are refused.
+  - **Authorization:** a 401 or 403 fails the call `ToolExecutionError("mcp server <alias> refused authorization")`. There is no OAuth before the credential broker (P4-D23), and no URL from a response is ever opened.
+  - **Sizes:** a response over the library's limits fails the call, and a result is cut at `max_output_chars` (FR-41).
+  - **The era** is probed per connection as on stdio, and the library's per-request errors leave the connection usable.
+- FR-131: Resources and prompts are read by the application, not offered to the model by default. The specification has prompts chosen by the user, and resources chosen by the application. Each method takes the tenancy whose connection it uses.
+  - **`Runner.mcp_resources(tenant_id, project_id, alias)` and `Runner.mcp_read(tenant_id, project_id, alias, uri)`:** a read is stored as an artifact of that tenancy with FR-125's labels (FR-52), and its `ArtifactRef` is returned, ready to brief a child as an input (FR-83).
+  - **`Runner.mcp_prompts(tenant_id, project_id, alias)` and `Runner.mcp_prompt(tenant_id, project_id, alias, name, arguments)`:** a prompt is returned as an `McpPrompt`. That is a new frozen type holding its messages' roles and texts, and its `ContentProvenance` with NFR-35's labels, since `Message` carries none. An application that uses it as a task does so explicitly.
+  - **`resources_as_tool=True`** on a server's config offers `<alias>__read_resource(uri)` to agents whose profile names it, under the server's approval policy.
+  - **The catalog covers both:** resource templates and prompts are versioned and accepted like tools (FR-127). A prompt not accepted in its current version is refused `ToolBlocked`.
+- FR-132: `scripts/29_mcp_http.py` runs a local Streamable HTTP server written in the same file, with a header the server requires. An agent reads a resource as a briefed input and fetches a prompt the application uses. It runs offline on both stores and live.
+
+#### M36: input-required results and elicitation
+
+- FR-133: A server's request for more input, during a call, pauses that call as an interruption (P4-D19).
+  - **Two kinds:**
+    - `additional_user_input`, for an elicitation: on the 2026-07-28 era, an `input_required` result carrying one; on the legacy era, an `elicitation/create` request;
+    - `external_tool_input`, for any other input request. The client declares no sampling or roots capability, both deprecated in 2026-07-28, so such a request is answered as unsupported and recorded, already decided `decline`.
+  - **The client declares elicitation in both modes.**
+  - **Where the wait happens:** it arises inside step 6, so the MCP tool records the interruption and waits itself. It uses the interruption store, `ApprovalWaits` and the re-read rules of FR-115, through its run's scope, as the loop does for approvals.
+    - The call keeps its tool slot.
+    - No `call_timeout` runs; `approval_timeout` bounds the wait.
+    - Cancelling the run decides it `cancel`.
+    - New events, `InputRequested` and `InputAnswered`, carry the interruption id, kind, alias and tool, never the response.
+  - **The request records:**
+    - the alias, the tool and the server's message;
+    - in form mode, the requested schema;
+    - in url mode, the full URL, since the person must see it whole. It is shown, never opened or fetched by the SDK (the spec's rule, and CVE-2025-6514's lesson).
+  - **Answering:** `Runner.respond(tenant_id, project_id, interruption_id, *, action, content=None, principal)` answers with `accept`, `decline` or `cancel`, and returns the decision. `RunHandle.respond` is its shortcut.
+    - Its refusals follow `decide`'s, in its order (FR-115). `InterruptionKindMismatch` comes second, after tenancy: for `respond` on an approval, or `decide`, `approve` or `reject` on an input request.
+    - `content` is required for `accept` in form mode, and must match the requested schema.
+    - In url mode, `accept` means the person completed the flow themselves.
+  - **Migration `0018`** replaces the constraints `0014` set (`0014` and `0015` are applied and never edited):
+    - `kind` admits the two kinds;
+    - `trigger` admits `server`, required for them;
+    - the decision row's `decision` admits `accept`, `decline` and `cancel` for them, and `approve` and `reject` stay for approvals;
+    - expiry and `cancel` decide `cancel`;
+    - a nullable `response` holds an accepted form's content, which is stored as data labelled `USER_CONTROLLED`.
+  - **The retry:**
+    - an accepted, declined or cancelled request is returned to the server, by retrying the call with `inputResponses` on the 2026-07-28 era, or by returning from the library's callback on the legacy era;
+    - the retry continues the same call under the same approval and `ApprovedCall`. It is not a second execution under NFR-30;
+    - a call that asks for input more than three times fails `ToolExecutionError("too many input requests")`.
+  - **M36's pre-flight** settles whether `mcp` 2.3.0 handles `input_required` itself. If not, the client builds the retry.
+  - **Declared:** the specification forbids a server to ask for a secret in form mode, and the SDK cannot tell one. A url-mode URL may carry a token, and is stored because the person must see it. Both are stated in the README.
+- FR-134: `scripts/30_mcp_input.py` has a tool ask for a form, answered by a scripted person, and another ask for a URL, declined. It runs offline on both stores and live.
+
+#### M37: hostile servers under orchestration, the exit signal
+
+- FR-135: The exit signal (P4-D26) is a test and an example. `scripts/31_mcp_contention.py` runs an orchestrated plan whose children use five real local servers, over stdio and Streamable HTTP:
+  - one changes a tool's description mid-run;
+  - one has a tool whose description tells the model to call another tool;
+  - one lists a tool named like another server's;
+  - one returns text instructing the model;
+  - one asks for input.
+
+  A scripted approver decides from the top-level run.
+  - **Checked against the store and each execution as it starts, on both stores.** Every check names its subject and has a witness that its subject happened (KNOWLEDGE-d2afcab0):
+    - the changed tool never ran after its change until accepted, and its `McpToolBlocked` names it;
+    - the poisoned and the shadowing tools have distinct qualified names, and each call reached the server its name says;
+    - every MCP result, error and read in every child's history is untrusted and data-only;
+    - every call needing approval ran at most once, only after an approve decision, in issue order;
+    - the input request was answered, and its call retried once with the response;
+    - no header value or `env` value appears in any row, event, manifest or result;
+    - every server process has exited after `aclose`.
+  - **Repetitions:** the test runs it 10 times, with the children's start order shuffled and random delays (KNOWLEDGE-14f3ec8b). Live, it checks only what must hold whatever the models decide.
+
 ## Non-functional requirements
 
 - NFR-1: Provider-agnostic. Switching between `openai.*`, `bedrock.*`, `azure.*`, and `vertex_ai.*` models is a configuration change only — no SDK source file changes, no new adapter.
@@ -654,6 +903,15 @@ added P4-D13 to P4-D15 (DECISION-af27465a).
 - NFR-31: Decisions never cross tenancy. No interruption, decision or standing decision is readable or decidable from another tenant or project, an interruption outside the caller's tenant and project is reported exactly as an unknown one, and every decision names the principal that made it, or its `standing`, `expiry` or `cancel` source (NFR-25).
 - NFR-32: Runs that require no approval are unchanged. A run in which no call requires approval sends the same requests and records the same events as before M30, apart from the fields FR-112 adds to `RunInterruption` and the manifest's `approval_timeout`. One behaviour does change, deliberately: a `before_tool` hook returning `REQUIRE_APPROVAL`, ignored until M30, now requires approval. The existing tests pass unchanged, and the edits FR-111, FR-112 and FR-114 name (`tests/test_calibration.py`, `tests/conftest.py`, `tests/test_primitives.py`) and `tests/test_distribution.py`'s exports and `EXPECTED_EXAMPLES` are listed and justified in the review prompts.
 - NFR-33: Phase 4's first increment adds no runtime dependency (NFR-6, NFR-27). The write tools bind, through `ctypes` as M10's tools do, the Win32 calls they need beyond M10's: `CreateFileW` with write access and create-new disposition, `WriteFile`, `FlushFileBuffers`, `MoveFileExW` and `DeleteFileW`.
+- NFR-34: MCP is optional (P4-D24). The SDK imports and runs every non-MCP path with `mcp` not installed; only `agentsdk.mcp` imports it, and only when a `Runner` is given servers. The `mcp` extra pins `mcp==2.3.0`, and the `examples` extra moves to the same pin. Amends NFR-9, whose rule for example-only libraries is otherwise unchanged.
+- NFR-35: Nothing from an MCP server is trusted. Every tool result, tool error, resource read and prompt from a server carries `Origin.MCP_RESOURCE`, `TrustZone.UNTRUSTED`, `InstructionAuthority.DATA_ONLY` and `EXTERNAL_CONTENT`, whatever its `trusted` flag. `trusted` changes how annotations are read (FR-128), never a result's labels, and nothing a server returns clears taint (ADR-26). Two existing rules still apply. An error raised before the tool ran keeps the executor's labels (FR-40). An `after_tool` hook can still replace a result's provenance, since hooks are developer code (a recorded risk).
+- NFR-36: No changed tool runs under an old acceptance or approval. A call reaches a server only when its tool's current `tool_hash` is accepted for the run's tenant and project, and a standing decision applies only to the hash it was made for. A store failure reading acceptances leaves the tool unavailable.
+- NFR-37: No configured secret leaves its configuration (NFR-4). Neither `env` values nor header values reach model context, a row, a `RunEvent`, the manifest, a span, a log line or an exception's text. The manifest and events name them only.
+- NFR-38: Runs that use no MCP server are unchanged. They send the same requests and record the same events and rows as before M33, apart from the manifest's `mcp_servers` column, recorded empty. A test pins this against the committed NFR-29 fixture, normalised as FR-111 states. The existing tests pass, with only these edits, each listed in the review prompts:
+  - those FR-122 and FR-123 name;
+  - `tests/test_distribution.py`'s exports and `EXPECTED_EXAMPLES`;
+  - `tests/conftest.py`'s tracked tables, which gain the new tables (NFR-16).
+- NFR-39: No server process outlives its `Runner`. After `aclose()`, or once the `Runner` is garbage-collected with its event loop closed, no process a stdio server started is still running, its children included. This is measured on Windows by process id.
 
 ## Constraints
 
@@ -673,7 +931,8 @@ added P4-D13 to P4-D15 (DECISION-af27465a).
 - Tools receive no run context in the first increment, so a tool cannot yet write an artifact on its own run's behalf; the second increment decides how a tool reaches its run.
 - No claim reused across runs: reuse waits for governed learning (I-23, P3-D2).
 - No verification raises trust or clears taint, and no paraphrase is merged (P3-D15, P3-D16). Calibration suggests and never applies a threshold (P3-D19); an automatically adapting threshold waits for governed learning (I-23).
-- No MCP, tool catalog or credential brokering before Phase 4's second increment; the approval manager is Phase 4's first (P4-D1). Phase 4 approves tool calls only: no approval of a plan, a message or a claim's trust in increment 1, and no standing decision outlives its run (P4-D7).
+- No MCP or tool catalog before Phase 4's second increment, and no credential brokering, OAuth client, or tenant-scoped skills and instruction bundles before its third (P4-D1, P4-D16); the approval manager is Phase 4's first.
+- Phase 4's second increment has no HTTP+SSE transport, no sampling, roots or logging (all deprecated in MCP 2026-07-28), no tasks extension, no server discovery from a registry, and no sandbox for a stdio server (Phase 5). It publishes no agent as an MCP server (after Phase 4). Phase 4 approves tool calls only: no approval of a plan, a message or a claim's trust in increment 1, and no standing decision outlives its run (P4-D7).
 - A paused run resumes only in the `Runner` that paused it; restart-surviving resume and recovering a run paused at a crash are Phase 6 (P4-D2, P4-D14, ADR-29).
 - Phase 4's first increment ships no delete, move or patch tool, and its write tools create no directories (P4-D10).
 - No sandbox or workspace (Phase 5).
@@ -892,6 +1151,75 @@ found the defects, turned into assertions.
   - **Critic runs** never record an interruption.
   - **NFR-33:** no new runtime dependency appears in the package's requirements.
 
+### Phase 4, increment 2
+
+- AC-89: FR-122:
+  - **Example 26:**
+    - with b.txt never rejected, the shared rejection check fails, even when the race's losing reject carries a message;
+    - the live checks, run over an offline run whose screen skips any one path, fail.
+  - **The sweep:** an orphan whose name differs from its target only by a character Python folds and NTFS does not (the Kelvin sign) is not swept. One differing only in ASCII case is.
+  - **Example 23:** with no lost race, the live run prints `[SKIP] not exercised` for that check, and the offline run fails.
+- AC-90: FR-123 to FR-126, on both stores, against real local stdio servers of both eras:
+  - **The tools:**
+    - a server's tools are offered as `<alias>__<name>` after `allow` and `deny`, and only to agents whose profile names them (P4-D30);
+    - a name outside the pattern, a name listed twice, a name equal to a registered tool's, and a schema the validator refuses are each skipped and recorded.
+  - **Results:**
+    - a success, an `is_error` result, a JSON-RPC error, a round-trip timeout, and an `outputSchema` mismatch each give the result FR-125 states;
+    - every result and run-time error is untrusted and data-only, with an `mcp://` source (NFR-35).
+  - **Connections:**
+    - two tenancies' runs never share a connection;
+    - two runs of one tenancy on one loop share one;
+    - the era found is recorded.
+  - **Lifecycle:**
+    - a server killed mid-call fails that call, is restarted once, and after a second exit fails its tools;
+    - an unreachable server leaves its tools absent, with `McpServerUnavailable` emitted;
+    - `aclose` and garbage collection each leave no server process or child running (NFR-39);
+    - cancelling a run cancels its call.
+  - **Configuration:** the manifest names each server's command, its env variable names and its filters, and no value. No env value appears in a row, event, span, log line or exception's text (NFR-37).
+  - **Without the extra:** with `mcp` uninstalled in a subprocess, `import agentsdk` and a run with no servers succeed. A `Runner` given a server raises `ImportError` naming the extra (NFR-34), and the MCP methods raise `UnknownMcpServer` on a `Runner` with none.
+  - **NFR-38:** a run with no servers equals the committed NFR-29 fixture after FR-111's normalisation.
+- AC-91: FR-127 to FR-129, on both stores, with the catalog's clock replaced:
+  - **First sight:** a tool seen for the first time is unavailable until accepted, and its `McpToolBlocked` has no previous hash.
+  - **Changes:** a change to each of the description, input schema, output schema and annotations blocks the tool, and `McpToolBlocked` names the part that changed. A model's call to it is refused `ToolBlocked`.
+  - **Acceptance:**
+    - accepting through `Runner.accept_tools` or a server's `accept` makes it usable;
+    - `accept_tools` refuses in FR-127's order;
+    - rows read back field for field, and none is updated or deleted;
+    - another tenancy's acceptance never makes a tool usable;
+    - a failure to read acceptances leaves the tool unavailable (NFR-36).
+  - **When the catalog is read:** a list-changed notification on each era, a passed `ttlMs`, and a stale listing each cause a read.
+  - **Approval:**
+    - `require`, `never` and `by_annotations` map as FR-128 states, and annotations set a trusted tool's spec as stated;
+    - `by_annotations` is refused for an untrusted server, and an untrusted server's annotations change nothing;
+    - a standing decision does not apply after its tool's hash changes (NFR-36);
+    - the approval request shows the full arguments, the tool hash and the description as accepted.
+- AC-92: FR-130 to FR-132, on both stores:
+  - **The HTTP server:** a local Streamable HTTP server of each era serves tools with a required header. The header's value is found in no row, event, manifest, span, log line or exception's text.
+  - **Refusals:** a non-loopback `http` URL, a URL with user information or a fragment, a redirect, and a 401 are each refused as FR-130 states.
+  - **Resources and prompts:**
+    - a read is stored as an artifact of its tenancy with NFR-35's labels, and briefs a child as an input with its provenance;
+    - a prompt is returned as an `McpPrompt` with those labels;
+    - another tenancy's connection is never used;
+    - `<alias>__read_resource` is offered only with `resources_as_tool`;
+    - a prompt not accepted in its current version is refused.
+- AC-93: FR-133 and FR-134, on both stores, against servers of both eras:
+  - **The kinds:** a form elicitation and a url elicitation each record an `additional_user_input` interruption, with the schema or the full URL. The call waits past its `call_timeout` without failing.
+  - **Answers:**
+    - `respond` with `accept` and valid content continues the call once with it, under its original approval;
+    - content that does not match the schema is refused;
+    - `decline`, `cancel` and expiry each reach the server as that action;
+    - a fourth input request fails the call.
+  - **Refusals and races:**
+    - `respond`'s refusals, and its race with expiry, behave as FR-115's do;
+    - `InterruptionKindMismatch` is raised for each wrong-kind call;
+    - migration `0018`'s constraints refuse an input decision of `approve`, and an approval decision of `accept`.
+  - **Unsupported requests:** a sampling or roots request is answered as unsupported and recorded `external_tool_input`.
+  - **No URL opened:** the SDK opens no URL; this is asserted with a URL the test serves and watches.
+- AC-94: FR-135, the exit signal, on both stores:
+  - **Example 31** holds every check of FR-135 ten times, with the children's start order shuffled and random delays.
+  - **Each check fails without its subject:** a test removes, in turn, the change, the shadowing tool, the injection, the input request and the approval. Each removal fails the check that names it.
+  - **NFR-34:** the package's runtime dependencies are unchanged, and `mcp` appears only in the `mcp` and `examples` extras.
+
 ## Risks
 
 - **A published history publishes every file ever committed.** Removing a file from the tree does not remove it from history, so an exclusion applied only to the current tree publishes the excluded file anyway. Mitigation: decide what is published per commit, not per tree, before the first push.
@@ -922,9 +1250,42 @@ found the defects, turned into assertions.
 - **A running walk can delay interpreter exit** by up to its 20-second budget, because pool threads are joined at exit. Mitigation: stated; the walk budget bounds it.
 - **Artifact reads carry hex.** psycopg reads `BYTEA` as text by default, so a 10 MiB read carries about 20 MiB. Mitigation: bounded by the cap and the pool size; the store reads `content` in binary where it can.
 - **The comparison is not like for like.** The arms use different wire formats, only the Claude arm sends cache markers, and the Claude Agent SDK's own cost is an estimate. Mitigation: one `ModelPricing` for both arms, the estimate labelled separately, and each arm's wire format named in the report.
+- **An MCP server is code the SDK runs.** A stdio server runs with the user's rights, outside any sandbox, until Phase 5. Mitigation: servers come only from code-level configuration, the exact command is in the manifest, and the Job Object ends the process tree with the `Runner` (P4-D25, NFR-39).
+- **The MCP library moves fast.** `mcp` 2.0.0 shipped on 2026-07-28 and 2.3.0 by 2026-10-02, and whether it handles `input_required` itself is unverified. Mitigation: one pinned version (P4-D24), with M36's pre-flight settling MRTR before any requirement depends on it.
+- **A catalog read can be late.** A server that changes a tool without notifying is caught only at the next read. Mitigation: results stay untrusted whatever the catalog says (NFR-35), and listings are re-read before a turn's first call once they are older than 60 seconds.
+- **A server's schema is code-like input.** An MCP tool's input and output schemas are the server's, and a pathological `pattern` can hold the thread that validates against it. Mitigation: MCP validation runs on a worker thread, never the event loop (FR-125); a bounded validator waits for a workload that needs one.
+- **Descriptions are prompts.** An accepted description still reaches the model, and a poisoned one can steer it. Mitigation: acceptance is a person's decision on the full text and its hash, every call needs approval by default, and results cannot raise trust; the exit signal exercises a poisoned description.
 - **A tracer provider's shutdown can block exit** for up to 30 s behind a blocking exporter. Mitigation: example 13 shuts its provider down with a timeout.
 
 ## Open questions
+
+- Second draft 2026-10-18, for the owner: Phase 4's second increment is specified above as FR-122 to FR-135, NFR-34 to NFR-39 and AC-89 to AC-94, from P4-D16 to P4-D27 (DECISION-eb739963, DECISION-23aa8fd0, DECISION-b91d2e0d), the study KNOWLEDGE-07544107, and, after the read-only review of the first draft, P4-D28 to P4-D31 (DECISION-2f4fb823, KNOWLEDGE-9593410e). Choices it makes beyond those decisions:
+  1. **Results are untrusted even from a `trusted` server.** `trusted` affects only how annotations are read.
+  2. **An untrusted server's tools are declared `DESTRUCTIVE`,** non-idempotent and sequential. A trusted server's annotations map as FR-128 states, and `by_annotations` is a third approval mode, for trusted servers only.
+  3. **Qualified names match `[A-Za-z0-9_-]{1,64}`,** narrower than MCP's, because model APIs accept no dots. A tool outside it is skipped, as are a name listed twice and a name equal to a registered tool's.
+  4. **MCP tools are never registered;** each turn's tools are rebuilt from the run's view and its tenancy's catalog. `Runner` gains `aclose()` and `async with`.
+  5. **The executor sets no deadline on an MCP tool;** the client times each round trip, so a wait for input is bounded by `approval_timeout` alone.
+  6. **Resources and prompts are read by the application** through tenancy-scoped `Runner` methods: a read becomes an artifact and a prompt an `McpPrompt`. They are offered to the model only with `resources_as_tool`, and are versioned and accepted like tools.
+  7. **Input requests:**
+     - the MCP tool waits inside step 6 itself;
+     - a new `Runner.respond` and `RunHandle.respond` answer them, with `InterruptionKindMismatch` for wrong-kind calls;
+     - sampling and roots are answered as unsupported;
+     - a continued call stays under its original approval, with at most three input rounds.
+  8. **Migrations follow the milestones:** `0016` at M33, `0017` at M34 and `0018` at M36. `0018` replaces `0014`'s constraints without editing it.
+  9. **A url-mode URL is stored whole,** because the person must see it, and the README states that it may carry a token.
+  10. **The carried caveats** are settled as FR-122 states, example 23's live checks included.
+
+- First draft 2026-10-18: superseded by the second draft above. Its read-only review found:
+  - a single migration spanning three milestones;
+  - input requests breaking `0014`'s constraints;
+  - MCP descriptions reaching every agent under DECISION-ca1ad3e0;
+  - prompts and resources without tenancy;
+  - a shared connection with per-run restarts;
+  - an executor deadline that would kill a call waiting for input;
+  - three wrong requirement references;
+  - unlisted test edits.
+
+  KNOWLEDGE-9593410e records its measured facts.
 
 - Second draft 2026-10-13, for the owner: Phase 4's first increment is specified above as FR-111 to FR-121, NFR-30 to NFR-33 and AC-84 to AC-88, from P4-D1 to P4-D12 (DECISION-005d0bfd, DECISION-e03027a0, DECISION-2402caab) and, after the read-only review of the first draft, P4-D13 to P4-D15 (DECISION-af27465a). Choices it makes beyond those decisions: (1) the interruption is created after `before_tool` (step 5), not at step 4 as P4-D9 says, so a hook can require approval and the request shows the call as it will run; `HALT` from `before_tool` stays ignored; (2) a deciding principal must name a user or a service; (3) every call requiring approval gets an interruption row, one decided by a standing decision included; (4) the waiting run acts only on what the store holds, re-reading on each wake and at least every five seconds; (5) a rejection's text is labelled by its decision with the SDK's internal trust, since a principal wrote it; (6) a child waiting for approval keeps its concurrency slot, so waiting children can fill a plan's slots; (7) a run's top-level run is its `ledger_run_id`; (8) the write tools refuse a target changed since its request was described or held open by another handle, refuse a target that is itself a link while allowing in-root links in the path, and use a withheld temporary file; the window between re-hash and replace is declared; (9) M28's two report items are settled by `no_claims_fired` and a critic table joined by node execution. Increment 2 (MCP, the catalog, credentials, skills, and where to scan child output for instruction-shaped text) is specified after increment 1.
 

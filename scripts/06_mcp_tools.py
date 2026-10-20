@@ -1,8 +1,9 @@
 """06 - Use tools from an MCP (Model Context Protocol) server.
 
-The SDK has no native MCP support -- that arrives in Phase 4. This example
-shows what you can do today: connect to an MCP server yourself, turn each tool
-it offers into an ordinary SDK Tool, and mark every result as untrusted.
+The SDK now supports MCP natively: see `agentsdk.mcp` and example 27. This
+example bridges by hand, to show the mechanism: connect to an MCP server
+yourself, turn each tool it offers into an ordinary SDK Tool, and mark every
+result as untrusted.
 
 That last step matters. The SDK's executor records every tool result as a
 trusted internal tool, which is wrong for text that came from an external

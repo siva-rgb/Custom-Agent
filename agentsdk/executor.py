@@ -51,6 +51,7 @@ from .outcomes import ApprovalRequired, Completed, Failed, InterruptionKind, Run
 from .permissions import PermissionChecker
 from .primitives import (
     ContentProvenance,
+    Origin,
     ToolCall,
     ToolResult,
     checked_provenance,
@@ -269,7 +270,20 @@ class ToolExecutor:
                 tool_reached=False,
             )
         try:
-            jsonschema.validate(tool_call.arguments, tool.spec.input_schema)
+            if tool.spec.result_provenance.origin is Origin.MCP_RESOURCE:
+                # FR-125 (M33): a server's schema, so checked in a process of its own, ended at a
+                # deadline: validating against one can take time exponential in what the server
+                # chose, and Python's `re` holds the GIL, so no thread here would contain it.
+                from .mcp import validate_untrusted
+
+                invalid, unreadable = await asyncio.to_thread(
+                    validate_untrusted, tool_call.arguments, tool.spec.input_schema)
+                if invalid is not None:
+                    raise jsonschema.ValidationError(invalid)
+                if unreadable is not None:
+                    raise jsonschema.SchemaError(unreadable)
+            else:
+                jsonschema.validate(tool_call.arguments, tool.spec.input_schema)
         except jsonschema.ValidationError as exc:
             return await self._failed(
                 tool_call, ToolValidationError(exc.message), state, tool_reached=False
@@ -581,7 +595,9 @@ class ToolExecutor:
         try:
             if state.tool is not None:
                 cap = state.tool.spec.max_output_chars
-                if state.ran:
+                # An MCP tool's schemas are its server's, so any failure of it may quote what
+                # the server chose, before it ran too (M33 round 6, NFR-35).
+                if state.ran or state.tool.spec.result_provenance.origin is Origin.MCP_RESOURCE:
                     # The tool ran, so this text may carry what it read (M8
                     # review caveat 3): the declared labels apply. The bytes are
                     # still the executor's rendering, so the source stays its

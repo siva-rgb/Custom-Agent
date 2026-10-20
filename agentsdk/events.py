@@ -56,6 +56,11 @@ class EventType(str, Enum):
     # FR-114 (M30): a call that requires approval, and the decision about it.
     APPROVAL_REQUESTED = "ApprovalRequested"
     APPROVAL_DECIDED = "ApprovalDecided"
+    # FR-124, FR-125 (M33): an MCP server connected, or could not be; a listed tool left out,
+    # with why. On the run whose need opened or read the connection.
+    MCP_SERVER_CONNECTED = "McpServerConnected"
+    MCP_SERVER_UNAVAILABLE = "McpServerUnavailable"
+    MCP_TOOL_SKIPPED = "McpToolSkipped"
 
 
 @dataclass(frozen=True)

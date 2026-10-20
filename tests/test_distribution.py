@@ -62,6 +62,8 @@ EXPECTED_EXAMPLES = {
     "25_write_tools.py",
     # FR-121 (M32): approvals under contention, the exit signal.
     "26_approval_contention.py",
+    # FR-126 (M33): native MCP over stdio.
+    "27_mcp.py",
 }
 
 
@@ -160,7 +162,8 @@ def test_the_mcp_example_marks_bridged_results_untrusted(isolated_scripts):
         )
 
     source = (SCRIPTS / "06_mcp_tools.py").read_text(encoding="utf-8")
-    assert "no native MCP support" in source, "FR-25: the example must say so plainly"
+    # Edited at M33 (FR-25 as amended by FR-126): the example points to native support.
+    assert "bridges by hand" in source and "agentsdk.mcp" in source, "FR-25: the example must say what it is"
 
 
 # --- FR-22, AC-16: packaging -------------------------------------------------------
@@ -233,11 +236,14 @@ def test_example_dependencies_stay_out_of_the_sdk():
     the second half is the one that matters, and only running it can show it."""
     project = _pyproject()
     assert not any(dep.lower().startswith("mcp") for dep in project["dependencies"])
-    assert "mcp==2.2.0" in project["optional-dependencies"]["examples"]
-    assert "mcp==2.2.0" in _pins((SCRIPTS / "requirements.txt").read_text(encoding="utf-8").splitlines())
+    # Edited at M33 (FR-123): the pin moved to 2.3.0, and the `mcp` extra holds it too (NFR-34).
+    assert "mcp==2.3.0" in project["optional-dependencies"]["examples"]
+    assert project["optional-dependencies"]["mcp"] == ["mcp==2.3.0"]
+    assert "mcp==2.3.0" in _pins((SCRIPTS / "requirements.txt").read_text(encoding="utf-8").splitlines())
 
     probe = (
-        "import sys, agentsdk, agentsdk.providers, agentsdk.postgres, agentsdk.migrate\n"
+        # Edited at M33 (NFR-34): agentsdk.mcp is imported too, and still loads no mcp module.
+        "import sys, agentsdk, agentsdk.providers, agentsdk.postgres, agentsdk.migrate, agentsdk.mcp\n"
         "print(sorted(m for m in sys.modules if m == 'mcp' or m.startswith('mcp.')))\n"
     )
     ran = subprocess.run(

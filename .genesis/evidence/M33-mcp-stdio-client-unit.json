@@ -1,0 +1,22 @@
+{
+  "task": "M33-mcp-stdio-client",
+  "gate": "unit",
+  "command": ".venv\\Scripts\\python.exe -m pytest tests/test_mcp_carried.py tests/test_mcp_client.py -q",
+  "started_at": "2026-10-20T03:50:23.906Z",
+  "observed_at": "2026-10-20T03:54:48.507Z",
+  "exit_code": 0,
+  "signal": null,
+  "stdout": "........................................................................ [ 76%]\r\n......................                                                   [100%]\r\n94 passed in 263.21s (0:04:23)\r\n",
+  "stderr": "",
+  "revision": {
+    "commit": "ca8783d1a31e43921a5d363f4bc9af30dba359e9",
+    "dirty": true
+  },
+  "source_hash": "6ab24b2c582b1e58cdb9b468bfd1d37bc9165b61d2c79b743e3cb7c9905ce128",
+  "environment": {
+    "node": "v20.10.0",
+    "platform": "win32",
+    "arch": "x64"
+  },
+  "hash": "2b956c4f29f9556cbcc9c7aab3cde3d028b2f5d3ba57910b0da08d0c7f2b7396"
+}

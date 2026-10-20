@@ -15,3 +15,6 @@ dist/
 # The pin lives in evals/adr12/package.json; evals/adr12/reports/ is deliberately NOT
 # ignored, so AC-19's credential scan reads the report (AC-50).
 evals/adr12/node_modules/
+
+# M33 close (owner, 2026-10-20): an untracked local file, never to be committed.
+secret.json

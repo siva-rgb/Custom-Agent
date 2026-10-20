@@ -455,7 +455,10 @@ async def test_the_exit_signal_holds_ten_times_with_shuffled_starts_and_random_d
 
 
 RACE = "exactly one of the two simultaneous decisions was recorded, and the other refused"
-REJECTED = "a person rejected a call with a reason, and every rejection's reason reached its writer"
+# Edited at M33 (FR-122): the rejection check names b.txt, and a new shared check sees a
+# skipped path; listed for review.
+REJECTED = "b.txt was rejected by a person, and its reason reached its writer"
+EVERY_PATH = "every scripted path but late.txt was decided by a person or a standing decision"
 ORDER = "every writer's calls ran in its issue order, and some writer ran more than one"
 SCREEN = "every decision the approval screen made was recorded as it made it"
 SOURCES = "the sticky approval decided the writer's second edit, a person rejected b.txt, and the late call expired"
@@ -465,9 +468,9 @@ SOURCES = "the sticky approval decided the writer's second edit, a person reject
     # M32 round 1, C1: the contention check passed when no race happened at all.
     ("no race", [RACE]),
     # M32 round 2, F1: with nobody rejecting b.txt, the rejection check passed over nothing.
-    ("b never decided", [REJECTED, SOURCES]),
+    ("b never decided", [REJECTED, EVERY_PATH, SOURCES]),
     # F1: a rejection too late raised InterruptionExpired, which the screen swallowed.
-    ("b decided too late", [SCREEN, REJECTED, SOURCES]),
+    ("b decided too late", [SCREEN, REJECTED, EVERY_PATH, SOURCES]),
     # Round 2: issue order held vacuously when no writer ran more than one call.
     ("no writer runs twice", [ORDER, "the folder holds exactly what the approved calls wrote",
                               "base.txt's edits ran in turn order, the second needing the first's text",

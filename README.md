@@ -114,6 +114,14 @@ persisted so you can reconstruct exactly what happened afterwards.
   concurrency slot while the other nodes run, inherits its parent's
   `approval_timeout`, and is cancelled -- its approvals recorded `cancel` -- with
   the top-level run.
+- **Uses the tools of MCP servers natively** (M33): servers configured in code
+  (`agentsdk.mcp.StdioServer`) are started over stdio and spoken to in either
+  protocol era. Their tools reach an agent as `<alias>__<name>` only when its
+  profile names them, after the server's allow and deny lists; a hostile listing's
+  dotted, duplicate or clashing names are skipped and recorded; every result is
+  untrusted MCP data; each call needs approval unless the server says `never`. A
+  connection serves one tenant and project, restarts once, and `Runner.aclose()`
+  ends its server. Needs the `agentsdk[mcp]` extra.
 - **Fetches each page once, however many agents ask** (M24's claim-lock): one
   holder per page and per statement, across the tasks of a process and the
   processes sharing the database; the others wait, then take the holder's
@@ -157,7 +165,16 @@ Stated plainly, because an SDK that overstates itself costs you a week:
 | A write is refused `target in use` when any other program reading it, or otherwise holding it open, has it open at the moment of the replace -- in M31's review 43 of 60 writes were refused with one reader polling -- so on a machine with editors or indexers it is common; it is not retried, and the model sees the refusal and may try again | Declared (M31, corrected M32) |
 | No model can record an externally validated outcome: `Runner.record_validation` is in no tool registry and no tool the SDK ships calls it. A custom tool is first-party code in your process and reaches the Runner through its scope, as it reaches the ledger store, so it could call `record_validation`; in-process code is outside the threat model | Declared (M26a) |
 | Streaming of model tokens as they are generated (a run's events do stream, through `RunHandle.events()`) | Later; not yet scheduled |
-| Native MCP (Model Context Protocol) support | Phase 4 |
+| Native MCP over Streamable HTTP, MCP resources and prompts, a server's requests for input, and the tool catalog that blocks a tool until its version is accepted | Phase 4 (M34 to M36) |
+| Until M34's catalog, every tool a server lists is usable as listed: a server that changes a tool is not caught | Declared (M33) |
+| A stdio server whose command is a launcher -- a Windows virtual environment's `python.exe`, a `.cmd` shim -- may start the real server before the `mcp` library's Job Object holds the launcher, so that server's children can outlive `Runner.aclose()`; point `command` at the real executable | Declared (M33) |
+| A stdio server inherits the `mcp` library's environment -- on Windows APPDATA, HOMEDRIVE, HOMEPATH, LOCALAPPDATA, PATH, PATHEXT, PROCESSOR_ARCHITECTURE, SYSTEMDRIVE, SYSTEMROOT, TEMP, USERNAME and USERPROFILE, but not TMP -- with its `env` added on top | Declared (M33) |
+| The `mcp` library validates a server's whole tool listing, so an entry it refuses refuses them all and the server is reported unavailable: an input schema whose type is not `object`, or whose `$schema` is not text, a schema nested more than about 60 levels deep, and a lone surrogate in a name or key (the library drops that message, so the start waits out `connect_timeout`). Entries the SDK itself refuses are skipped one tool at a time. The SDK replaces the library's own check of structured results against a tool's output schema with its isolated one, below | Declared (M33) |
+| No schema a server supplies is evaluated in the SDK's process: the model's arguments, the server's results and its listing are each checked in a short-lived process of their own, ended after 10 s, resolving references only within the schema; a listing's input and output schemas are checked 50 tools to a process, side by side, up to twenty at once, and a part that cannot be checked in time has all its tools skipped, so a hostile tool takes its chunk's neighbours with it; on a host with fewer processors than chunks a large honest listing takes longer and may be cut so. Validation can take time exponential in what a server chose (a regular expression, which also holds the interpreter lock, or deep `anyOf` nesting with none), so the check is isolated and bounded. That costs about 0.15 s per check | Declared (M33) |
+| A server's data is bounded by deadlines and memory, not by size: a message the `mcp` library cannot parse is waited out to its timeout, a very long line is read in time that grows with its square, and tool descriptions are not capped | Declared (M33) |
+| A Runner given MCP servers runs them on one event loop of its own, on a background thread, whichever loop its runs are on; `Runner.aclose()` ends that thread with the servers | Declared (M33) |
+| A server that cannot be reached is retried once a minute per tenant and project, so N tenancies of one Runner each wait one `connect_timeout` a minute on a server that is down | Declared (M33) |
+| A server that writes something other than MCP to its stdout -- its environment, say -- has that line quoted in the `mcp` library's own parse-error log record (`mcp.client.stdio`), which the SDK does not silence | Declared (M33) |
 | A paused run resuming after its process restarts | Phase 6 |
 | Sandboxed tool execution | Phase 5 |
 | Pause and resume; durable interruptions (cancel is built) | Phase 6 |
@@ -544,8 +561,8 @@ credentials -- which is also how the test suite checks them.
 python scripts/02_custom_tools.py --offline
 ```
 
-MCP and delegation are bridged or recorded by hand in those examples, because
-the SDK does not do either natively yet; each example says so. See
+Delegation is recorded by hand in those examples, and example 06 bridges MCP
+by hand to show the mechanism; the SDK now supports MCP natively (example 27). See
 [`scripts/README.md`](scripts/README.md).
 
 ## The public API

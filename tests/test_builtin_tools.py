@@ -2236,6 +2236,10 @@ def test_no_module_imports_a_search_vendor_or_any_dependency_beyond_the_declared
             # M14, P2-D12, NFR-19: the optional otel extra, imported by this module
             # alone and only when an exporter is built.
             limit = allowed_everywhere | {"opentelemetry"}
+        elif path.parent.name == "mcp":
+            # Edited at M33 (P4-D24, NFR-34): the optional mcp extra, imported by this
+            # package alone and only when a Runner is given servers.
+            limit = allowed_everywhere | {"mcp"}
         else:
             limit = allowed_everywhere
         if imported - limit:

@@ -18,7 +18,7 @@ import math
 from datetime import datetime
 from decimal import Decimal
 from functools import partial
-from typing import Any, Mapping
+from typing import Any, Mapping, Sequence
 
 import uuid
 from dataclasses import dataclass, field, replace
@@ -386,6 +386,7 @@ class Runner:
         persistence: Persistence | None = None,
         model_registry: ModelRegistry | None = None,
         scheduler_limits: SchedulerLimits | None = None,
+        mcp_servers: Sequence[Any] | None = None,
     ) -> None:
         if not model_clients:
             raise ValueError("Runner requires at least one model client")
@@ -412,6 +413,13 @@ class Runner:
         self._registry = tool_registry if tool_registry is not None else ToolRegistry()
         for tool in tools or ():
             self._registry.register(tool)
+        # FR-123 (M33): MCP servers, configured in code. The mcp library is imported only
+        # here, when there are servers (NFR-34); None means no MCP at all (NFR-38).
+        self._mcp = None
+        if mcp_servers:
+            from .mcp import McpClients
+
+            self._mcp = McpClients(list(mcp_servers), frozenset(self._registry.names()))
         self._hook = hook if hook is not None else RuntimeHook()
         self._assembler = assembler if assembler is not None else ContextAssembler()
         # FR-76 (M19): with no persistence, the in-memory artifact and run-state
@@ -600,6 +608,18 @@ class Runner:
         if self._memory_states is None:
             self._memory_states = InMemoryRunStateStore(tenant_id, project_id, runs=self._admits)
         return self._memory_states.for_scope(tenant_id, project_id)
+
+    async def aclose(self) -> None:
+        """FR-124 (M33): closes this Runner's MCP connections, whichever loop their runs were on,
+        ending their servers and the servers' children; none opens after (NFR-39)."""
+        if self._mcp is not None:
+            await self._mcp.aclose()
+
+    async def __aenter__(self) -> Runner:
+        return self
+
+    async def __aexit__(self, *exc_info: Any) -> None:
+        await self.aclose()
 
     async def run(self, spec: AgentSpec, task: str, config: RunConfig) -> RunResult:
         """Drive one agent to a terminal status (FR-1): a run started with start()
@@ -985,6 +1005,11 @@ class Runner:
         # executor resolves. Every registered tool when the run carries no policy.
         policy = config.context_policy
         registry = self._registry if policy is None else policy.visible(self._registry, spec.tool_profile)
+        # FR-125 (M33): plus the MCP tools its agent names, rebuilt each turn; read once
+        # here so the manifest records the tools usable at start.
+        if self._mcp is not None:
+            registry = self._mcp.view(registry, spec.tool_profile, config.tenant_id, config.project_id)
+            await registry.prepare()
         window = self._context_window(config, recorded_model)
         sessions = self._sessions_for(scope)
         if self._persistence is not None:
@@ -1011,6 +1036,7 @@ class Runner:
                     tools_sent=[{"name": s.name, "schema_hash": s.schema_hash()} for s in registry.specs()],
                     gate_policy=None if config.gate_policy is None else config.gate_policy.to_json(),
                     approval_timeout=float(config.approval_timeout),
+                    mcp_servers=[] if self._mcp is None else self._mcp.records(),
                     model_id=recorded_model or "unspecified",
                     **self._model_versions(recorded_model, client_key),
                     policy_version=type(spec.checker()).__name__,
@@ -1080,7 +1106,10 @@ class Runner:
         ledger_run_id = config.ledger_run_id or run_id
         executor = ToolExecutor(
             registry=registry,
-            permission_checker=spec.checker(),
+            # P4-D30 (M33): with MCP servers, `<alias>__*` names the tools a configured server
+            # listed, read from this run's own view (round 6).
+            permission_checker=(spec.checker() if self._mcp is None or spec.permission_policy is not None
+                                else self._mcp.checker(spec.checker(), registry)),
             hook=self._hook,
             # A coroutine, which the executor awaits: see ToolExecutor._safe_emit.
             emit=emit_tool_called,
@@ -1150,6 +1179,7 @@ class Runner:
             approval_waits=self._approvals,
             approval_timeout=float(config.approval_timeout),
             emit_top=self._top_emitter(run_id, ledger_run_id, control),
+            tools_refresh=getattr(registry, "refresh", None),
         )
 
         # Only what the caller set: a run that sets none of M9's options sends

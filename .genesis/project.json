@@ -9,7 +9,7 @@
     "non_goals": [],
     "trust_boundary": "local repository",
     "created_at": "2026-09-05T14:48:57.894Z",
-    "updated_at": "2026-10-14T16:38:18.097Z"
+    "updated_at": "2026-10-20T05:20:14.308Z"
   },
   "policy": {
     "ponytail": "full",
@@ -23,19 +23,19 @@
     }
   },
   "lifecycle": {
-    "phase": "verify",
-    "status": "ready",
-    "active_task": null,
+    "phase": "build",
+    "status": "active",
+    "active_task": "M34-mcp-catalog",
     "blocker": null,
-    "next_action": "Review completed work and choose the next bounded outcome."
+    "next_action": "Run the task pre-flight."
   },
   "commands": {},
   "workflow": {
     "type": "new-product",
     "started_at": "2026-09-05T14:48:57.897Z",
     "spec_check": {
-      "at": "2026-10-13T10:05:06.028Z",
-      "source_hash": "a81a562d4e55ad12fd54785891be477d5051cf2fd131040217e4acbdffebd98a",
+      "at": "2026-10-18T07:40:07.946Z",
+      "source_hash": "ff2c7ea40ff092fda97c58a6aecb75b4ab99a3794be5655ae525e233e20a5d7a",
       "requirements": [
         "AC-1",
         "AC-10",
@@ -124,7 +124,13 @@
         "AC-86",
         "AC-87",
         "AC-88",
+        "AC-89",
         "AC-9",
+        "AC-90",
+        "AC-91",
+        "AC-92",
+        "AC-93",
+        "AC-94",
         "FR-1",
         "FR-10",
         "FR-100",
@@ -151,7 +157,21 @@
         "FR-12",
         "FR-120",
         "FR-121",
+        "FR-122",
+        "FR-123",
+        "FR-124",
+        "FR-125",
+        "FR-126",
+        "FR-127",
+        "FR-128",
+        "FR-129",
         "FR-13",
+        "FR-130",
+        "FR-131",
+        "FR-132",
+        "FR-133",
+        "FR-134",
+        "FR-135",
         "FR-14",
         "FR-15",
         "FR-16",
@@ -273,6 +293,12 @@
         "NFR-31",
         "NFR-32",
         "NFR-33",
+        "NFR-34",
+        "NFR-35",
+        "NFR-36",
+        "NFR-37",
+        "NFR-38",
+        "NFR-39",
         "NFR-4",
         "NFR-5",
         "NFR-6",
@@ -282,14 +308,14 @@
       ]
     },
     "plan_check": {
-      "at": "2026-10-13T10:05:41.323Z",
-      "source_hash": "dfe1a1c81bdfdf508ccd1eaf9f0f3d3fec8daa87c4c884bfc5a16f8301327c61"
+      "at": "2026-10-18T07:40:34.239Z",
+      "source_hash": "1aa46ef258a4ffc5cef9fc219db09ba95c88c7db57a1985872c65ed63795434a"
     },
     "plan_approval": {
       "human": "siva-rgb (owner)",
-      "reason": "Phase 4 increment 1 plan: M29 to M32 as P4-D12 orders them, each with unit, regression and independent-review gates.",
-      "at": "2026-10-13T10:05:41.492Z",
-      "source_hash": "dfe1a1c81bdfdf508ccd1eaf9f0f3d3fec8daa87c4c884bfc5a16f8301327c61"
+      "reason": "Phase 4 increment 2 plan: M33 to M37, owner said start M33",
+      "at": "2026-10-18T07:46:48.811Z",
+      "source_hash": "1aa46ef258a4ffc5cef9fc219db09ba95c88c7db57a1985872c65ed63795434a"
     }
   },
   "artifacts": [
@@ -386,7 +412,13 @@
         "AC-86",
         "AC-87",
         "AC-88",
+        "AC-89",
         "AC-9",
+        "AC-90",
+        "AC-91",
+        "AC-92",
+        "AC-93",
+        "AC-94",
         "FR-1",
         "FR-10",
         "FR-100",
@@ -413,7 +445,21 @@
         "FR-12",
         "FR-120",
         "FR-121",
+        "FR-122",
+        "FR-123",
+        "FR-124",
+        "FR-125",
+        "FR-126",
+        "FR-127",
+        "FR-128",
+        "FR-129",
         "FR-13",
+        "FR-130",
+        "FR-131",
+        "FR-132",
+        "FR-133",
+        "FR-134",
+        "FR-135",
         "FR-14",
         "FR-15",
         "FR-16",
@@ -535,6 +581,12 @@
         "NFR-31",
         "NFR-32",
         "NFR-33",
+        "NFR-34",
+        "NFR-35",
+        "NFR-36",
+        "NFR-37",
+        "NFR-38",
+        "NFR-39",
         "NFR-4",
         "NFR-5",
         "NFR-6",
@@ -542,12 +594,12 @@
         "NFR-8",
         "NFR-9"
       ],
-      "source_hash": "a81a562d4e55ad12fd54785891be477d5051cf2fd131040217e4acbdffebd98a",
+      "source_hash": "ff2c7ea40ff092fda97c58a6aecb75b4ab99a3794be5655ae525e233e20a5d7a",
       "approval": {
         "human": "siva-rgb (owner)",
-        "reason": "Phase 4 increment 1 (FR-111 to FR-121, NFR-30 to NFR-33, AC-84 to AC-88), second draft after the read-only review, with its nine spec-level choices accepted.",
-        "at": "2026-10-13T10:05:06.178Z",
-        "source_hash": "a81a562d4e55ad12fd54785891be477d5051cf2fd131040217e4acbdffebd98a"
+        "reason": "Phase 4 increment 2 second draft: FR-122 to FR-135, NFR-34 to NFR-39, AC-89 to AC-94, from P4-D16 to P4-D31 and the ten accepted choices",
+        "at": "2026-10-18T07:40:08.080Z",
+        "source_hash": "ff2c7ea40ff092fda97c58a6aecb75b4ab99a3794be5655ae525e233e20a5d7a"
       }
     }
   ],
@@ -1666,6 +1718,94 @@
       "status": "accepted",
       "source": null,
       "recorded_at": "2026-10-14T11:13:29.200Z"
+    },
+    {
+      "id": "DECISION-eb739963",
+      "title": "Phase 4 increment 2: split, protocol era, transports and features (P4-D16 to P4-D19, owner)",
+      "text": "From KNOWLEDGE-07544107, the owner chose on 2026-10-15. P4-D16 Split: increment 2 is native MCP and the tool catalog with snapshots (ADR-28), which the rug-pull defence makes inseparable; credential brokering (ADR-27) and tenant-scoped skills and instruction bundles become a third Phase 4 increment, specified once MCP exists. P4-D17 Era: dual-era, probing server/discover and falling back to the initialize handshake, as the 2026-07-28 spec advises. P4-D18 Transports: stdio and Streamable HTTP; not the deprecated HTTP+SSE. P4-D19 Features: tools (list, call, outputSchema validation, isError, list_changed), input-required results (MRTR) as a RunInterruption kind, elicitation in form and url mode through the interruption path, and resources and prompts.",
+      "status": "accepted",
+      "source": null,
+      "recorded_at": "2026-10-15T13:28:11.157Z"
+    },
+    {
+      "id": "DECISION-23aa8fd0",
+      "title": "Phase 4 increment 2: approval, catalog changes, naming and HTTP auth (P4-D20 to P4-D23, owner)",
+      "text": "The owner chose on 2026-10-15. P4-D20 Approval: a per-server policy, require by default, never, or per-tool overrides; the approver sees the full arguments; tool annotations never relax approval unless the server is configured as trusted, since the spec makes them untrusted. P4-D21 Catalog changes: catalog snapshots hash each tool description, schema and annotations; a tool whose hash changed is unavailable, with the reason recorded, until the owner accepts the new snapshot, and no standing decision for an old hash carries over. P4-D22 Naming: the qualified name is the configured server alias, two underscores, and the tool name, never serverInfo.name; per server an allow list then a deny list; agent tool profiles name qualified tools. P4-D23 HTTP auth: static configured headers for Streamable HTTP and environment variables for stdio, never in model context or stored rows; no OAuth client until the credential broker increment.",
+      "status": "accepted",
+      "source": null,
+      "recorded_at": "2026-10-15T13:28:58.769Z"
+    },
+    {
+      "id": "DECISION-b91d2e0d",
+      "title": "Phase 4 increment 2: dependency, server launch, exit signal and milestones (P4-D24 to P4-D27, owner)",
+      "text": "The owner chose on 2026-10-15. P4-D24 Dependency: the mcp library is an optional extra, agentsdk[mcp], pinned mcp==2.3.0; the core still imports without it (NFR-6), and the MCP module raises a clear error when the extra is missing; NFR-9 is amended accordingly. P4-D25 Launch: MCP servers come only from code-level configuration, never from a model or a file found at run time; the exact command, arguments and the names (not values) of environment variables are recorded in the ExecutionManifest; no sandbox before Phase 5. P4-D26 Exit signal: hostile servers under orchestration: a plan of children using real local MCP servers over stdio and Streamable HTTP, one changing a tool mid-run, one with a poisoned description, one shadowing another server tool name, one returning injection text and one asking for input; the change is blocked, names never collide, every result is untrusted, approvals and input-required are honoured, on both stores, ten times. P4-D27 Milestones: five. M33: the pre-flight (the M32 and example 23 carried items) and the stdio client, dual era, tools, naming, filtering and provenance. M34: catalog snapshots, the approval policy and blocking a changed tool. M35: Streamable HTTP with configured headers, and resources and prompts. M36: input-required results and elicitation as interruptions. M37: the exit signal.",
+      "status": "accepted",
+      "source": null,
+      "recorded_at": "2026-10-15T13:29:37.147Z"
+    },
+    {
+      "id": "DECISION-2f4fb823",
+      "title": "Phase 4 increment 2 after the spec review: connections, first sight, visibility and acceptance (P4-D28 to P4-D31, owner)",
+      "text": "After a read-only review of the first draft, the owner chose on 2026-10-18. P4-D28 Connection scope: one connection per server alias, tenant and project in a Runner, shared by that tenancy runs on one event loop; no server-side state crosses tenants; a crash restarts the connection once per connection lifetime. P4-D29 First sight: a tool seen for the first time is unusable until its hash is accepted, as a changed one is. P4-D30 Who is sent MCP tools: only agents whose tool_profile names the qualified tool or the alias wildcard, in every run whether or not it carries a ContextPolicy; built-in and application tools keep DECISION-ca1ad3e0. P4-D31 Acceptance: any user or service principal accepts per tool hash, per tenant and project; acceptance in code names its tenant, project and service principal in the server config. The drafter also splits the schema changes by milestone: 0016 at M33, 0017 at M34, 0018 at M36.",
+      "status": "accepted",
+      "source": null,
+      "recorded_at": "2026-10-18T07:02:56.949Z"
+    },
+    {
+      "id": "DECISION-c1be04a2",
+      "title": "Phase 4 increment 2: the ten spec-level choices of the second draft accepted (owner)",
+      "text": "On 2026-10-18 the owner accepted the ten choices the second draft of the Phase 4 increment 2 specification makes beyond P4-D16 to P4-D31, as listed in SPEC.md open questions under Second draft 2026-10-18: results untrusted even from a trusted server; untrusted tools destructive and sequential, trusted annotations mapped, by_annotations for trusted servers only; qualified names within A-Za-z0-9_- up to 64 with skips for duplicates and clashes; MCP tools never registered, each turn rebuilt, Runner gains aclose; no executor deadline on MCP tools, each round trip timed; resources and prompts read by the application through tenancy-scoped Runner methods, offered to the model only with resources_as_tool, versioned and accepted; input requests waited inside step 6, answered by Runner.respond and RunHandle.respond, sampling and roots unsupported, at most three input rounds under the original approval; migrations 0016, 0017 and 0018 by milestone; a url-mode URL stored whole with a README warning; the carried caveats as FR-122 states. The owner asked to sign and move to the plan.",
+      "status": "accepted",
+      "source": null,
+      "recorded_at": "2026-10-18T07:40:06.541Z"
+    },
+    {
+      "id": "DECISION-4b1ea0b8",
+      "title": "M33 round 2: every wait on a server bounded, the wildcard guarded, two caveats settled (owner)",
+      "text": "The owner chose for M33 round 2: bound every await on server-controlled input, not only the two sites found: a connect_timeout on StdioServer (default 30 s) over the start, the discover or initialize exchange and the whole listing; the listing capped by pages as well as tools; calls already bounded by call_timeout; closing a connection bounded; each wait tested with a server that starts but never answers (a banner then silence, reads but never replies, endless empty pages, ignores the end of its input). The srv__* wildcard allows only names with a tool part after the separator. The inherited environment (the library twelve names) is declared in the README, and the output-error mapping is pinned by a test that fails if the library message changes.",
+      "status": "accepted",
+      "source": null,
+      "recorded_at": "2026-10-18T10:01:11.031Z"
+    },
+    {
+      "id": "DECISION-7b366ac6",
+      "title": "M33 round 3: an SDK-owned deadline on every call, a wedged connection discarded, aclose final, stall dumps of asyncio tasks (owner)",
+      "text": "The owner chose for M33 round 3: every MCP call runs under the SDK own asyncio deadline, call_timeout plus one second, so the library read timeout still decides a slow honest tool; when the SDK deadline fires first the request write was blocked and the stream may hold half a message, so that connection is ended, the call fails ToolTimeout, and the next call restarts it under the restart-once rule. aclose marks the Runner loop closed, so no connection reopens on it. Tested structurally: after a wedged write every later call returns within its bound (70 KB and 2 MB), and a run in flight across aclose starts no server. faulthandler_timeout stays, and a conftest watchdog prints every asyncio task stack of the running loop on the same timeout, listed for review as an edit to conftest.py.",
+      "status": "accepted",
+      "source": null,
+      "recorded_at": "2026-10-19T07:30:13.468Z"
+    },
+    {
+      "id": "DECISION-7889f649",
+      "title": "M33 round 4: one lifecycle gate made final under one lock, sessions owned by their calls, every loop closed (owner)",
+      "text": "The owner asked that the repeated rejections be fixed carefully so the next round passes. Round 4 redesigns the connection lifecycle rather than patching a site: ensure is the only place a server starts and checks closed under the connection lock; close sets closed and takes the same lock, so a start in progress finishes and is then ended and nothing starts after; McpClients.aclose closes the Runner to MCP for good, on every event loop, closing connections of other running loops on their own loop; a call captures its own session (client and task) and a discard ends only that session; the serve task unsets the client only while it is the current session; the wedge margin is 5 s past call_timeout. Tests cover every holder: a retained tool and a retained connection after aclose, aclose during a connect, a stale session ending after a restart, an honest slow tool keeping its connection, and a run on another loop. Before review, a fresh agent attacks the lifecycle adversarially with runtime probes.",
+      "status": "accepted",
+      "source": null,
+      "recorded_at": "2026-10-19T08:31:24.295Z"
+    },
+    {
+      "id": "DECISION-7c9da7ae",
+      "title": "M33 round 4: server regexes validated in a process of their own (owner), and the clarifications the redesign makes",
+      "text": "A third pre-review found that a server schema pattern ran in this process, and Python re holds the GIL, so a catastrophic one froze every thread past every SDK bound, refuting the spec risk entry that worker-thread validation contains it. The owner chose validation in a subprocess: a schema carrying pattern or patternProperties is validated, input by the executor and output through the session validation hook, in a short-lived process of the real interpreter ended at 10 s; any other schema is validated in process, since without a regular expression validation cannot stall. Clarifications of the signed spec, for review: (1) FR-124 says a run on another loop opens its own connection; the round 4 design keeps all of a Runner connections on one private event loop on its own thread, which P4-D28 (one event loop per connection) still describes, and which removes every loop-affinity defect the pre-reviews found; (2) FR-123 and AC-90 name UnknownMcpServer for Runner.accept_tools, respond and the mcp_ methods, which arrive with M34 to M36, so the type arrives with them; (3) the <alias>__* wildcard is the MCP view: a run with servers wraps its default allowlist so the wildcard allows only a configured server tools, and runs without MCP are unchanged (NFR-38); (4) a restart a call makes reports its events at the next refresh.",
+      "status": "accepted",
+      "source": null,
+      "recorded_at": "2026-10-19T10:18:45.617Z"
+    },
+    {
+      "id": "DECISION-969d5d78",
+      "title": "M33 round 5: no server schema is ever evaluated in process, and the bounds are checked by tests (owner)",
+      "text": "Following the round 4 rejection and the owner instruction to fix the family at its root: every evaluation against a server-supplied schema -- the model arguments, the server results, and the listing schema checks, one batch per listing -- runs in a short-lived process of the real interpreter ended at 10 s; the regular-expression distinction is removed, since deep anyOf with none is exponential too. Two tests make the invariant checkable: a runtime test patches jsonschema in the test process during a run of MCP tools and fails if any schema other than JSON Schema own metaschemas is evaluated there; a static test walks agentsdk/mcp, requires every await, async with and blocking call to appear in a table naming its bound, and every subprocess call to carry a timeout, failing on an unlisted wait or a stale entry.",
+      "status": "accepted",
+      "source": null,
+      "recorded_at": "2026-10-19T12:49:47.875Z"
+    },
+    {
+      "id": "DECISION-5d598bcd",
+      "title": "M33 round 6: every guard an asserted property, every earlier finding answered (author choices, for the owner to confirm; re-recorded)",
+      "text": "First recorded as DECISION-e8746c66 on 2026-10-19 during a gate run, whose write-back of project.json lost it; the round 6 brief cites that id. After round 5 was rejected for the alias wildcard, which round 4 had named and round 5 dropped, round 6 makes four choices the owner has not yet ruled on. ONE, the wildcard: <alias>__* allows a call only when the tool the run executes under that name is the very object a connection built from its server listing, read from the run own view; never by name shape. TWO, one entry the SDK reads never fails its server: an entry the SDK cannot store or build, an empty name, or an invalid output schema is skipped with its reason; entries the mcp library itself refuses still refuse the whole listing, as declared. THREE, the listing is checked 50 tools to a process, up to twenty side by side within the one 10 s deadline, and a chunk that cannot be checked has all its tools skipped. FOUR, every failure of an MCP tool, before it ran too, carries the tool declared untrusted provenance, since its schemas are the server text. Also: McpServerUnavailable is asserted of the outcome, once a run; the static bounds tests are inverted with a test of the test; aclose returns once the engine thread has ended. Process: the repair brief carries a ledger of every finding and caveat of all earlier rejections, and a missing or false row is itself a finding.",
+      "status": "accepted",
+      "source": null,
+      "recorded_at": "2026-10-20T05:15:57.190Z"
     }
   ],
   "knowledge": [
@@ -2660,6 +2800,78 @@
       "source": null,
       "tags": [],
       "recorded_at": "2026-10-14T16:38:15.589Z"
+    },
+    {
+      "id": "KNOWLEDGE-07544107",
+      "title": "Before the Phase 4 increment 2 spec: MCP 2026-07-28, the mcp 2.3.0 client, comparator SDKs and client-side attacks",
+      "text": "Researched 2026-10-15, primary sources; the two load-bearing facts verified by the orchestrator. Spec: the current revision is 2026-07-28 (modelcontextprotocol.io/specification/2026-07-28/changelog), stateless: the initialize handshake and Mcp-Session-Id are removed, each request carries protocol version and client capabilities in _meta, servers MUST implement server/discover, list_changed and resource updates come only on an opted-in subscriptions/listen stream, SSE resumability is removed (a broken stream is re-issued as a new request), Multi Round-Trip Requests replace server-initiated requests (a result with resultType input_required carries inputRequests; the client retries with inputResponses), list results carry ttlMs and cacheScope, tasks moved to an extension. 2025-11-25 and earlier are legacy; a dual-era client SHOULD probe server/discover and fall back to initialize, not keyed to one error code. Deprecated in 2026-07-28: roots, sampling, logging, dynamic client registration (replaced by Client ID Metadata Documents); HTTP+SSE deprecated since 2025-03-26. Transports: stdio and Streamable HTTP; on stdio cancel is notifications/cancelled, shutdown is close stdin then terminate (Job Objects on Windows). Tools: paginated, inputSchema JSON Schema 2020-12, optional outputSchema with structuredContent the client SHOULD validate, annotations MUST be treated as untrusted unless the server is trusted, isError results go to the model, a human SHOULD be able to deny calls, aggregating clients SHOULD prefix names and not rely on serverInfo.name; names 1 to 128 of A-Za-z0-9_.-. Elicitation is optional, form or url mode, secrets only by url mode, which the client must show in full and open only with consent. Authorization: optional, HTTP only (stdio takes credentials from the environment); OAuth 2.1 with PKCE, RFC 9728 protected resource metadata, RFC 8707 resource on every authorization and token request, audience-bound tokens, no token passthrough, credentials keyed by issuer, step-up on insufficient_scope; never open an authorization URL through a shell (CVE-2025-6514 in mcp-remote was RCE that way). Client library: mcp 2.3.0 (2026-10-02, PyPI verified, requires httpx2); 2.x has a single Client with mode auto (probe then fall back), legacy or a pinned version; list cache with cache_mode; timeouts raise MCPError -32001; cancelling the awaiting task sends notifications/cancelled; on 2026-07-28 connections sampling, elicitation and roots callbacks raise NoBackChannelError, and whether 2.x handles input_required client-side is unverified; OAuthClientProvider over httpx2; on Windows stdio servers run in a Job Object with kill-on-close and stop by hard kill after stdin closes. Comparators: OpenAI Agents SDK has MCPServerStdio and MCPServerStreamableHttp (SSE deprecated), cache_tools_list, tool_filter allow then block, optional server prefix, require_approval always, never, per tool or a callable that does not see the arguments, no result trust labels; Claude Agent SDK names tools mcp__server__tool, blocks them until allowed, runs no OAuth itself (the app supplies tokens), refreshes the list on list_changed, warns of prompt injection; Google ADK and Pydantic AI have toolsets with filters and prefixes. The official MCP Registry is a preview holding metadata only; no standard exists for credential brokering beyond url-mode elicitation and enterprise-managed authorization; vendor gateways hold per-user tokens. Attacks to design against: tool poisoning, rug pulls (a tool changing after approval), cross-server shadowing, prompt injection through results, token theft and passthrough, SSRF in OAuth discovery, malicious stdio launch commands.",
+      "source": null,
+      "tags": [],
+      "recorded_at": "2026-10-15T13:18:33.801Z"
+    },
+    {
+      "id": "KNOWLEDGE-9593410e",
+      "title": "Facts the Phase 4 increment 2 spec review measured in the code, and what the second draft changes",
+      "text": "Read-only review of the first draft, 2026-10-18, claims verified by the orchestrator where marked. Verified: migration 0014 checks kind = tool_approval and trigger in policy, predicate, hook, and decisions are approve or reject with principal iff source principal and expiry or cancel only reject, so input requests need new constraints, not a wider kind; without a ContextPolicy every run is sent the Runner-wide registry (api.py:987), shared by every tenant, so MCP descriptions would reach every agent; the executor wraps a whole tool call in asyncio.wait_for(timeout_seconds) (executor.py:565), so a call waiting for input dies at its timeout; tests/test_distribution.py:236-237, requirements.txt, pyproject examples and scripts/requirements.txt pin mcp==2.2.0; pyproject packages list agentsdk and agentsdk.providers only; the draft cited FR-36 for validation (it is FR-5 step 2), FR-40 for the cap (FR-41) and FR-42 for error provenance (FR-40). Reported, for the second draft: one migration cannot serve three milestones; the tool registry raises on duplicates at registration and has no removal, and a per-run tenant-filtered view refreshed each turn is new work, since the view is built once at run start; provenance comes from ToolOutput.source_uri or the schema hash; standing decisions match on agent and tool name and only for trigger policy (loop.py:710-718); after_tool hooks can replace provenance (a recorded risk); RunEvent needs a run, so connection-level events must be emitted on the run that caused them; briefed inputs are artifacts, so a resource read is stored as an artifact first; Message has no provenance field; a server schema is validated on the loop thread, so a hostile pattern is a stall risk; a url-mode URL may carry a token; Runner has no aclose today and examples never close one. Unverified: whether httpx2 installs beside httpx 0.28.1.",
+      "source": null,
+      "tags": [],
+      "recorded_at": "2026-10-18T07:03:01.715Z"
+    },
+    {
+      "id": "KNOWLEDGE-34749df5",
+      "title": "M33 round 1 rejected: starting and listing an MCP server had no bound, the seventh bounded-one-path defect",
+      "text": "Opus 5 rejected M33 round 1 at 09:41:56Z on source hash 2058f874 (unit 40, regression 2212); it touched no source file, its probes used in-memory persistence, the store is at baseline, and the reject did not change the content hash (.genesis is excluded). Defect, reproduced by the orchestrator relay and confirmed by the orchestrator in code: _Connection._open awaits the server start, the discover or initialize exchange and the listing with no timeout (only call_tool passes read_timeout_seconds), so a server that starts but never speaks MCP hangs the run: a launcher printing one non-JSON banner line then sleeping, and a server that reads but never answers, both hung past 25 s with no result, while a missing command and an immediate exit fail fast; and the listing loop bounds tools, not pages, so empty pages with a cursor loop forever. prepare() runs at api.py before the manifest, so the run hangs before it is recorded. This violates FR-124 and AC-90, undeclared, reachable by ordinary misconfiguration. Pattern: the path under attention was bounded and its sibling left unbounded, the seventh appearance; the repair sweeps every wait on server-controlled input. Caveat promoted: a profile entry srv__* allowed a tool named exactly srv, because partition yields no separator. Accepted with notes: the output-error mapping keys on the library message, pinned by mcp==2.3.0 and the output-mismatch test; the inherited environment is the library twelve names, missing TMP, undeclared. Not completed by the reviewer and accepted: a pathological-pattern schema (blocked interpreter shutdown, already a declared risk), example 27 live.",
+      "source": null,
+      "tags": [],
+      "recorded_at": "2026-10-18T10:01:10.888Z"
+    },
+    {
+      "id": "KNOWLEDGE-7d61cfab",
+      "title": "M33 round 2 rejected: a request write to a server that stopped reading had no bound, and aclose did not stop reopening",
+      "text": "Fable 5.1 rejected M33 round 2 at 06:52:05Z on source hash 960ad6a3 (unit 47, regression 2219); no source file touched, the store at baseline. Defect 1, reproduced by the orchestrator relay and confirmed in the mcp library source: the dispatcher writes a request first (jsonrpc_dispatcher.py line 410, a bare zero-buffer send) and arms the read clock only after it (line 414), so read_timeout_seconds cannot bound the write; a server that stops reading its input wedges the run once a request fills the pipe: freeze then a 70 KB or 2 MB call then any further call hung past 40 s, while the round 2 test shape (one call after the wedge) passed and a 30 KB control stayed bounded. The round 2 brief claimed the call path was already bounded; it was not, and the gap was in the round own deliverable. Defect 2, confirmed in code: McpClients.aclose pops this loop connections but records no closed state, and connection() recreates any missing one, so a run in flight starts a new server on a closed Runner, against NFR-39. The family recurring inside its own repair: enumerating awaits has missed once per round; state the invariant (the SDK owns the deadline of every await that can block on a peer) and test it structurally (a second call after a wedged write must return). The reviewer also located a suspect for the one-off 68 percent gate stall near test 1508 in test_phase2_readiness.py, not reproduced, and noted faulthandler_timeout dumps C thread stacks only, so an asyncio stall would show the loop polling, not the stuck coroutine. The connect overshoot of about 2 s past connect_timeout is the library PROCESS_TERMINATION_TIMEOUT after stdin closes. Its suite run had 3 live-gateway failures from its own quoted BASE_URL export, green on rerun.",
+      "source": null,
+      "tags": [],
+      "recorded_at": "2026-10-19T07:30:10.682Z"
+    },
+    {
+      "id": "KNOWLEDGE-27138d74",
+      "title": "M33 round 3 rejected: a connection held across aclose started a server no later aclose could reach",
+      "text": "Sonnet 5 rejected M33 round 3 at 08:06:26Z on source hash eb33cbc8 (unit 50, regression 2222, both verified real from the evidence files by the orchestrator relay). Defect, reproduced: close() never marked a connection final, and ensure() gated only on a live client or a spent restart, so a _Connection retained past aclose -- by a tool from an earlier turn -- started a fresh server; aclose had popped it, so no later aclose could reach it (NFR-39). connection() did refuse a closed loop, which covered the next turn refresh, the path round 3 tested, and missed the retained-object path: the third round running of a guarded path beside an unguarded one. Secondary, kept: serve() unset the client whatever session was current, so a call restarting the server during a discard left a live but unusable server with the restart spent. Measured: a 0.7 s loop stall kept the 1 s wedge margin, 1.6 s lost it and misreported an honest timeout. Rounds 1 and 2 repairs re-probed by the relay and holding. Process note: the reviewer stopped at the first defect and took the gate evidence on trust; the relay verified the evidence. Root cause of three rejections, by the orchestrator: lifecycle state spread over several flags checked differently by different paths; the repair is structural -- one gate for every start, made final under one lock -- tested for every holder, not the path a reviewer used.",
+      "source": null,
+      "tags": [],
+      "recorded_at": "2026-10-19T08:31:24.158Z"
+    },
+    {
+      "id": "KNOWLEDGE-30f62c4a",
+      "title": "M33 round 4 rejected: a server schema with no regular expression still validated in process, unbounded",
+      "text": "Opus 5 rejected M33 round 4 at 12:20:07Z on source hash 56539250 (unit 71, regression 2243; the reviewer re-ran the gates after a genesis gate --check accident overwrote the evidence, same hash and counts). Defect, reproduced by the orchestrator relay and confirmed by the orchestrator: round 4 isolated only schemas carrying pattern or patternProperties, on the premise that any other could not stall; a 1.4 KB schema of $ref-chained anyOf with no regular expression took 118 s at depth 20, about 4x per level, in process: at input (executor step 2, to_thread with no deadline, and MCP tools carry no timeout_seconds) and at output (the library validator on the engine loop, so the call deadline on that loop could not fire, and aclose did not return within 45 s with the server alive, NFR-39). Also measured by the orchestrator: check_schema of a duplicating nested schema is exponential too. The fourth round running of one family: a property enforced on the enumerated path and missed on its sibling, now inside a redesign meant to end it; the lifecycle redesign itself held. The reviewer completed all seven attack items and re-ran the gates first-hand. Its --check accident generalises the CLI rule: any unrecognised flag is swallowed and the command runs. Structural ask: the invariant must be checkable, every wait reachable from server data naming its deadline, with a test that fails when one does not.",
+      "source": null,
+      "tags": [],
+      "recorded_at": "2026-10-19T12:49:47.733Z"
+    },
+    {
+      "id": "KNOWLEDGE-73342492",
+      "title": "M33 round 5 rejected: the alias wildcard allowed a registered tool under a configured alias, a finding round 4 had named and round 5 dropped",
+      "text": "Fable 5.1 rejected M33 round 5 at 15:44:25Z on source hash 71672b3e (unit 81, regression 2253, both re-run by the reviewer). _McpAllowlist.check allowed a name when the text before its first double underscore was a configured alias whose wildcard the profile held, and never asked whether the name was a tool of that server, so a registered first-party host__wipe ran for a profile of host__* once a server aliased host was configured (reproduced first-hand: ALLOW with the server, DENY without it, DENY with only other). Round 4 had named this as its third finding; the round 5 brief did not mention it, as fix, deferral or dispute, so the reviewer re-found it. Process lesson: the previous reject reason is the next round contract; every repair brief carries a ledger of every finding and caveat of every earlier rejection with its status, and a missing or false row is itself a finding. Everything round 5 was built for held under attack: isolation failed closed on 11 malformed child outputs, kills and timeouts; remote refs by http, file, UNC and a base-URI trick were unreadable with no connection; deep anyOf ended at 10.09 s; the caller deadline fired as _Closed; NFR-39 held. Caveats carried into round 6: a NUL in one listed schema made the whole server unavailable; the one-batch 10 s listing check refused honest listings past about 45k properties; the checker child stdin is written before its clock (not server-reachable); the static bounds test missed async for, .get, .recv, os.read, readline, run_until_complete, check_output and helpers in other modules; secret.json (18 bytes, untracked, not ignored) sits at the root and is in the content hash.",
+      "source": null,
+      "tags": [],
+      "recorded_at": "2026-10-19T17:41:51.038Z"
+    },
+    {
+      "id": "KNOWLEDGE-cf82c576",
+      "title": "A genesis record written while a gate runs is lost when the gate writes project.json back",
+      "text": "On 2026-10-19 DECISION-e8746c66 was recorded at about 18:20Z while the M33 gate (started 18:10Z) was running; the gate wrote .genesis/project.json back when it ended and the decision vanished, though the CLI had printed Recorded. The round 6 reviewer found the cited id absent. Record knowledge and decisions only when no gate or other genesis command is running, and confirm the id is in project.json afterwards.",
+      "source": null,
+      "tags": [],
+      "recorded_at": "2026-10-20T05:15:57.322Z"
+    },
+    {
+      "id": "KNOWLEDGE-d5a17d72",
+      "title": "M33 round 6 approved after five rejections; four items go to M34 pre-flight",
+      "text": "Sonnet 5 approved M33 round 6 at 05:02:15Z on source hash 6ab24b2c (unit 94 passed in 263 s, regression 2266 passed in 990 s, re-run independently: 2266 in 793 s), the first round of six with no reachable defect; all seven attack items probed and every row of the findings ledger confirmed, each README citation present. The identity wildcard held against eight scenarios including two tenancies and a stale turn-1 tool object. Carried to M34 pre-flight, each to go in its findings ledger: (1) a qualified name in StdioServer.deny is silently ignored (deny compares the bare listed name) while a qualified name in allow fails closed, a control failing permissive on operator error: refuse a qualified name in allow and deny with ValueError; (2) the bounds test exempts calls by callee name with no look at arguments, so open(server_path) or re.compile(server_pattern) would pass it: key the exemptions on the argument; (3) approval_overrides keys are not checked against the listing, so a mistyped key under approval never leaves that tool unapproved (M34, FR-128); (4) example 27 live was not run in round 6. Also: the M33 task read rejected beside three passing gates because no control resume followed the round 5 rejection; control approve accepted it without complaint, the third CLI action that arguably should refuse. secret.json added to .gitignore at close, by the owner.",
+      "source": null,
+      "tags": [],
+      "recorded_at": "2026-10-20T05:20:14.307Z"
     }
   ],
   "tasks": [
@@ -2682,9 +2894,9 @@
           "status": "pass",
           "evidence": {
             "human": "siva-rgb (owner)",
-            "reason": "Phase 4 increment 1 (FR-111 to FR-121, NFR-30 to NFR-33, AC-84 to AC-88), second draft after the read-only review, with its nine spec-level choices accepted.",
-            "source_hash": "f08a45b21d44e144e8c859854da7993bf3e83b0aa38c1a358e07ce60ef22da90",
-            "observed_at": "2026-10-13T10:05:06.178Z"
+            "reason": "Phase 4 increment 2 second draft: FR-122 to FR-135, NFR-34 to NFR-39, AC-89 to AC-94, from P4-D16 to P4-D31 and the ten accepted choices",
+            "source_hash": "69e8446d77b88c173e45725ce0a0d0e4091951f93385ba66256cecb646f1da72",
+            "observed_at": "2026-10-18T07:40:08.080Z"
           }
         }
       ],
@@ -2694,7 +2906,7 @@
       "failures": [],
       "limitations": [],
       "created_at": "2026-09-05T14:48:57.897Z",
-      "updated_at": "2026-10-13T10:05:06.178Z"
+      "updated_at": "2026-10-18T07:40:08.080Z"
     },
     {
       "id": "M1-primitives",
@@ -5027,6 +5239,267 @@
       "limitations": [],
       "created_at": "2026-10-13T10:05:20.227Z",
       "updated_at": "2026-10-14T16:38:18.096Z"
+    },
+    {
+      "id": "M33-mcp-stdio-client",
+      "outcome": "M32 caveats settled; an agent uses an MCP server over stdio natively, dual-era, with qualified names, filters and untrusted results",
+      "state": "done",
+      "risk": "high",
+      "owner": null,
+      "scope": [],
+      "dependencies": [],
+      "requirements": [
+        "FR-122",
+        "FR-123",
+        "FR-124",
+        "FR-125",
+        "FR-126",
+        "AC-89",
+        "AC-90",
+        "NFR-34",
+        "NFR-35",
+        "NFR-37",
+        "NFR-38",
+        "NFR-39"
+      ],
+      "gates": [
+        {
+          "id": "unit",
+          "command": ".venv\\Scripts\\python.exe -m pytest tests/test_mcp_carried.py tests/test_mcp_client.py -q",
+          "mandatory": true,
+          "status": "pass",
+          "evidence": {
+            "path": ".genesis/evidence/M33-mcp-stdio-client-unit.json",
+            "source_hash": "6ab24b2c582b1e58cdb9b468bfd1d37bc9165b61d2c79b743e3cb7c9905ce128",
+            "hash": "2b956c4f29f9556cbcc9c7aab3cde3d028b2f5d3ba57910b0da08d0c7f2b7396",
+            "observed_at": "2026-10-20T03:54:48.507Z"
+          }
+        },
+        {
+          "id": "regression",
+          "command": ".venv\\Scripts\\python.exe -m pytest -q",
+          "mandatory": true,
+          "status": "pass",
+          "evidence": {
+            "path": ".genesis/evidence/M33-mcp-stdio-client-regression.json",
+            "source_hash": "6ab24b2c582b1e58cdb9b468bfd1d37bc9165b61d2c79b743e3cb7c9905ce128",
+            "hash": "37ff533b0ab948ea0f9ea012d4ea87512c6afdc5a631385663ab9104c058ce7a",
+            "observed_at": "2026-10-20T04:11:20.402Z"
+          }
+        },
+        {
+          "id": "independent-review",
+          "command": "",
+          "mandatory": true,
+          "status": "pass",
+          "evidence": {
+            "human": "Sonnet 5",
+            "reason": "Round 6 review by Sonnet 5. Verified first-hand: content hash 6ab24b2c recomputed and equal to the source_hash of both gate evidence files; unit 94 passed, regression 2266 passed, and a full suite re-run here also passed 2266 in 793 s. Wildcard asserted as a property: a registered host__wipe, one registered after the Runner was built, a late shadow, a ContextPolicy run, a tool named exactly the alias, host__a__b, another tenancy tool object and a turn-1 object all denied or not served, while the server own tools ran. Round 5 invariants hold: no server schema evaluated in process (flat input, output and listing included, which supports the disputed ledger row), a garbage checker child fails closed, caller deadline gives ToolTimeout at 3.2 s, pre-run validation failures carry untrusted MCP provenance, aclose ends the server process and a run after aclose starts none. A 120-tool listing with a hanging chunk skips exactly its 50 tools in order and leaves no thread or process. NUL in names and serverInfo is stored as an unstorable marker. Ledger complete and README rows present. Caveats: the bounds test exempts calls by callee name, not by target, so open(path) and re.compile(s) added to a copy of the module were not caught (latent, present uses are honest); approval_overrides keys are not checked against the listing and a qualified name in deny is silently ignored; DECISION-e8746c66 cited by the brief is absent from the record; the gate can be suspended by Modern Standby so a wrapper holding SetThreadExecutionState is needed; example 27 live was not run; secret.json remains at the repository root and in the content hash.",
+            "source_hash": "6ab24b2c582b1e58cdb9b468bfd1d37bc9165b61d2c79b743e3cb7c9905ce128",
+            "observed_at": "2026-10-20T05:02:15.221Z"
+          }
+        }
+      ],
+      "next_action": "Run the task pre-flight.",
+      "blocker": null,
+      "notes": [],
+      "failures": [],
+      "limitations": [],
+      "created_at": "2026-10-18T07:40:33.277Z",
+      "updated_at": "2026-10-20T05:20:03.595Z"
+    },
+    {
+      "id": "M34-mcp-catalog",
+      "outcome": "No MCP tool runs unless its current version is accepted, and approval follows the server policy bound to the tool hash",
+      "state": "active",
+      "risk": "high",
+      "owner": null,
+      "scope": [],
+      "dependencies": [],
+      "requirements": [
+        "FR-127",
+        "FR-128",
+        "FR-129",
+        "AC-91",
+        "NFR-35",
+        "NFR-36",
+        "NFR-38"
+      ],
+      "gates": [
+        {
+          "id": "unit",
+          "command": ".venv\\Scripts\\python.exe -m pytest tests/test_mcp_catalog.py -q",
+          "mandatory": true,
+          "status": "pending",
+          "evidence": null
+        },
+        {
+          "id": "regression",
+          "command": ".venv\\Scripts\\python.exe -m pytest -q",
+          "mandatory": true,
+          "status": "pending",
+          "evidence": null
+        },
+        {
+          "id": "independent-review",
+          "command": "",
+          "mandatory": true,
+          "status": "pending",
+          "evidence": null
+        }
+      ],
+      "next_action": "Run the task pre-flight.",
+      "blocker": null,
+      "notes": [],
+      "failures": [],
+      "limitations": [],
+      "created_at": "2026-10-18T07:40:33.466Z",
+      "updated_at": "2026-10-18T07:40:33.467Z"
+    },
+    {
+      "id": "M35-mcp-http-resources",
+      "outcome": "MCP servers over Streamable HTTP with configured headers, and resources and prompts read per tenancy",
+      "state": "queued",
+      "risk": "high",
+      "owner": null,
+      "scope": [],
+      "dependencies": [],
+      "requirements": [
+        "FR-130",
+        "FR-131",
+        "FR-132",
+        "AC-92",
+        "NFR-35",
+        "NFR-37",
+        "NFR-38"
+      ],
+      "gates": [
+        {
+          "id": "unit",
+          "command": ".venv\\Scripts\\python.exe -m pytest tests/test_mcp_http.py -q",
+          "mandatory": true,
+          "status": "pending",
+          "evidence": null
+        },
+        {
+          "id": "regression",
+          "command": ".venv\\Scripts\\python.exe -m pytest -q",
+          "mandatory": true,
+          "status": "pending",
+          "evidence": null
+        },
+        {
+          "id": "independent-review",
+          "command": "",
+          "mandatory": true,
+          "status": "pending",
+          "evidence": null
+        }
+      ],
+      "next_action": "Run the task pre-flight.",
+      "blocker": null,
+      "notes": [],
+      "failures": [],
+      "limitations": [],
+      "created_at": "2026-10-18T07:40:33.650Z",
+      "updated_at": "2026-10-18T07:40:33.651Z"
+    },
+    {
+      "id": "M36-mcp-input",
+      "outcome": "A server request for input pauses its call as an interruption a person answers",
+      "state": "queued",
+      "risk": "high",
+      "owner": null,
+      "scope": [],
+      "dependencies": [],
+      "requirements": [
+        "FR-133",
+        "FR-134",
+        "AC-93",
+        "NFR-30",
+        "NFR-31",
+        "NFR-38"
+      ],
+      "gates": [
+        {
+          "id": "unit",
+          "command": ".venv\\Scripts\\python.exe -m pytest tests/test_mcp_input.py -q",
+          "mandatory": true,
+          "status": "pending",
+          "evidence": null
+        },
+        {
+          "id": "regression",
+          "command": ".venv\\Scripts\\python.exe -m pytest -q",
+          "mandatory": true,
+          "status": "pending",
+          "evidence": null
+        },
+        {
+          "id": "independent-review",
+          "command": "",
+          "mandatory": true,
+          "status": "pending",
+          "evidence": null
+        }
+      ],
+      "next_action": "Run the task pre-flight.",
+      "blocker": null,
+      "notes": [],
+      "failures": [],
+      "limitations": [],
+      "created_at": "2026-10-18T07:40:33.851Z",
+      "updated_at": "2026-10-18T07:40:33.852Z"
+    },
+    {
+      "id": "M37-mcp-contention",
+      "outcome": "Hostile MCP servers under orchestration are contained on both stores",
+      "state": "queued",
+      "risk": "high",
+      "owner": null,
+      "scope": [],
+      "dependencies": [],
+      "requirements": [
+        "FR-135",
+        "AC-94",
+        "NFR-22",
+        "NFR-34",
+        "NFR-35",
+        "NFR-36",
+        "NFR-37",
+        "NFR-38",
+        "NFR-39"
+      ],
+      "gates": [
+        {
+          "id": "unit",
+          "command": ".venv\\Scripts\\python.exe -m pytest tests/test_mcp_contention.py -q",
+          "mandatory": true,
+          "status": "pending",
+          "evidence": null
+        },
+        {
+          "id": "regression",
+          "command": ".venv\\Scripts\\python.exe -m pytest -q",
+          "mandatory": true,
+          "status": "pending",
+          "evidence": null
+        },
+        {
+          "id": "independent-review",
+          "command": "",
+          "mandatory": true,
+          "status": "pending",
+          "evidence": null
+        }
+      ],
+      "next_action": "Run the task pre-flight.",
+      "blocker": null,
+      "notes": [],
+      "failures": [],
+      "limitations": [],
+      "created_at": "2026-10-18T07:40:34.069Z",
+      "updated_at": "2026-10-18T07:40:34.070Z"
     }
   ],
   "learning_proposals": [],
@@ -6129,17 +6602,116 @@
       "human": "Sonnet 5",
       "reason": "Round 3 approve. Re-ran the full suite myself with the cache off: 2172 passed in 585s. Ran example 26 live once: all 7 checks passed, run removed by id, store back to 10351 runs, 19 in example-tenant, interruption tables 0, 0 advisory locks. Built the absence of each check with runtime patches in the live shape and offline: plan cancelled, call run twice, ran while flagged undecided, approvals turned into rejects, an approve that never landed (a, d, base), another person rejecting a.txt first, a view with no decision, a reject without a message, a reject turned into an approve, b.txt never decided, c.txt never decided, executions seen in reverse; each reported FAIL on the expected label and none raised. Task 3: the race losing reject carries message None on every seed I printed, so the rejection witness cannot be met without b.txt today. Case rules: an upper-case stale orphan is swept, a fresh one and a prefix-sibling survive, reserved in any case including in a subfolder, near-miss names allowed. Caveats, none a finding: (1) on the live path nothing witnesses a.txt, d.txt, base.txt or e.txt being decided if the screen skips them (UNDECIDED edit passes all 7 live checks); offline the folder and sources checks catch it, and FR-121 lists no such live check; (2) the rejection witness is any reason-carrying principal rejection, not b.txt, so it would be satisfied if decide_twice ever passed a message (I patched that in and b.txt never decided passed on 5 of 8 seeds); latent; (3) re.IGNORECASE folds Unicode beyond NTFS, so the sweep of k.txt deleted a stale orphan of a target named with the Kelvin sign; garbage older than a minute, cosmetic; (4) the conftest diff adds one assert before connect, a clearer failure only, and the ordering dependency holds; (5) stored independent-review pass in project.json is round 1 evidence, not mine.",
       "revision": null
+    },
+    {
+      "id": "fc0efb69-45cb-41e4-bc60-bba6496bdb9d",
+      "at": "2026-10-18T09:41:56.766Z",
+      "action": "reject",
+      "task": "M33-mcp-stdio-client",
+      "human": "Opus 5",
+      "reason": "A stdio server whose process starts but never speaks MCP hangs the run with nothing recorded. In agentsdk/mcp/__init__.py the mcp Client is built at line 190 with no read_timeout_seconds and list_tools is called at line 193 with none, so _Connection.ensure, awaited by RunTools.prepare before the manifest, never returns and nothing bounds it. Measured on this tree: a command that prints one non-JSON banner line on stdout and then sleeps, and a command that reads stdin and answers nothing, each left Runner.run with no result, no McpServerUnavailable event and no row past 45 s, and a third past 240 s; Runner.aclose then took 107 to 122 s because _Connection.close awaits a serve task stuck before its stop event. A command that exits at once is handled correctly in 0.1 s with McpServerUnavailable, and that fast-fail flavour is the only one tests/test_mcp_client.py covers, so FR-124 (its tools absent, McpServerUnavailable emitted, and a run whose profile names them still runs) and AC-90 hold only for a command that does not exist. The same unbounded region spins forever on a listing that pages with an empty tools array and a next cursor, since the 1000 cap counts tools, not pages. Everything else I probed was sound: 40 of 40 unit tests and 2212 of 2212 regression tests pass here on source hash 2058f874, all 15 migrations match by the SDK own checksum, CompareStringOrdinal agrees with NTFS on nine pairs and keeps the Kelvin sign distinct where Python folds it, example 26 names b.txt in the shared block and the new path check draws its witness from the WRITERS constant, one connection per alias tenant project and loop with distinct tool objects and no sharing across tenancies or loops, every result and error untrusted data-only with an mcp source and cut at 50000 with a marker, 1001 tools capped at 1000 with a skip reason, no env value in any record event or manifest, and importing agentsdk and agentsdk.mcp loads no mcp module. Caveats for the repair session: AllowlistPermissionChecker at agentsdk/permissions.py line 59 keys the wildcard on the text before the first double underscore rather than on a configured alias, so a profile holding the alias wildcard also allows a registered non-MCP tool in that namespace and even a tool named exactly the alias, reachable in a run carrying no ContextPolicy; structured content replaces rather than appends and drops an image placeholder when no text block is present; the inherited environment is the library list of twelve names, wider than the five FR-123 states and missing TMP; and UnknownMcpServer does not exist, so the AC-90 clause about the MCP methods is untestable until M34 to M36.",
+      "revision": null
+    },
+    {
+      "id": "58103fad-4312-4609-b0b9-5fc155ffeb0a",
+      "at": "2026-10-18T10:01:11.157Z",
+      "action": "resume",
+      "task": "M33-mcp-stdio-client",
+      "human": null,
+      "reason": "round 2: bound every server wait, guard the wildcard",
+      "revision": null
+    },
+    {
+      "id": "d73c3e14-be7a-4851-bc33-025ab426b3f1",
+      "at": "2026-10-19T06:52:05.537Z",
+      "action": "reject",
+      "task": "M33-mcp-stdio-client",
+      "human": "Fable 5.1",
+      "reason": "Two reachable lifecycle defects on source hash 960ad6a3, found by probes in m33-r2-probes (fable_*), no repository file touched, store left at baseline. (1) A call after a wedged write has no bound. agentsdk/mcp/__init__.py line 293 awaits client.call_tool with only the library read timeout, and the library arms that clock only after its write (jsonrpc_dispatcher.py 410-412; _write at 798 is a bare zero-buffer send). Once a server stops reading stdin and more than the transport 64 KB high-water mark has been queued, the stdin writer sits in asyncio streams drain and every later request on that connection sits in anyio memory send with no clock, until the run is cancelled. Reproduced three times with the freeze fixture: freeze, one 2 MB echo (ToolTimeout, as the test pins), then a small echo that never returned past a 40 s wait_for; 70 KB is enough, 30 KB stays bounded. The run hangs with no deadline, and every run of that tenancy sharing the connection with it; the round 2 claim that a call to a server that stopped reading is bounded holds only for the first such call. (2) aclose with a run in flight reopens a connection on the closed Runner: McpClients.connection (lines 353-357) recreates one after aclose popped it, so the run next tools_refresh started a second server that answered normally and stayed alive 6 s of live loop after aclose returned, until a second aclose, violating NFR-39 after aclose through an ordinary runner.start then aclose. Verified sound: banner, silent and endless listings end in connect_timeout plus a flat 2.0 s, the library stdin-close grace, measured 13 times with no task, process or lock left; two ensure calls queued on one lock 5.03 s then 0.000 s; the retry interval per tenancy and loop; all five mutants (no bound, no page cap, no end, wildcard) fail in 0.7 to 68 s without hanging; wildcard denies srv, srv__, srvx__t, other__tool; the suite 2219 green across two sessions (3 live-gateway tests reran green after my env export kept the quotes of BASE_URL); nothing MCP left running at session end, stall not reproduced. Caveats, not findings: the retry interval is per tenancy so N tenancies cost N bounds a minute; a server that prints its own env on stdout has that line logged by mcp.client.stdio (pydantic truncates the middle); srv__ passes _QUALIFIED so an empty tool name is offered then denied at the call; faulthandler_timeout dumps only threads, an asyncio stall shows just the loop poll.",
+      "revision": null
+    },
+    {
+      "id": "9a166673-482f-45a2-bcb9-4227a54a4750",
+      "at": "2026-10-19T07:30:13.598Z",
+      "action": "resume",
+      "task": "M33-mcp-stdio-client",
+      "human": null,
+      "reason": "round 3: SDK-owned call deadline, aclose final, task dumps",
+      "revision": null
+    },
+    {
+      "id": "788c5be1-a554-41ad-991c-146083803aac",
+      "at": "2026-10-19T08:06:26.562Z",
+      "action": "reject",
+      "task": "M33-mcp-stdio-client",
+      "human": "Sonnet 5",
+      "reason": "Round 3 reject. NFR-39 hole in agentsdk/mcp/__init__.py: aclose marks the loop closed and pops connections, but _Connection.close() never sets dead, and the Tool closures built earlier still hold the old _Connection. A tool call that begins after aclose (the model answers after the Runner closed, or a second call in the same turn follows a slow one) enters _call, sees client None, runs ensure(), starts<2 and dead False, so it starts a NEW server. That server is in no connection map: a second aclose does not stop it. Reproduced on a Runner: aclose while the model was thinking, run completed, new server pid alive after aclose and after a second aclose; same with McpClients directly. The round 3 test only covers the next-turn refresh path, not a tool object already handed out. Fix: close() must set dead, and ensure() must refuse when its loop is in _closed. Second defect, same file, discard path: after a wedge discard, a call from another run arriving during the old task teardown (about 2 s) restarts the server, then the old serve task finally sets self.client to None on the NEW connection. Reproduced: later call fails mcp server exited with the second server alive and unused, and the restart budget spent. Fix: guard the finally by task identity and let _call keep its own client reference. Caveats not alone rejecting: a loop stall of 1.6 s or more across call_timeout lets the SDK deadline win over a healthy honest timeout and discards the connection (measured, 0.7 s stall kept it); a crash then restart leaves the first serve task running after aclose; the conftest fixture imports private _pytest.faulthandler for all tests unguarded. Stall dump verified harmless on sync, async, loop-in-thread and 300 tests.",
+      "revision": null
+    },
+    {
+      "id": "6f1369b5-0192-42c6-9bdd-5dfedb86315a",
+      "at": "2026-10-19T08:31:24.422Z",
+      "action": "resume",
+      "task": "M33-mcp-stdio-client",
+      "human": null,
+      "reason": "round 4: one lifecycle gate, final under one lock",
+      "revision": null
+    },
+    {
+      "id": "e0fbdf35-cf14-445f-b2bc-82b0ab406c7b",
+      "at": "2026-10-19T12:20:07.002Z",
+      "action": "reject",
+      "task": "M33-mcp-stdio-client",
+      "human": "Opus 5",
+      "reason": "Rejected on two measured unbounded-lifecycle defects. ONE: a server schema carrying no pattern and no patternProperties takes the in-process branch of validate_untrusted, and the round 4 premise that without a regular expression validation cannot stall is false. A 1.5 KB input schema that _schema_problem does not skip cost 155 s of in-process validation at ref-ladder depth 20, growing about fivefold per level; the executor awaits it on a worker thread with no deadline and an MCP tool sets timeout_seconds None. End to end the call took 145 s against a call_timeout of 10 s and an SDK deadline of 15 s, and the caller own event loop stalled 12.1 s in one slice. The same schema as an outputSchema is validated by the library on the engine loop, which the guard delegates to whenever _has_regex is false: 143 s, and Runner.aclose did not return within 45 s while the server process stayed alive. The regex paths are correctly bounded at 10 s, including a pattern behind a ref into defs and one under propertyNames, which is the control. TWO: concurrent calls each take the connection-closed branch and call _discard on the same serve task, so several cancels land on the task that is inside the Client teardown while close waits for that same task. Measured with five or more calls in flight when aclose runs: aclose spent its whole 20 s bound, returned, and left the stdio server process running with the engine thread already gone, asyncio reporting the subprocess transport garbage collected unclosed. NFR-39 fails by process id. THREE, carried from pre-review 3: the alias wildcard still grants a registered tool whose name begins with a configured alias and two underscores, so a profile of one wildcard ran an application tool it never named where the same Runner without servers denied it; the test probes only a non-configured alias. Verified sound: both gates re-run first hand on source hash 56539250, unit 71 passed in 133.61 s and regression 2243 passed in 669.52 s; every result shape untrusted and data-only even with trusted true; no env value in a record, repr, event, result, failed start or validation error; one connection per tenancy with distinct clients and tools; the hostile listing skipped with reasons; aclose final for a retained tool, a retained connection, garbage collection, interpreter exit, a cancelled or concurrent or repeated aclose, and a run started after; no engine thread for a Runner without servers; no finalizer deadlock inside submit; the whole-listing refusal, the structured-content rule, the inherited twelve names and the once-a-minute retry as clarified. Caveats: a server that exits with ten calls in flight reports did not answer within call_timeout rather than exited and costs the full call_timeout; aclose returns before its thread has exited; no unavailable event on turns inside the sixty-second retry window; the structured-output error is still matched on a library message string.",
+      "revision": null
+    },
+    {
+      "id": "b39bf08a-668a-44bb-8406-fc961a062f82",
+      "at": "2026-10-19T12:49:48.006Z",
+      "action": "resume",
+      "task": "M33-mcp-stdio-client",
+      "human": null,
+      "reason": "round 5: no server schema evaluated in process; bounds checked by tests",
+      "revision": null
+    },
+    {
+      "id": "7a66a990-7e97-4445-95a7-b59094975669",
+      "at": "2026-10-19T15:44:25.948Z",
+      "action": "reject",
+      "task": "M33-mcp-stdio-client",
+      "human": "Fable 5.1",
+      "reason": "Round 5 holds its invariant: every server schema check runs in a child of the real interpreter and fails closed on 11 malformed child outputs, kills, timeouts and remote refs (http, file, UNC, base-URI trick: unreadable, 0 connections to a listener); deep anyOf ends at 10.09 s with no child left; the caller deadline fires as _Closed and cancels engine-side work; honest timeouts, exits and run cancellation reach the caller as themselves with notifications/cancelled sent and nothing left on the engine loop; NFR-39 holds for aclose, GC without aclose, repeated aclose and retained tools; trust labels, tenancy and secrets hold; in-process work on listing data measured linear; both gates re-run first-hand on hash 71672b3e (unit 81, regression 2253). Defect, reachable by configuration, in agentsdk/mcp/__init__.py _McpAllowlist.check: the <alias>__* wildcard allows any tool name whose prefix is a configured alias, so a REGISTERED first-party tool named host__wipe runs for an agent whose profile holds only host__* once a server aliased host is configured (probe: wiped=1 with the server, ToolPermissionDenied without it), against P4-D30 (other tools keep DECISION-ca1ad3e0) and the deliverable claim that a registered tool is never allowed by a wildcard; the pre-review 3 fix covered unconfigured aliases only, its sibling path was missed. Caveats, not findings: a NUL inside a listed input schema makes the whole server unavailable (ToolError) instead of skipping that tool; the one-batch 10 s listing check refuses honest listings past about 45k properties (1000 tools x 20 props pass in 4.4 s, 500 x 100 fail); on Windows the request write to the checker child precedes its 10 s clock, not server-reachable because the fixed child reads all input before evaluating; the static wait test does not see async for, .get, .recv, os.read, readline or a blocking helper in another module, and the runtime test misses only a flat schema, which cannot stall; secret.json (18 bytes, untracked, not gitignored, referenced by no code) sits at the repository root and is counted in the content hash.",
+      "revision": null
+    },
+    {
+      "id": "bf8764de-906a-42fa-892f-b9b854fc7b35",
+      "at": "2026-10-20T05:02:15.221Z",
+      "action": "approve",
+      "task": "M33-mcp-stdio-client",
+      "human": "Sonnet 5",
+      "reason": "Round 6 review by Sonnet 5. Verified first-hand: content hash 6ab24b2c recomputed and equal to the source_hash of both gate evidence files; unit 94 passed, regression 2266 passed, and a full suite re-run here also passed 2266 in 793 s. Wildcard asserted as a property: a registered host__wipe, one registered after the Runner was built, a late shadow, a ContextPolicy run, a tool named exactly the alias, host__a__b, another tenancy tool object and a turn-1 object all denied or not served, while the server own tools ran. Round 5 invariants hold: no server schema evaluated in process (flat input, output and listing included, which supports the disputed ledger row), a garbage checker child fails closed, caller deadline gives ToolTimeout at 3.2 s, pre-run validation failures carry untrusted MCP provenance, aclose ends the server process and a run after aclose starts none. A 120-tool listing with a hanging chunk skips exactly its 50 tools in order and leaves no thread or process. NUL in names and serverInfo is stored as an unstorable marker. Ledger complete and README rows present. Caveats: the bounds test exempts calls by callee name, not by target, so open(path) and re.compile(s) added to a copy of the module were not caught (latent, present uses are honest); approval_overrides keys are not checked against the listing and a qualified name in deny is silently ignored; DECISION-e8746c66 cited by the brief is absent from the record; the gate can be suspended by Modern Standby so a wrapper holding SetThreadExecutionState is needed; example 27 live was not run; secret.json remains at the repository root and in the content hash.",
+      "revision": null
+    },
+    {
+      "id": "1a9a61f9-0a25-4c68-8f34-4e1f453808b4",
+      "at": "2026-10-20T05:20:03.439Z",
+      "action": "resume",
+      "task": "M33-mcp-stdio-client",
+      "human": null,
+      "reason": "round 6 approved by Sonnet 5 at 05:02:15Z on 6ab24b2c; the round 5 rejection was never followed by a resume, so the state read rejected beside three passing gates",
+      "revision": null
     }
   ],
   "discovery": null,
   "checkpoint": {
-    "at": "2026-10-12T13:24:41.395Z",
+    "at": "2026-10-18T09:40:58.331Z",
     "revision": {
-      "commit": "1c21fc56e8cede88ba2fccedc4ea1248763ee968",
+      "commit": "ca8783d1a31e43921a5d363f4bc9af30dba359e9",
       "dirty": true,
-      "source_hash": "a23d4e3b8048c5597fc844168bc1dfc033b48bda350efc8e4b0d4412ccc3a814"
+      "source_hash": "2058f874db0db26e2ea29327cf5a7880df6804192aa9f5e173ba341f4a31e667"
     },
-    "active_task": "M27-critic",
+    "active_task": "M33-mcp-stdio-client",
     "next_action": "Run the task pre-flight."
   },
   "legacy": null

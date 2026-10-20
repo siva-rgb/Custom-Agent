@@ -190,6 +190,9 @@ class _FileSystem:
             k.MoveFileExW.argtypes = [w.LPCWSTR, w.LPCWSTR, w.DWORD]
             k.DeleteFileW.restype = w.BOOL
             k.DeleteFileW.argtypes = [w.LPCWSTR]
+            # FR-122 (M33): names compared as the file system compares them.
+            k.CompareStringOrdinal.restype = ctypes.c_int
+            k.CompareStringOrdinal.argtypes = [w.LPCWSTR, ctypes.c_int, w.LPCWSTR, ctypes.c_int, w.BOOL]
             self._k32 = k
         return self._k32
 
@@ -265,6 +268,11 @@ class _FileSystem:
 
     def delete(self, path: str) -> None:
         self.kernel32().DeleteFileW(_extended(path))
+
+    def same_name(self, a: str, b: str) -> bool:
+        """Whether two names are one name to NTFS: ordinal, ignoring case by its own table, so
+        a character Python folds and NTFS does not (the Kelvin sign) stays distinct."""
+        return self.kernel32().CompareStringOrdinal(a, -1, b, -1, True) == 2  # CSTR_EQUAL
 
     def final_path(self, handle: int) -> str:
         import ctypes
@@ -362,10 +370,20 @@ _RESERVED = {"CON", "PRN", "AUX", "NUL", "CONIN$", "CONOUT$", "CLOCK$"} | {
 _FORBIDDEN = set('<>:"|?*') | {chr(code) for code in range(32)}
 _SHORT_NAME = re.compile(r"~\d")
 _REPARSE_POINT, _DIRECTORY = 0x400, 0x10
-# FR-118 (M31): the name of a write tool's temporary file, withheld from every listing.
-_UUID = r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}"
-# Ignoring case, as the file system does: a name the sweep would match is refused (M32 round 2).
-_TEMPORARY = re.compile(r"^\..*\.agentsdk-" + _UUID + r"\.tmp$", re.IGNORECASE)
+# FR-118 (M31): a write tool's temporary file is `.<target>.agentsdk-<uuid>.tmp`. Its uuid is
+# ASCII hex in any case; every other part is compared as NTFS compares names (FR-122, M33).
+_UUID = re.compile(r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}", re.IGNORECASE | re.ASCII)
+
+
+def _temporary_of(name: str) -> str | None:
+    """The target whose temporary file this name would be, or None."""
+    tail = name[-50:]  # ".agentsdk-" (10), the uuid (36), ".tmp" (4)
+    if (len(name) < 51 or name[0] != "." or not _UUID.fullmatch(tail[10:46])
+            or not _fs.same_name(tail[:10], ".agentsdk-") or not _fs.same_name(tail[46:], ".tmp")):
+        return None
+    return name[1:-50]
+
+
 _LINK_TARGET = "file refused: it is a link; give the path of the file itself"
 _RESERVED_NAME = "path refused: that name is reserved for the write tools' temporary files"
 # The temporary files of writes in flight in this process, withheld from every listing.
@@ -889,7 +907,7 @@ class _Target:
         if not parts:
             raise _Refused(_NOT_ALLOWED)
         *directories, self.name = parts
-        if _TEMPORARY.search(self.name):
+        if _temporary_of(self.name) is not None:
             raise _Refused(_RESERVED_NAME)
         self.relative = "/".join(parts)
         self.handle, self.parent = _open_inside(root, directories, None)
@@ -947,12 +965,11 @@ class _Target:
     def _sweep(self) -> None:
         """Orphans of this target -- temporary files a crash left -- older than a minute. Its
         own exact shape only: a target whose name extends this one's has temporary files
-        starting the same (M32 round 1, C8). Matched ignoring case, as the file system
-        matches names (round 2)."""
-        own = re.compile(re.escape(f".{self.name}.agentsdk-") + _UUID + r"\.tmp", re.IGNORECASE)
+        starting the same (M32 round 1, C8). Names compared as NTFS compares them (FR-122)."""
         now = time.time()
         for name, _, written in _fs.list_handle(self.handle, _WALK_ENTRIES, times=True):
-            if own.fullmatch(name) and now - written > _ORPHAN_SECONDS:
+            owner = _temporary_of(name)
+            if owner is not None and _fs.same_name(owner, self.name) and now - written > _ORPHAN_SECONDS:
                 _fs.delete(self.parent.rstrip("\\") + "\\" + name)
 
     def _written(self, temporary: str, data: bytes) -> None:
