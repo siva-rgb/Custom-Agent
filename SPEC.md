@@ -767,7 +767,7 @@ KNOWLEDGE-9593410e.
     - at connection;
     - on a list-changed notification. On the 2026-07-28 era, the client opens `subscriptions/listen` with `toolsListChanged` after connecting, when the server offers it, and reopens it at the next read if it closes. On the legacy era it uses `notifications/tools/list_changed`;
     - when the listing's `ttlMs` has passed;
-    - before a turn's first call to the server, when the listing is older than 60 seconds or `ttlMs` was absent.
+    - before a turn's first call to the server, when the listing is older than 60 seconds, whatever its `ttlMs`.
 
     Time is read from the catalog's clock, which tests replace. Reads of one connection are serialised. A call in flight finishes against the version it was sent under.
   - **What a run sees:** each turn's tools are rebuilt from the latest read (FR-125). A call to a tool blocked since the model saw it is refused at step 1, `ToolBlocked("<alias>__<name> is not accepted in its current version")`, a new `ToolError` that is exported, and its model sees why.

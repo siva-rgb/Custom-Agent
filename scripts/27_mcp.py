@@ -7,6 +7,10 @@ server's `allow` list; a tool that fails reaches the model as an error; and ever
 the run's history is labelled untrusted MCP data, whatever the server says (NFR-35). The
 manifest records the server's command and the names, never the values, of what it was given.
 
+No tool of a server is usable until its version is accepted for the tenancy (FR-127, M34): a
+first run sees them blocked, and an operator accepts what McpToolBlocked names. Example 28
+shows the catalog itself, and what a changed tool does.
+
 Compare example 06, which bridges a server's tools by hand.
 
 Run it
@@ -20,13 +24,20 @@ import argparse
 import asyncio
 import json
 import os
+import site
 import sys
 
 SERVER_NAME = "glossary"
+# The real interpreter, not a virtual environment's python.exe: on Windows that is a launcher,
+# which starts the real one before the mcp library's Job Object holds it, so a server's children
+# could outlive the Runner (README). The server finds the environment's packages itself.
+PYTHON = sys._base_executable
+PACKAGES = [path for path in site.getsitepackages() if path.endswith("site-packages")][0]
 
 
 def serve() -> None:
     """The demo MCP server. Runs in a child process; never imports the SDK."""
+    site.addsitedir(sys.argv[sys.argv.index("--serve") + 1])  # the environment's packages, .pth files included
     from mcp.server.mcpserver import MCPServer
 
     app = MCPServer(SERVER_NAME, log_level="WARNING")
@@ -58,6 +69,8 @@ if "--serve" in sys.argv:  # before any SDK import: the server process needs non
     raise SystemExit(0)
 
 from agentsdk import AgentSpec, Message, Role, RunConfig, RunStatus, Runner  # noqa: E402
+from agentsdk.events import EventType  # noqa: E402
+from agentsdk.identity import PrincipalContext  # noqa: E402
 from agentsdk.mcp import StdioServer  # noqa: E402
 from agentsdk.model import ModelResponse, StopReason, Usage  # noqa: E402
 from agentsdk.postgres import RunScope  # noqa: E402
@@ -66,13 +79,13 @@ from agentsdk.primitives import InstructionAuthority, Origin, ToolCall, TrustZon
 TENANT, PROJECT = "example-tenant", "examples"
 TASK = ("Define the word 'agent' with glossary__define, then call glossary__lookup_everything once, "
         "then answer in one sentence.")
+FIRST_LOOK = "Say in one sentence which glossary tools you can use."
+OPERATOR = PrincipalContext(agent_principal="example-27", user_principal="operator")
 
 
 def glossary_server() -> StdioServer:
     # Approval is P4-D20's default; this example shows the client, so it asks for none.
-    # The python that runs this file starts the server (on Windows, prefer the real
-    # interpreter to a venv launcher, so the Job Object holds the server's children).
-    return StdioServer(alias=SERVER_NAME, command=sys.executable, args=(os.path.abspath(__file__), "--serve"),
+    return StdioServer(alias=SERVER_NAME, command=PYTHON, args=(os.path.abspath(__file__), "--serve", PACKAGES),
                        allow=("define", "lookup_everything"), approval="never")
 
 
@@ -84,6 +97,9 @@ class ScriptedModel:
 
     async def send(self, request):
         self.requests.append(request)
+        if request.messages[0].content == FIRST_LOOK:
+            return ModelResponse(message=Message(role=Role.ASSISTANT, content="None yet."),
+                                 stop_reason=StopReason.END_TURN, usage=Usage(20, 5, 25))
         turn = sum(1 for m in request.messages if m.role is Role.ASSISTANT)
         calls = [[ToolCall(id="t0", name="glossary__define", arguments={"word": "agent"})],
                  [ToolCall(id="t1", name="glossary__lookup_everything", arguments={})],
@@ -98,8 +114,17 @@ class ScriptedModel:
 async def demonstrate(runner: Runner, model_id: str, requests: list | None, *, live: bool, persisted: bool):
     agent = AgentSpec(id="glossary-reader", instructions="Use the glossary tools as asked.",
                       preferred_model=model_id, tool_profile=("glossary__*",))
+    config = RunConfig(tenant_id=TENANT, project_id=PROJECT, max_turns=6)
     async with runner:
-        result = await runner.run(agent, TASK, RunConfig(tenant_id=TENANT, project_id=PROJECT, max_turns=6))
+        # FR-127: the first run sees the server's tools blocked until accepted; the operator
+        # accepts the versions it names. (Already accepted, on a database, nothing is blocked.)
+        first = await runner.run(agent, FIRST_LOOK, config)
+        blocked = [e.payload for e in first.events if e.event_type is EventType.MCP_TOOL_BLOCKED]
+        accepted = await runner.accept_tools(TENANT, PROJECT, SERVER_NAME, [p["tool_hash"] for p in blocked],
+                                             principal=OPERATOR)
+        print(f"accepted {len(accepted)} tool version(s): {sorted(a.tool_name for a in accepted)}")
+        start = len(requests) if requests is not None else 0
+        result = await runner.run(agent, TASK, config)
     sessions = runner._sessions_for(RunScope(run_id=result.run_id, tenant_id=TENANT, project_id=PROJECT))
     history = await asyncio.to_thread(sessions.history, result.run_id)
     issued = {c.id: c.name for m in history if m.role is Role.ASSISTANT for c in m.tool_calls}
@@ -121,7 +146,7 @@ async def demonstrate(runner: Runner, model_id: str, requests: list | None, *, l
                            for r in mcp)),
     ]
     if requests is not None:
-        offered = {t["function"]["name"] for t in requests[0].tools}
+        offered = {t["function"]["name"] for t in requests[start].tools}
         by_id = {r.tool_call_id: r for r in results}
         checks += [
             ("the tools were offered by qualified name, and the filtered one was not",
@@ -141,9 +166,9 @@ async def demonstrate(runner: Runner, model_id: str, requests: list | None, *, l
                                        (result.run_id,)).fetchall()
         print(f"  manifest: {json.dumps(servers)}")
         checks.append(("the manifest records the server's command and its allow list",
-                       len(servers) == 1 and servers[0]["command"] == sys.executable
+                       len(servers) == 1 and servers[0]["command"] == PYTHON
                        and servers[0]["allow"] == ["define", "lookup_everything"]))
-    return checks, [result.run_id]
+    return checks, [first.run_id, result.run_id]
 
 
 async def offline(store: str = "memory"):

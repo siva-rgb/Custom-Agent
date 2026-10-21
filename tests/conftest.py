@@ -55,6 +55,10 @@ _TRACKED = (
     ("interruptions", "interruption_id"),
     ("interruption_decisions", "decision_id"),
     ("standing_decisions", "standing_id"),
+    # M34 (FR-127, NFR-38): the MCP catalog. Its rows carry a tenancy, not a run, so no run-id
+    # cleanup reaches them; a version is identified by its whole key.
+    ("mcp_tool_versions", "tenant_id || '/' || project_id || '/' || alias || '/' || tool_hash"),
+    ("mcp_tool_acceptances", "acceptance_id"),
 )
 _RUN_TABLES = tuple(table for table, _ in _TRACKED)
 

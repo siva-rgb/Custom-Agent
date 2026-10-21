@@ -17,6 +17,7 @@ from .artifacts import DEFAULT_MAX_CONTENT_BYTES
 from .events import EventSink
 from .postgres import (
     PostgresArtifactStore,
+    PostgresCatalogStore,
     PostgresEvidenceStore,
     PostgresInterruptionStore,
     PostgresLedgerStore,
@@ -127,3 +128,7 @@ class Persistence:
     def interruption_store(self) -> PostgresInterruptionStore:
         """The Postgres store of interruptions and decisions (FR-112, M29)."""
         return PostgresInterruptionStore(self.dsn)
+
+    def catalog_store(self) -> PostgresCatalogStore:
+        """The Postgres store of MCP tool versions and acceptances (FR-127, M34)."""
+        return PostgresCatalogStore(self.dsn)

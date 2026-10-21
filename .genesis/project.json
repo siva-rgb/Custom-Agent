@@ -9,7 +9,7 @@
     "non_goals": [],
     "trust_boundary": "local repository",
     "created_at": "2026-09-05T14:48:57.894Z",
-    "updated_at": "2026-10-20T05:20:14.308Z"
+    "updated_at": "2026-10-21T12:35:42.118Z"
   },
   "policy": {
     "ponytail": "full",
@@ -25,7 +25,7 @@
   "lifecycle": {
     "phase": "build",
     "status": "active",
-    "active_task": "M34-mcp-catalog",
+    "active_task": "M35-mcp-http-resources",
     "blocker": null,
     "next_action": "Run the task pre-flight."
   },
@@ -34,8 +34,8 @@
     "type": "new-product",
     "started_at": "2026-09-05T14:48:57.897Z",
     "spec_check": {
-      "at": "2026-10-18T07:40:07.946Z",
-      "source_hash": "ff2c7ea40ff092fda97c58a6aecb75b4ab99a3794be5655ae525e233e20a5d7a",
+      "at": "2026-10-21T12:35:41.618Z",
+      "source_hash": "02967db6da4c132b793a7aa1c5f2c3e5ffd9f811c24214fe5aa4dc69ed59e0c1",
       "requirements": [
         "AC-1",
         "AC-10",
@@ -308,13 +308,13 @@
       ]
     },
     "plan_check": {
-      "at": "2026-10-18T07:40:34.239Z",
+      "at": "2026-10-21T12:35:41.942Z",
       "source_hash": "1aa46ef258a4ffc5cef9fc219db09ba95c88c7db57a1985872c65ed63795434a"
     },
     "plan_approval": {
       "human": "siva-rgb (owner)",
-      "reason": "Phase 4 increment 2 plan: M33 to M37, owner said start M33",
-      "at": "2026-10-18T07:46:48.811Z",
+      "reason": "Plan unchanged; re-approved after the FR-127 wording re-approval at M34 round 3",
+      "at": "2026-10-21T12:35:42.118Z",
       "source_hash": "1aa46ef258a4ffc5cef9fc219db09ba95c88c7db57a1985872c65ed63795434a"
     }
   },
@@ -594,12 +594,12 @@
         "NFR-8",
         "NFR-9"
       ],
-      "source_hash": "ff2c7ea40ff092fda97c58a6aecb75b4ab99a3794be5655ae525e233e20a5d7a",
+      "source_hash": "02967db6da4c132b793a7aa1c5f2c3e5ffd9f811c24214fe5aa4dc69ed59e0c1",
       "approval": {
         "human": "siva-rgb (owner)",
-        "reason": "Phase 4 increment 2 second draft: FR-122 to FR-135, NFR-34 to NFR-39, AC-89 to AC-94, from P4-D16 to P4-D31 and the ten accepted choices",
-        "at": "2026-10-18T07:40:08.080Z",
-        "source_hash": "ff2c7ea40ff092fda97c58a6aecb75b4ab99a3794be5655ae525e233e20a5d7a"
+        "reason": "FR-127 read list reworded at M34 round 3: a listing is read again once older than 60 seconds, whatever its ttlMs (owner capped it after the round 2 review); no other change",
+        "at": "2026-10-21T12:35:41.777Z",
+        "source_hash": "02967db6da4c132b793a7aa1c5f2c3e5ffd9f811c24214fe5aa4dc69ed59e0c1"
       }
     }
   ],
@@ -1806,6 +1806,14 @@
       "status": "accepted",
       "source": null,
       "recorded_at": "2026-10-20T05:15:57.190Z"
+    },
+    {
+      "id": "DECISION-383e6df2",
+      "title": "M34: the catalog hash covers the name, unmatched overrides make every tool ask (owner), and how the catalog is read",
+      "text": "Owner, 2026-10-20: while approval_overrides names a tool the server does not list, every tool of that server requires approval, and McpServerConnected names the unmatched keys; a typo or a removed tool can never leave a tool unapproved. Clarification of FR-127 by the author, for the owner to confirm: tool_hash is the SHA-256 of the canonical JSON of the tool name, description, input schema, output schema and annotations (wire names); without the name, two tools of one server with the same description and schemas would share a hash and accepting one would accept the other (a read_file and a delete_file with empty descriptions). Design: (1) the SDK owns freshness, so the mcp Client is built with cache=None; (2) a list-changed notification (legacy notifications/tools/list_changed through the message handler; 2026-07-28 subscriptions/listen, reopened at the next read) marks the listing stale and reads it at once in the background; (3) a turn start, and executor step 1 before every MCP call, read the listing again when it is stale: a notification, a passed ttlMs, or 60 s with none; ttlMs exists only in the 2026-07-28 era; (4) step 1 asks the connection for the current accepted hash and refuses ToolBlocked when it differs, and the call path asserts the same hash where the request leaves; (5) McpToolBlocked is returned at every read and reported once a run per version; (6) all store work of one catalog read runs on one worker thread within 30 s, each statement under a 20 s statement_timeout, failing closed; (7) a re-read that fails ends the session; (8) schema verdicts are cached per connection by canonical JSON, so an unchanged listing read again starts no checking process; (9) the engine is handed the catalog store or Persistence, never the Runner, since a reference back to the Runner kept a collected Runner alive with its servers (found by the M33 finalizer test). M33 tests bypass the catalog through one patched function, _read_catalog; tests/test_mcp_catalog.py tests the catalog.",
+      "status": "accepted",
+      "source": null,
+      "recorded_at": "2026-10-20T08:00:04.090Z"
     }
   ],
   "knowledge": [
@@ -2872,6 +2880,38 @@
       "source": null,
       "tags": [],
       "recorded_at": "2026-10-20T05:20:14.307Z"
+    },
+    {
+      "id": "KNOWLEDGE-9f774ba6",
+      "title": "M34 pre-flight: baseline, the four M33 carry-overs settled, and example 27 live",
+      "text": "Baseline on d4b29de: the full suite 2266 passed in 689 s with no process left; the store held 10351 runs, 0 SYN, 0 running, 15 migration rows, and was back to exactly that after every demo run below, each removed by its recorded run id. Carry-overs from KNOWLEDGE-d5a17d72, settled first so they fall under M34 gates and review: (1) StdioServer refuses a qualified name (<alias>__...) in allow, deny or approval_overrides with ValueError, since in deny it matched nothing and failed open; pinned in test_an_invalid_server_config_is_refused_when_built. (2) the bounds test keys argument-sensitive calls (open, re.compile, json.loads, base64.b64decode, pathlib.Path) on their exact text, so open(server_path) or re.compile(server_pattern) fails it; the test of the test carries open, re.compile and json.loads of a variable. Both invariant tests caught the new allow and deny loop at once, as designed. (3) approval_overrides keys against the listing remain M34 work under FR-128. (4) example 27 live: run 6 times; it now starts its server with the real interpreter (sys._base_executable, the packages path passed as an argument), as the README advises, where it had used the venv launcher; 4 runs completed with all checks, 2 failed before any tool result with 4 events and 1 message, consistent with a model-call failure, not diagnosed because their rows were removed before their events were read. M34 itself: FR-127 to FR-129, migration 0017, UnknownMcpServer (deferred from M33) and UnknownToolVersion, the catalog clock, subscriptions/listen, standing decisions bound to tool_hash, example 28.",
+      "source": null,
+      "tags": [],
+      "recorded_at": "2026-10-20T06:32:30.489Z"
+    },
+    {
+      "id": "KNOWLEDGE-3b4227e6",
+      "title": "M34 pre-review: four reachable defects in the gate siblings, all fixed and pinned",
+      "text": "A fresh adversarial pre-review (runtime probes only) of M34 found, each reproduced first-hand before the fix: D1 a call that waited for approval (or a slot) after step 1 reached the server on the last read, so the 60 s or ttlMs window became the length of the approval wait (NFR-36); D2 a list-changed notification arriving while a read checked schemas was lost, because the read cleared the stale flag when it ended; D3 a read in the turn that changed every tool approval policy (the owner rule on unmatched overrides) left the turn tool object running under its old policy; D4 a server changing its tools without end grew the catalog and connection memory without limit, and idle notifications queued events for ever; and a failing store reported every tool every turn. Fixes: the property is now that a call runs only the connection current tool object for its name under a fresh accepted listing, checked by identity at step 1 and again where the call leaves (the sink reads a stale listing first); tool objects are kept while their spec is unchanged; notifications are counted and a read clears staleness only if none arrived during it; per connection state is pruned to the current listing, the verdict cache capped, at most 10000 versions recorded per connection (past it VersionLimit), background reads queue no blocked events, and failures are reported once a run. A sink ToolBlocked keeps its class through the executor. Each fix has a test, and step 1 and the sink each have their own; 7 of 7 fix mutants killed, 29 of 29 in M34.",
+      "source": null,
+      "tags": [],
+      "recorded_at": "2026-10-20T10:10:26.063Z"
+    },
+    {
+      "id": "KNOWLEDGE-a5db5edc",
+      "title": "M34 round 1 rejected: NFR-38s third named test edit (conftest tracked tables) was not made, so AC-44 could not see catalog rows",
+      "text": "Opus 5 rejected M34 round 1 at 13:44:04Z on source hash 16c7f8bf. NFR-38 names three permitted edits to approved tests; the third, tests/conftest.py _TRACKED gaining the new tables (NFR-16), was not made, and the brief did not mention conftest.py, so it was dropped, not deferred. the_store_is_left_as_it_was_found derives its sets from _TRACKED, so AC-44 was blind to mcp_tool_versions and mcp_tool_acceptances, the one row class no run-id cleanup reaches; the reviewer showed a leaking session passing as shipped and failing with the two entries added. Verified first-hand: _TRACKED had 14 entries and neither table. Also from the review: a failed read again ended the session but kept its tools offered and usable, so step 1 passed them, arguments were validated against the stale schema and an approval could be raised for a version then refused at the sink (no breach: _call restarted the server before the sink); the README row saying the tools were absent overstated it. The four-way mutant on the two NFR-36 guards showed each refuses alone and only removing both lets a call through. Fields the library parses outside the tool hash, read by no SDK code today: title, _meta, icons and execution.taskSupport; M35 to revisit. Unprobed: examples 27 and 28 live; the open row about two of six live example-27 runs failing before any tool ran is neither reproduced nor refuted. Process lesson: a pre-flight lists every test edit the spec requires (NFR-38 names them), and the brief declares each, made or not.",
+      "source": null,
+      "tags": [],
+      "recorded_at": "2026-10-20T14:05:03.304Z"
+    },
+    {
+      "id": "KNOWLEDGE-5fe1114f",
+      "title": "M34 approved at round 3; caveats carried to M35",
+      "text": "Round 2 (Fable 5.1) approved with two caveats the owner chose to fix before closing: a step-1 ToolBlocked now carries the MCP tool's provenance (state.tool set before the check), and a listing is read again once older than 60 s whatever its ttlMs (owner capped it; SPEC FR-127 reworded, spec and plan re-approved after M34). Round 3 (Sonnet 5) approved on a1a7fea9; a negative ttlMs is refused by the library (ge=0). Carried to M35: (1) a schema check that times out is never cached, so with ttlMs 0 a slow hostile schema is re-checked at every read, up to 10 s each (measured 14 launches over 7 runs); cache or budget negative verdicts; (2) _listed_at is stamped at the end of a read, so a slow paged read ages slightly past 60 s; (3) a modern server not offering subscriptions/listen may mark every listing stale, like ttlMs 0, found by reading only, measure first; (4) SPEC says re-read before a turn's first call, the code also reads at every step 1 and at the sink, stricter, wording only; (5) unknown annotation keys, title, _meta, icons and execution.taskSupport stay outside the hash. Still open, undiagnosed: two of six pre-flight live runs of example 27 failed before any tool ran; not reproduced in 15 later live runs. Process: the brief must name every approved-test check by content, not mtime.",
+      "source": null,
+      "tags": [],
+      "recorded_at": "2026-10-21T12:34:49.767Z"
     }
   ],
   "tasks": [
@@ -2894,9 +2934,9 @@
           "status": "pass",
           "evidence": {
             "human": "siva-rgb (owner)",
-            "reason": "Phase 4 increment 2 second draft: FR-122 to FR-135, NFR-34 to NFR-39, AC-89 to AC-94, from P4-D16 to P4-D31 and the ten accepted choices",
-            "source_hash": "69e8446d77b88c173e45725ce0a0d0e4091951f93385ba66256cecb646f1da72",
-            "observed_at": "2026-10-18T07:40:08.080Z"
+            "reason": "FR-127 read list reworded at M34 round 3: a listing is read again once older than 60 seconds, whatever its ttlMs (owner capped it after the round 2 review); no other change",
+            "source_hash": "a1a7fea932f62260a9b44072ee6fed82ac2078b160b07fc3bb946bbca631bd61",
+            "observed_at": "2026-10-21T12:35:41.777Z"
           }
         }
       ],
@@ -2906,7 +2946,7 @@
       "failures": [],
       "limitations": [],
       "created_at": "2026-09-05T14:48:57.897Z",
-      "updated_at": "2026-10-18T07:40:08.080Z"
+      "updated_at": "2026-10-21T12:35:41.777Z"
     },
     {
       "id": "M1-primitives",
@@ -5311,7 +5351,7 @@
     {
       "id": "M34-mcp-catalog",
       "outcome": "No MCP tool runs unless its current version is accepted, and approval follows the server policy bound to the tool hash",
-      "state": "active",
+      "state": "done",
       "risk": "high",
       "owner": null,
       "scope": [],
@@ -5330,22 +5370,37 @@
           "id": "unit",
           "command": ".venv\\Scripts\\python.exe -m pytest tests/test_mcp_catalog.py -q",
           "mandatory": true,
-          "status": "pending",
-          "evidence": null
+          "status": "pass",
+          "evidence": {
+            "path": ".genesis/evidence/M34-mcp-catalog-unit.json",
+            "source_hash": "a1a7fea932f62260a9b44072ee6fed82ac2078b160b07fc3bb946bbca631bd61",
+            "hash": "751b7f6b0cac103e248f6dba40719c5f7e65b9c690c0579e9a06ddf75b2a0b7f",
+            "observed_at": "2026-10-21T06:07:36.652Z"
+          }
         },
         {
           "id": "regression",
           "command": ".venv\\Scripts\\python.exe -m pytest -q",
           "mandatory": true,
-          "status": "pending",
-          "evidence": null
+          "status": "pass",
+          "evidence": {
+            "path": ".genesis/evidence/M34-mcp-catalog-regression.json",
+            "source_hash": "a1a7fea932f62260a9b44072ee6fed82ac2078b160b07fc3bb946bbca631bd61",
+            "hash": "64f217a95074e7401b9021fd2936245469202309c98798547b919022a874c524",
+            "observed_at": "2026-10-21T06:20:53.275Z"
+          }
         },
         {
           "id": "independent-review",
           "command": "",
           "mandatory": true,
-          "status": "pending",
-          "evidence": null
+          "status": "pass",
+          "evidence": {
+            "human": "Sonnet 5",
+            "reason": "Round 3 re-approval on hash a1a7fea9, equal to source_hash of both gate evidence files (unit 64 passed, regression 2333 passed). I re-ran the full suite: 2333 passed in 879.78s, store left at baseline. Both round-2 fixes verified: state.tool set before the step-1 check (mutant moving it back killed by test_after_a_failed_read_again alone) and the 60 s cap (mutant removing it killed by test_a_ttl_longer_than_60_seconds alone); every other _failed site follows state.tool, only ToolNotFound and cancellation of an unprepared call carry executor labels. Listing age probed for ttlMs absent, 0, 5000, 600000, 1e12 on both eras and for per-page ttl mixes: never kept past 60 s. A negative ttlMs is rejected by the mcp library (Ge 0), so it cannot arrive; forced in, it costs 4 reads per run like ttlMs 0, one schema check in total. SPEC FR-127 line 770 matches the code. Approved M33 tests untouched since round 2 (mtimes); the cap is a conditional equal to min. Examples 27 passed 6 of 6 and 28 passed 3 of 3 live plus offline; the earlier pre-tool failure did not reproduce. Caveats: a schema that times out is never cached, so with ttlMs 0 it spawns a checking process per read, up to 10 s each, about 2 per run; a listing is stamped at the end of its read; SPEC says a turn first call while code also reads at every step 1 and sink.",
+            "source_hash": "a1a7fea932f62260a9b44072ee6fed82ac2078b160b07fc3bb946bbca631bd61",
+            "observed_at": "2026-10-21T07:38:59.392Z"
+          }
         }
       ],
       "next_action": "Run the task pre-flight.",
@@ -5354,12 +5409,12 @@
       "failures": [],
       "limitations": [],
       "created_at": "2026-10-18T07:40:33.466Z",
-      "updated_at": "2026-10-18T07:40:33.467Z"
+      "updated_at": "2026-10-21T12:34:54.721Z"
     },
     {
       "id": "M35-mcp-http-resources",
       "outcome": "MCP servers over Streamable HTTP with configured headers, and resources and prompts read per tenancy",
-      "state": "queued",
+      "state": "active",
       "risk": "high",
       "owner": null,
       "scope": [],
@@ -6700,6 +6755,51 @@
       "task": "M33-mcp-stdio-client",
       "human": null,
       "reason": "round 6 approved by Sonnet 5 at 05:02:15Z on 6ab24b2c; the round 5 rejection was never followed by a resume, so the state read rejected beside three passing gates",
+      "revision": null
+    },
+    {
+      "id": "5835cf80-159d-458e-a70c-26b5595e3255",
+      "at": "2026-10-20T13:44:04.129Z",
+      "action": "reject",
+      "task": "M34-mcp-catalog",
+      "human": "Opus 5",
+      "reason": "NFR-38 names three edits to approved tests for M34 and the third was not made: tests/conftest.py is unchanged and its _TRACKED tuple gains neither mcp_tool_versions nor mcp_tool_acceptances, so the AC-44 end-of-session comparison is blind to the one row class M34 introduces. Control, the same leak run twice: as shipped, a session that left one mcp_tool_versions row behind reported 1 passed; with only those two tuple entries added at run time the same session failed with the test session changed the store, mcp_tool_versions added 1. Everything else I probed is sound. Content hash 16c7f8bf re-derived and equal to both gate source hashes, and I re-ran the full suite independently: 2330 passed in 712 s. NFR-36 held on every path I attacked: first sight, a silent change, step 1 inside the turn, a call that waited for an approval, a tool object held across a change, another tenancy, six concurrent runs, and a dead session; a four-way mutant control shows step 1 and the sink each refuse alone, and only removing both lets a call reach the server. Caveats, not the rejection: a listing re-read that fails leaves the dead session tools offered with usable still asserting the old hash, so the turn still offers the tool and step 1 does not block it, while the call restarts the server and is then refused ToolBlocked, so the README row saying the tools are absent overstates it and no test pins it; tests/fixtures/mcp_servers.py changed by plus 69 lines undeclared, additive and inert without the catalog flag; the hash omits title, meta, icons and execution taskSupport, which reach nothing the model or the policy sees today.",
+      "revision": null
+    },
+    {
+      "id": "9bc5c08e-bc9d-4349-a56b-882a08c30976",
+      "at": "2026-10-21T04:38:47.884Z",
+      "action": "approve",
+      "task": "M34-mcp-catalog",
+      "human": "Fable 5.1",
+      "reason": "Round 2 review by Fable 5.1. Verified first-hand: content hash 0d25b123 recomputed and equal to the source_hash of both gate evidence files; 16 migration checksums match their files, 0017 included; full suite re-run here 2332 passed in 824 s with -p no:cacheprovider, no process left. Item 0: all three NFR-38 edits made (conftest +4 purely additive, test_distribution +1, test_mcp_client and the fixture as declared); AC-44 control reproduced: a session outside the repo with the round 2 conftest fails naming mcp_tool_versions added 1 and the HEAD conftest passes blind on the same leak; every ledger row true. The round 2 fix controlled by two runtime mutants, each killed by the named test alone, the step 1 mutant reproducing the round 1 finding (approval asked on the old listing). NFR-36 probed: a restart after a kill with a changed tool refused, two runs of one tenancy with a stale object refused at step 1 and at the sink both before and after acceptance while the next turn offers the new object, a lost listen stream marks stale so the next read catches the change and reopens the listener, a merely stale server in both eras still runs. Siblings: a blocked tool is absent from the model request and tools_sent, its event carries no description or schema, an in-turn change with a bad argument under approval require is refused at step 1 with no validation and no interruption. accept_tools: order, atomicity, concurrent accepts one row, rows never rewritten, FK refuses another tenancy, McpAcceptance only its tenancy and hashes. Reads: a slow store leaves only the new tool blocked, a slow re-read ends the session then restarts once then dead, a 40-notification flood bounded, aclose mid background read leaves no pid or thread. Live: example 27 passed 3 of 3 and 28 passed 6 of 6 with a real model, no pre-tool failure; events read before rows were removed by id and catalog rows by tenancy; store back at baseline with both catalog tables 0. Caveats: (1) a step 1 ToolBlocked carries the executor labels internal_tool trusted_source while the sink ToolBlocked carries mcp_resource untrusted, because executor.py sets state.tool after the blocked check; the content is only the qualified name and NFR-35 allows executor labels before a tool ran, but it contradicts the _failed comment and DECISION-5d598bcd item four; a one-line move. (2) With a ttlMs present the 60 s rule does not apply: a 2026-07-28 server declaring ttlMs 600000 that changed a tool quietly ran the old version 61 s later and was caught only after the ttl; FR-127 and DECISION-383e6df2 read 60 s with none, the SPEC risk register reads 60 s unconditionally; owner to confirm. (3) Unknown annotation keys are dropped by the mcp ToolAnnotations model before hashing, the same class as the fields deferred to M35. (4) Brief wording: the _call argument is tool not digest; a malformed hash raises ValueError not UnknownToolVersion. Governance: the task read rejected with no resume after round 1, as flagged.",
+      "revision": null
+    },
+    {
+      "id": "3fcb31d8-f5ab-477b-af75-5d7351c2618e",
+      "at": "2026-10-21T05:00:21.279Z",
+      "action": "resume",
+      "task": "M34-mcp-catalog",
+      "human": null,
+      "reason": "Round 2 approved by Fable 5.1 with two confirmed caveats; the owner chose to fix both before closing (round 3): a step-1 ToolBlocked carries the MCP tool's provenance, and a listing is read again once older than min(ttlMs, 60 s), with SPEC FR-127 and its risk row made to agree",
+      "revision": null
+    },
+    {
+      "id": "13280506-0712-4204-9f2e-82acfae4c9bc",
+      "at": "2026-10-21T07:38:59.392Z",
+      "action": "approve",
+      "task": "M34-mcp-catalog",
+      "human": "Sonnet 5",
+      "reason": "Round 3 re-approval on hash a1a7fea9, equal to source_hash of both gate evidence files (unit 64 passed, regression 2333 passed). I re-ran the full suite: 2333 passed in 879.78s, store left at baseline. Both round-2 fixes verified: state.tool set before the step-1 check (mutant moving it back killed by test_after_a_failed_read_again alone) and the 60 s cap (mutant removing it killed by test_a_ttl_longer_than_60_seconds alone); every other _failed site follows state.tool, only ToolNotFound and cancellation of an unprepared call carry executor labels. Listing age probed for ttlMs absent, 0, 5000, 600000, 1e12 on both eras and for per-page ttl mixes: never kept past 60 s. A negative ttlMs is rejected by the mcp library (Ge 0), so it cannot arrive; forced in, it costs 4 reads per run like ttlMs 0, one schema check in total. SPEC FR-127 line 770 matches the code. Approved M33 tests untouched since round 2 (mtimes); the cap is a conditional equal to min. Examples 27 passed 6 of 6 and 28 passed 3 of 3 live plus offline; the earlier pre-tool failure did not reproduce. Caveats: a schema that times out is never cached, so with ttlMs 0 it spawns a checking process per read, up to 10 s each, about 2 per run; a listing is stamped at the end of its read; SPEC says a turn first call while code also reads at every step 1 and sink.",
+      "revision": null
+    },
+    {
+      "id": "27447512-5e42-4695-97a3-e59f5c4e9248",
+      "at": "2026-10-21T12:35:41.476Z",
+      "action": "requeue",
+      "task": "M35-mcp-http-resources",
+      "human": "siva-rgb (owner)",
+      "reason": "Requeued so the plan approval after the FR-127 spec re-approval reactivates it, as at M28",
       "revision": null
     }
   ],

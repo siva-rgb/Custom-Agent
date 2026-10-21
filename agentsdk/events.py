@@ -61,6 +61,7 @@ class EventType(str, Enum):
     MCP_SERVER_CONNECTED = "McpServerConnected"
     MCP_SERVER_UNAVAILABLE = "McpServerUnavailable"
     MCP_TOOL_SKIPPED = "McpToolSkipped"
+    MCP_TOOL_BLOCKED = "McpToolBlocked"
 
 
 @dataclass(frozen=True)

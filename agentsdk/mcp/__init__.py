@@ -15,7 +15,6 @@ from __future__ import annotations
 import asyncio
 import base64
 import concurrent.futures
-import hashlib
 import pathlib
 import json
 import math
@@ -24,22 +23,25 @@ import re
 import subprocess
 import sys
 import threading
+import time
 import weakref
 from collections import Counter
+from datetime import datetime, timezone
 from collections.abc import Mapping
 from dataclasses import dataclass, field
 from typing import Any
 
-from ..errors import ToolExecutionError
+from ..catalog import ToolVersion, changed_parts, checked_hash, tool_entry, tool_hash
+from ..errors import ToolBlocked, ToolExecutionError
 from ..events import EventType
 from ..primitives import InstructionAuthority, Origin, TaintFlag, TrustZone, unstorable_reason
 from ..tools import ApprovalPolicy, ResultProvenance, RiskClass, Tool, ToolOutput, ToolRegistry, ToolSpec
 
-__all__ = ["StdioServer"]
+__all__ = ["McpAcceptance", "StdioServer", "tool_hash"]
 
 _ALIAS = re.compile(r"[a-z][a-z0-9-]{0,23}")
 _QUALIFIED = re.compile(r"[A-Za-z0-9_-]{1,64}")
-_APPROVALS = ("require", "never")
+_APPROVALS = ("require", "never", "by_annotations")
 _MAX_TOOLS = 1000
 # M33 round 2: every wait on what a server controls is bounded -- a listing by pages as well as
 # tools, closing by seconds, and a failed connection is not tried again for a while, so a
@@ -49,6 +51,14 @@ _CLOSE_SECONDS = 10.0
 # How far past call_timeout the SDK's own deadline sits (M33 rounds 3 and 4).
 _WEDGE_MARGIN = 5.0
 _RETRY_SECONDS = 60.0
+# FR-127 (M34): a listing is read again once it is this old, whatever ttlMs it passed (the owner,
+# at round 2: a server does not choose how long its own changed tool keeps running), and a catalog read --
+# every store call of one listing, on a worker thread -- is bounded by the other.
+_FRESH_SECONDS = 60.0
+_STORE_SECONDS = 30.0
+# Versions one connection records, at most: a server that changes its tools without end fills
+# neither the catalog nor memory; a tool past the cap stays blocked, naming why (pre-review D4).
+_MAX_VERSIONS = 10 * _MAX_TOOLS
 # NFR-35: whatever a server returns, and whatever `trusted` says.
 _UNTRUSTED = ResultProvenance(origin=Origin.MCP_RESOURCE, trust_zone=TrustZone.UNTRUSTED,
                               instruction_authority=InstructionAuthority.DATA_ONLY,
@@ -56,6 +66,21 @@ _UNTRUSTED = ResultProvenance(origin=Origin.MCP_RESOURCE, trust_zone=TrustZone.U
 _CONNECTION_CLOSED, _REQUEST_TIMEOUT = -32000, -32001
 # The 2026-07-28 era answers server/discover; anything older came through initialize.
 _MODERN = "2026-07-28"
+
+
+@dataclass(frozen=True)
+class McpAcceptance:
+    """FR-127: tool hashes accepted in code for one tenancy -- recorded, by its service
+    principal, when that tenancy's connection first lists each tool. Checked by the server
+    config that holds it."""
+
+    tenant_id: str
+    project_id: str
+    principal: Any
+    tool_hashes: tuple[str, ...]
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "tool_hashes", tuple(self.tool_hashes))
 
 
 @dataclass(frozen=True)
@@ -68,6 +93,9 @@ class StdioServer:
     per tool in `approval_overrides`. `call_timeout` bounds each round trip, in seconds,
     and `connect_timeout` the start, the protocol exchange and the whole listing.
     `protocol` is `auto` (P4-D17), `legacy`, or a pinned revision.
+
+    M34 (FR-127, FR-128): `approval` may also be `by_annotations`, for a `trusted` server only;
+    `accept` holds an `McpAcceptance` per tenancy, at most one each.
     """
 
     alias: str
@@ -83,6 +111,7 @@ class StdioServer:
     call_timeout: float = 60.0
     connect_timeout: float = 30.0
     protocol: str = "auto"
+    accept: tuple[McpAcceptance, ...] = ()
 
     def __post_init__(self) -> None:
         if not isinstance(self.alias, str) or not _ALIAS.fullmatch(self.alias):
@@ -98,12 +127,42 @@ class StdioServer:
         for value in (*self.args, *self.deny, *(self.allow or ())):
             if not isinstance(value, str) or unstorable_reason(value):
                 raise ValueError("args, allow and deny must be storable text")
+        # M33 review caveat (M34 pre-flight): these name a tool as its server lists it. A qualified
+        # name matched nothing, so in deny it failed open -- the tool stayed offered.
+        for value in (*self.deny, *(self.allow or ()), *self.approval_overrides):
+            if isinstance(value, str) and value.startswith(f"{self.alias}__"):
+                raise ValueError(f"allow, deny and approval_overrides name a tool as its server lists it, "
+                                 f"without the alias: {value!r}")
         for name, value in self.env.items():
             if not isinstance(name, str) or not isinstance(value, str) or unstorable_reason(name) or unstorable_reason(value):
                 raise ValueError(f"env {name!r} must map text to storable text")
         for policy in (self.approval, *self.approval_overrides.values()):
             if policy not in _APPROVALS:
                 raise ValueError(f"approval must be one of {', '.join(_APPROVALS)}, got {policy!r}")
+            if policy == "by_annotations" and self.trusted is not True:
+                raise ValueError("approval by_annotations is for a trusted server only: an untrusted "
+                                 "server's annotations change nothing (FR-128)")
+        object.__setattr__(self, "accept", tuple(self.accept))
+        tenancies = set()
+        for item in self.accept:
+            if not isinstance(item, McpAcceptance):
+                raise ValueError(f"accept holds McpAcceptance values, got {type(item).__name__}")
+            if (item.tenant_id, item.project_id) in tenancies:
+                raise ValueError(f"accept allows one per tenancy, and names {item.tenant_id}/{item.project_id} "
+                                 f"twice")
+            tenancies.add((item.tenant_id, item.project_id))
+            for name in ("tenant_id", "project_id"):
+                value = getattr(item, name)
+                if not isinstance(value, str) or not value or unstorable_reason(value):
+                    raise ValueError(f"an McpAcceptance's {name} must be non-empty storable text")
+            principal = item.principal
+            if getattr(principal, "service_principal", None) is None or not hasattr(principal, "to_json"):
+                raise ValueError("an McpAcceptance's principal must be a service principal (FR-127)")
+            for value in item.tool_hashes:
+                try:
+                    checked_hash(value)
+                except ValueError:
+                    raise ValueError(f"an McpAcceptance names tool hashes, each a SHA-256 in hex, got {value!r}") from None
         for name in ("call_timeout", "connect_timeout"):
             value = getattr(self, name)
             if isinstance(value, bool) or not isinstance(value, (int, float)) or not math.isfinite(value) or value <= 0:
@@ -125,12 +184,34 @@ def _named(profile: tuple[str, ...], alias: str, name: str) -> bool:
     return f"{alias}__{name}" in profile or f"{alias}__*" in profile
 
 
-def _hash(entry: Any) -> str:
-    """The tool's version: its description, schemas and annotations (FR-125, FR-127)."""
-    body = {"description": entry.description, "input_schema": entry.input_schema,
-            "output_schema": entry.output_schema,
-            "annotations": None if entry.annotations is None else entry.annotations.model_dump(exclude_none=True)}
-    return hashlib.sha256(json.dumps(body, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
+def _entry(entry: Any) -> dict[str, Any]:
+    """FR-127: a listed tool as the catalog records and hashes it, annotations by wire name."""
+    annotations = None if entry.annotations is None else entry.annotations.model_dump(by_alias=True, exclude_none=True)
+    return tool_entry(entry.name, entry.description, entry.input_schema, entry.output_schema, annotations)
+
+
+def _hash_of(entry: dict[str, Any]) -> str:
+    return tool_hash(entry["name"], entry["description"], entry["inputSchema"], entry["outputSchema"],
+                     entry["annotations"])
+
+
+def _read_catalog(store: Any, tenant_id: str, project_id: str, alias: str, versions: list[ToolVersion],
+                  pending: dict[str, str], accept: McpAcceptance | None) -> tuple[set[str], dict[str, Any]]:
+    """FR-127, one catalog read of a listing, on a worker thread: records the versions not yet
+    recorded, records this tenancy's acceptance in code for the hashes it names, and answers
+    which of `pending` (name -> hash) are accepted, with each blocked tool's last accepted
+    version. A failure raises, and the caller leaves the pending tools unavailable (NFR-36)."""
+    if versions:
+        store.record_versions(versions)
+    if not pending:
+        return set(), {}
+    if accept is not None:
+        wanted = [h for h in pending.values() if h in accept.tool_hashes]
+        if wanted:
+            store.accept(tenant_id, project_id, alias, wanted, accept.principal)
+    found = set(store.acceptances(tenant_id, project_id, alias, list(pending.values())))
+    blocked = [name for name, h in pending.items() if h not in found]
+    return found, (store.last_accepted(tenant_id, project_id, alias, blocked) if blocked else {})
 
 
 # M33 round 5: no schema a server supplied is ever evaluated in this process. Validating against
@@ -334,10 +415,30 @@ class _Connection:
     that one, never a newer one.
     """
 
-    def __init__(self, server: StdioServer, registered: frozenset[str], submit: Any) -> None:
+    def __init__(self, server: StdioServer, registered: frozenset[str], submit: Any,
+                 tenancy: tuple[str, str] = ("", ""), catalog: Any = None, clock: Any = time.monotonic) -> None:
         self.server, self._registered, self._submit = server, registered, submit
         self.client: Any = None
         self.tools: dict[str, Tool] = {}
+        # FR-127 (M34): the catalog of this connection's tenancy. `usable` maps each listed tool
+        # to its hash while that hash is accepted, and is replaced whole, never edited, so a
+        # reader on another loop sees one listing's answer or the next one's.
+        self._tenancy, self._catalog, self._clock = tenancy, catalog, clock
+        self._accept = next((a for a in server.accept if (a.tenant_id, a.project_id) == tenancy), None)
+        self.usable: dict[str, str] = {}
+        self._entries: dict[str, dict[str, Any]] = {}
+        self._recorded: set[str] = set()
+        self._blocked: dict[tuple[str, str], dict[str, Any]] = {}  # (name, hash) -> McpToolBlocked
+        self._listed_at: float | None = None
+        self._ttl: float | None = None
+        self._stale = False  # a list-changed notification since the last read
+        self._changes = 0  # notifications seen: a read that saw none arrive during it clears _stale
+        self._listener: asyncio.Task | None = None
+        self._skips: set[tuple[str, str]] = set()
+        # Each schema pair's verdict, by its canonical JSON: a listing read again unchanged -- each
+        # turn, for a server whose ttlMs is 0 -- starts no checking process (M34).
+        self._verdicts: dict[str, str | None] = {}
+        self._unmatched: list[str] = []
         self.era: str | None = None
         self.starts = 0
         self.dead = False  # restarted once already, and exited again (FR-124)
@@ -364,22 +465,34 @@ class _Connection:
         return events
 
     async def _ensure(self) -> list[tuple[EventType, dict[str, Any]]]:
-        """The only place a server is started."""
+        """The only place a server is started. A server already connected has its listing read
+        again when it is stale (FR-127), and its catalog read for the tools not yet usable."""
         async with self._lock:
-            if self.closed or self.dead or self.client is not None:
+            if self.closed or self.dead:
                 return []
+            if self.client is not None:
+                events = await self._reread() if self._is_stale() else []
+                return events + (await self._catalogue() if self.client is not None else [])
             if self.starts >= 2:  # FR-124: restarted once in its life already
                 self.dead, self._why = True, "ServerExited"
                 return []
             loop = asyncio.get_running_loop()
             if self._failed_at is not None and loop.time() - self._failed_at < _RETRY_SECONDS:
                 return []
+            seen = self._changes
             try:
-                listed = await self._open()
+                listed, ttl = await self._open()
                 if self.closed:  # closed while it started: end it, report nothing
                     await self._discard(self.client, self._task)
                     return []
-                events = self._list(listed, await self._schema_problems(listed))
+                events = [(EventType.MCP_SERVER_CONNECTED, {
+                    "alias": self.server.alias, "era": self.era,
+                    "server": {"name": getattr(self._info, "name", None),
+                               "version": getattr(self._info, "version", None)}})]
+                events += self._list(listed, await self._schema_problems(listed))
+                events[0][1]["unmatched_overrides"] = list(self._unmatched)
+                self._read_at(ttl, seen)
+                events += await self._catalogue()
             except BaseException as exc:  # noqa: BLE001 - any exit, a cancellation included (robustness pass 2)
                 await self._discard(self.client, self._task)
                 if not isinstance(exc, Exception):
@@ -393,7 +506,142 @@ class _Connection:
             self.starts += 1
             return events
 
-    async def _open(self) -> list[Any]:
+    def _is_stale(self) -> bool:
+        """FR-127: a notification since the last read, a passed ttlMs, or a listing older than 60
+        seconds, whatever its ttlMs -- by the catalog's clock, which tests replace."""
+        if self._stale or self._listed_at is None:
+            return True
+        kept = self._ttl if self._ttl is not None and self._ttl < _FRESH_SECONDS else _FRESH_SECONDS
+        return self._clock() - self._listed_at >= kept
+
+    def _read_at(self, ttl: float | None, seen: int) -> None:
+        """A read that began when `seen` notifications had arrived: still stale if any came during
+        it -- so a notification is never lost to the read it raced (pre-review D2)."""
+        self._listed_at, self._ttl, self._stale = self._clock(), ttl, self._changes != seen
+
+    async def _reread(self) -> list[tuple[EventType, dict[str, Any]]]:
+        """Reads the listing again on the session there is, under the lock. A listing that cannot
+        be read ends that session: its tools are absent until the server starts again."""
+        client, task, seen = self.client, self._task, self._changes
+        try:
+            listed, ttl = await asyncio.wait_for(_read_listing(client), self.server.connect_timeout)
+            problems = await self._schema_problems(listed)
+        except Exception as exc:  # noqa: BLE001 - unreadable: the session is ended, fail closed
+            await self._discard(client, task)
+            self._why = type(exc).__name__
+            return [(EventType.MCP_SERVER_UNAVAILABLE, {"alias": self.server.alias, "error": self._why})]
+        events = self._list(listed, problems)
+        self._read_at(ttl, seen)
+        if self.era == _MODERN and (self._listener is None or self._listener.done()):
+            self._listen(client, task)  # FR-127: reopened at the next read if it closed
+        return events
+
+    def _changed(self) -> None:
+        """A list-changed notification: the catalog is read now, in the background, and its
+        events reported at the next ensure (FR-127)."""
+        self._changes += 1
+        self._stale = True
+        if not self.closed and self.client is not None:
+            asyncio.get_running_loop().create_task(self._read_soon())
+
+    async def _read_soon(self) -> None:
+        async with self._lock:
+            if self.closed or self.client is None or not self._stale:
+                return
+            self._unreported += await self._reread()
+            if self.client is not None:
+                await self._catalogue()  # its blocked tools are reported at every ensure
+
+    def _listen(self, client: Any, task: asyncio.Task | None) -> None:
+        """FR-127, the 2026-07-28 era: a `subscriptions/listen` stream for tool list changes,
+        living no longer than its session, which cancels it as it ends."""
+
+        async def listen() -> None:
+            try:
+                async with client.listen(tools_list_changed=True) as subscription:
+                    async for _ in subscription:
+                        self._changed()
+            except Exception:  # noqa: BLE001 - not offered, or lost: nothing is known any more
+                pass
+            if self._task is task:
+                self._changes += 1  # events may have been missed: the next read is a fresh one
+                self._stale = True
+
+        self._listener = asyncio.get_running_loop().create_task(listen())
+
+    async def _catalogue(self) -> list[tuple[EventType, dict[str, Any]]]:
+        """FR-127: which listed tools are usable -- their current hash accepted for this
+        tenancy -- and McpToolBlocked for each that is not, every time, so each run is told.
+        A catalog that cannot be read leaves every tool not already usable unavailable (NFR-36)."""
+        tenant_id, project_id = self._tenancy
+        alias, now = self.server.alias, datetime.now(timezone.utc)
+        hashes = {name: tool.spec.configuration["tool_hash"] for name, tool in self.tools.items()}
+        versions = [ToolVersion(tenant_id=tenant_id, project_id=project_id, alias=alias, tool_name=name,
+                                tool_hash=h, entry=self._entries[name], first_seen_at=now)
+                    for name, h in hashes.items() if h not in self._recorded]
+        room = max(0, _MAX_VERSIONS - len(self._recorded))
+        over = {v.tool_name for v in versions[room:]}  # past the cap: not recorded, so not usable
+        versions = versions[:room]
+        pending = {name: h for name, h in hashes.items() if self.usable.get(name) != h and name not in over}
+        error = None
+        try:
+            found, previous = await asyncio.wait_for(asyncio.to_thread(
+                _read_catalog, self._catalog(), tenant_id, project_id, alias, versions, pending, self._accept),
+                _STORE_SECONDS)
+            self._recorded |= {v.tool_hash for v in versions}
+        except Exception as exc:  # noqa: BLE001 - the store fails closed
+            found, previous, error = set(), {}, type(exc).__name__
+        self.usable = {name: h for name, h in hashes.items()
+                       if name not in over and (self.usable.get(name) == h or h in found)}
+        self._blocked = {key: value for key, value in self._blocked.items() if hashes.get(key[0]) == key[1]}
+        events = []
+        for name, h in hashes.items():
+            if name in self.usable:
+                continue
+            if name in over:
+                events.append((EventType.MCP_TOOL_BLOCKED, {
+                    "alias": alias, "tool": name, "tool_hash": h, "previous_hash": None, "changed": None,
+                    "error": f"VersionLimit: this connection has recorded {_MAX_VERSIONS} versions"}))
+                continue
+            payload = self._blocked.get((name, h))
+            if payload is None or error is not None:
+                before = previous.get(name)
+                payload = {"alias": alias, "tool": name, "tool_hash": h,
+                           "previous_hash": None if before is None else before.tool_hash,
+                           "changed": None if before is None else changed_parts(before.entry, self._entries[name])}
+                if error is not None:
+                    payload["error"] = error
+                else:
+                    self._blocked[(name, h)] = payload
+            events.append((EventType.MCP_TOOL_BLOCKED, dict(payload)))
+        return events
+
+    async def current(self, name: str) -> tuple[Tool | None, str | None]:
+        """FR-127, NFR-36: the tool a call under `name` may run now -- the connection's current
+        tool object, while its hash is accepted -- and, when there is none because the server is
+        down, why. A session that ended is started again first (the restart-once rule) and a
+        stale listing read again, so a call is validated and asked about only against what the
+        server lists now (round 1 review). What executor step 1 checks, and what the call checks
+        again as it leaves (pre-review D1)."""
+        self._unreported += [e for e in await self._ensure() if e[0] is not EventType.MCP_TOOL_BLOCKED]
+        if self.closed or self.client is None:
+            return None, ("closed with its Runner" if self.closed else "not running")
+        tool = self.tools.get(name)
+        if tool is None or self.usable.get(name) != tool.spec.configuration["tool_hash"]:
+            return None, None
+        return tool, None
+
+    def _on_message(self, message: Any) -> Any:
+        """The library's message handler: a legacy-era tools list-changed notification."""
+        from mcp.types import ToolListChangedNotification
+
+        async def handle() -> None:
+            if isinstance(message, ToolListChangedNotification):
+                self._changed()
+
+        return handle()
+
+    async def _open(self) -> tuple[list[Any], float | None]:
         from mcp import Client, StdioServerParameters
         from mcp.client.stdio import stdio_client
 
@@ -406,19 +654,20 @@ class _Connection:
                 try:
                     params = StdioServerParameters(command=server.command, args=list(server.args),
                                                    env=dict(server.env) or None, cwd=server.cwd)
-                    async with Client(stdio_client(params, errlog=devnull), mode=server.protocol) as client:
+                    # No response cache: the SDK decides when a listing is read again (FR-127).
+                    async with Client(stdio_client(params, errlog=devnull), mode=server.protocol, cache=None,
+                                      message_handler=self._on_message) as client:
                         _guard_output_validation(client)
-                        listed, cursor = [], None
-                        for _ in range(_MAX_PAGES):
-                            page = await client.list_tools(cursor=cursor)
-                            listed += page.tools
-                            if not (cursor := page.next_cursor) or len(listed) > _MAX_TOOLS:
-                                break
-                        else:
-                            raise ValueError(f"the listing ran past {_MAX_PAGES} pages")
+                        listed, ttl = await _read_listing(client)
                         if not ready.done():
-                            ready.set_result((client, listed))
-                        await stop.wait()
+                            ready.set_result((client, listed, ttl))
+                        try:
+                            await stop.wait()
+                        finally:
+                            listener = self._listener
+                            if listener is not None and not listener.done() and self._task is asyncio.current_task():
+                                listener.cancel()
+                                await asyncio.wait([listener], timeout=_CLOSE_SECONDS)
                 except BaseException as exc:
                     if not ready.done():
                         ready.set_exception(exc if isinstance(exc, Exception) else ConnectionError("cancelled"))
@@ -432,28 +681,44 @@ class _Connection:
         task = asyncio.create_task(serve())
         self._task, self._stop = task, stop
         try:
-            client, listed = await asyncio.wait_for(ready, server.connect_timeout)
+            client, listed, ttl = await asyncio.wait_for(ready, server.connect_timeout)
         except BaseException:
             await _ended(task)
             raise
         self.client, self.era = client, _MODERN if client.protocol_version == _MODERN else client.protocol_version
         self._info = client.server_info
-        return listed
+        if self.era == _MODERN:
+            self._listen(client, task)
+        return listed, ttl
 
     async def _schema_problems(self, listed: list[Any]) -> list[str | None]:
         """Each listed tool's input-schema problem, checked in processes of their own; a chunk past
-        the deadline has its tools skipped, and the server's other tools stay."""
-        schemas = [entry.input_schema for entry in listed[:_MAX_TOOLS]]
-        outputs = [entry.output_schema for entry in listed[:_MAX_TOOLS]]
-        return await asyncio.to_thread(_check_listing, schemas, outputs)
+        the deadline has its tools skipped, and the server's other tools stay. A pair of schemas
+        already judged by this connection keeps its verdict; one that could not be checked is
+        checked again at the next read."""
+        entries = listed[:_MAX_TOOLS]
+        keys = [_canonical([entry.input_schema, entry.output_schema]) for entry in entries]
+        unknown = [index for index, key in enumerate(keys) if key is None or key not in self._verdicts]
+        if unknown:
+            found = await asyncio.to_thread(_check_listing, [entries[i].input_schema for i in unknown],
+                                            [entries[i].output_schema for i in unknown])
+            fresh = dict(zip(unknown, found))
+            if len(self._verdicts) > 4 * _MAX_TOOLS:
+                self._verdicts = {}  # kept for a listing read again unchanged, not for ever (D4)
+            for index, problem in fresh.items():
+                if keys[index] is not None and not (problem or "").startswith("its input schema: it could not"):
+                    self._verdicts[keys[index]] = problem
+        else:
+            fresh = {}
+        return [fresh[i] if i in fresh else self._verdicts[keys[i]] for i in range(len(entries))]
 
     def _list(self, listed: list[Any], problems: list[str | None]) -> list[tuple[EventType, dict[str, Any]]]:
-        alias = self.server.alias
-        events = [(EventType.MCP_SERVER_CONNECTED, {
-            "alias": alias, "era": self.era,
-            "server": {"name": getattr(self._info, "name", None), "version": getattr(self._info, "version", None)}})]
+        alias, events = self.server.alias, []
         counts = Counter(entry.name for entry in listed)
-        tools = {}
+        # The owner's choice (M34): an override naming no listed tool -- a typo, or a tool since
+        # removed -- makes every tool of this server ask, so it can never leave one unapproved.
+        self._unmatched = sorted(set(self.server.approval_overrides) - set(counts))
+        tools, entries = {}, {}
         for index, entry in enumerate(listed):
             qualified = f"{alias}__{entry.name}"
             if index >= _MAX_TOOLS:
@@ -479,35 +744,53 @@ class _Connection:
                 reason = problems[index]
             if reason is None:
                 try:
-                    tools[entry.name] = self._tool(entry)
+                    entries[entry.name] = _entry(entry)
+                    tool = self._tool(entry, entries[entry.name])
+                    kept = self.tools.get(entry.name)
+                    # The object a turn was offered stays the tool while nothing of its spec has
+                    # changed -- hash, approval policy, risk; any change makes it another (D3).
+                    tools[entry.name] = kept if kept is not None and kept.spec == tool.spec else tool
                 except Exception as exc:  # noqa: BLE001 - one entry the SDK cannot hold (a NUL, say): that tool alone is skipped
                     reason = f"it cannot be offered as a tool: {type(exc).__name__}"
-            if reason is not None:
+            if reason is not None and (entry.name, reason) not in self._skips:
+                self._skips.add((entry.name, reason))  # each skip reported once, not at every read
                 # The reason may quote the server's schema: cut, as its name is (round 6 pre-review).
                 events.append((EventType.MCP_TOOL_SKIPPED, {"alias": alias, "tool": entry.name[:200], "reason": reason[:500]}))
-        self.tools = tools
+        self.tools, self._entries = tools, entries
+        self._skips = {skip for skip in self._skips if skip[0] in counts}  # this listing's (D4)
         return events
 
-    def _tool(self, entry: Any) -> Tool:
+    def _tool(self, entry: Any, recorded: dict[str, Any]) -> Tool:
         server, name = self.server, entry.name
-        policy = server.approval_overrides.get(name, server.approval)
+        policy = "require" if self._unmatched else server.approval_overrides.get(name, server.approval)
+        # FR-128: a trusted server's annotations set the spec; an untrusted server's are recorded
+        # in the catalog and change nothing.
+        hints = recorded["annotations"] if server.trusted else None
+        hints = hints or {}
+        read_only = hints.get("readOnlyHint") is True
+        risk = RiskClass.READ_ONLY if read_only else (
+            RiskClass.WRITE if hints.get("destructiveHint") is False else RiskClass.DESTRUCTIVE)
+        ask = policy == "require" or (policy == "by_annotations" and not read_only)
+        digest = _hash_of(recorded)
         spec = ToolSpec(
             name=f"{server.alias}__{name}", description=entry.description or "", input_schema=entry.input_schema,
-            risk_class=RiskClass.DESTRUCTIVE, read_only=False, idempotent=False, concurrency_safe=False,
-            approval_policy=ApprovalPolicy.REQUIRE_APPROVAL if policy == "require" else ApprovalPolicy.AUTO,
+            risk_class=risk, read_only=read_only, idempotent=hints.get("idempotentHint") is True,
+            concurrency_safe=read_only,
+            approval_policy=ApprovalPolicy.REQUIRE_APPROVAL if ask else ApprovalPolicy.AUTO,
             # The client times each round trip; the executor sets no deadline (FR-125).
             timeout_seconds=None,
             result_provenance=_UNTRUSTED,
-            configuration={"mcp_server": server.alias, "tool_hash": _hash(entry)},
+            configuration={"mcp_server": server.alias, "tool_hash": digest},
         )
 
         async def call(**arguments: Any) -> ToolOutput:
             # Called on the run's loop; the call itself runs on the Runner's MCP loop.
-            return await self._submit(self._call(name, arguments, entry.output_schema), _call_bound(server))
+            return await self._submit(self._call(name, arguments, entry.output_schema, tool), _call_bound(server))
 
-        return Tool(spec=spec, fn=call)
+        tool = Tool(spec=spec, fn=call)
+        return tool
 
-    async def _call(self, name: str, arguments: dict[str, Any], output_schema: Any) -> ToolOutput:
+    async def _call(self, name: str, arguments: dict[str, Any], output_schema: Any, tool: Tool) -> ToolOutput:
         from mcp import MCPError
 
         alias = self.server.alias
@@ -515,6 +798,17 @@ class _Connection:
             self._unreported += await self._ensure()
         if self.closed:
             raise ToolExecutionError(f"mcp server {alias} was closed with its Runner")
+        # NFR-36, asserted where a call leaves for the server, whatever it waited on since step 1
+        # -- an approval, a slot: it runs only as the tool the connection offers now, under a
+        # listing read again first if it is stale (pre-review D1). A call in flight finishes
+        # against the version it was sent under.
+        offered, down = await self.current(name)
+        if down is not None:
+            raise ToolExecutionError(f"mcp server {alias} is {down}")
+        if offered is None:
+            raise ToolBlocked(f"{alias}__{name} is not accepted in its current version")
+        if offered is not tool:
+            raise ToolBlocked(f"{alias}__{name} changed since it was offered; it is offered again next turn")
         client, task = self.client, self._task  # this call's session
         if client is None:
             raise ToolExecutionError(f"mcp server {alias} exited")
@@ -588,6 +882,28 @@ class _Connection:
             self.client = None
 
 
+def _canonical(value: Any) -> str | None:
+    """Canonical JSON text, or None for a value that has none."""
+    try:
+        return json.dumps(value, sort_keys=True, separators=(",", ":"))
+    except (TypeError, ValueError):
+        return None
+
+
+async def _read_listing(client: Any) -> tuple[list[Any], float | None]:
+    """Every page of a listing, within _MAX_PAGES and _MAX_TOOLS, and its ttl in seconds -- None
+    when the server sent no ttlMs (the library would default it to 0, immediately stale)."""
+    listed, cursor, ttl = [], None, None
+    for _ in range(_MAX_PAGES):
+        page = await client.list_tools(cursor=cursor)
+        listed += page.tools
+        if "ttl_ms" in page.model_fields_set:
+            ttl = page.ttl_ms / 1000 if ttl is None else min(ttl, page.ttl_ms / 1000)
+        if not (cursor := page.next_cursor) or len(listed) > _MAX_TOOLS:
+            return listed, ttl
+    raise ValueError(f"the listing ran past {_MAX_PAGES} pages")
+
+
 async def _ended(task: asyncio.Task | None) -> None:
     """Cancels a session's task -- its Client then ends the server -- within the close bound."""
     if task is not None and not task.done():
@@ -597,7 +913,7 @@ async def _ended(task: asyncio.Task | None) -> None:
 
 def _ensure_bound(server: StdioServer) -> float:
     """How long a start may take, every inner bound included: the caller's own deadline."""
-    return server.connect_timeout + _VALIDATION_SECONDS + 3 * _CLOSE_SECONDS + 5
+    return 2 * server.connect_timeout + 2 * _VALIDATION_SECONDS + 2 * _STORE_SECONDS + 3 * _CLOSE_SECONDS + 5
 
 
 def _call_bound(server: StdioServer) -> float:
@@ -629,12 +945,16 @@ class _Engine:
         self.connections: dict[tuple[str, str, str], _Connection] = {}
         self.servers: dict[str, StdioServer] = {}
         self.registered: frozenset[str] = frozenset()
+        # FR-127 (M34): where the catalog is kept, and the clock it reads -- replaced by tests.
+        self.catalog: Any = None
+        self.clock: Any = time.monotonic
 
     def connection(self, alias: str, tenant_id: str, project_id: str) -> _Connection:
         """On self.loop only."""
         key = (alias, tenant_id, project_id)
         if key not in self.connections:
-            self.connections[key] = _Connection(self.servers[alias], self.registered, self.submit)
+            self.connections[key] = _Connection(self.servers[alias], self.registered, self.submit,
+                                                (tenant_id, project_id), self.catalog, lambda: self.clock())
         return self.connections[key]
 
     async def submit(self, coroutine: Any, timeout: float) -> Any:
@@ -742,7 +1062,7 @@ class McpClients:
     """A Runner's MCP servers and their connections (FR-123, FR-124), all on one loop of their
     own (`_Engine`)."""
 
-    def __init__(self, servers: list[StdioServer], registered: frozenset[str]) -> None:
+    def __init__(self, servers: list[StdioServer], registered: frozenset[str], catalog: Any = None) -> None:
         try:
             import mcp  # noqa: F401
         except ImportError:
@@ -753,11 +1073,26 @@ class McpClients:
         self.servers = {server.alias: server for server in servers}
         self._engine = _Engine()
         self._engine.servers, self._engine.registered = self.servers, registered
+        if catalog is None:
+            from ..catalog import InMemoryCatalogStore
+
+            store = InMemoryCatalogStore()
+            catalog = lambda: store  # noqa: E731
+        self._engine.catalog = catalog
         # A Runner collected without aclose still ends its servers (NFR-39).
         weakref.finalize(self, self._engine.close)
 
     def records(self) -> list[dict[str, Any]]:
         return [server.record() for server in self.servers.values()]
+
+    @property
+    def clock(self) -> Any:
+        """FR-127: the catalog's clock, in seconds, monotonic; tests replace it."""
+        return self._engine.clock
+
+    @clock.setter
+    def clock(self, value: Any) -> None:
+        self._engine.clock = value
 
     def checker(self, checker: Any, view: RunTools) -> Any:
         """P4-D30: an agent's default allowlist, plus every tool a configured server listed that
@@ -776,7 +1111,13 @@ class McpClients:
 
         async def on_the_mcp_loop():
             connection = self._engine.connection(alias, tenant_id, project_id)
-            return await connection.ensure(), dict(connection.tools)
+            events = await connection.ensure()
+            # FR-127: only the tools whose current hash is accepted for this tenancy, and none of a
+            # server whose session has ended: its listing is no longer known (round 1 review).
+            if connection.client is None:
+                return events, {}
+            return events, {name: tool for name, tool in connection.tools.items()
+                            if connection.usable.get(name) == tool.spec.configuration["tool_hash"]}
 
         try:
             return await self._engine.submit(on_the_mcp_loop(), _ensure_bound(self.servers[alias]))
@@ -786,6 +1127,15 @@ class McpClients:
             # The MCP loop did not answer in time: the run is told, as for any server that is
             # down, rather than losing the server's tools in silence (round 6 pre-review).
             return [(EventType.MCP_SERVER_UNAVAILABLE, {"alias": alias, "error": "McpLoopUnanswered"})], {}
+
+    async def current(self, alias: str, tenant_id: str, project_id: str, name: str) -> tuple[Tool | None, str | None]:
+        """FR-127: the tool a call under `name` may run now, for this tenancy, or None and, when
+        its server is down, why."""
+
+        async def on_the_mcp_loop():
+            return await self._engine.connection(alias, tenant_id, project_id).current(name)
+
+        return await self._engine.submit(on_the_mcp_loop(), _ensure_bound(self.servers[alias]))
 
     async def aclose(self) -> None:
         """Closes the Runner to MCP for good (FR-124, NFR-39): every connection, whichever loop
@@ -815,6 +1165,7 @@ class RunTools(ToolRegistry):
         self._prepared = False
         self._known: dict[str, dict[str, Tool]] = {}
         self._down: set[str] = set()  # aliases this run has been told are unavailable
+        self._told: set[tuple[str, str, str, str | None]] = set()  # (alias, tool, hash, error) told blocked
         self._tools = {name: base.get(name) for name in base.names()}
 
     async def refresh(self) -> list[tuple[EventType, dict[str, Any]]]:
@@ -831,6 +1182,11 @@ class RunTools(ToolRegistry):
                         if alias in self._down:
                             continue
                         self._down.add(alias)
+                    elif kind is EventType.MCP_TOOL_BLOCKED:
+                        told = (alias, payload["tool"], payload["tool_hash"], payload.get("error"))
+                        if told in self._told:
+                            continue  # each blocked version, and each failure, reported once a run
+                        self._told.add(told)
                     elif kind is EventType.MCP_SERVER_CONNECTED:
                         self._down.discard(alias)
                     self._pending.append((kind, payload))
@@ -840,6 +1196,23 @@ class RunTools(ToolRegistry):
         self._tools = tools
         events, self._pending = self._pending, []
         return events
+
+    async def blocked(self, name: str) -> str | None:
+        """FR-127, executor step 1: why a server tool this run was shown cannot be called now --
+        its server changed it, or it is no longer accepted -- or None. Asked of its connection,
+        which reads the catalog first when the listing is stale. Any other tool: None."""
+        alias, _, listed = name.partition("__")
+        tool = self._tools.get(name)
+        if tool is None or self._known.get(alias, {}).get(listed) is not tool:
+            return None
+        current, down = await self._clients.current(alias, *self._tenancy, listed)
+        if down is not None:
+            return f"{name}: its server is {down}"
+        if current is None:
+            return f"{name} is not accepted in its current version"
+        if current is not tool:
+            return f"{name} changed since it was offered; it is offered again next turn"
+        return None
 
     def served_by_wildcard(self, name: str) -> bool:
         """Whether the tool this run executes under `name`, this turn, is the very object a

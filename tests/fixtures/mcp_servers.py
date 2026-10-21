@@ -42,6 +42,61 @@ note_pid(os.getpid())
 if "--slow-start" in sys.argv:
     time.sleep(float(sys.argv[sys.argv.index("--slow-start") + 1]))
 
+# M34: a catalog server. Its tools come from a JSON state file the test rewrites, read at every
+# listing: {"tools": [{name, description, inputSchema, outputSchema?, annotations?}], "ttlMs": n?}.
+# Every listing read is logged to --reads, and `notify` announces that the list changed.
+CATALOG = sys.argv[sys.argv.index("--catalog") + 1] if "--catalog" in sys.argv else None
+READS = sys.argv[sys.argv.index("--reads") + 1] if "--reads" in sys.argv else None
+
+
+def catalog_state():
+    with open(CATALOG, encoding="utf-8") as f:
+        return json.load(f)
+
+
+def note_read():
+    if READS:
+        with open(READS, "a", encoding="utf-8") as f:
+            f.write("read\n")
+
+
+if KIND == "modern" and CATALOG:
+    from mcp.server.caching import CacheHint
+    from mcp.server.mcpserver import Context, MCPServer
+
+    # ttlMs is a 2026-07-28 field: only this era carries it.
+    ttl = catalog_state().get("ttlMs")
+    app = MCPServer("modern-catalog", log_level="WARNING",
+                    cache_hints={"tools/list": CacheHint(ttl_ms=ttl)} if ttl is not None else None)
+
+    def called(text: str = "") -> str:
+        return f"called {text}"
+
+    def register():
+        for tool in catalog_state()["tools"]:
+            if tool["name"] in {t.name for t in app._tool_manager.list_tools()}:
+                app.remove_tool(tool["name"])
+            app.add_tool(called, name=tool["name"], description=tool["description"])
+
+    register()
+
+    @app.tool()
+    async def notify(ctx: Context) -> str:
+        """Re-read the state file, then announce that the list changed."""
+        register()
+        await ctx.notify_tools_changed()
+        return "notified"
+
+    listing = app.list_tools
+
+    async def counted():
+        note_read()
+        return await listing()
+
+    app.list_tools = counted
+    app.run()
+    raise SystemExit(0)
+
 if KIND == "modern":
     from mcp.server.mcpserver import MCPServer
 
@@ -244,8 +299,22 @@ for line in sys.stdin:
     elif method == "tools/list":
         if "--endless-pages" in sys.argv:  # an empty page, and another to come, forever
             reply(msg_id, {"tools": [], "nextCursor": "more"})
+        elif CATALOG:
+            note_read()
+            state = catalog_state()
+            reply(msg_id, {"tools": state["tools"] + [{"name": "notify", "description": "Announce a change.",
+                                                       "inputSchema": {"type": "object"}}],
+                           **({"ttlMs": state["ttlMs"]} if state.get("ttlMs") is not None else {})})
         else:
             reply(msg_id, {"tools": TOOLS})
+    elif method == "tools/call" and CATALOG:
+        params = message.get("params", {})
+        if params.get("name") == "notify":  # the notification first, then the answer
+            sys.stdout.write(json.dumps({"jsonrpc": "2.0", "method": "notifications/tools/list_changed"}) + "\n")
+            sys.stdout.flush()
+            reply(msg_id, text("notified"))
+        else:
+            reply(msg_id, text(f"called {params.get('name')} {json.dumps(params.get('arguments') or {}, sort_keys=True)}"))
     elif method == "tools/call":
         params = message.get("params", {})
         if params.get("name") == "rpc_error":

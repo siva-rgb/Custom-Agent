@@ -49,6 +49,21 @@ PYTHON = sys._base_executable
 PACKAGES = {"FIXTURE_SITE": [p for p in __import__("site").getsitepackages() if p.endswith("site-packages")][0]}
 
 
+def _every_listed_version_accepted(store, tenant_id, project_id, alias, versions, pending, accept):
+    return set(pending.values()), {}
+
+
+@pytest.fixture(autouse=True)
+def every_tool_accepted(monkeypatch):
+    """M34 (FR-127): no MCP tool is usable until its version is accepted for the tenancy. These
+    tests are of the client M33 built, not of the catalog, so here every version a connection
+    lists reads as accepted, through the one function every catalog read goes through.
+    tests/test_mcp_catalog.py tests the catalog itself."""
+    import agentsdk.mcp as mcp
+
+    monkeypatch.setattr(mcp, "_read_catalog", _every_listed_version_accepted)
+
+
 @pytest.fixture(autouse=True)
 def remove_what_the_test_wrote():
     yield
@@ -169,6 +184,10 @@ def untrusted(result):
     ({"call_timeout": 0}, "call_timeout"),
     ({"connect_timeout": float("inf")}, "connect_timeout"),
     ({"protocol": ""}, "protocol"),
+    # M33 review caveat (M34 pre-flight): a qualified name matched nothing, so in deny it failed open.
+    ({"deny": ("ok__wipe",)}, "without the alias"),
+    ({"allow": ("ok__echo",)}, "without the alias"),
+    ({"approval_overrides": {"ok__echo": "never"}}, "without the alias"),
 ])
 def test_an_invalid_server_config_is_refused_when_built(fields, reason):
     with pytest.raises(ValueError, match=reason):
@@ -637,6 +656,8 @@ def test_a_collection_inside_a_submission_does_not_deadlock_the_finalizer(tmp_pa
         "import asyncio, gc, sys, threading\n"
         "sys.path.insert(0, sys.argv[1])\n"
         "from tests.test_mcp_client import runner_for, server, pids_in, gone\n"
+        "import agentsdk.mcp, tests.test_mcp_client as fixture\n"
+        "agentsdk.mcp._read_catalog = fixture._every_listed_version_accepted  # as the autouse fixture\n"
         "from agentsdk.tools import ToolRegistry\n"
         "import pathlib\n"
         "pids = pathlib.Path(sys.argv[2])\n"
@@ -794,7 +815,7 @@ async def test_a_closed_connection_starts_no_server_on_its_own_loop_either(tmp_p
         await connection.close()
         assert connection.closed and await connection.ensure() == [] and connection.client is None
         with pytest.raises(ToolExecutionError, match="closed"):
-            await connection._call("echo", {"text": "late"}, None)
+            await connection._call("echo", {"text": "late"}, None, "0" * 64)
 
     await runner._mcp._engine.submit(on_the_mcp_loop(), timeout=120)
     await runner.aclose()
@@ -999,16 +1020,21 @@ def test_every_wait_in_the_mcp_module_names_its_bound():
         ("_ensure", "self._open()"): "connect_timeout, then the close bound",
         ("_ensure", "self._discard(self.client, self._task)"): "the close bound",
         ("_ensure", "self._schema_problems(listed)"): "the validation deadline",
-        ("serve", "client.list_tools(cursor=cursor)"): "connect_timeout (ready), _MAX_PAGES",
+        ("_read_listing", "client.list_tools(cursor=cursor)"):
+            "its caller's: connect_timeout (ready, or the re-read's wait_for), _MAX_PAGES",
+        ("serve", "_read_listing(client)"): "connect_timeout (ready)",
+        ("serve", "asyncio.wait([listener], timeout=_CLOSE_SECONDS)"): "_CLOSE_SECONDS",
         ("serve", "stop.wait()"): "set by close; the task is cancelled by _ended within the close bound",
         ("_open", "asyncio.wait_for(ready, server.connect_timeout)"): "connect_timeout",
         ("_open", "_ended(task)"): "the close bound",
-        ("call", "self._submit(self._call(name, arguments, entry.output_schema), _call_bound(server))"): "_call_bound, held by the caller",
+        ("call", "self._submit(self._call(name, arguments, entry.output_schema, tool), _call_bound(server))"): "_call_bound, held by the caller",
+        ("_call", "self.current(name)"): "current's own bounds, inside _call_bound",
+        ("current", "self._ensure()"): "_ensure's own bounds",
         ("_call", "self._ensure()"): "_ensure's own bounds",
         ("_call", "asyncio.wait_for(client.call_tool(name, arguments, read_timeout_seconds=timeout), timeout + _WEDGE_MARGIN)"): "call_timeout + margin",
         ("_call", "self._discard(client, task)"): "the close bound",
         ("_call", "wedged()"): "the close bound",
-        ("serve", "async with Client(stdio_client(params, errlog=devnull), mode=server.protocol)"):
+        ("serve", "async with Client(stdio_client(params, errlog=devnull), mode=server.protocol, cache=None, message_handler=self._on_message)"):
             "entered within connect_timeout (ready); left within the library's termination grace and the close bound",
         ("wedged", "self._discard(client, task)"): "the close bound",
         ("_discard", "_ended(task)"): "the close bound",
@@ -1027,7 +1053,28 @@ def test_every_wait_in_the_mcp_module_names_its_bound():
         ("aclose", "asyncio.to_thread(thread.join, _CLOSE_SECONDS)"): "_CLOSE_SECONDS",
         ("refresh", "self._clients.ensure(alias, *self._tenancy)"): "the engine call bounds",
         ("prepare", "self.refresh()"): "refresh's bounds",
-        ("_schema_problems", "asyncio.to_thread(_check_listing, schemas, outputs)"): "the validation deadline",
+        ("_schema_problems", "asyncio.to_thread(_check_listing, [entries[i].input_schema for i in unknown], [entries[i].output_schema for i in unknown])"): "the validation deadline",
+        # M34: the catalog, re-reads and list-changed notifications
+        ("_ensure", "self._reread()"): "its own bounds: connect_timeout, the validation deadline, the close bound",
+        ("_ensure", "self._catalogue()"): "_STORE_SECONDS",
+        ("_reread", "asyncio.wait_for(_read_listing(client), self.server.connect_timeout)"): "connect_timeout",
+        ("_reread", "self._schema_problems(listed)"): "the validation deadline",
+        ("_reread", "self._discard(client, task)"): "the close bound",
+        ("_read_soon", "async with self._lock"): "held only by _ensure, current, _read_soon and close, all bounded",
+        ("_read_soon", "self._reread()"): "its own bounds", ("_read_soon", "self._catalogue()"): "_STORE_SECONDS",
+        ("current", "self._engine.submit(on_the_mcp_loop(), _ensure_bound(self.servers[alias]))"): "_ensure_bound, held by the caller",
+        ("on_the_mcp_loop", "self._engine.connection(alias, tenant_id, project_id).current(name)"): "current's own bounds",
+        ("blocked", "self._clients.current(alias, *self._tenancy, listed)"): "the engine call bound",
+        ("_catalogue", "asyncio.wait_for(asyncio.to_thread(_read_catalog, self._catalog(), tenant_id, project_id, alias, versions, pending, self._accept), _STORE_SECONDS)"): "_STORE_SECONDS",
+        ("_read_catalog", "call store.record_versions"): "on a worker thread awaited within _STORE_SECONDS; each statement ends within its statement_timeout",
+        ("_read_catalog", "call store.accept"): "on a worker thread awaited within _STORE_SECONDS; each statement ends within its statement_timeout",
+        ("_read_catalog", "call store.acceptances"): "on a worker thread awaited within _STORE_SECONDS; each statement ends within its statement_timeout",
+        ("_read_catalog", "call store.last_accepted"): "on a worker thread awaited within _STORE_SECONDS; each statement ends within its statement_timeout",
+        ("listen", "async with client.listen(tools_list_changed=True)"):
+            "its session's life: the session's end cancels it and waits _CLOSE_SECONDS; nothing else waits on it",
+        ("listen", "async for subscription"):
+            "its session's life: the session's end cancels it and waits _CLOSE_SECONDS; nothing else waits on it",
+        ("_read_soon", "async with self._lock"): "held only by _ensure, current, _read_soon and close, all bounded",
         ("_isolated_or_raise", "call subprocess.run"): "its timeout, _VALIDATION_SECONDS",
         ("_check_listing", "with concurrent.futures.ThreadPoolExecutor(len(chunks), thread_name_prefix='agentsdk-mcp-check')"):
             "each worker's process ends by the validation deadline, so its exit does",
@@ -1035,8 +1082,8 @@ def test_every_wait_in_the_mcp_module_names_its_bound():
         ("_serve_forever", "call loop.run_forever"): "the engine thread's body: runs until _close_all stops it",
         ("_serve_forever", "call loop.run_until_complete"):
             "every task already ended by _close_all; executor work ends by the validation deadline",
-        ("_ensure", "async with self._lock"): "held only by _ensure and close, both bounded",
-        ("close", "async with self._lock"): "held only by _ensure and close, both bounded",
+        ("_ensure", "async with self._lock"): "held only by _ensure, current, _read_soon and close, all bounded",
+        ("close", "async with self._lock"): "held only by _ensure, current, _read_soon and close, all bounded",
         ("submit", "with self._lock"): "held only for bookkeeping, never across a wait",
         ("serve", "with open(os.devnull, 'w')"): "opens a file; waits on nothing",
         ("close", "with self._lock"): "held only for bookkeeping, never across a wait",
@@ -1047,16 +1094,14 @@ def test_every_wait_in_the_mcp_module_names_its_bound():
         # builtins, exceptions, constructors and the SDK's own value types
         "all", "any", "dict", "enumerate", "float", "frozenset", "getattr", "isinstance", "len", "list",
         "max", "range", "set", "sorted", "str", "tuple", "type", "super", "super().__init__",
-        "object.__setattr__", "dataclass", "field", "re.compile", "math.isfinite", "Counter",
+        "object.__setattr__", "dataclass", "field", "math.isfinite", "Counter",
         "ConnectionError", "ImportError", "RuntimeError", "TimeoutError", "ValueError", "ToolExecutionError",
         "PermissionResult", "ResultProvenance", "Tool", "ToolOutput", "ToolSpec", "unstorable_reason",
         "StdioServerParameters", "Client", "stdio_client",  # constructed here, entered by `async with`
         # text and data, linear in their input
-        "_ALIAS.fullmatch", "_QUALIFIED.fullmatch", "name.partition", "p.startswith", "done.stdout.strip",
-        "json.dumps", "json.loads", "json.dumps(body, sort_keys=True, separators=(',', ':')).encode",
-        "hashlib.sha256", "hashlib.sha256(json.dumps(body, sort_keys=True, separators=(',', ':')).encode()).hexdigest",
-        "base64.b64decode", "entry.annotations.model_dump", "pathlib.Path", "pathlib.Path(jsonschema.__file__).resolve",
-        "open",  # the null device, as a `with` above
+        "_ALIAS.fullmatch", "_QUALIFIED.fullmatch", "name.partition", "p.startswith", "value.startswith", "done.stdout.strip",
+        "json.dumps",
+        "entry.annotations.model_dump", "pathlib.Path(jsonschema.__file__).resolve",
         # lookups in the SDK's own dicts, lists and sets
         "base.get", "base.names", "self._base.get", "self._base.names", "self._known.get",
         "self._known.get(alias, {}).get", "self._known.get(alias, {}).items", "self._tools.get",
@@ -1079,9 +1124,35 @@ def test_every_wait_in_the_mcp_module_names_its_bound():
         "client.call_tool", "connection.close", "loop.shutdown_asyncgens", "loop.shutdown_default_executor",
         # the application's own permission checker, called as it is without MCP
         "self._inner.check",
+        # M34: the catalog's values and bookkeeping
+        "InMemoryCatalogStore", "ToolVersion", "ToolBlocked", "checked_hash", "changed_parts", "tool_entry",
+        "tool_hash",  # a SHA-256 of the entry's canonical JSON: linear
+        "next", "hasattr", "min", "zip", "datetime.now", "self._clock",  # the catalog's clock: monotonic, or a test's
+        "self._catalog",  # the store factory: builds a store object, connects to nothing
+        "tenancies.add", "self._skips.add", "self._told.add", "self.usable.get", "connection.usable.get",
+        "hashes.items", "previous.get", "self._blocked.get", "self.tools.items", "connection.tools.items",
+        "pending.items", "pending.values", "fresh.items", "hints.get", "(problem or '').startswith",
+        "self._listener.done", "listener.done", "listener.cancel",
+        "hashes.get", "self._blocked.items", "self.tools.get", "payload.get",
+        "asyncio.get_running_loop().create_task",  # schedules; awaits nothing
+        "asyncio.to_thread",  # a coroutine, awaited within the wait_for named in `bounds`
+        "client.listen",  # a context manager, entered by the `async with` named in `bounds`
+    }
+    # M33 review caveat (M34 pre-flight): a call whose cost or reach is its argument's -- a path
+    # opened, a pattern compiled, text parsed or decoded -- is exempt only as written here, with
+    # that argument. `open(server_path)` or `re.compile(server_pattern)` fails the test.
+    by_argument = {"open", "re.compile", "json.loads", "base64.b64decode", "pathlib.Path"}
+    exact = {
+        "open(os.devnull, 'w')": "the null device",
+        "re.compile('[a-z][a-z0-9-]{0,23}')": "the SDK's own pattern, linear",
+        "re.compile('[A-Za-z0-9_-]{1,64}')": "the SDK's own pattern, linear",
+        "json.loads(done.stdout)": "the checker child's verdict: linear in what it printed",
+        "base64.b64decode(data)": "a block's data: linear",
+        "pathlib.Path(jsonschema.__file__)": "the installed package's own path",
     }
     source = (REPO / "agentsdk" / "mcp" / "__init__.py").read_text(encoding="utf-8")
     tree = ast.parse(source)
+    used_exact = set()
     own = {node.name for node in ast.walk(tree) if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef))}
     found, untimed, used, awaited = set(), [], set(), set()
 
@@ -1116,6 +1187,11 @@ def test_every_wait_in_the_mcp_module_names_its_bound():
                     pass  # a method of a literal: ", ".join(...)
                 elif bare in own:
                     pass  # the module's own code, whose every call is checked here too
+                elif callee in by_argument:
+                    if ast.unparse(child) in exact:
+                        used_exact.add(ast.unparse(child))
+                    else:
+                        found.add((function, "call " + ast.unparse(child)))
                 elif callee in waits_on_nothing:
                     used.add(callee)
                 else:
@@ -1129,6 +1205,7 @@ def test_every_wait_in_the_mcp_module_names_its_bound():
     assert not unlisted, f"waits, or calls not known to wait on nothing, that name no bound: {unlisted}"
     assert not stale, f"bounds listed for waits that no longer exist: {stale}"
     assert not waits_on_nothing - used, f"calls listed that no longer exist: {sorted(waits_on_nothing - used)}"
+    assert not set(exact) - used_exact, f"calls listed that no longer exist: {sorted(set(exact) - used_exact)}"
     # And the one call site outside the package that waits on a server's schema.
     executor = (REPO / "agentsdk" / "executor.py").read_text(encoding="utf-8")
     assert "asyncio.to_thread(\n                    validate_untrusted, tool_call.arguments, tool.spec.input_schema)" in executor
@@ -1152,6 +1229,25 @@ def test_every_loop_in_the_mcp_module_names_what_it_iterates():
         ("__post_init__", "('call_timeout', 'connect_timeout')"): "a literal",
         ("__post_init__", "(*self.args, *self.deny, *(self.allow or ()))"): config,
         ("__post_init__", "(self.approval, *self.approval_overrides.values())"): config,
+        ("__post_init__", "(*self.deny, *(self.allow or ()), *self.approval_overrides)"): config,
+        # M34
+        ("__init__", "server.accept"): config, ("__post_init__", "self.accept"): config,
+        ("__post_init__", "item.tool_hashes"): config, ("__post_init__", "self.tool_hashes"): config,
+        ("__post_init__", "('tenant_id', 'project_id')"): "a literal",
+        ("_list", "self.server.approval_overrides"): config, ("_list", "counts"): built,
+        ("_ensure", "self._unmatched"): built, ("_catalogue", "hashes.items()"): built,
+        ("_catalogue", "self.tools.items()"): built, ("_catalogue", "versions"): built,
+        ("_catalogue", "payload"): "one event's payload, a dict the SDK built",
+        ("_read_catalog", "pending.items()"): built, ("_read_catalog", "pending.values()"): built,
+        ("_read_catalog", "store.acceptances(tenant_id, project_id, alias, list(pending.values()))"):
+            "the store's answer for the hashes asked: at most _MAX_TOOLS",
+        ("_read_listing", "range(_MAX_PAGES)"): "_MAX_PAGES", ("_read_listing", "ttl"): "a number, not an iterable",
+        ("_schema_problems", "entries"): built, ("_schema_problems", "enumerate(keys)"): built,
+        ("_schema_problems", "found"): built, ("_schema_problems", "fresh.items()"): built,
+        ("_schema_problems", "range(len(entries))"): built, ("_schema_problems", "unknown"): built,
+        ("_schema_problems", "zip(unknown, found)"): built,
+        ("_catalogue", "self._blocked.items()"): "this listing's blocked payloads: at most _MAX_TOOLS",
+        ("_catalogue", "versions[room:]"): built, ("current", "await self._ensure()"): "the events of one ensure: a list the SDK built", ("_list", "self._skips"): "this listing's skips: at most _MAX_TOOLS", ("on_the_mcp_loop", "connection.tools.items()"): built,
         ("__post_init__", "self.allow"): config, ("__post_init__", "self.approval_overrides"): config,
         ("__post_init__", "self.args"): config, ("__post_init__", "self.deny"): config,
         ("__post_init__", "self.env or {}"): config, ("__post_init__", "self.env.items()"): config,
@@ -1160,7 +1256,6 @@ def test_every_loop_in_the_mcp_module_names_what_it_iterates():
         ("record", "sorted(self.approval_overrides.items())"): config,
         ("records", "self.servers.values()"): config, ("aclose", "self.servers.values()"): config,
         ("checker", "self.servers"): config, ("serve", "server.args"): config, ("serve", "server.env"): config,
-        ("serve", "range(_MAX_PAGES)"): "_MAX_PAGES",
         ("_call", "result.content"): "the result's blocks, parsed by the library: " + built,
         ("_check_chunk", "problems"): "the child's verdict, its length checked first",
         ("_check_listing", "starts"): "a range over the listing, at most _MAX_TOOLS",
@@ -1170,10 +1265,9 @@ def test_every_loop_in_the_mcp_module_names_what_it_iterates():
         ("_close_all", "range(5)"): "five passes", ("_close_all", "rest"): built,
         ("_close_all", "self.connections.values()"): built,
         ("_list", "enumerate(listed)"): built, ("_list", "listed"): built,
-        ("_schema_problems", "listed[:_MAX_TOOLS]"): built,
         ("ensure", "events"): built, ("refresh", "events"): built, ("refresh", "self._aliases"): config,
         ("refresh", "self._base.names()"): "the registry's names, a tuple",
-        ("refresh", "self._known.get(alias, {}).items()"): built, ("on_the_mcp_loop", "connection.tools"): built,
+        ("refresh", "self._known.get(alias, {}).items()"): built,
     }
     bounds = {
         ("while", "_ensure", "isinstance(exc, BaseExceptionGroup) and exc.exceptions"):
@@ -1191,6 +1285,10 @@ def test_every_loop_in_the_mcp_module_names_what_it_iterates():
         ("import", "_open", "from mcp import Client, StdioServerParameters"): "a module of the venv, imported once",
         ("import", "_open", "from mcp.client.stdio import stdio_client"): "a module of the venv, imported once",
         ("import", "check", "from ..permissions import Decision, PermissionResult"): "the SDK's own module",
+        ("import", "__init__", "from ..catalog import InMemoryCatalogStore"): "the SDK's own module",
+        ("import", "_on_message", "from mcp.types import ToolListChangedNotification"): "a module of the venv, imported once",
+        ("nested", "__post_init__", "self.accept / ('tenant_id', 'project_id')"): "configuration by a two-name literal",
+        ("nested", "__post_init__", "self.accept / item.tool_hashes"): "configuration by configuration",
     }
     consumers = {"list", "sorted", "set", "dict", "tuple", "any", "all", "max", "min", "sum", "enumerate",
                  "frozenset", "Counter", "zip", "map", "filter", "reversed"}
@@ -1271,6 +1369,10 @@ def test_the_bounds_test_fails_on_a_wait_form_it_does_not_know(monkeypatch, tmp_
         "def _probe(n):\n    return _probe(n + 1)\n",
         "def _probe(listed):\n    return [a for a in listed for b in listed if a is b]\n",
         "def _probe():\n    import socket\n    return socket\n",
+        # M34 pre-flight: exemptions keyed on the argument, not the callee.
+        "def _probe(path):\n    with open(path) as f:\n        return f\n",
+        "def _probe(pattern):\n    return re.compile(pattern)\n",
+        "def _probe(text):\n    return json.loads(text)\n",
     ]
     checks = (test_every_wait_in_the_mcp_module_names_its_bound, test_every_loop_in_the_mcp_module_names_what_it_iterates)
     for addition in additions:
@@ -1493,7 +1595,7 @@ async def test_aclose_returns_once_the_mcp_thread_has_ended():
         await run(runner, agent("legacy__echo"), [[["legacy__echo", {"text": "x"}]]])
         assert runner._mcp._engine._thread.is_alive()
     assert not runner._mcp._engine._thread.is_alive()
-    assert "agentsdk-mcp" not in {t.name for t in threading.enumerate()}
+    assert runner._mcp._engine._thread not in threading.enumerate()
 
 
 async def test_a_large_honest_listing_is_checked_whole_within_the_deadline():
@@ -1562,6 +1664,8 @@ def test_no_server_process_outlives_a_loop_closed_without_aclose(tmp_path):
         "import asyncio, json, sys\n"
         "sys.path.insert(0, sys.argv[1])\n"
         "from tests.test_mcp_client import runner_for, server, run, agent\n"
+        "import agentsdk.mcp, tests.test_mcp_client as fixture\n"
+        "agentsdk.mcp._read_catalog = fixture._every_listed_version_accepted  # as the autouse fixture\n"
         "async def main():\n"
         "    runner = runner_for([server('modern', pids=sys.argv[2])])\n"
         "    await run(runner, agent('modern__spawn'), [[['modern__spawn', {}]]])\n"
@@ -1630,12 +1734,21 @@ def test_without_the_extra_the_sdk_runs_and_a_server_names_the_extra():
         "    Runner({'m': M()}, mcp_servers=[StdioServer(alias='s', command='x')])\n"
         "except ImportError as exc:\n"
         "    print('refused:', exc)\n"
+        # AC-90 (M34): the MCP methods raise UnknownMcpServer on a Runner with no servers.
+        "from agentsdk import UnknownMcpServer\n"
+        "from agentsdk.identity import PrincipalContext\n"
+        "try:\n"
+        "    asyncio.run(Runner({'m': M()}).accept_tools('t', 'p', 's', ['0' * 64],"
+        " principal=PrincipalContext(agent_principal='a', user_principal='u')))\n"
+        "except UnknownMcpServer:\n"
+        "    print('accept_tools: UnknownMcpServer')\n"
     )
     done = subprocess.run([sys.executable, "-c", script], cwd=REPO, env=dict(os.environ, PYTHONPATH=str(REPO)),
                           capture_output=True, text=True, timeout=120)
     assert done.returncode == 0, done.stderr[-2000:]
     assert done.stdout.splitlines()[0] == "completed"
     assert "refused:" in done.stdout and "agentsdk[mcp]" in done.stdout
+    assert "accept_tools: UnknownMcpServer" in done.stdout
 
 
 @pytest.mark.parametrize("store", STORES)

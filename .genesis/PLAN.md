@@ -4,7 +4,7 @@
 
 - workflow: new-product
 - phase: build
-- plan approval: siva-rgb (owner) at 2026-10-18T07:46:48.811Z
+- plan approval: siva-rgb (owner) at 2026-10-21T12:35:42.118Z
 
 ## Tasks
 
@@ -322,15 +322,15 @@
 
 ### M34-mcp-catalog — No MCP tool runs unless its current version is accepted, and approval follows the server policy bound to the tool hash
 
-- state/risk: active / high
+- state/risk: done / high
 - requirements: FR-127, FR-128, FR-129, AC-91, NFR-35, NFR-36, NFR-38
 - scope: not bounded
-- gates: unit: .venv\Scripts\python.exe -m pytest tests/test_mcp_catalog.py -q, regression: .venv\Scripts\python.exe -m pytest -q, independent-review: pending
+- gates: unit: .venv\Scripts\python.exe -m pytest tests/test_mcp_catalog.py -q, regression: .venv\Scripts\python.exe -m pytest -q, independent-review: pass
 - next: Run the task pre-flight.
 
 ### M35-mcp-http-resources — MCP servers over Streamable HTTP with configured headers, and resources and prompts read per tenancy
 
-- state/risk: queued / high
+- state/risk: active / high
 - requirements: FR-130, FR-131, FR-132, AC-92, NFR-35, NFR-37, NFR-38
 - scope: not bounded
 - gates: unit: .venv\Scripts\python.exe -m pytest tests/test_mcp_http.py -q, regression: .venv\Scripts\python.exe -m pytest -q, independent-review: pending

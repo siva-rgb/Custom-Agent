@@ -156,7 +156,9 @@ class InterruptionDecision:
 @dataclass(frozen=True)
 class StandingDecision:
     """FR-112, P4-D15: a sticky decision for one run, agent and tool, made by a named
-    principal. `seq` is assigned by the store; the latest wins."""
+    principal. `seq` is assigned by the store; the latest wins. `tool_hash` (FR-128, M34) is
+    the version of the tool it was made for -- an MCP tool's `tool_hash`, None for any other
+    tool -- and it applies only to a request of that same version."""
 
     standing_id: str
     run_id: str
@@ -169,9 +171,14 @@ class StandingDecision:
     created_at: datetime
     message: str | None = None
     seq: int | None = None
+    tool_hash: str | None = None
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "standing_id", _id("standing_id", self.standing_id))
+        if self.tool_hash is not None:
+            from .catalog import checked_hash
+
+            checked_hash(self.tool_hash)
         object.__setattr__(self, "run_id", _id("run_id", self.run_id))
         for name in ("tenant_id", "project_id", "agent_id", "tool_name"):
             _text(name, getattr(self, name))

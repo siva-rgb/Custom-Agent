@@ -109,6 +109,20 @@ class ToolExecutionError(ToolError):
     """Execute step: the tool implementation raised."""
 
 
+class ToolBlocked(ToolError):
+    """Resolve step (FR-127, M34): an MCP tool whose current version is not accepted for the
+    run's tenant and project -- it changed, or was first seen, after its model was shown it."""
+
+
+class UnknownMcpServer(LookupError):
+    """FR-123, FR-127 (M34): an MCP server alias the Runner was not given."""
+
+
+class UnknownToolVersion(LookupError):
+    """FR-127 (M34): a tool hash with no version row in the tenancy, exactly as for one in
+    another tenancy."""
+
+
 class ToolCancelled(ToolError):
     """The run was cancelled before this tool call finished (FR-50).
 

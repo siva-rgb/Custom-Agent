@@ -59,6 +59,7 @@ from .errors import (
     ToolApprovalCheckFailed,
     ToolApprovalRejected,
     ToolApprovalRequired,
+    ToolBlocked,
     ToolCancelled,
     ToolError,
     ToolExecutionError,
@@ -66,6 +67,8 @@ from .errors import (
     ToolPermissionDenied,
     ToolTimeout,
     ToolValidationError,
+    UnknownMcpServer,
+    UnknownToolVersion,
     WorkflowError,
 )
 from .primitives import (
@@ -177,6 +180,9 @@ __all__ = [
     "ToolTimeout",
     "ToolExecutionError",
     "ToolCancelled",
+    "ToolBlocked",
+    "UnknownMcpServer",
+    "UnknownToolVersion",
     "ArtifactNotFound",
     "ArtifactIntegrityError",
     "InvalidPlan",

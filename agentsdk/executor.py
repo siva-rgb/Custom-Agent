@@ -36,6 +36,7 @@ import jsonschema
 from .errors import (
     ToolApprovalCheckFailed,
     ToolApprovalRejected,
+    ToolBlocked,
     ToolCancelled,
     ToolError,
     ToolExecutionError,
@@ -252,7 +253,20 @@ class ToolExecutor:
             tool = self._registry.get(tool_call.name)
         except ToolNotFound as exc:
             return await self._failed(tool_call, exc, state)
+        # Set before the block below, so a refusal there carries the tool's labels, as the same
+        # refusal at the sink does (M34 round 2 review).
         state.tool = tool
+        # FR-127 (M34): a registry that can block a tool its model was shown -- a run's MCP view,
+        # whose server changed it since -- says so here. Asked of the connection as it is now;
+        # an answer that cannot be had blocks the call (NFR-36).
+        blocked = getattr(self._registry, "blocked", None)
+        if blocked is not None:
+            try:
+                reason = await blocked(tool_call.name)
+            except Exception as exc:  # noqa: BLE001 - fail closed
+                reason = f"{tool_call.name} could not be checked against the catalog: {type(exc).__name__}"
+            if reason is not None:
+                return await self._failed(tool_call, ToolBlocked(reason), state)
 
         # --- 2. validate arguments ------------------------------------------
         # Must precede the permission check: an unparseable call is rejected on
@@ -367,6 +381,12 @@ class ToolExecutor:
             "agent_id": getattr(scope, "agent_id", None), "node_id": getattr(scope, "node_id", None),
             "trigger": trigger,
         }
+        # FR-128 (M34): an MCP tool's request names its server and the version asked about --
+        # the tool hash a standing decision is bound to, and its description as accepted.
+        configuration = tool.spec.configuration or {}
+        if "mcp_server" in configuration:
+            request.update(alias=configuration["mcp_server"], tool_hash=configuration["tool_hash"],
+                           description=tool.spec.description)
         if tool.describe is not None:
             described = await tool.describe(copy.deepcopy(frozen))
             if not isinstance(described, dict):
@@ -425,6 +445,10 @@ class ToolExecutor:
             return await self._failed(
                 tool_call, ToolTimeout(f"tool {tool_call.name!r} exceeded its timeout"), state
             )
+        except ToolBlocked as exc:
+            # FR-127 (M34): refused as the call left for its server -- the same refusal as step 1's,
+            # for a call whose tool changed while it waited (an approval, a slot).
+            return await self._failed(tool_call, exc, state)
         except Exception as exc:  # noqa: BLE001 - any tool failure is a tool error
             return await self._failed(tool_call, ToolExecutionError(str(exc)), state)
 

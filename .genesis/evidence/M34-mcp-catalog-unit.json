@@ -1,0 +1,22 @@
+{
+  "task": "M34-mcp-catalog",
+  "gate": "unit",
+  "command": ".venv\\Scripts\\python.exe -m pytest tests/test_mcp_catalog.py -q",
+  "started_at": "2026-10-21T06:06:43.336Z",
+  "observed_at": "2026-10-21T06:07:36.652Z",
+  "exit_code": 0,
+  "signal": null,
+  "stdout": "................................................................         [100%]\r\n64 passed in 52.35s\r\n",
+  "stderr": "",
+  "revision": {
+    "commit": "d4b29de64fd7eb07663ab67bbbd1738e78855202",
+    "dirty": true
+  },
+  "source_hash": "a1a7fea932f62260a9b44072ee6fed82ac2078b160b07fc3bb946bbca631bd61",
+  "environment": {
+    "node": "v20.10.0",
+    "platform": "win32",
+    "arch": "x64"
+  },
+  "hash": "751b7f6b0cac103e248f6dba40719c5f7e65b9c690c0579e9a06ddf75b2a0b7f"
+}

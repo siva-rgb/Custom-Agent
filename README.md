@@ -122,6 +122,16 @@ persisted so you can reconstruct exactly what happened afterwards.
   untrusted MCP data; each call needs approval unless the server says `never`. A
   connection serves one tenant and project, restarts once, and `Runner.aclose()`
   ends its server. Needs the `agentsdk[mcp]` extra.
+- **Runs an MCP tool only in a version someone accepted** (M34): a catalog per
+  tenant and project records every version of a tool a connection sees, by a hash
+  of its name, description, schemas and annotations. A tool seen for the first
+  time, or changed, is blocked, and `McpToolBlocked` names what changed;
+  `Runner.accept_tools` -- or a server's `accept`, for a service principal --
+  makes it usable. The listing is read again on a list-changed notification in
+  either era, when its `ttlMs` passes, and once it is 60 seconds old, and a call
+  to a tool changed since the model saw it is refused `ToolBlocked`. Approval
+  follows the version: a sticky decision applies only to the hash it was made
+  for, and a trusted server may ask for approval `by_annotations`.
 - **Fetches each page once, however many agents ask** (M24's claim-lock): one
   holder per page and per statement, across the tasks of a process and the
   processes sharing the database; the others wait, then take the holder's
@@ -165,8 +175,15 @@ Stated plainly, because an SDK that overstates itself costs you a week:
 | A write is refused `target in use` when any other program reading it, or otherwise holding it open, has it open at the moment of the replace -- in M31's review 43 of 60 writes were refused with one reader polling -- so on a machine with editors or indexers it is common; it is not retried, and the model sees the refusal and may try again | Declared (M31, corrected M32) |
 | No model can record an externally validated outcome: `Runner.record_validation` is in no tool registry and no tool the SDK ships calls it. A custom tool is first-party code in your process and reaches the Runner through its scope, as it reaches the ledger store, so it could call `record_validation`; in-process code is outside the threat model | Declared (M26a) |
 | Streaming of model tokens as they are generated (a run's events do stream, through `RunHandle.events()`) | Later; not yet scheduled |
-| Native MCP over Streamable HTTP, MCP resources and prompts, a server's requests for input, and the tool catalog that blocks a tool until its version is accepted | Phase 4 (M34 to M36) |
-| Until M34's catalog, every tool a server lists is usable as listed: a server that changes a tool is not caught | Declared (M33) |
+| Native MCP over Streamable HTTP, MCP resources and prompts, and a server's requests for input | Phase 4 (M35, M36) |
+| A tool's hash covers its name as well as the description, schemas and annotations FR-127 names, so two tools of one server with the same description and schemas never share one, and accepting one never accepts the other | Declared (M34) |
+| A server that changes a tool without saying so is caught at the next read of its listing: once its `ttlMs` passes, once it is 60 seconds old, or before a call when either has passed. Its results are untrusted either way | Declared (M34) |
+| A 2026-07-28 server that sends `ttlMs` 0 -- the mcp library's own servers do by default -- has its listing read again at every turn, and before every call both at executor step 1 and as the call leaves, a round trip each, one read at a time per connection; its schemas are checked again only when they change. The legacy era carries no `ttlMs`, so its listings are kept 60 seconds unless the server says they changed | Declared (M34) |
+| A listing that cannot be read again ends that session: the server's tools are offered to no turn, and a call already offered one is refused at executor step 1, before its arguments are validated or its approval asked, until the server starts again under the restart-once rule -- at the next check before a call, or the next turn | Declared (M34) |
+| A Runner's connection for one tenant and project records at most 10000 versions of its server's tools, across restarts; a tool whose version would pass that stays blocked for that Runner's life, its `McpToolBlocked` naming `VersionLimit`. The versions it did record stay in the catalog | Declared (M34) |
+| A read again that adds or removes the tool an `approval_overrides` key names changes every tool's approval with no event of its own; a tool object a turn was offered before it is refused `ToolBlocked`, and the next turn offers the tools as they are now | Declared (M34) |
+| An acceptance is never withdrawn: once a tenancy accepts a tool's version, that version stays usable there; a change is a new version, blocked until accepted | Declared (M34) |
+| While a server's `approval_overrides` names a tool it does not list -- a typo, or a tool since removed -- every tool of that server asks for approval, and `McpServerConnected` names the unmatched keys (owner's choice, M34) | Declared (M34) |
 | A stdio server whose command is a launcher -- a Windows virtual environment's `python.exe`, a `.cmd` shim -- may start the real server before the `mcp` library's Job Object holds the launcher, so that server's children can outlive `Runner.aclose()`; point `command` at the real executable | Declared (M33) |
 | A stdio server inherits the `mcp` library's environment -- on Windows APPDATA, HOMEDRIVE, HOMEPATH, LOCALAPPDATA, PATH, PATHEXT, PROCESSOR_ARCHITECTURE, SYSTEMDRIVE, SYSTEMROOT, TEMP, USERNAME and USERPROFILE, but not TMP -- with its `env` added on top | Declared (M33) |
 | The `mcp` library validates a server's whole tool listing, so an entry it refuses refuses them all and the server is reported unavailable: an input schema whose type is not `object`, or whose `$schema` is not text, a schema nested more than about 60 levels deep, and a lone surrogate in a name or key (the library drops that message, so the start waits out `connect_timeout`). Entries the SDK itself refuses are skipped one tool at a time. The SDK replaces the library's own check of structured results against a tool's output schema with its isolated one, below | Declared (M33) |
@@ -556,6 +573,8 @@ credentials -- which is also how the test suite checks them.
 | [`21_contention.py`](scripts/21_contention.py) | Phase 3's exit signal: eight orchestrated readers on four overlapping pages, each page fetched once while the rest wait on the claim-lock, one claim per statement with every contributor, a correction, and a second tenant served nothing |
 | [`22_critic.py`](scripts/22_critic.py) | the confidence gate and the critic: a node cleared on clean signals with no model call, one the critic approves, one it corrects by superseding the claim, and one it escalates into a replan |
 | [`23_gate_contention.py`](scripts/23_gate_contention.py) | Phase 3's second exit signal: example 21's eight readers with every node gated, the critic run for exactly the nodes the corpus makes doubtful, two critics racing to correct one claim with the loser replanned, then external outcomes and the calibration report |
+| [`27_mcp.py`](scripts/27_mcp.py) | an agent using an MCP server's tools natively: qualified names, an allow list, a failing tool, every result untrusted, and the server named in the manifest |
+| [`28_mcp_catalog.py`](scripts/28_mcp_catalog.py) | the MCP catalog: each tool's first sight blocked then accepted, a changed description blocked and named, a sticky approval that does not carry to the new version, and the call asked again |
 
 ```bash
 python scripts/02_custom_tools.py --offline

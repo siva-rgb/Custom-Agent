@@ -64,6 +64,7 @@ EXPECTED_EXAMPLES = {
     "26_approval_contention.py",
     # FR-126 (M33): native MCP over stdio.
     "27_mcp.py",
+    "28_mcp_catalog.py",
 }
 
 

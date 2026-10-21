@@ -1935,11 +1935,11 @@ class PostgresInterruptionStore:
                 self._run_checked(conn, standing.tenant_id, standing.project_id, standing.run_id)
                 [seq] = conn.execute(
                     "INSERT INTO standing_decisions (standing_id, tenant_id, project_id, run_id, agent_id, tool_name,"
-                    " decision, message, principal, created_at) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)"
+                    " decision, message, principal, created_at, tool_hash) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)"
                     " RETURNING seq",
                     (standing.standing_id, standing.tenant_id, standing.project_id, standing.run_id,
                      standing.agent_id, standing.tool_name, standing.decision, standing.message,
-                     Jsonb(standing.principal.to_json()), standing.created_at)).fetchone()
+                     Jsonb(standing.principal.to_json()), standing.created_at, standing.tool_hash)).fetchone()
         return dataclasses.replace(standing, seq=seq)
 
     def _views(self, conn: Any, where: str, params: tuple[Any, ...], now: Any) -> list[Any]:
@@ -2006,10 +2006,127 @@ class PostgresInterruptionStore:
             return []
         with _checkout(self._dsn) as conn:
             rows = conn.execute(
-                "SELECT standing_id, run_id, agent_id, tool_name, decision, principal, created_at, message, seq"
-                " FROM standing_decisions WHERE tenant_id = %s AND project_id = %s AND run_id = %s ORDER BY seq",
-                (tenant_id, project_id, key)).fetchall()
+                "SELECT standing_id, run_id, agent_id, tool_name, decision, principal, created_at, message, seq,"
+                " tool_hash FROM standing_decisions WHERE tenant_id = %s AND project_id = %s AND run_id = %s"
+                " ORDER BY seq", (tenant_id, project_id, key)).fetchall()
         return [StandingDecision(
             standing_id=str(r[0]), run_id=str(r[1]), tenant_id=tenant_id, project_id=project_id, agent_id=r[2],
             tool_name=r[3], decision=r[4], principal=principal_from_json(r[5]), created_at=r[6], message=r[7],
-            seq=r[8]) for r in rows]
+            seq=r[8], tool_hash=r[9]) for r in rows]
+
+
+class PostgresCatalogStore:
+    """FR-127's durable store: the tool versions each tenancy has seen and the hashes it has
+    accepted (migration 0017).
+
+    Insert-only: a version already recorded is kept as first seen, and a hash already accepted
+    is returned unchanged. Every statement names its tenant and project, and an acceptance
+    references its version by the composite key, so the schema refuses one for a version the
+    tenancy never saw. Synchronous: callers on an event loop use a worker thread (FR-81).
+    """
+
+    def __init__(self, dsn: str) -> None:
+        self._dsn = dsn
+
+    @staticmethod
+    def _bounded(conn: Any) -> None:
+        """Inside a transaction: each statement of it ends within the bound, so a worker thread
+        reading the catalog for a connection never outlives the read it serves (M34)."""
+        conn.execute("SET LOCAL statement_timeout = '20s'")
+
+    @staticmethod
+    def _version(row: Any) -> Any:
+        from .catalog import ToolVersion
+
+        return ToolVersion(tenant_id=row[0], project_id=row[1], kind=row[2], alias=row[3], tool_name=row[4],
+                           tool_hash=row[5], entry=row[6], first_seen_at=row[7])
+
+    @staticmethod
+    def _acceptance(row: Any) -> Any:
+        from .catalog import ToolAcceptance
+        from .interruptions import principal_from_json
+
+        return ToolAcceptance(acceptance_id=str(row[0]), tenant_id=row[1], project_id=row[2], alias=row[3],
+                              tool_name=row[4], tool_hash=row[5], principal=principal_from_json(row[6]),
+                              accepted_at=row[7])
+
+    _VERSION = "tenant_id, project_id, kind, alias, tool_name, tool_hash, entry, first_seen_at"
+    _ACCEPTANCE = "acceptance_id, tenant_id, project_id, alias, tool_name, tool_hash, principal, accepted_at"
+
+    def record_versions(self, versions: list[Any]) -> None:
+        """Each version a connection has seen, kept as first seen. One transaction."""
+        from .catalog import ToolVersion
+
+        for version in versions:
+            if not isinstance(version, ToolVersion):
+                raise ValueError(f"a version must be a ToolVersion, got {type(version).__name__}")
+        with _checkout(self._dsn) as conn:
+            with conn.transaction():
+                self._bounded(conn)
+                for version in versions:
+                    conn.execute(
+                        f"INSERT INTO mcp_tool_versions ({self._VERSION}) VALUES (%s,%s,%s,%s,%s,%s,%s,%s)"
+                        " ON CONFLICT (tenant_id, project_id, alias, tool_hash) DO NOTHING",
+                        (version.tenant_id, version.project_id, version.kind, version.alias, version.tool_name,
+                         version.tool_hash, Jsonb(version.entry), version.first_seen_at))
+
+    def version(self, tenant_id: str, project_id: str, alias: str, tool_hash: str) -> Any:
+        with _checkout(self._dsn) as conn, conn.transaction():
+            self._bounded(conn)
+            row = conn.execute(
+                f"SELECT {self._VERSION} FROM mcp_tool_versions WHERE tenant_id = %s AND project_id = %s"
+                " AND alias = %s AND tool_hash = %s", (tenant_id, project_id, alias, tool_hash)).fetchone()
+        return None if row is None else self._version(row)
+
+    def accept(self, tenant_id: str, project_id: str, alias: str, tool_hashes: list[str], principal: Any,
+               accepted_at: Any = None) -> list[Any]:
+        """FR-127: every hash must have a version row in this tenancy, or nothing is recorded;
+        a hash already accepted is returned unchanged. One transaction."""
+        from .catalog import _decider, checked_hash
+        from .errors import UnknownToolVersion
+
+        _decider(principal)
+        hashes = [checked_hash(h) for h in tool_hashes]
+        accepted_at = accepted_at or datetime.now(timezone.utc)
+        with _checkout(self._dsn) as conn:
+            with conn.transaction():
+                self._bounded(conn)
+                names = {}
+                for h in hashes:
+                    row = conn.execute(
+                        "SELECT tool_name FROM mcp_tool_versions WHERE tenant_id = %s AND project_id = %s"
+                        " AND alias = %s AND tool_hash = %s", (tenant_id, project_id, alias, h)).fetchone()
+                    if row is None:
+                        raise UnknownToolVersion(f"no version {h} of a tool of {alias} in this tenant and project")
+                    names[h] = row[0]
+                for h in hashes:
+                    conn.execute(
+                        f"INSERT INTO mcp_tool_acceptances ({self._ACCEPTANCE}) VALUES (%s,%s,%s,%s,%s,%s,%s,%s)"
+                        " ON CONFLICT (tenant_id, project_id, alias, tool_hash) DO NOTHING",
+                        (str(uuid.uuid4()), tenant_id, project_id, alias, names[h], h,
+                         Jsonb(principal.to_json()), accepted_at))
+                found = self._acceptances(conn, tenant_id, project_id, alias, hashes)
+        return [found[h] for h in hashes]
+
+    def _acceptances(self, conn: Any, tenant_id: str, project_id: str, alias: str, hashes: list[str]) -> dict:
+        rows = conn.execute(
+            f"SELECT {self._ACCEPTANCE} FROM mcp_tool_acceptances WHERE tenant_id = %s AND project_id = %s"
+            " AND alias = %s AND tool_hash = ANY(%s)", (tenant_id, project_id, alias, list(hashes))).fetchall()
+        return {r[5]: self._acceptance(r) for r in rows}
+
+    def acceptances(self, tenant_id: str, project_id: str, alias: str, tool_hashes: list[str]) -> dict[str, Any]:
+        with _checkout(self._dsn) as conn, conn.transaction():
+            self._bounded(conn)
+            return self._acceptances(conn, tenant_id, project_id, alias, list(tool_hashes))
+
+    def last_accepted(self, tenant_id: str, project_id: str, alias: str, tool_names: list[str]) -> dict[str, Any]:
+        """Each named tool's most recently accepted version, for those with one."""
+        columns = ", ".join(f"v.{c.strip()}" for c in self._VERSION.split(","))
+        with _checkout(self._dsn) as conn, conn.transaction():
+            self._bounded(conn)
+            rows = conn.execute(
+                f"SELECT DISTINCT ON (a.tool_name) {columns} FROM mcp_tool_acceptances a"
+                " JOIN mcp_tool_versions v USING (tenant_id, project_id, alias, tool_hash)"
+                " WHERE a.tenant_id = %s AND a.project_id = %s AND a.alias = %s AND a.tool_name = ANY(%s)"
+                " ORDER BY a.tool_name, a.seq DESC", (tenant_id, project_id, alias, list(tool_names))).fetchall()
+        return {r[4]: self._version(r) for r in rows}

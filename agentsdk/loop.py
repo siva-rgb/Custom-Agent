@@ -713,16 +713,18 @@ class AgentLoop:
 
         async def standing_for(candidates: list[RunInterruption]) -> dict[str, Any]:
             """P4-D15: each candidate's decision by the run's latest standing decision for
-            its agent and tool -- only for a call the tool's own policy flagged."""
+            its agent and tool -- only for a call the tool's own policy flagged, and (FR-128,
+            M34) only one made for the version of the tool this call would run: a standing
+            decision on an MCP tool never carries over to a changed one (NFR-36)."""
             policy = [c for c in candidates if c.trigger == "policy"]
             if not policy:
                 return {}
             latest = {}
             for row in await control.store(store.standing, tenant_id, project_id, run_id):
-                latest[(row.agent_id, row.tool_name)] = row
+                latest[(row.agent_id, row.tool_name, row.tool_hash)] = row
             found = {}
             for item in policy:
-                row = latest.get((item.agent_id, item.tool_name))
+                row = latest.get((item.agent_id, item.tool_name, item.request_payload.get("tool_hash")))
                 if row is not None:
                     found[item.interruption_id] = InterruptionDecision(
                         decision_id=str(uuid.uuid4()), interruption_id=item.interruption_id,

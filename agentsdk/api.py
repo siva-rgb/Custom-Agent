@@ -27,7 +27,7 @@ from enum import Enum
 from .compaction import ContextCompactor
 from .context import ContextAssembler
 from .context_policy import ContextPolicy
-from .errors import UnpricedModel, describe_exception
+from .errors import UnknownMcpServer, UnpricedModel, describe_exception
 from .events import EventSink, EventType, InMemoryEventSink, RunEvent
 from .executor import ToolExecutor
 from .handle import PublishingSink, RunControl, RunHandle, RunState
@@ -416,10 +416,20 @@ class Runner:
         # FR-123 (M33): MCP servers, configured in code. The mcp library is imported only
         # here, when there are servers (NFR-34); None means no MCP at all (NFR-38).
         self._mcp = None
+        # FR-127 (M34): the in-memory catalog of a Runner without persistence, made now so the MCP
+        # clients can be handed it rather than this Runner: a reference back to the Runner from
+        # its own engine would keep a collected Runner alive, and its servers with it (NFR-39).
+        self._memory_catalog: Any = None
+        if persistence is None:
+            from .catalog import InMemoryCatalogStore
+
+            self._memory_catalog = InMemoryCatalogStore()
         if mcp_servers:
             from .mcp import McpClients
 
-            self._mcp = McpClients(list(mcp_servers), frozenset(self._registry.names()))
+            catalog = (persistence.catalog_store if persistence is not None
+                       else (lambda store=self._memory_catalog: store))
+            self._mcp = McpClients(list(mcp_servers), frozenset(self._registry.names()), catalog=catalog)
         self._hook = hook if hook is not None else RuntimeHook()
         self._assembler = assembler if assembler is not None else ContextAssembler()
         # FR-76 (M19): with no persistence, the in-memory artifact and run-state
@@ -480,6 +490,34 @@ class Runner:
             self._memory_interruptions = InMemoryInterruptionStore(
                 runs=self._admits, parent=lambda tenant, project, run: self._parents.get((tenant, project, run)))
         return self._memory_interruptions
+
+    def _catalog_store(self) -> Any:
+        """Where this Runner's MCP catalog is kept (FR-127): the database, or one in-memory store
+        for the Runner's life."""
+        if self._persistence is not None:
+            return self._persistence.catalog_store()
+        return self._memory_catalog
+
+    async def accept_tools(self, tenant_id: str, project_id: str, alias: str, tool_hashes: Sequence[str], *,
+                           principal: PrincipalContext) -> list[Any]:
+        """FR-127: accepts tool versions -- by their `tool_hash`, as `McpToolBlocked` names them --
+        for one tenant and project, and returns the acceptance rows, each in the order given.
+
+        Refused with nothing recorded, in this order: a principal naming no user or service,
+        ValueError; an alias this Runner was not given, UnknownMcpServer; a hash with no version
+        row in that tenancy, UnknownToolVersion, exactly as for one in another tenancy. A hash
+        already accepted is returned unchanged. Like `decide`, it is never a tool. A tool becomes
+        usable at its connection's next read of the catalog: the next turn of a run, or the next
+        check before a call."""
+        from .catalog import _decider
+
+        _decider(principal)
+        if self._mcp is None or alias not in self._mcp.servers:
+            raise UnknownMcpServer(f"no MCP server {alias!r} was given to this Runner")
+        if isinstance(tool_hashes, str):
+            raise ValueError("tool_hashes is a list of hashes, not one string")
+        return await asyncio.to_thread(self._catalog_store().accept, tenant_id, project_id, alias,
+                                       list(tool_hashes), principal)
 
     def _node_of_ledger(self, tenant_id: str, project_id: str, ledger_run_id: str, subject: Any) -> bool:
         """FR-100, in memory: the node is stored for its run in this tenant and project, and
@@ -578,7 +616,9 @@ class Runner:
                 await asyncio.to_thread(store.append_standing, StandingDecision(
                     standing_id=str(uuid.uuid4()), run_id=item.run_id, tenant_id=tenant_id, project_id=project_id,
                     agent_id=item.agent_id, tool_name=item.tool_name, decision=made.decision, principal=principal,
-                    message=message, created_at=datetime.now(timezone.utc)))
+                    message=message, created_at=datetime.now(timezone.utc),
+                    # FR-128 (M34): bound to the version the request was for (NFR-36).
+                    tool_hash=item.request_payload.get("tool_hash")))
             except Exception as exc:
                 raise RuntimeError(
                     f"the decision on interruption {interruption_id} was recorded, but its standing decision was "
