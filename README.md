@@ -124,7 +124,7 @@ persisted so you can reconstruct exactly what happened afterwards.
   ends its server. Needs the `agentsdk[mcp]` extra.
 - **Runs an MCP tool only in a version someone accepted** (M34): a catalog per
   tenant and project records every version of a tool a connection sees, by a hash
-  of its name, description, schemas and annotations. A tool seen for the first
+  of its name, title, description, schemas and annotations. A tool seen for the first
   time, or changed, is blocked, and `McpToolBlocked` names what changed;
   `Runner.accept_tools` -- or a server's `accept`, for a service principal --
   makes it usable. The listing is read again on a list-changed notification in
@@ -132,6 +132,16 @@ persisted so you can reconstruct exactly what happened afterwards.
   to a tool changed since the model saw it is refused `ToolBlocked`. Approval
   follows the version: a sticky decision applies only to the hash it was made
   for, and a trusted server may ask for approval `by_annotations`.
+- **Reaches MCP servers over Streamable HTTP** (M35): `agentsdk.mcp.HttpServer`
+  takes an `https` URL, or `http` to loopback, and headers configured in code,
+  whose values reach the server and nothing else. Every response passes one
+  transport the SDK owns: a redirect, a 401 or 403, and a body over 4 MiB are
+  refused, and no URL from a response is ever opened. Resources and prompts are
+  the application's: `Runner.mcp_resources` and `mcp_read` (stored as an
+  artifact of the tenancy, labelled untrusted, ready to brief a child), and
+  `Runner.mcp_prompts` and `mcp_prompt` (an `McpPrompt`, used only once its
+  version is accepted). `resources_as_tool=True` offers an agent
+  `<alias>__read_resource`, under the server's approval.
 - **Fetches each page once, however many agents ask** (M24's claim-lock): one
   holder per page and per statement, across the tasks of a process and the
   processes sharing the database; the others wait, then take the holder's
@@ -177,6 +187,20 @@ Stated plainly, because an SDK that overstates itself costs you a week:
 | Streaming of model tokens as they are generated (a run's events do stream, through `RunHandle.events()`) | Later; not yet scheduled |
 | Native MCP over Streamable HTTP, MCP resources and prompts, and a server's requests for input | Phase 4 (M35, M36) |
 | A tool's hash covers its name as well as the description, schemas and annotations FR-127 names, so two tools of one server with the same description and schemas never share one, and accepting one never accepts the other | Declared (M34) |
+| A hash covers every field a person or a model can read -- a tool's title too, a prompt's arguments, a template's URI template and type -- and never `_meta`, `icons` or `execution`, which the SDK never reads, shows or fetches; the `mcp` library drops annotation keys it does not know before the SDK sees them (owner's choice, M35) | Declared (M35) |
+| A schema the SDK could not check within its 10 s is refused, and that verdict is kept for the connection's life, so a listing read again does not check it again: a check that timed out on a slow host keeps that tool skipped until the schema changes or the server starts again (owner's choice, M35) | Declared (M35) |
+| A 2026-07-28 server that does not offer `subscriptions/listen` is not asked again that session, and its listings are kept for its `ttlMs` or 60 seconds, as a legacy server's are; a listing's age runs from the start of its read | Declared (M35) |
+| An `HttpServer` URL holding a query, a fragment or user information is refused when the server is built: a credential belongs in `headers` (owner's choice, M35). A header the SDK or the library sets itself -- `Content-Type`, `Accept`, `Host`, `MCP-Protocol-Version`, `Mcp-Session-Id` and the like -- cannot be configured | Declared (M35) |
+| A header value must be visible ASCII, with spaces or tabs only inside it: one the HTTP library would refuse is refused when the server is built, since the library quotes a refused value whole in its debug log | Declared (M35) |
+| The SDK asks for unencoded responses and refuses any other, `EncodingRefused` at connection: a compressed body would be inflated after it was counted, past the 4 MiB bound | Declared (M35) |
+| A connection's 10000-version limit is shared by its tools, prompts and resource templates, and counts entries, not bytes: a server that changes its prompts without end, read by `mcp_prompts` again and again, can use it up, and that connection's later tool versions stay blocked, naming `VersionLimit` | Declared (M35) |
+| An `HttpServer` URL's path is recorded in the manifest as written: a credential in the path, which no rule can tell from any other path, is recorded with it. A long-lived event stream -- the 2026-07-28 `subscriptions/listen` -- is ended once it carries 4 MiB, and reopened at the next read | Declared (M35) |
+| A response body over 4 MiB is refused as it arrives, before it is parsed; on an event stream the `mcp` library refuses one event over 1 MiB first. Either fails that call, and the connection stays usable. A response the transport refuses at connection leaves the server unavailable, named `RefusedAuthorization`, `RedirectRefused` or `ResponseTooLarge` | Declared (M35) |
+| An HTTP server whose transport fails -- the server stopped, say -- has that session ended, and is started again under the restart-once rule, as a stdio server that exits is | Declared (M35) |
+| Resource and prompt listings are read again at every `mcp_resources`, `mcp_prompts` and `mcp_prompt` call; a prompt accepted at its listing is fetched by `get_prompt`, whose messages are not part of the hash, so a server can change what a prompt says without changing its version | Declared (M35) |
+| A resource template's acceptance gates its listing only: `mcp_read` and `<alias>__read_resource` read any URI the application, or an approved call, chooses, and what they return is untrusted either way (owner's choice, M35) | Declared (M35) |
+| With `resources_as_tool`, the SDK's `<alias>__read_resource` wins over a server tool of that name, which is skipped and recorded; it is approved by `approval_overrides["read_resource"]` when set, else by the server's `approval`, needs no acceptance (its description is the SDK's) (owner's choice, M35); it is not filtered by `allow` or `deny`, which name the server's own tools | Declared (M35) |
+| A server that sends a configured header's value back in its own output -- a result, a prompt, a resource -- has it stored as that output; the SDK never sends it anywhere else | Declared (M35) |
 | A server that changes a tool without saying so is caught at the next read of its listing: once its `ttlMs` passes, once it is 60 seconds old, or before a call when either has passed. Its results are untrusted either way | Declared (M34) |
 | A 2026-07-28 server that sends `ttlMs` 0 -- the mcp library's own servers do by default -- has its listing read again at every turn, and before every call both at executor step 1 and as the call leaves, a round trip each, one read at a time per connection; its schemas are checked again only when they change. The legacy era carries no `ttlMs`, so its listings are kept 60 seconds unless the server says they changed | Declared (M34) |
 | A listing that cannot be read again ends that session: the server's tools are offered to no turn, and a call already offered one is refused at executor step 1, before its arguments are validated or its approval asked, until the server starts again under the restart-once rule -- at the next check before a call, or the next turn | Declared (M34) |
@@ -575,6 +599,7 @@ credentials -- which is also how the test suite checks them.
 | [`23_gate_contention.py`](scripts/23_gate_contention.py) | Phase 3's second exit signal: example 21's eight readers with every node gated, the critic run for exactly the nodes the corpus makes doubtful, two critics racing to correct one claim with the loser replanned, then external outcomes and the calibration report |
 | [`27_mcp.py`](scripts/27_mcp.py) | an agent using an MCP server's tools natively: qualified names, an allow list, a failing tool, every result untrusted, and the server named in the manifest |
 | [`28_mcp_catalog.py`](scripts/28_mcp_catalog.py) | the MCP catalog: each tool's first sight blocked then accepted, a changed description blocked and named, a sticky approval that does not carry to the new version, and the call asked again |
+| [`29_mcp_http.py`](scripts/29_mcp_http.py) | MCP over Streamable HTTP: a header the server requires, a prompt refused until accepted and then used as a task, a resource read into an untrusted artifact, and a child briefed with it |
 
 ```bash
 python scripts/02_custom_tools.py --offline

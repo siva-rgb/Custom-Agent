@@ -35,6 +35,7 @@ cryptography==50.0.1       # M10 AC-30: a throwaway CA and certificate, so the f
 # `# --- test` line, which is where the FR-22 test stops reading runtime
 # dependencies.
 mcp==2.3.0
+httpx2==2.12.0  # the mcp extra's HTTP client (NFR-34, M35)
 
 # --- telemetry -------------------------------------------------------------
 # Not an SDK dependency (NFR-19, P2-D12): pyproject.toml keeps these in the

@@ -66,8 +66,10 @@ if KIND == "modern" and CATALOG:
 
     # ttlMs is a 2026-07-28 field: only this era carries it.
     ttl = catalog_state().get("ttlMs")
+    # M35: "listen": false serves no subscriptions/listen, as a server may (KNOWLEDGE-5fe1114f item 3).
     app = MCPServer("modern-catalog", log_level="WARNING",
-                    cache_hints={"tools/list": CacheHint(ttl_ms=ttl)} if ttl is not None else None)
+                    cache_hints={"tools/list": CacheHint(ttl_ms=ttl)} if ttl is not None else None,
+                    subscriptions=False if catalog_state().get("listen") is False else None)
 
     def called(text: str = "") -> str:
         return f"called {text}"

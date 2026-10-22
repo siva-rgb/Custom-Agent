@@ -4,7 +4,7 @@
 
 - workflow: new-product
 - phase: build
-- plan approval: siva-rgb (owner) at 2026-10-21T12:35:42.118Z
+- plan approval: siva-rgb (owner) at 2026-10-22T04:16:29.280Z
 
 ## Tasks
 
@@ -330,15 +330,15 @@
 
 ### M35-mcp-http-resources — MCP servers over Streamable HTTP with configured headers, and resources and prompts read per tenancy
 
-- state/risk: active / high
+- state/risk: done / high
 - requirements: FR-130, FR-131, FR-132, AC-92, NFR-35, NFR-37, NFR-38
 - scope: not bounded
-- gates: unit: .venv\Scripts\python.exe -m pytest tests/test_mcp_http.py -q, regression: .venv\Scripts\python.exe -m pytest -q, independent-review: pending
+- gates: unit: .venv\Scripts\python.exe -m pytest tests/test_mcp_http.py -q, regression: .venv\Scripts\python.exe -m pytest -q, independent-review: pass
 - next: Run the task pre-flight.
 
 ### M36-mcp-input — A server request for input pauses its call as an interruption a person answers
 
-- state/risk: queued / high
+- state/risk: active / high
 - requirements: FR-133, FR-134, AC-93, NFR-30, NFR-31, NFR-38
 - scope: not bounded
 - gates: unit: .venv\Scripts\python.exe -m pytest tests/test_mcp_input.py -q, regression: .venv\Scripts\python.exe -m pytest -q, independent-review: pending

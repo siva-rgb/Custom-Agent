@@ -1,0 +1,22 @@
+{
+  "task": "M35-mcp-http-resources",
+  "gate": "unit",
+  "command": ".venv\\Scripts\\python.exe -m pytest tests/test_mcp_http.py -q",
+  "started_at": "2026-10-21T18:31:18.092Z",
+  "observed_at": "2026-10-21T18:32:44.890Z",
+  "exit_code": 0,
+  "signal": null,
+  "stdout": "........................................................................ [ 67%]\r\n..................................                                       [100%]\r\n106 passed in 86.05s (0:01:26)\r\n",
+  "stderr": "",
+  "revision": {
+    "commit": "3772dbcd48fa9225f1161b02a28273e83cecec41",
+    "dirty": true
+  },
+  "source_hash": "e511c0d22b7d107c87ade865aca9ab3b45ca63d7a41f57d3cae949431675701a",
+  "environment": {
+    "node": "v20.10.0",
+    "platform": "win32",
+    "arch": "x64"
+  },
+  "hash": "b9186070402f4a6d0819e730cfbec66fb7745ec0555b41fef5931a13b1b6148b"
+}

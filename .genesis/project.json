@@ -9,7 +9,7 @@
     "non_goals": [],
     "trust_boundary": "local repository",
     "created_at": "2026-09-05T14:48:57.894Z",
-    "updated_at": "2026-10-21T12:35:42.118Z"
+    "updated_at": "2026-10-22T04:16:29.280Z"
   },
   "policy": {
     "ponytail": "full",
@@ -25,7 +25,7 @@
   "lifecycle": {
     "phase": "build",
     "status": "active",
-    "active_task": "M35-mcp-http-resources",
+    "active_task": "M36-mcp-input",
     "blocker": null,
     "next_action": "Run the task pre-flight."
   },
@@ -34,8 +34,8 @@
     "type": "new-product",
     "started_at": "2026-09-05T14:48:57.897Z",
     "spec_check": {
-      "at": "2026-10-21T12:35:41.618Z",
-      "source_hash": "02967db6da4c132b793a7aa1c5f2c3e5ffd9f811c24214fe5aa4dc69ed59e0c1",
+      "at": "2026-10-22T04:16:28.819Z",
+      "source_hash": "8eba256ae69ade35581c7f8e73ae9a623db54455d6fd2ad33c864c10140be4c2",
       "requirements": [
         "AC-1",
         "AC-10",
@@ -308,13 +308,13 @@
       ]
     },
     "plan_check": {
-      "at": "2026-10-21T12:35:41.942Z",
+      "at": "2026-10-22T04:16:29.124Z",
       "source_hash": "1aa46ef258a4ffc5cef9fc219db09ba95c88c7db57a1985872c65ed63795434a"
     },
     "plan_approval": {
       "human": "siva-rgb (owner)",
-      "reason": "Plan unchanged; re-approved after the FR-127 wording re-approval at M34 round 3",
-      "at": "2026-10-21T12:35:42.118Z",
+      "reason": "Plan unchanged; re-approved after the NFR-38 amendment",
+      "at": "2026-10-22T04:16:29.280Z",
       "source_hash": "1aa46ef258a4ffc5cef9fc219db09ba95c88c7db57a1985872c65ed63795434a"
     }
   },
@@ -594,12 +594,12 @@
         "NFR-8",
         "NFR-9"
       ],
-      "source_hash": "02967db6da4c132b793a7aa1c5f2c3e5ffd9f811c24214fe5aa4dc69ed59e0c1",
+      "source_hash": "8eba256ae69ade35581c7f8e73ae9a623db54455d6fd2ad33c864c10140be4c2",
       "approval": {
         "human": "siva-rgb (owner)",
-        "reason": "FR-127 read list reworded at M34 round 3: a listing is read again once older than 60 seconds, whatever its ttlMs (owner capped it after the round 2 review); no other change",
-        "at": "2026-10-21T12:35:41.777Z",
-        "source_hash": "02967db6da4c132b793a7aa1c5f2c3e5ffd9f811c24214fe5aa4dc69ed59e0c1"
+        "reason": "NFR-38 amended after M35: the permitted test edits gain any other edit an increment needs, named in its review prompt with its reason and checked by content, the practice settled since M34 (M35 reviewer finding)",
+        "at": "2026-10-22T04:16:28.969Z",
+        "source_hash": "8eba256ae69ade35581c7f8e73ae9a623db54455d6fd2ad33c864c10140be4c2"
       }
     }
   ],
@@ -1814,6 +1814,30 @@
       "status": "accepted",
       "source": null,
       "recorded_at": "2026-10-20T08:00:04.090Z"
+    },
+    {
+      "id": "DECISION-57102525",
+      "title": "M35 pre-flight: four owner choices amending FR-127, FR-130, AC-91 and AC-92",
+      "text": "Owner, 2026-10-21, spec and plan re-approved before tests. (1) Hashes cover every field a person or model can read, by wire names: a tool name, title, description, input and output schema, annotations; a prompt name, title, description, arguments; a resource template name, title, uriTemplate, description, mimeType, annotations. _meta, icons and execution are left out, since the SDK never reads, shows or fetches them. Every M34 hash changes (no acceptances were stored). (2) A schema whose check timed out is refused and that verdict is cached for the connection life by canonical JSON, so a hostile slow schema costs one check per connection (closes KNOWLEDGE-5fe1114f item 1). (3) An HTTP response body over 4 MiB fails the call ToolExecutionError, counted as it streams before parsing, because mcp 2.3.0 reads a JSON body whole with no limit; SSE events keep the library 1 MiB cap. (4) FR-127 now states every read the code makes: turn start, executor step 1 and the sink, when stale; a listing age runs from the start of its read (closes items 2 and 4). Item 3, a modern server without subscriptions/listen, is measured first in M35.",
+      "status": "accepted",
+      "source": null,
+      "recorded_at": "2026-10-21T14:01:19.988Z"
+    },
+    {
+      "id": "DECISION-2129074c",
+      "title": "M35 design: three owner choices, and one HTTP transport enforcing FR-130",
+      "text": "Owner, 2026-10-21: (1) an HttpServer URL with any query string is refused with ValueError when built; credentials belong in headers. (2) A resource template acceptance gates listing only: mcp_resources returns accepted templates and reports blocked ones with hash and changed parts; mcp_read and <alias>__read_resource read any URI the application or an approved call chooses, results untrusted either way. (3) With resources_as_tool the SDK tool <alias>__read_resource wins over a server tool of that name, which is skipped and recorded; its approval is approval_overrides[read_resource] if set, else the server approval, and that key counts as matched; it needs no catalog acceptance, its description being the SDK own. Design by the author: FR-130 is enforced by one httpx2 transport wrapped around every HTTP request of a connection, so every response passes one place: a 3xx is refused (max_redirects 0 as well), a 401 or 403 becomes refused authorization, a body over 4 MiB is refused as counted before parsing; each is answered to the library as a JSON-RPC error for that request id, so the connection stays usable. http is accepted only to an IP loopback literal or localhost. Headers are held by the transport alone, never by a config repr, record, event or error. Resource and prompt lists are read on every mcp_* call, so they need no notification handling. A modern server that never opened subscriptions/listen is not treated as having lost it (KNOWLEDGE-5fe1114f item 3, measured: 5 reads in 5 runs with listen off against 1 with it on).",
+      "status": "accepted",
+      "source": null,
+      "recorded_at": "2026-10-21T14:25:55.515Z"
+    },
+    {
+      "id": "DECISION-cae98801",
+      "title": "M35: the mcp extra pins httpx2==2.12.0 (NFR-34 amended)",
+      "text": "Owner, 2026-10-21. The SDK HTTP transport (FR-130) is an httpx2 transport, because the mcp 2.3.0 Streamable HTTP client takes an httpx2.AsyncClient, and mcp requires httpx2>=2.10.0 with no upper pin. Found by the full suite: tests/test_builtin_tools.py refused an undeclared import. So the mcp extra and requirements.txt pin httpx2==2.12.0, the installed version, so a new httpx2 cannot change the guard underneath; only agentsdk.mcp imports it, inside _http_client, and importing agentsdk.mcp loads neither mcp nor httpx2 (the probe in tests/test_distribution.py now checks both). Approved-test edits, listed for review: test_builtin_tools allowlist for agentsdk/mcp gains httpx2; test_distribution pin assertion and import probe. Spec and plan re-approved.",
+      "status": "accepted",
+      "source": null,
+      "recorded_at": "2026-10-21T17:18:30.441Z"
     }
   ],
   "knowledge": [
@@ -2912,6 +2936,30 @@
       "source": null,
       "tags": [],
       "recorded_at": "2026-10-21T12:34:49.767Z"
+    },
+    {
+      "id": "KNOWLEDGE-9793a03b",
+      "title": "M35 pre-flight: baseline, and what mcp 2.3.0 gives for Streamable HTTP, resources and prompts",
+      "text": "Baseline on 3772dbc: full suite 2333 passed in 825 s, no process left; store 10351 runs, 0 SYN, 0 running, 6 artifacts, catalog tables empty. httpx2 2.12.0, starlette 1.6.0, uvicorn 0.52.4 and sse-starlette 3.4.11 are installed beside httpx 0.28.1 (closes KNOWLEDGE-9593410e unverified item). Library facts, read not run: Client(str) builds streamable_http_client(url) with no options, so headers need Client(streamable_http_client(url, http_client=httpx2.AsyncClient(...))), a passed client is not closed for you; same-origin redirects are followed by stream_within_origin whatever follow_redirects says, up to max_redirects, so max_redirects=0 refuses them; 401, 403 and 500 all surface as MCPError -32603 Server returned an error response with no status, so FR-130 needs an httpx2 response hook; an unfollowed 3xx is -32600; connection refused raises httpx2.ConnectError inside the transport task group, most likely an ExceptionGroup; a JSON body is read whole (aread), SSE events capped at 1 MiB; no URL from a response is opened without an auth provider; auto mode probes server/discover then initialize over HTTP as on stdio, Mcp-Session-Id only on legacy; a per-request error leaves the client usable. Resources and prompts: list_resources, list_resource_templates, read_resource(uri), list_prompts, get_prompt(name, arguments); list results carry ttl_ms and cache_scope (defaults on legacy); GetPromptResult is not cacheable; legacy notifications/resources/list_changed and prompts/list_changed, modern listen(prompts_list_changed, resources_list_changed). Server fixtures: MCPServer.streamable_http_app() is one Starlette app for both eras, served by uvicorn on 127.0.0.1 with lifespan on; headers, 401 and redirects need our own ASGI middleware. MCPModel ignores unknown keys, so ToolAnnotations drops them.",
+      "source": null,
+      "tags": [],
+      "recorded_at": "2026-10-21T14:01:20.130Z"
+    },
+    {
+      "id": "KNOWLEDGE-2ac86f16",
+      "title": "M35 pre-review: four defects found and fixed, mutation 30 of 30",
+      "text": "A fresh Sonnet pre-review agent ran runtime probes only (scratchpad m35/prereview, in-memory stores, no pytest, no database, no repo edits) over eight attack items. Reproduced first-hand and fixed, each pinned by a test whose mutant is killed: D1 a header value the config accepted but h11 refuses (leading or trailing space, a control character) was quoted whole in httpcore2's DEBUG log; values must now be visible ASCII with spaces or tabs only inside. D2 the guard counted a gzip body encoded and the client inflated it after, 100 KB to 100 MiB; the SDK sends Accept-Encoding identity and refuses any other encoding (EncodingRefused). D3 an mcp_read uri with a lone surrogate raised a bare UnicodeEncodeError and a NUL reached the server; an unstorable uri is refused before it is sent. D4 a transient failure opening subscriptions/listen was taken as not offered for the session, so real notifications were missed; only ListenNotSupportedError or JSON-RPC -32601 means not offered, anything else is a lost stream reopened at the next read. Also C1 content types compared without case. Declared in the README: the version limit shared by tools, prompts and templates; path credentials recorded; the 4 MiB cap ending a long-lived listen stream; read_resource not filtered by allow or deny. Not found: no loopback or credential bypass in about 50 URL forms, no redirect followed, no prompt in an unaccepted version or across tenancy, no leftover process. Mutation: 24 of 24 on the first set after two invalid kills were rewritten (an SQL error and a syntax error are not kills), and 6 of 6 for the fixes. Process slip: a scripted edit truncated the untracked tests/test_mcp_http.py; rebuilt from the conversation and checked against its .pyc.",
+      "source": null,
+      "tags": [],
+      "recorded_at": "2026-10-21T17:49:17.718Z"
+    },
+    {
+      "id": "KNOWLEDGE-dc116498",
+      "title": "M35 approved at round 1 (Fable 5.1); caveats carried to M36",
+      "text": "Approved on e511c0d2, all nine attack items probed with controls; the reviewer showed the inner transport alone lets five breaches through that the guard stops. Carried to M36 pre-flight, each to be fixed with a test: (1) httpx2 masks only Authorization in repr(client.headers), so any other configured header, a custom API key included, shows in plaintext in the repr of the SDK HTTP client; latent (nothing formats that object, 214 DEBUG lines clean) but one log line away, in a milestone that steers credentials into headers; give the SDK client a masked repr or wrap its headers. (2) accept-encoding is absent from _OWN_HEADERS, so a configured Accept-Encoding gzip is sent beside identity; fails closed, as the guard refuses any encoded answer; add it. (3) mime parameters are dropped by _mime, so text/html; charset=utf-8 stores as text/plain. (4) a UnicodeEncodeError in _Connection.read is unreachable past the library parser. (5) a change notified between a listing read and the listen task opening is caught only by the 60 s bound. Owner-decided after close: NFR-38 amended to name the settled practice (every edit an increment needs, named in its review prompt with its reason, checked by content), spec and plan re-approved. Still open, undiagnosed: two of six M34 pre-flight live runs of example 27 failed before any tool ran; passed 3 of 3 again in M35.",
+      "source": null,
+      "tags": [],
+      "recorded_at": "2026-10-22T04:16:09.800Z"
     }
   ],
   "tasks": [
@@ -2934,9 +2982,9 @@
           "status": "pass",
           "evidence": {
             "human": "siva-rgb (owner)",
-            "reason": "FR-127 read list reworded at M34 round 3: a listing is read again once older than 60 seconds, whatever its ttlMs (owner capped it after the round 2 review); no other change",
-            "source_hash": "a1a7fea932f62260a9b44072ee6fed82ac2078b160b07fc3bb946bbca631bd61",
-            "observed_at": "2026-10-21T12:35:41.777Z"
+            "reason": "NFR-38 amended after M35: the permitted test edits gain any other edit an increment needs, named in its review prompt with its reason and checked by content, the practice settled since M34 (M35 reviewer finding)",
+            "source_hash": "2cabf244b9dedc6e92ae7dff8bafd498687e5fe42ec805c91a7e263fc6fccbf1",
+            "observed_at": "2026-10-22T04:16:28.969Z"
           }
         }
       ],
@@ -2946,7 +2994,7 @@
       "failures": [],
       "limitations": [],
       "created_at": "2026-09-05T14:48:57.897Z",
-      "updated_at": "2026-10-21T12:35:41.777Z"
+      "updated_at": "2026-10-22T04:16:28.969Z"
     },
     {
       "id": "M1-primitives",
@@ -5414,7 +5462,7 @@
     {
       "id": "M35-mcp-http-resources",
       "outcome": "MCP servers over Streamable HTTP with configured headers, and resources and prompts read per tenancy",
-      "state": "active",
+      "state": "done",
       "risk": "high",
       "owner": null,
       "scope": [],
@@ -5433,22 +5481,37 @@
           "id": "unit",
           "command": ".venv\\Scripts\\python.exe -m pytest tests/test_mcp_http.py -q",
           "mandatory": true,
-          "status": "pending",
-          "evidence": null
+          "status": "pass",
+          "evidence": {
+            "path": ".genesis/evidence/M35-mcp-http-resources-unit.json",
+            "source_hash": "e511c0d22b7d107c87ade865aca9ab3b45ca63d7a41f57d3cae949431675701a",
+            "hash": "b9186070402f4a6d0819e730cfbec66fb7745ec0555b41fef5931a13b1b6148b",
+            "observed_at": "2026-10-21T18:32:44.890Z"
+          }
         },
         {
           "id": "regression",
           "command": ".venv\\Scripts\\python.exe -m pytest -q",
           "mandatory": true,
-          "status": "pending",
-          "evidence": null
+          "status": "pass",
+          "evidence": {
+            "path": ".genesis/evidence/M35-mcp-http-resources-regression.json",
+            "source_hash": "e511c0d22b7d107c87ade865aca9ab3b45ca63d7a41f57d3cae949431675701a",
+            "hash": "1e2be8b8ae77f18e9ad3e6a2a9c15ed7f7b4b6712b10f6db8a520fb89067f9c0",
+            "observed_at": "2026-10-21T18:44:34.992Z"
+          }
         },
         {
           "id": "independent-review",
           "command": "",
           "mandatory": true,
-          "status": "pending",
-          "evidence": null
+          "status": "pass",
+          "evidence": {
+            "human": "Fable 5.1",
+            "reason": "Round 1, Fable 5.1. Verified myself: the content hash e511c0d2 equals the source_hash of both gate evidence files; the full suite re-run with -p no:cacheprovider gave 2441 passed in 792.82s and left no process; the five approved-test edits checked by content against HEAD, conftest unchanged, nothing silently removed; every ledger row true. Probed all nine items: NFR-37 header values hunted at DEBUG across every logger, events, results, manifest, reprs and exception chains over benign, 401, redirect, gzip, dead server, TLS, short body, hang, garbage and refused paths with no hit except the repr of the httpx2 client object the SDK never formats; the transport probed with 39 crafted responses, every refusal kind and the exact 4 MiB boundary right, and a no-guard control seeing every breach; URL and header fuzz accepted no non-loopback http host and no injection; prompts and templates refused across tenancies and never sharing an acceptance with a tool of their name on both stores, paging bounded at 100 pages and 1000 entries; read_resource offered only with resources_as_tool to a profile naming it, approved by override then server policy, the SDK tool winning; mcp_read labels, tenancy and each content kind right, 5 MiB refused, a lone surrogate refused by the library parser; carried item 3 re-measured at 1 read in 5 runs as fixed and 5 under the pre-fix behaviour; eight single mutants killed by their named tests and the kind mutant by the store-level test; examples 27, 28 and 29 live passed 3 of 3, 6 of 6 and 6 of 6; store and repository back at baseline by content. Caveats, not defects: the NFR-38 list in SPEC is not amended for the test_builtin_tools allowlist and test_distribution pin edits the owner decided in DECISION-cae98801, a one-line amendment owed; accept-encoding is not in _OWN_HEADERS, so a mixed-case configured one is sent beside identity and any encoded answer is then refused, failing closed; a mime type with parameters is stored as the default type; a lone-surrogate text would raise a bare UnicodeEncodeError in _Connection.read but the library parser refuses it first; a change notified between a listing read and the listen reopening is caught only by the 60 s bound.",
+            "source_hash": "e511c0d22b7d107c87ade865aca9ab3b45ca63d7a41f57d3cae949431675701a",
+            "observed_at": "2026-10-22T04:07:14.047Z"
+          }
         }
       ],
       "next_action": "Run the task pre-flight.",
@@ -5457,12 +5520,12 @@
       "failures": [],
       "limitations": [],
       "created_at": "2026-10-18T07:40:33.650Z",
-      "updated_at": "2026-10-18T07:40:33.651Z"
+      "updated_at": "2026-10-22T04:16:09.952Z"
     },
     {
       "id": "M36-mcp-input",
       "outcome": "A server request for input pauses its call as an interruption a person answers",
-      "state": "queued",
+      "state": "active",
       "risk": "high",
       "owner": null,
       "scope": [],
@@ -6800,6 +6863,42 @@
       "task": "M35-mcp-http-resources",
       "human": "siva-rgb (owner)",
       "reason": "Requeued so the plan approval after the FR-127 spec re-approval reactivates it, as at M28",
+      "revision": null
+    },
+    {
+      "id": "c2dc5e76-6518-40a3-bbc1-fba87c5c0168",
+      "at": "2026-10-21T14:01:04.094Z",
+      "action": "requeue",
+      "task": "M35-mcp-http-resources",
+      "human": "siva-rgb (owner)",
+      "reason": "Requeued so the plan approval after the M35 pre-flight spec amendment reactivates it",
+      "revision": null
+    },
+    {
+      "id": "0b2581b6-cdf4-4e84-b169-eaead502717c",
+      "at": "2026-10-21T17:18:19.486Z",
+      "action": "requeue",
+      "task": "M35-mcp-http-resources",
+      "human": "siva-rgb (owner)",
+      "reason": "Requeued so the plan approval after the NFR-34 amendment reactivates it",
+      "revision": null
+    },
+    {
+      "id": "cf3282a4-46bc-42a8-b6d2-71073bafff9a",
+      "at": "2026-10-22T04:07:14.047Z",
+      "action": "approve",
+      "task": "M35-mcp-http-resources",
+      "human": "Fable 5.1",
+      "reason": "Round 1, Fable 5.1. Verified myself: the content hash e511c0d2 equals the source_hash of both gate evidence files; the full suite re-run with -p no:cacheprovider gave 2441 passed in 792.82s and left no process; the five approved-test edits checked by content against HEAD, conftest unchanged, nothing silently removed; every ledger row true. Probed all nine items: NFR-37 header values hunted at DEBUG across every logger, events, results, manifest, reprs and exception chains over benign, 401, redirect, gzip, dead server, TLS, short body, hang, garbage and refused paths with no hit except the repr of the httpx2 client object the SDK never formats; the transport probed with 39 crafted responses, every refusal kind and the exact 4 MiB boundary right, and a no-guard control seeing every breach; URL and header fuzz accepted no non-loopback http host and no injection; prompts and templates refused across tenancies and never sharing an acceptance with a tool of their name on both stores, paging bounded at 100 pages and 1000 entries; read_resource offered only with resources_as_tool to a profile naming it, approved by override then server policy, the SDK tool winning; mcp_read labels, tenancy and each content kind right, 5 MiB refused, a lone surrogate refused by the library parser; carried item 3 re-measured at 1 read in 5 runs as fixed and 5 under the pre-fix behaviour; eight single mutants killed by their named tests and the kind mutant by the store-level test; examples 27, 28 and 29 live passed 3 of 3, 6 of 6 and 6 of 6; store and repository back at baseline by content. Caveats, not defects: the NFR-38 list in SPEC is not amended for the test_builtin_tools allowlist and test_distribution pin edits the owner decided in DECISION-cae98801, a one-line amendment owed; accept-encoding is not in _OWN_HEADERS, so a mixed-case configured one is sent beside identity and any encoded answer is then refused, failing closed; a mime type with parameters is stored as the default type; a lone-surrogate text would raise a bare UnicodeEncodeError in _Connection.read but the library parser refuses it first; a change notified between a listing read and the listen reopening is caught only by the 60 s bound.",
+      "revision": null
+    },
+    {
+      "id": "4c0c8329-9f86-4132-a040-1c8c842b2f78",
+      "at": "2026-10-22T04:16:28.683Z",
+      "action": "requeue",
+      "task": "M36-mcp-input",
+      "human": "siva-rgb (owner)",
+      "reason": "Requeued so the plan approval after the NFR-38 amendment reactivates it",
       "revision": null
     }
   ],

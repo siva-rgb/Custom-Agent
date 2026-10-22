@@ -26,34 +26,58 @@ from .errors import UnknownToolVersion
 from .identity import PrincipalContext
 from .primitives import unstorable_reason
 
-__all__ = ["InMemoryCatalogStore", "PARTS", "ToolAcceptance", "ToolVersion", "changed_parts", "tool_entry",
+__all__ = ["InMemoryCatalogStore", "KIND_PARTS", "PARTS", "ToolAcceptance", "ToolVersion", "changed_parts",
+           "entry_hash", "prompt_entry", "template_entry", "tool_entry",
            "tool_hash"]
 
 _HASH = re.compile(r"[0-9a-f]{64}")
-KINDS = ("tool", "prompt", "resource_template")  # prompts and resource templates arrive with M35
-# The parts McpToolBlocked names, by the entry key each is read from.
-PARTS = {"description": "description", "input_schema": "inputSchema", "output_schema": "outputSchema",
-         "annotations": "annotations"}
+KINDS = ("tool", "prompt", "resource_template")
+# The parts McpToolBlocked names, by the entry key each is read from. M35 (DECISION-57102525):
+# every field a person or a model can read; never _meta, icons or execution.
+PARTS = {"title": "title", "description": "description", "input_schema": "inputSchema",
+         "output_schema": "outputSchema", "annotations": "annotations"}
+KIND_PARTS = {
+    "tool": PARTS,
+    "prompt": {"title": "title", "description": "description", "arguments": "arguments"},
+    "resource_template": {"title": "title", "uri_template": "uriTemplate", "description": "description",
+                          "mime_type": "mimeType", "annotations": "annotations"},
+}
 
 
 def tool_entry(name: str, description: str | None, input_schema: Any, output_schema: Any = None,
-               annotations: Any = None) -> dict[str, Any]:
+               annotations: Any = None, title: str | None = None) -> dict[str, Any]:
     """A tool as the catalog records it: its wire fields, annotations in their wire names."""
-    return {"name": name, "description": description, "inputSchema": input_schema,
+    return {"name": name, "title": title, "description": description, "inputSchema": input_schema,
             "outputSchema": output_schema, "annotations": annotations}
 
 
-def tool_hash(name: str, description: str | None, input_schema: Any, output_schema: Any = None,
-              annotations: Any = None) -> str:
-    """FR-127: the SHA-256 of the canonical JSON of a tool's entry. What a server's `accept`
-    names, and what `Runner.accept_tools` takes."""
-    entry = tool_entry(name, description, input_schema, output_schema, annotations)
+def prompt_entry(name: str, title: str | None, description: str | None, arguments: Any) -> dict[str, Any]:
+    """A prompt as the catalog records it (M35): its arguments by wire name."""
+    return {"name": name, "title": title, "description": description, "arguments": arguments}
+
+
+def template_entry(name: str, title: str | None, uri_template: str, description: str | None,
+                   mime_type: str | None, annotations: Any) -> dict[str, Any]:
+    """A resource template as the catalog records it (M35)."""
+    return {"name": name, "title": title, "uriTemplate": uri_template, "description": description,
+            "mimeType": mime_type, "annotations": annotations}
+
+
+def entry_hash(entry: dict[str, Any]) -> str:
+    """FR-127: the SHA-256 of an entry's canonical JSON."""
     return hashlib.sha256(json.dumps(entry, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
 
 
-def changed_parts(before: dict[str, Any], after: dict[str, Any]) -> list[str]:
-    """The parts of a tool that differ between two of its entries, in a fixed order."""
-    return [part for part, key in PARTS.items() if before.get(key) != after.get(key)]
+def tool_hash(name: str, description: str | None, input_schema: Any, output_schema: Any = None,
+              annotations: Any = None, title: str | None = None) -> str:
+    """FR-127: the SHA-256 of the canonical JSON of a tool's entry. What a server's `accept`
+    names, and what `Runner.accept_tools` takes."""
+    return entry_hash(tool_entry(name, description, input_schema, output_schema, annotations, title))
+
+
+def changed_parts(before: dict[str, Any], after: dict[str, Any], kind: str = "tool") -> list[str]:
+    """The parts of an entry that differ between two of its versions, in a fixed order."""
+    return [part for part, key in KIND_PARTS[kind].items() if before.get(key) != after.get(key)]
 
 
 def checked_hash(value: Any) -> str:
@@ -178,13 +202,14 @@ class InMemoryCatalogStore:
         return {h: a for h, a in found.items() if a is not None}
 
     def last_accepted(self, tenant_id: str, project_id: str, alias: str,
-                      tool_names: list[str]) -> dict[str, ToolVersion]:
-        """Each named tool's most recently accepted version, for those with one: what a change
-        is told from."""
+                      tool_names: list[str], kind: str = "tool") -> dict[str, ToolVersion]:
+        """Each named entry's most recently accepted version of that kind, for those with one:
+        what a change is told from. A prompt and a tool of one name never are (M35)."""
         wanted, found = set(tool_names), {}
         with self._lock:
             for key in reversed(self._order):
-                name = self._acceptances[key].tool_name
-                if key[:3] == (tenant_id, project_id, alias) and name in wanted and name not in found:
-                    found[name] = self._versions[key]
+                name, version = self._acceptances[key].tool_name, self._versions[key]
+                if (key[:3] == (tenant_id, project_id, alias) and name in wanted and name not in found
+                        and version.kind == kind):
+                    found[name] = version
         return found

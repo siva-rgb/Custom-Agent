@@ -65,6 +65,8 @@ EXPECTED_EXAMPLES = {
     # FR-126 (M33): native MCP over stdio.
     "27_mcp.py",
     "28_mcp_catalog.py",
+    # FR-132 (M35): Streamable HTTP, resources and prompts.
+    "29_mcp_http.py",
 }
 
 
@@ -239,13 +241,14 @@ def test_example_dependencies_stay_out_of_the_sdk():
     assert not any(dep.lower().startswith("mcp") for dep in project["dependencies"])
     # Edited at M33 (FR-123): the pin moved to 2.3.0, and the `mcp` extra holds it too (NFR-34).
     assert "mcp==2.3.0" in project["optional-dependencies"]["examples"]
-    assert project["optional-dependencies"]["mcp"] == ["mcp==2.3.0"]
+    # Edited at M35 (NFR-34, owner): the extra pins httpx2 too, the client its HTTP transport is given.
+    assert project["optional-dependencies"]["mcp"] == ["mcp==2.3.0", "httpx2==2.12.0"]
     assert "mcp==2.3.0" in _pins((SCRIPTS / "requirements.txt").read_text(encoding="utf-8").splitlines())
 
     probe = (
         # Edited at M33 (NFR-34): agentsdk.mcp is imported too, and still loads no mcp module.
         "import sys, agentsdk, agentsdk.providers, agentsdk.postgres, agentsdk.migrate, agentsdk.mcp\n"
-        "print(sorted(m for m in sys.modules if m == 'mcp' or m.startswith('mcp.')))\n"
+        "print(sorted(m for m in sys.modules if m in ('mcp', 'httpx2') or m.startswith(('mcp.', 'httpx2.'))))\n"
     )
     ran = subprocess.run(
         [sys.executable, "-c", probe], cwd=REPO, env=dict(os.environ, PYTHONPATH=str(REPO)),

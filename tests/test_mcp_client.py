@@ -1034,7 +1034,7 @@ def test_every_wait_in_the_mcp_module_names_its_bound():
         ("_call", "asyncio.wait_for(client.call_tool(name, arguments, read_timeout_seconds=timeout), timeout + _WEDGE_MARGIN)"): "call_timeout + margin",
         ("_call", "self._discard(client, task)"): "the close bound",
         ("_call", "wedged()"): "the close bound",
-        ("serve", "async with Client(stdio_client(params, errlog=devnull), mode=server.protocol, cache=None, message_handler=self._on_message)"):
+        ("serve", "stack.enter_async_context(Client(transport, mode=server.protocol, cache=None, message_handler=self._on_message))"):
             "entered within connect_timeout (ready); left within the library's termination grace and the close bound",
         ("wedged", "self._discard(client, task)"): "the close bound",
         ("_discard", "_ended(task)"): "the close bound",
@@ -1087,6 +1087,44 @@ def test_every_wait_in_the_mcp_module_names_its_bound():
         ("submit", "with self._lock"): "held only for bookkeeping, never across a wait",
         ("serve", "with open(os.devnull, 'w')"): "opens a file; waits on nothing",
         ("close", "with self._lock"): "held only for bookkeeping, never across a wait",
+        # M35: Streamable HTTP (FR-130), resources and prompts (FR-131)
+        ("serve", "async with contextlib.AsyncExitStack()"):
+            "entered within connect_timeout (ready); left within the library's termination grace and the close bound",
+        ("serve", "stack.enter_async_context(_http_client(server, nonce))"): "an httpx2 client: entering opens nothing",
+        ("handle_async_request", "self._inner.handle_async_request(request)"):
+            "httpx2's connect timeout, and the caller's wait: call_timeout + margin, or connect_timeout",
+        ("handle_async_request", "async for response.stream"):
+            "the body, cut past 4 MiB as counted; its time is the caller's wait",
+        ("handle_async_request", "response.aclose()"): "closes one response's stream",
+        ("__aiter__", "async for self._inner"): "an event stream, ended past 4 MiB; its time is the caller's wait",
+        ("aclose", "self._inner.aclose()"): "closes the transport's pool, within the session's close bound",
+        ("_up", "self._ensure()"): "_ensure's own bounds",
+        ("_request", "asyncio.wait_for(coroutine, timeout + _WEDGE_MARGIN)"): "call_timeout + margin",
+        ("_pages", "self._request(method(cursor=cursor))"): "_request's call_timeout + margin, _MAX_PAGES times",
+        ("_gate", "asyncio.wait_for(asyncio.to_thread(_read_entries, self._catalog(), tenant_id, project_id, alias, versions, hashes, self._accept, kind), _STORE_SECONDS)"): "_STORE_SECONDS",
+        ("_read_entries", "call store.record_versions"): "on a worker thread awaited within _STORE_SECONDS; each statement ends within its statement_timeout",
+        ("_read_entries", "call store.accept"): "on a worker thread awaited within _STORE_SECONDS; each statement ends within its statement_timeout",
+        ("_read_entries", "call store.acceptances"): "on a worker thread awaited within _STORE_SECONDS; each statement ends within its statement_timeout",
+        ("_read_entries", "call store.last_accepted"): "on a worker thread awaited within _STORE_SECONDS; each statement ends within its statement_timeout",
+        ("resources", "self._up()"): "_ensure's own bounds",
+        ("resources", "self._pages(client.list_resources, 'resources')"): "_pages' bounds",
+        ("resources", "self._pages(client.list_resource_templates, 'resource_templates')"): "_pages' bounds",
+        ("resources", "self._gate('resource_template', entries)"): "_STORE_SECONDS",
+        ("read", "self._up()"): "_ensure's own bounds",
+        ("read", "self._request(client.read_resource(uri))"): "call_timeout + margin",
+        ("_read_as_tool", "self.current(_READER)"): "current's own bounds, inside _call_bound",
+        ("_read_as_tool", "self._request(self.client.read_resource(uri))"): "call_timeout + margin",
+        ("_prompt_entries", "self._up()"): "_ensure's own bounds",
+        ("_prompt_entries", "self._pages(client.list_prompts, 'prompts')"): "_pages' bounds",
+        ("prompts", "self._prompt_entries()"): "_pages' bounds", ("prompts", "self._gate('prompt', entries)"): "_STORE_SECONDS",
+        ("prompt", "self._prompt_entries()"): "_pages' bounds",
+        ("prompt", "self._gate('prompt', {name: entries[name]})"): "_STORE_SECONDS",
+        ("prompt", "self._request(self.client.get_prompt(name, arguments))"): "call_timeout + margin",
+        ("call", "self._submit(self._read_as_tool(uri, tool), _call_bound(server))"): "_call_bound, held by the caller",
+        ("application", "self._engine.submit(on_the_mcp_loop(), _call_bound(self.servers[alias]))"):
+            "_call_bound, held by the caller",
+        ("on_the_mcp_loop", "getattr(self._engine.connection(alias, tenant_id, project_id), method)(*args)"):
+            "one of resources, read, prompts or prompt: each bounded above",
     }
     # Calls that wait on nothing, each by its callee as written. Every cost here is at most linear
     # in what it is given: anything that is not belongs in `bounds`, with its bound.
@@ -1101,11 +1139,11 @@ def test_every_wait_in_the_mcp_module_names_its_bound():
         # text and data, linear in their input
         "_ALIAS.fullmatch", "_QUALIFIED.fullmatch", "name.partition", "p.startswith", "value.startswith", "done.stdout.strip",
         "json.dumps",
-        "entry.annotations.model_dump", "pathlib.Path(jsonschema.__file__).resolve",
+        "pathlib.Path(jsonschema.__file__).resolve",
         # lookups in the SDK's own dicts, lists and sets
         "base.get", "base.names", "self._base.get", "self._base.names", "self._known.get",
         "self._known.get(alias, {}).get", "self._known.get(alias, {}).items", "self._tools.get",
-        "self.approval_overrides.items", "self.approval_overrides.values", "self.connections.values",
+        "self.connections.values",
         "self.env.items", "self.servers.values", "server.approval_overrides.get",
         "session._tool_output_schemas.get", "verdict.get", "_isolated_or_raise({'check': schemas, 'outputs': outputs}).get",
         "events.append", "self._pending.append", "self._down.add", "self._down.discard",
@@ -1126,17 +1164,31 @@ def test_every_wait_in_the_mcp_module_names_its_bound():
         "self._inner.check",
         # M34: the catalog's values and bookkeeping
         "InMemoryCatalogStore", "ToolVersion", "ToolBlocked", "checked_hash", "changed_parts", "tool_entry",
-        "tool_hash",  # a SHA-256 of the entry's canonical JSON: linear
         "next", "hasattr", "min", "zip", "datetime.now", "self._clock",  # the catalog's clock: monotonic, or a test's
         "self._catalog",  # the store factory: builds a store object, connects to nothing
         "tenancies.add", "self._skips.add", "self._told.add", "self.usable.get", "connection.usable.get",
         "hashes.items", "previous.get", "self._blocked.get", "self.tools.items", "connection.tools.items",
-        "pending.items", "pending.values", "fresh.items", "hints.get", "(problem or '').startswith",
+        "pending.items", "pending.values", "fresh.items", "hints.get",
         "self._listener.done", "listener.done", "listener.cancel",
         "hashes.get", "self._blocked.items", "self.tools.get", "payload.get",
         "asyncio.get_running_loop().create_task",  # schedules; awaits nothing
         "asyncio.to_thread",  # a coroutine, awaited within the wait_for named in `bounds`
         "client.listen",  # a context manager, entered by the `async with` named in `bounds`
+        # M35: values, text and bookkeeping, each linear in what it is given
+        "entry_hash", "prompt_entry", "template_entry", "_UNTRUSTED.for_source", "secrets.token_hex",
+        "_TOKEN.fullmatch", "_MIME.fullmatch", "_FIELD_VALUE.fullmatch", "name.lower", "host.lower", "parts.scheme.lower", "kind.startswith",
+        "urlsplit", "ipaddress.ip_address", "headers.items", "data.get", "_REFUSALS.get",
+        "server.approval_overrides.items", "server.approval_overrides.values", "response.headers.get",
+        "entries.items", "accepted.items", "blocked.append", "content.text.encode", "bytes", "bytearray",
+        "value.model_dump", "a.model_dump",  # pydantic's dump of a parsed model: linear
+        "httpx2.Response", "httpx2.ReadError", "httpx2.Timeout", "httpx2.AsyncHTTPTransport", "httpx2.AsyncClient",
+        "contextlib.AsyncExitStack", "streamable_http_client",  # constructed here, entered by `async with`
+        "client.read_resource", "self.client.read_resource", "self.client.get_prompt",  # awaited by `_request`
+        "method",  # a listing method of the client: a coroutine awaited by `_request`
+        "response.headers.get('content-encoding', 'identity').strip",
+        "response.headers.get('content-encoding', 'identity').strip().lower",
+        "response.headers.get('content-type', '').lower",
+        "json.dumps(listed).encode", "json.loads(request.content or b'{}').get",  # text, linear
     }
     # M33 review caveat (M34 pre-flight): a call whose cost or reach is its argument's -- a path
     # opened, a pattern compiled, text parsed or decoded -- is exempt only as written here, with
@@ -1148,6 +1200,11 @@ def test_every_wait_in_the_mcp_module_names_its_bound():
         "re.compile('[A-Za-z0-9_-]{1,64}')": "the SDK's own pattern, linear",
         "json.loads(done.stdout)": "the checker child's verdict: linear in what it printed",
         "base64.b64decode(data)": "a block's data: linear",
+        're.compile("[!#$%&\'*+.^_`|~0-9A-Za-z-]+")': "the SDK's own pattern, linear",
+        "re.compile('[!-~](?:[ -~\\t]*[!-~])?')": "the SDK's own pattern, linear",
+        "re.compile('[A-Za-z0-9!#$&^_.+-]{1,127}/[A-Za-z0-9!#$&^_.+-]{1,127}')": "the SDK's own pattern, linear",
+        "base64.b64decode(content.blob, validate=True)": "a resource's blob: linear",
+        "json.loads(request.content or b'{}')": "the SDK's own request body: linear",
         "pathlib.Path(jsonschema.__file__)": "the installed package's own path",
     }
     source = (REPO / "agentsdk" / "mcp" / "__init__.py").read_text(encoding="utf-8")
@@ -1226,14 +1283,8 @@ def test_every_loop_in_the_mcp_module_names_what_it_iterates():
         ("<module>", "{TaintFlag.EXTERNAL_CONTENT}"): "a literal",
         ("__init__", "aliases"): config, ("__init__", "servers"): config, ("__init__", "clients.servers"): config,
         ("__init__", "profile"): config, ("__init__", "base.names()"): "the registry's names, a tuple",
-        ("__post_init__", "('call_timeout', 'connect_timeout')"): "a literal",
-        ("__post_init__", "(*self.args, *self.deny, *(self.allow or ()))"): config,
-        ("__post_init__", "(self.approval, *self.approval_overrides.values())"): config,
-        ("__post_init__", "(*self.deny, *(self.allow or ()), *self.approval_overrides)"): config,
         # M34
-        ("__init__", "server.accept"): config, ("__post_init__", "self.accept"): config,
-        ("__post_init__", "item.tool_hashes"): config, ("__post_init__", "self.tool_hashes"): config,
-        ("__post_init__", "('tenant_id', 'project_id')"): "a literal",
+        ("__init__", "server.accept"): config, ("__post_init__", "self.tool_hashes"): config,
         ("_list", "self.server.approval_overrides"): config, ("_list", "counts"): built,
         ("_ensure", "self._unmatched"): built, ("_catalogue", "hashes.items()"): built,
         ("_catalogue", "self.tools.items()"): built, ("_catalogue", "versions"): built,
@@ -1248,12 +1299,9 @@ def test_every_loop_in_the_mcp_module_names_what_it_iterates():
         ("_schema_problems", "zip(unknown, found)"): built,
         ("_catalogue", "self._blocked.items()"): "this listing's blocked payloads: at most _MAX_TOOLS",
         ("_catalogue", "versions[room:]"): built, ("current", "await self._ensure()"): "the events of one ensure: a list the SDK built", ("_list", "self._skips"): "this listing's skips: at most _MAX_TOOLS", ("on_the_mcp_loop", "connection.tools.items()"): built,
-        ("__post_init__", "self.allow"): config, ("__post_init__", "self.approval_overrides"): config,
-        ("__post_init__", "self.args"): config, ("__post_init__", "self.deny"): config,
+        ("__post_init__", "self.args"): config,  # M35: StdioServer's own; the common fields are _check_common's
         ("__post_init__", "self.env or {}"): config, ("__post_init__", "self.env.items()"): config,
-        ("record", "self.allow"): config, ("record", "self.approval_overrides.items()"): config,
-        ("record", "self.args"): config, ("record", "self.deny"): config, ("record", "self.env"): config,
-        ("record", "sorted(self.approval_overrides.items())"): config,
+        ("record", "self.args"): config, ("record", "self.env"): config,
         ("records", "self.servers.values()"): config, ("aclose", "self.servers.values()"): config,
         ("checker", "self.servers"): config, ("serve", "server.args"): config, ("serve", "server.env"): config,
         ("_call", "result.content"): "the result's blocks, parsed by the library: " + built,
@@ -1268,9 +1316,38 @@ def test_every_loop_in_the_mcp_module_names_what_it_iterates():
         ("ensure", "events"): built, ("refresh", "events"): built, ("refresh", "self._aliases"): config,
         ("refresh", "self._base.names()"): "the registry's names, a tuple",
         ("refresh", "self._known.get(alias, {}).items()"): built,
+        # M35
+        ("<module>", "{'accept', 'connection', 'content-length', 'content-type', 'host', 'last-event-id', "
+                     "'mcp-protocol-version', 'mcp-session-id', 'transfer-encoding'}"): "a literal",
+        ("__post_init__", "headers.items()"): config,
+        ("__post_init__", "self.headers or {}"): config, ("record", "self.headers"): config,
+        ("_check_common", "('call_timeout', 'connect_timeout')"): "a literal",
+        ("_check_common", "('tenant_id', 'project_id')"): "a literal",
+        ("_check_common", "(*server.deny, *(server.allow or ()))"): config,
+        ("_check_common", "(*server.deny, *(server.allow or ()), *server.approval_overrides)"): config,
+        ("_check_common", "(server.approval, *server.approval_overrides.values())"): config,
+        ("_check_common", "item.tool_hashes"): config, ("_check_common", "server.accept"): config,
+        ("_check_common", "server.allow"): config, ("_check_common", "server.approval_overrides"): config,
+        ("_check_common", "server.deny"): config,
+        ("_common_record", "server.allow"): config, ("_common_record", "server.approval_overrides.items()"): config,
+        ("_common_record", "server.deny"): config, ("_common_record", "sorted(server.approval_overrides.items())"): config,
+        ("_gate", "entries.items()"): built, ("_gate", "hashes.items()"): built, ("_gate", "versions"): built,
+        ("_pages", "range(_MAX_PAGES)"): "_MAX_PAGES",
+        ("_prompt_entries", "listed"): "a listing cut at _MAX_TOOLS", ("_prompt_entries", "p.arguments or []"): built,
+        ("_read_entries", "pending.items()"): built, ("_read_entries", "pending.values()"): built,
+        ("_read_entries", "store.acceptances(tenant_id, project_id, alias, list(pending.values()))"):
+            "the store's answer for the hashes asked: at most _MAX_TOOLS",
+        ("_up", "await self._ensure()"): "the events of one ensure: a list the SDK built",
+        ("_read_as_tool", "result.contents"): "a read's contents, within the 4 MiB body: " + built,
+        ("read", "contents"): built, ("read", "result.contents"): "a read's contents: " + built,
+        ("prompt", "result.messages"): "a prompt's messages: " + built,
+        ("prompts", "accepted.items()"): built, ("prompts", "blocked"): built,
+        ("prompts", "entries[n]['arguments']"): built,
+        ("resources", "accepted.items()"): built, ("resources", "blocked"): built,
+        ("resources", "listed"): "a listing cut at _MAX_TOOLS", ("resources", "templates"): "a listing cut at _MAX_TOOLS",
     }
     bounds = {
-        ("while", "_ensure", "isinstance(exc, BaseExceptionGroup) and exc.exceptions"):
+        ("while", "_cause", "isinstance(exc, BaseExceptionGroup) and exc.exceptions"):
             "descends one exception group per pass, to its first leaf",
         ("nested", "__init__", "clients.servers / profile"): "configuration by configuration",
         ("nested", "_check_listing", "pool.map(lambda pair: _check_chunk(*pair), chunks) / chunk"):
@@ -1287,8 +1364,17 @@ def test_every_loop_in_the_mcp_module_names_what_it_iterates():
         ("import", "check", "from ..permissions import Decision, PermissionResult"): "the SDK's own module",
         ("import", "__init__", "from ..catalog import InMemoryCatalogStore"): "the SDK's own module",
         ("import", "_on_message", "from mcp.types import ToolListChangedNotification"): "a module of the venv, imported once",
-        ("nested", "__post_init__", "self.accept / ('tenant_id', 'project_id')"): "configuration by a two-name literal",
-        ("nested", "__post_init__", "self.accept / item.tool_hashes"): "configuration by configuration",
+        ("nested", "_check_common", "server.accept / ('tenant_id', 'project_id')"): "configuration by a two-name literal",
+        ("nested", "_check_common", "server.accept / item.tool_hashes"): "configuration by configuration",
+        # M35
+        ("import", "listen", "from mcp import MCPError"): "a module of the venv, imported once",
+        ("import", "listen", "from mcp.client.subscriptions import ListenNotSupportedError"): "a module of the venv, imported once",
+        ("nested", "_prompt_entries", "listed / p.arguments or []"): "each prompt's own arguments: linear",
+        ("import", "_check_url", "from urllib.parse import urlsplit"): "the standard library",
+        ("import", "_check_url", "import ipaddress"): "the standard library",
+        ("import", "_http_client", "import httpx2"): "a module of the venv, imported once",
+        ("import", "_request", "from mcp import MCPError"): "a module of the venv, imported once",
+        ("import", "serve", "from mcp.client.streamable_http import streamable_http_client"): "a module of the venv, imported once",
     }
     consumers = {"list", "sorted", "set", "dict", "tuple", "any", "all", "max", "min", "sum", "enumerate",
                  "frozenset", "Counter", "zip", "map", "filter", "reversed"}

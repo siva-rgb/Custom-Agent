@@ -519,6 +519,62 @@ class Runner:
         return await asyncio.to_thread(self._catalog_store().accept, tenant_id, project_id, alias,
                                        list(tool_hashes), principal)
 
+    def _mcp_tenancy(self, tenant_id: Any, project_id: Any, alias: Any) -> None:
+        """FR-131: the tenancy whose connection an application read uses, and a server this
+        Runner was given."""
+        from .primitives import unstorable_reason
+
+        for name, value in (("tenant_id", tenant_id), ("project_id", project_id)):
+            if not isinstance(value, str) or not value or unstorable_reason(value) is not None:
+                raise ValueError(f"{name} must be non-empty storable text")
+        if self._mcp is None or alias not in self._mcp.servers:
+            raise UnknownMcpServer(f"no MCP server {alias!r} was given to this Runner")
+
+    async def mcp_resources(self, tenant_id: str, project_id: str, alias: str) -> Any:
+        """FR-131: the resources a server lists for this tenancy, the resource templates accepted
+        in their current version, and the blocked ones (`McpResources`). Everything in it is the
+        server's, and untrusted. Never a tool: the application chooses what to read."""
+        self._mcp_tenancy(tenant_id, project_id, alias)
+        return await self._mcp.application(alias, tenant_id, project_id, "resources")
+
+    async def mcp_read(self, tenant_id: str, project_id: str, alias: str, uri: str) -> Any:
+        """FR-131: reads one resource through this tenancy's connection and stores it as an
+        artifact of that tenancy with NFR-35's labels (FR-52); returns its `ArtifactRef`, ready
+        to brief a child as an input (FR-83). The store is written on this loop, never the MCP
+        loop (FR-81)."""
+        from .mcp import _MAX_URI, _UNTRUSTED
+
+        self._mcp_tenancy(tenant_id, project_id, alias)
+        from .primitives import unstorable_reason
+
+        if not isinstance(uri, str) or not uri or len(uri) > _MAX_URI or unstorable_reason(uri) is not None:
+            raise ValueError(f"uri must be 1 to {_MAX_URI} characters of storable text")
+        data, mime = await self._mcp.application(alias, tenant_id, project_id, "read", uri)
+        return await self._artifacts_for(tenant_id, project_id).put(
+            data, mime_type=mime, provenance=_UNTRUSTED.for_source(f"mcp://{alias}/resources/{uri}"),
+            created_by_agent=f"mcp:{alias}")
+
+    async def mcp_prompts(self, tenant_id: str, project_id: str, alias: str) -> Any:
+        """FR-131: the prompts a server lists for this tenancy accepted in their current version,
+        and the blocked ones (`McpPrompts`); accept them with `accept_tools`, by hash."""
+        self._mcp_tenancy(tenant_id, project_id, alias)
+        return await self._mcp.application(alias, tenant_id, project_id, "prompts")
+
+    async def mcp_prompt(self, tenant_id: str, project_id: str, alias: str, name: str,
+                         arguments: Mapping[str, str] | None = None) -> Any:
+        """FR-131: a prompt as an `McpPrompt`, with NFR-35's labels. A prompt not accepted in its
+        current version, or not listed, is refused `ToolBlocked`. An application that uses it as
+        a task does so explicitly."""
+        from .primitives import unstorable_reason
+
+        self._mcp_tenancy(tenant_id, project_id, alias)
+        arguments = dict(arguments or {})
+        if not isinstance(name, str) or not name or any(
+                not isinstance(k, str) or not isinstance(v, str) for k, v in arguments.items()) \
+                or unstorable_reason([name, arguments]) is not None:
+            raise ValueError("a prompt is named by text, and its arguments map text to text")
+        return await self._mcp.application(alias, tenant_id, project_id, "prompt", name, arguments)
+
     def _node_of_ledger(self, tenant_id: str, project_id: str, ledger_run_id: str, subject: Any) -> bool:
         """FR-100, in memory: the node is stored for its run in this tenant and project, and
         that run is the ledger's run or descends from it -- the rule the Postgres store

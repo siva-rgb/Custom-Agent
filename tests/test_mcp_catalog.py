@@ -137,6 +137,8 @@ async def test_a_tool_seen_for_the_first_time_is_unavailable_until_accepted(stor
 
 
 PARTS = {
+    # M35 pre-flight (DECISION-57102525, AC-91): the title is hashed too.
+    "title": lambda tool: {**tool, "title": "Echo"},
     "description": lambda tool: {**tool, "description": "Echo the text back, loudly."},
     "input_schema": lambda tool: {**tool, "inputSchema": {"type": "object", "properties": {
         "text": {"type": "string"}, "loud": {"type": "boolean"}}}},
@@ -310,8 +312,9 @@ async def test_rows_read_back_field_for_field_and_are_never_rewritten(store, tmp
     version = await asyncio.to_thread(catalog.version, tenant, PROJECT, "legacy", made.tool_hash)
     assert (version.tenant_id, version.project_id, version.alias, version.tool_name, version.tool_hash, version.kind) == (
         tenant, PROJECT, "legacy", "echo", made.tool_hash, "tool")
-    assert version.entry == {"name": "echo", "description": ECHO["description"], "inputSchema": ECHO["inputSchema"],
-                             "outputSchema": None, "annotations": None}
+    # M35 pre-flight (DECISION-57102525): the entry holds the title too.
+    assert version.entry == {"name": "echo", "title": None, "description": ECHO["description"],
+                             "inputSchema": ECHO["inputSchema"], "outputSchema": None, "annotations": None}
     assert tool_hash("echo", ECHO["description"], ECHO["inputSchema"]) == made.tool_hash
     accepted = await asyncio.to_thread(catalog.acceptances, tenant, PROJECT, "legacy", [made.tool_hash])
     assert accepted == {made.tool_hash: made}

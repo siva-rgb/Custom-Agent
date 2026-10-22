@@ -748,14 +748,19 @@ KNOWLEDGE-9593410e.
 
 - FR-127: Every tool is usable only under an accepted hash (ADR-28, P4-D21, P4-D29). Migration `0017` adds two tables. Rows are written once, never updated or deleted, and every row carries its tenant and project (NFR-2).
   - **`mcp_tool_versions`:** one row per tool version a tenancy's connection has seen:
-    - the alias, the tool name and `tool_hash`, the SHA-256 of the canonical JSON of its description, input schema, output schema and annotations;
+    - the alias, the tool name and `tool_hash`, the SHA-256 of the canonical JSON, by wire names, of every field a person or a model can read:
+      - a tool's name, title, description, input schema, output schema and annotations;
+      - a prompt's name, title, description and arguments (M35);
+      - a resource template's name, title, `uriTemplate`, description, `mimeType` and annotations (M35).
+
+      `_meta`, `icons` and `execution` are left out: the SDK never reads, shows or fetches them (owner, M35 pre-flight);
     - that JSON, as the entry;
     - `first_seen_at`.
 
     It is unique on tenant, project, alias and `tool_hash`. Prompts and resource templates (M35) are versioned the same way, with a `kind` column.
   - **`mcp_tool_acceptances`:** one row per accepted `tool_hash`, with the alias, tool name, accepting principal and `accepted_at`, referencing its version row by the composite key.
   - **A tool is usable only while its current `tool_hash` is accepted** for the run's tenant and project.
-    - **First sight or a change:** a tool seen for the first time, or with a new hash, is unavailable, and `McpToolBlocked` is emitted. It records the alias and name, the new hash, and the last accepted hash with the parts that differ from it (description, input schema, output schema, annotations), or none on first sight.
+    - **First sight or a change:** a tool seen for the first time, or with a new hash, is unavailable, and `McpToolBlocked` is emitted. It records the alias and name, the new hash, and the last accepted hash with the parts that differ from it (title, description, input schema, output schema, annotations, and for prompts and templates their own fields), or none on first sight.
     - **Accepting:** `Runner.accept_tools(tenant_id, project_id, alias, tool_hashes, *, principal)` returns the acceptance rows. Its refusals, in this order:
       1. a principal naming no user or service, `ValueError`;
       2. an alias the `Runner` was not given, `UnknownMcpServer`;
@@ -767,9 +772,9 @@ KNOWLEDGE-9593410e.
     - at connection;
     - on a list-changed notification. On the 2026-07-28 era, the client opens `subscriptions/listen` with `toolsListChanged` after connecting, when the server offers it, and reopens it at the next read if it closes. On the legacy era it uses `notifications/tools/list_changed`;
     - when the listing's `ttlMs` has passed;
-    - before a turn's first call to the server, when the listing is older than 60 seconds, whatever its `ttlMs`.
+    - at a turn's start, and before every call to the server, at executor step 1 and again as the request leaves, when the listing is stale: a notification since the last read, a passed `ttlMs`, or an age over 60 seconds whatever its `ttlMs`. A listing's age runs from the moment its read began.
 
-    Time is read from the catalog's clock, which tests replace. Reads of one connection are serialised. A call in flight finishes against the version it was sent under.
+    Time is read from the catalog's clock, which tests replace. Reads of one connection are serialised. A call in flight finishes against the version it was sent under. A schema the SDK could not check within its bound is refused, and that verdict is kept for the connection's life, by the schema's canonical JSON, so a listing read again does not check it again (owner, M35 pre-flight).
   - **What a run sees:** each turn's tools are rebuilt from the latest read (FR-125). A call to a tool blocked since the model saw it is refused at step 1, `ToolBlocked("<alias>__<name> is not accepted in its current version")`, a new `ToolError` that is exported, and its model sees why.
   - **The store fails closed:** a failure to read acceptances leaves the tool unavailable (NFR-36).
   - **Declared:** a server that changes a tool without notifying, inside the window, is caught at the next read. Its result is untrusted either way.
@@ -804,7 +809,7 @@ KNOWLEDGE-9593410e.
   - **Headers** are sent on every request. Their values never reach a row, an event, the manifest, a span, a log line or an exception's text (NFR-37).
   - **Redirects** are refused.
   - **Authorization:** a 401 or 403 fails the call `ToolExecutionError("mcp server <alias> refused authorization")`. There is no OAuth before the credential broker (P4-D23), and no URL from a response is ever opened.
-  - **Sizes:** a response over the library's limits fails the call, and a result is cut at `max_output_chars` (FR-41).
+  - **Sizes:** a response body over 4 MiB fails the call `ToolExecutionError`. It is counted as it arrives, before it is parsed, since the library reads a JSON body whole (owner, M35 pre-flight). An SSE event over the library's 1 MiB fails it too, and a result is cut at `max_output_chars` (FR-41).
   - **The era** is probed per connection as on stdio, and the library's per-request errors leave the connection usable.
 - FR-131: Resources and prompts are read by the application, not offered to the model by default. The specification has prompts chosen by the user, and resources chosen by the application. Each method takes the tenancy whose connection it uses.
   - **`Runner.mcp_resources(tenant_id, project_id, alias)` and `Runner.mcp_read(tenant_id, project_id, alias, uri)`:** a read is stored as an artifact of that tenancy with FR-125's labels (FR-52), and its `ArtifactRef` is returned, ready to brief a child as an input (FR-83).
@@ -903,14 +908,15 @@ KNOWLEDGE-9593410e.
 - NFR-31: Decisions never cross tenancy. No interruption, decision or standing decision is readable or decidable from another tenant or project, an interruption outside the caller's tenant and project is reported exactly as an unknown one, and every decision names the principal that made it, or its `standing`, `expiry` or `cancel` source (NFR-25).
 - NFR-32: Runs that require no approval are unchanged. A run in which no call requires approval sends the same requests and records the same events as before M30, apart from the fields FR-112 adds to `RunInterruption` and the manifest's `approval_timeout`. One behaviour does change, deliberately: a `before_tool` hook returning `REQUIRE_APPROVAL`, ignored until M30, now requires approval. The existing tests pass unchanged, and the edits FR-111, FR-112 and FR-114 name (`tests/test_calibration.py`, `tests/conftest.py`, `tests/test_primitives.py`) and `tests/test_distribution.py`'s exports and `EXPECTED_EXAMPLES` are listed and justified in the review prompts.
 - NFR-33: Phase 4's first increment adds no runtime dependency (NFR-6, NFR-27). The write tools bind, through `ctypes` as M10's tools do, the Win32 calls they need beyond M10's: `CreateFileW` with write access and create-new disposition, `WriteFile`, `FlushFileBuffers`, `MoveFileExW` and `DeleteFileW`.
-- NFR-34: MCP is optional (P4-D24). The SDK imports and runs every non-MCP path with `mcp` not installed; only `agentsdk.mcp` imports it, and only when a `Runner` is given servers. The `mcp` extra pins `mcp==2.3.0`, and the `examples` extra moves to the same pin. Amends NFR-9, whose rule for example-only libraries is otherwise unchanged.
+- NFR-34: MCP is optional (P4-D24). The SDK imports and runs every non-MCP path with `mcp` not installed; only `agentsdk.mcp` imports it, and only when a `Runner` is given servers. The `mcp` extra pins `mcp==2.3.0`, and the `examples` extra moves to the same pin. From M35 the `mcp` extra also pins `httpx2==2.12.0`, the HTTP client the library's Streamable HTTP transport is given, which only `agentsdk.mcp` imports (owner, M35). Amends NFR-9, whose rule for example-only libraries is otherwise unchanged.
 - NFR-35: Nothing from an MCP server is trusted. Every tool result, tool error, resource read and prompt from a server carries `Origin.MCP_RESOURCE`, `TrustZone.UNTRUSTED`, `InstructionAuthority.DATA_ONLY` and `EXTERNAL_CONTENT`, whatever its `trusted` flag. `trusted` changes how annotations are read (FR-128), never a result's labels, and nothing a server returns clears taint (ADR-26). Two existing rules still apply. An error raised before the tool ran keeps the executor's labels (FR-40). An `after_tool` hook can still replace a result's provenance, since hooks are developer code (a recorded risk).
 - NFR-36: No changed tool runs under an old acceptance or approval. A call reaches a server only when its tool's current `tool_hash` is accepted for the run's tenant and project, and a standing decision applies only to the hash it was made for. A store failure reading acceptances leaves the tool unavailable.
 - NFR-37: No configured secret leaves its configuration (NFR-4). Neither `env` values nor header values reach model context, a row, a `RunEvent`, the manifest, a span, a log line or an exception's text. The manifest and events name them only.
 - NFR-38: Runs that use no MCP server are unchanged. They send the same requests and record the same events and rows as before M33, apart from the manifest's `mcp_servers` column, recorded empty. A test pins this against the committed NFR-29 fixture, normalised as FR-111 states. The existing tests pass, with only these edits, each listed in the review prompts:
   - those FR-122 and FR-123 name;
   - `tests/test_distribution.py`'s exports and `EXPECTED_EXAMPLES`;
-  - `tests/conftest.py`'s tracked tables, which gain the new tables (NFR-16).
+  - `tests/conftest.py`'s tracked tables, which gain the new tables (NFR-16);
+  - any other edit an increment's work needs -- an invariant table gaining the new code's waits and loops, a fixture gaining a mode, an allowlist gaining a pinned dependency -- each named in its review prompt with its reason, and checked by content, never by modification time (owner, after M35).
 - NFR-39: No server process outlives its `Runner`. After `aclose()`, or once the `Runner` is garbage-collected with its event loop closed, no process a stdio server started is still running, its children included. This is measured on Windows by process id.
 
 ## Constraints
@@ -1180,7 +1186,7 @@ found the defects, turned into assertions.
   - **NFR-38:** a run with no servers equals the committed NFR-29 fixture after FR-111's normalisation.
 - AC-91: FR-127 to FR-129, on both stores, with the catalog's clock replaced:
   - **First sight:** a tool seen for the first time is unavailable until accepted, and its `McpToolBlocked` has no previous hash.
-  - **Changes:** a change to each of the description, input schema, output schema and annotations blocks the tool, and `McpToolBlocked` names the part that changed. A model's call to it is refused `ToolBlocked`.
+  - **Changes:** a change to each of the title, description, input schema, output schema and annotations blocks the tool, and `McpToolBlocked` names the part that changed; a change to `_meta` or `icons` alone does not. A model's call to it is refused `ToolBlocked`.
   - **Acceptance:**
     - accepting through `Runner.accept_tools` or a server's `accept` makes it usable;
     - `accept_tools` refuses in FR-127's order;
@@ -1195,7 +1201,8 @@ found the defects, turned into assertions.
     - the approval request shows the full arguments, the tool hash and the description as accepted.
 - AC-92: FR-130 to FR-132, on both stores:
   - **The HTTP server:** a local Streamable HTTP server of each era serves tools with a required header. The header's value is found in no row, event, manifest, span, log line or exception's text.
-  - **Refusals:** a non-loopback `http` URL, a URL with user information or a fragment, a redirect, and a 401 are each refused as FR-130 states.
+  - **Refusals:** a non-loopback `http` URL, a URL with user information or a fragment, a redirect, a 401, and a response body over 4 MiB are each refused as FR-130 states.
+  - **Carried from M34:** a schema whose check times out is checked once per connection, however often its listing is read again with `ttlMs` 0; a listing's age runs from the start of its read.
   - **Resources and prompts:**
     - a read is stored as an artifact of its tenancy with NFR-35's labels, and briefs a child as an input with its provenance;
     - a prompt is returned as an `McpPrompt` with those labels;

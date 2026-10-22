@@ -2119,8 +2119,10 @@ class PostgresCatalogStore:
             self._bounded(conn)
             return self._acceptances(conn, tenant_id, project_id, alias, list(tool_hashes))
 
-    def last_accepted(self, tenant_id: str, project_id: str, alias: str, tool_names: list[str]) -> dict[str, Any]:
-        """Each named tool's most recently accepted version, for those with one."""
+    def last_accepted(self, tenant_id: str, project_id: str, alias: str, tool_names: list[str],
+                      kind: str = "tool") -> dict[str, Any]:
+        """Each named entry's most recently accepted version of that kind, for those with one: a
+        prompt and a tool of one name are never told from each other (M35)."""
         columns = ", ".join(f"v.{c.strip()}" for c in self._VERSION.split(","))
         with _checkout(self._dsn) as conn, conn.transaction():
             self._bounded(conn)
@@ -2128,5 +2130,6 @@ class PostgresCatalogStore:
                 f"SELECT DISTINCT ON (a.tool_name) {columns} FROM mcp_tool_acceptances a"
                 " JOIN mcp_tool_versions v USING (tenant_id, project_id, alias, tool_hash)"
                 " WHERE a.tenant_id = %s AND a.project_id = %s AND a.alias = %s AND a.tool_name = ANY(%s)"
-                " ORDER BY a.tool_name, a.seq DESC", (tenant_id, project_id, alias, list(tool_names))).fetchall()
+                " AND v.kind = %s ORDER BY a.tool_name, a.seq DESC",
+                (tenant_id, project_id, alias, list(tool_names), kind)).fetchall()
         return {r[4]: self._version(r) for r in rows}
