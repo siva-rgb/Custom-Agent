@@ -43,6 +43,11 @@ class ToolScope(RunScope):
     _control: Any = field(default=None, compare=False, repr=False)
     _runner: Any = field(default=None, compare=False, repr=False)
     _lease: Any = field(default=None, compare=False, repr=False)
+    # FR-133 (M36): the call this scope was handed to, set by the executor for each call, and
+    # the run's approval_timeout, which bounds a wait for a server's input request as it bounds
+    # an approval's.
+    tool_call_id: str | None = None
+    _approval_timeout: float | None = field(default=None, compare=False, repr=False)
 
     def __post_init__(self) -> None:
         # The ids are refused exactly as RunScope refuses them.

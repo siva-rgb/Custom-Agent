@@ -9,7 +9,7 @@
     "non_goals": [],
     "trust_boundary": "local repository",
     "created_at": "2026-09-05T14:48:57.894Z",
-    "updated_at": "2026-10-22T04:16:29.280Z"
+    "updated_at": "2026-10-22T09:44:46.427Z"
   },
   "policy": {
     "ponytail": "full",
@@ -25,7 +25,7 @@
   "lifecycle": {
     "phase": "build",
     "status": "active",
-    "active_task": "M36-mcp-input",
+    "active_task": "M37-mcp-contention",
     "blocker": null,
     "next_action": "Run the task pre-flight."
   },
@@ -1838,6 +1838,14 @@
       "status": "accepted",
       "source": null,
       "recorded_at": "2026-10-21T17:18:30.441Z"
+    },
+    {
+      "id": "DECISION-d4a40cfe",
+      "title": "M36: a legacy-era input request is attributed only when one call is in flight",
+      "text": "Owner, 2026-10-22. On the legacy era an elicitation/create, sampling or roots request names no call, so with more than one call in flight on a legacy connection the SDK cannot tell which run should record it. It is attributed when exactly one call is in flight on that connection; with more, it is answered cancel (a sampling or roots request: unsupported, as always), and each in-flight run gets an event that an input request could not be attributed. No run waits on another and calls are not serialised. On 2026-07-28 attribution is exact. Declared in the README.",
+      "status": "accepted",
+      "source": null,
+      "recorded_at": "2026-10-22T04:28:30.694Z"
     }
   ],
   "knowledge": [
@@ -2960,6 +2968,38 @@
       "source": null,
       "tags": [],
       "recorded_at": "2026-10-22T04:16:09.800Z"
+    },
+    {
+      "id": "KNOWLEDGE-fe6eb6d4",
+      "title": "M36 pre-flight: mcp 2.3.0 handles input_required itself, and how input requests reach the client",
+      "text": "Read in the library, not run. FR-133 asks whether mcp 2.3.0 handles input_required: it does. Client.call_tool, get_prompt and read_resource drive the 2026-07-28 Multi Round-Trip loop themselves (_drive_input_required, run_input_required_driver): each round's inputRequests go concurrently to session.dispatch_input_request, which routes ElicitRequest to elicitation_callback, CreateMessageRequest to sampling_callback and ListRootsRequest to list_roots_callback, the same table the legacy elicitation/create path uses; the call is retried with inputResponses and request_state echoed; input_required_max_rounds (default 10) raises InputRequiredRoundsExceededError. The caller never sees an InputRequiredResult. So the SDK builds no retry: one elicitation_callback serves both eras. Capabilities: any elicitation_callback declares form and url; a sampling or roots callback would declare those capabilities, so the SDK leaves both at the library defaults (answered INVALID_REQUEST not supported) and records them by wrapping session.dispatch_input_request on its own session, as M33 wraps validate_tool_result. Attribution: on 2026-07-28 the callbacks run as child tasks of the call's driver, so a context variable set by the call identifies it; on the legacy era the callback runs in the dispatcher's task group with nothing linking it to the tools/call (related_request_id is server-side routing only, absent over stdio). Legacy elicitation has no library timeout; cancelling the awaiting call sends notifications/cancelled for tools/call. Server fixtures: legacy ctx.elicit and ctx.elicit_url, or Resolve parameters for both eras; modern a tool may return InputRequiredResult and read ctx.input_responses on its re-invocation. Migration 0018 adds no table, so tests/conftest.py _TRACKED needs no new entry (interruptions, interruption_decisions and standing_decisions are tracked since M29).",
+      "source": null,
+      "tags": [],
+      "recorded_at": "2026-10-22T04:28:30.542Z"
+    },
+    {
+      "id": "KNOWLEDGE-35270cef",
+      "title": "M36: over HTTP an input request is attributed exactly in both eras; stdio legacy as decided",
+      "text": "Correcting DECISION-d4a40cfe's premise, found while testing: over Streamable HTTP a legacy-era server sends elicitation/create on the asking call's own response stream (related_request_id), and the library reads that stream in the request's context, so the SDK's per-call context variable reaches the callback and attribution is exact in both eras; two calls in flight over HTTP never confuse it (test_over_http_a_request_with_two_calls_in_flight_is_attributed_exactly, both eras). Over stdio nothing carries the context, so the owner's rule applies there as decided: one call in flight is attributed, more are answered cancel and each run told InputUnattributed (test_a_legacy_stdio_request_with_two_calls_in_flight_..., against M33's hand-written legacy fixture, which serves one request at a time and gained an ask tool that holds requests read while it waits). Also found: on the legacy era the waiting callback runs in the library's anyio task group, whose cancellation is level-triggered, so the cancel decision is written by a task of its own that the call awaits as it ends; and the library's request clock (mcp.shared._request_clock, private to the pinned 2.3.0) is paused through the call's own Context, held by creating the request task with context=, so a legacy call's read timeout does not run while a person answers.",
+      "source": null,
+      "tags": [],
+      "recorded_at": "2026-10-22T05:28:35.245Z"
+    },
+    {
+      "id": "KNOWLEDGE-d86bd11c",
+      "title": "M36 pre-review: six defects found and fixed, mutation 29 of 29",
+      "text": "A fresh Opus pre-review agent ran runtime probes only (scratchpad m36/prereview, in-memory stores, no pytest, no database, no repo edits) over eight attack items. Reproduced first-hand and fixed, each pinned by a test whose mutant is killed: D1 (high) two input requests waiting at once shared one waiting flag, so the first answer set the call's deadline running and it failed at call_timeout while the second waited; the wait is now counted, every waiter and cancel write kept. D2 (high) the caller-side bound of an MCP call (_call_bound, about 270 s by default) cut every wait for a person far short of approval_timeout; a call that may ask now has that bound plus three waits of approval_timeout. D3 respond recorded accept with content the protocol's ElicitResult could not carry (a key not text, a nested object) and returned OK, but the server never got it; content is now checked against ElicitResult and capped at 64 KiB before recording. D4 sampling and roots requests were uncapped, a row each; they count toward the three. D5 an application read's request (mcp_read) told an unrelated in-flight run InputUnattributed; a read's request context is now marked no call's. D6 a <alias>__read_resource call's request was cancelled with no record; it is now an asking call. C1 corrected: a legacy request on the HTTP standalone stream names no call and falls back to the one-in-flight rule (README, and KNOWLEDGE-35270cef's exact claim narrowed to a call's own stream). C5 the stored response now carries its labels in the row; C6 quoted content-type parameters kept; C2 and C4 declared. Not found: no answer applied to another run or tenancy, no URL opened, no capability for sampling or roots declared, approvals unchanged.",
+      "source": null,
+      "tags": [],
+      "recorded_at": "2026-10-22T07:32:56.113Z"
+    },
+    {
+      "id": "KNOWLEDGE-a3af13d4",
+      "title": "M36 approved at round 1 (Sonnet 5); request-size cap carried to M37 pre-flight",
+      "text": "Sonnet 5 approved M36 round 1 on source hash e77a34f8; the orchestrator verified first-hand: hash unchanged, gates unit, regression and independent-review pass, store at baseline (runs 10351, example-tenant 19, running 0, SYN 0, artifacts 6, interruptions 0/0, catalog 0/0), no locks, connections or processes. Strongest result: migration 0018's trigger is the sole database guard of kind (dropped, 9 wrong-kind decisions were allowed; with every CHECK dropped it alone refused all 11 kind cases), and the named CHECKs are the sole guard of unsupported, response and array-response shapes, so neither guard hides the other. Caveats: (1) handle.cancel() followed by aclose() without awaiting left one interruption undecided and the run running in 2 of 6 modern attempts; this is the declared abandoned-run shape (SPEC line 532, NFR-30, Phase 6), but at about 40 percent it is far more reachable than a crash and is a concrete case for the Phase 6 resume scope. (2) A run can report cancelled up to about 0.2 s before its cancel decision is written (seen once, in memory); a reporting-order wart, declared. (3) Nothing bounds the message, schema or url of an input request a server sends: a 3 MB schema was stored whole, while tool output (DEFAULT_MAX_OUTPUT_CHARS 50000) and the answer (_MAX_ANSWER 64 KiB) are capped. Owner chose to close now and fix (3) first thing at M37 pre-flight with a cap of the same shape. All four M35 caveats are discharged; the configured-header holder is closed structurally (no configured header value reachable from the client object graph).",
+      "source": null,
+      "tags": [],
+      "recorded_at": "2026-10-22T09:44:42.818Z"
     }
   ],
   "tasks": [
@@ -5525,7 +5565,7 @@
     {
       "id": "M36-mcp-input",
       "outcome": "A server request for input pauses its call as an interruption a person answers",
-      "state": "active",
+      "state": "done",
       "risk": "high",
       "owner": null,
       "scope": [],
@@ -5543,22 +5583,37 @@
           "id": "unit",
           "command": ".venv\\Scripts\\python.exe -m pytest tests/test_mcp_input.py -q",
           "mandatory": true,
-          "status": "pending",
-          "evidence": null
+          "status": "pass",
+          "evidence": {
+            "path": ".genesis/evidence/M36-mcp-input-unit.json",
+            "source_hash": "e77a34f886979c3c4bedce35373e729f80c1bfd8a7fa273ce6151509724e37ec",
+            "hash": "248f6316a31edee33566972714a67d7841ccf70b344dc30b50450ebe4b9842a5",
+            "observed_at": "2026-10-22T07:55:41.431Z"
+          }
         },
         {
           "id": "regression",
           "command": ".venv\\Scripts\\python.exe -m pytest -q",
           "mandatory": true,
-          "status": "pending",
-          "evidence": null
+          "status": "pass",
+          "evidence": {
+            "path": ".genesis/evidence/M36-mcp-input-regression.json",
+            "source_hash": "e77a34f886979c3c4bedce35373e729f80c1bfd8a7fa273ce6151509724e37ec",
+            "hash": "8f9aca224af5806845ed90ff4f2db08da5f8c81e67d47c5d6669299ce7a490ac",
+            "observed_at": "2026-10-22T08:10:33.592Z"
+          }
         },
         {
           "id": "independent-review",
           "command": "",
           "mandatory": true,
-          "status": "pending",
-          "evidence": null
+          "status": "pass",
+          "evidence": {
+            "human": "Sonnet 5",
+            "reason": "Round 1, first-hand. Source hash e77a34f8 recomputed equal to both gate evidence files; I reran the full suite myself (no cacheprovider, awake wrapper): 2510 passed in 1071.63s. Migration 0018 on PostgreSQL in one rolled-back transaction: the trigger is the sole guard of kind (dropping it let 9 wrong-kind decisions in; with all CHECKs dropped the trigger alone refused all 11 kind cases), the CHECKs are the sole guard of unsupported, response and array-response (trigger alone allows them); expiry/cancel on an input request is refused by both, an accepted overlap. Wait: two requests answered in reverse with a 9 s gap under call_timeout 2 completed on both eras; the deadline resumed afterwards (a 12 s tool timed out at 2 s); cancel with 1 to 3 waits decided every request cancel/cancel on both stores and eras; aclose mid-wait decided both cancel; respond racing cancel left one decision; the MCP loop held an identical task set after echo, answered, cancelled and expired calls, and no process was left. Three runs of one tenancy over HTTP in both eras each got their own answer, no InputUnattributed. A catastrophic-pattern schema was refused after 10 s with the loop gap 0.12 s. M35 fixes: no configured header value reachable from the client object graph (five headers, repr, vars walk), Accept-Encoding refused in three spellings, content-type parameters kept, quoted kept, unquoted-space and CRLF refused. Examples 27 to 30 pass live (4 of 4 exit 0, all PASS lines). Test edits checked by content; the approvals alternation is looser than one reason per kind but every non-approval kind still must raise. Store restored to baseline: runs 10351, example-tenant 19, SYN 0, interruptions 0/0/0, catalog 0/0, artifacts 6. Caveats, not blockers: (1) cancel immediately followed by aclose without awaiting the result left one of two interruptions undecided with the run still running in 2 of 6 modern attempts, the abandoned-run shape approvals share; (2) a run reports cancelled up to about 0.2 s before its cancel decision is written; (3) no size bound on an input request message, schema or url: a 3 MB schema was stored whole on the modern era, unlike the 50000 character tool output cap, bounded to three requests per call.",
+            "source_hash": "e77a34f886979c3c4bedce35373e729f80c1bfd8a7fa273ce6151509724e37ec",
+            "observed_at": "2026-10-22T08:51:53.505Z"
+          }
         }
       ],
       "next_action": "Run the task pre-flight.",
@@ -5567,12 +5622,12 @@
       "failures": [],
       "limitations": [],
       "created_at": "2026-10-18T07:40:33.851Z",
-      "updated_at": "2026-10-18T07:40:33.852Z"
+      "updated_at": "2026-10-22T09:44:46.426Z"
     },
     {
       "id": "M37-mcp-contention",
       "outcome": "Hostile MCP servers under orchestration are contained on both stores",
-      "state": "queued",
+      "state": "active",
       "risk": "high",
       "owner": null,
       "scope": [],
@@ -6899,6 +6954,15 @@
       "task": "M36-mcp-input",
       "human": "siva-rgb (owner)",
       "reason": "Requeued so the plan approval after the NFR-38 amendment reactivates it",
+      "revision": null
+    },
+    {
+      "id": "ff948aee-ff8d-4576-a308-a0845dff7ed7",
+      "at": "2026-10-22T08:51:53.505Z",
+      "action": "approve",
+      "task": "M36-mcp-input",
+      "human": "Sonnet 5",
+      "reason": "Round 1, first-hand. Source hash e77a34f8 recomputed equal to both gate evidence files; I reran the full suite myself (no cacheprovider, awake wrapper): 2510 passed in 1071.63s. Migration 0018 on PostgreSQL in one rolled-back transaction: the trigger is the sole guard of kind (dropping it let 9 wrong-kind decisions in; with all CHECKs dropped the trigger alone refused all 11 kind cases), the CHECKs are the sole guard of unsupported, response and array-response (trigger alone allows them); expiry/cancel on an input request is refused by both, an accepted overlap. Wait: two requests answered in reverse with a 9 s gap under call_timeout 2 completed on both eras; the deadline resumed afterwards (a 12 s tool timed out at 2 s); cancel with 1 to 3 waits decided every request cancel/cancel on both stores and eras; aclose mid-wait decided both cancel; respond racing cancel left one decision; the MCP loop held an identical task set after echo, answered, cancelled and expired calls, and no process was left. Three runs of one tenancy over HTTP in both eras each got their own answer, no InputUnattributed. A catastrophic-pattern schema was refused after 10 s with the loop gap 0.12 s. M35 fixes: no configured header value reachable from the client object graph (five headers, repr, vars walk), Accept-Encoding refused in three spellings, content-type parameters kept, quoted kept, unquoted-space and CRLF refused. Examples 27 to 30 pass live (4 of 4 exit 0, all PASS lines). Test edits checked by content; the approvals alternation is looser than one reason per kind but every non-approval kind still must raise. Store restored to baseline: runs 10351, example-tenant 19, SYN 0, interruptions 0/0/0, catalog 0/0, artifacts 6. Caveats, not blockers: (1) cancel immediately followed by aclose without awaiting the result left one of two interruptions undecided with the run still running in 2 of 6 modern attempts, the abandoned-run shape approvals share; (2) a run reports cancelled up to about 0.2 s before its cancel decision is written; (3) no size bound on an input request message, schema or url: a 3 MB schema was stored whole on the modern era, unlike the 50000 character tool output cap, bounded to three requests per call.",
       "revision": null
     }
   ],

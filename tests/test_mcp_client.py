@@ -1027,14 +1027,25 @@ def test_every_wait_in_the_mcp_module_names_its_bound():
         ("serve", "stop.wait()"): "set by close; the task is cancelled by _ended within the close bound",
         ("_open", "asyncio.wait_for(ready, server.connect_timeout)"): "connect_timeout",
         ("_open", "_ended(task)"): "the close bound",
-        ("call", "self._submit(self._call(name, arguments, entry.output_schema, tool), _call_bound(server))"): "_call_bound, held by the caller",
+        ("call", "self._submit(self._call(name, arguments, entry.output_schema, tool, asking), _asked_bound(server, asking))"):
+            "_call_bound, and each of three waits' approval_timeout, held by the caller",
         ("_call", "self.current(name)"): "current's own bounds, inside _call_bound",
         ("current", "self._ensure()"): "_ensure's own bounds",
         ("_call", "self._ensure()"): "_ensure's own bounds",
-        ("_call", "asyncio.wait_for(client.call_tool(name, arguments, read_timeout_seconds=timeout), timeout + _WEDGE_MARGIN)"): "call_timeout + margin",
+        # M36: the deadline counts only while the call does not wait on a person, whose wait is
+        # bounded by approval_timeout in _ask; the request itself carries call_timeout as before.
+        ("_call", "_within(request, timeout + _WEDGE_MARGIN, asking, spent)"):
+            "call_timeout + margin, counted while not waiting on a person; that wait, approval_timeout",
+        ("_within", "asyncio.wait({task}, timeout=0.25 if asking is not None else max(0.0, budget - spent[0]))"):
+            "a quarter second, or the budget left",
+        ("_within", "asyncio.wait([task], timeout=_CLOSE_SECONDS)"): "_CLOSE_SECONDS",
+        ("_within", "call task.result"): "a task known to be done: returns at once",
+        ("_call", "_ended_waits(asking)"): "_CLOSE_SECONDS, then _STORE_SECONDS",
+        ("_ended_waits", "asyncio.wait(waiting, timeout=_CLOSE_SECONDS)"): "_CLOSE_SECONDS",
+        ("_ended_waits", "asyncio.wait(asking.closings, timeout=_STORE_SECONDS)"): "_STORE_SECONDS",
         ("_call", "self._discard(client, task)"): "the close bound",
         ("_call", "wedged()"): "the close bound",
-        ("serve", "stack.enter_async_context(Client(transport, mode=server.protocol, cache=None, message_handler=self._on_message))"):
+        ("serve", "stack.enter_async_context(Client(transport, mode=server.protocol, cache=None, message_handler=self._on_message, elicitation_callback=self._on_elicit))"):
             "entered within connect_timeout (ready); left within the library's termination grace and the close bound",
         ("wedged", "self._discard(client, task)"): "the close bound",
         ("_discard", "_ended(task)"): "the close bound",
@@ -1099,7 +1110,9 @@ def test_every_wait_in_the_mcp_module_names_its_bound():
         ("__aiter__", "async for self._inner"): "an event stream, ended past 4 MiB; its time is the caller's wait",
         ("aclose", "self._inner.aclose()"): "closes the transport's pool, within the session's close bound",
         ("_up", "self._ensure()"): "_ensure's own bounds",
-        ("_request", "asyncio.wait_for(coroutine, timeout + _WEDGE_MARGIN)"): "call_timeout + margin",
+        ("_request", "_within(task, timeout + _WEDGE_MARGIN, asking, [0.0])"):
+            "call_timeout + margin, counted while not waiting on a person",
+        ("_request", "_ended_waits(asking)"): "_CLOSE_SECONDS, then _STORE_SECONDS",
         ("_pages", "self._request(method(cursor=cursor))"): "_request's call_timeout + margin, _MAX_PAGES times",
         ("_gate", "asyncio.wait_for(asyncio.to_thread(_read_entries, self._catalog(), tenant_id, project_id, alias, versions, hashes, self._accept, kind), _STORE_SECONDS)"): "_STORE_SECONDS",
         ("_read_entries", "call store.record_versions"): "on a worker thread awaited within _STORE_SECONDS; each statement ends within its statement_timeout",
@@ -1113,18 +1126,38 @@ def test_every_wait_in_the_mcp_module_names_its_bound():
         ("read", "self._up()"): "_ensure's own bounds",
         ("read", "self._request(client.read_resource(uri))"): "call_timeout + margin",
         ("_read_as_tool", "self.current(_READER)"): "current's own bounds, inside _call_bound",
-        ("_read_as_tool", "self._request(self.client.read_resource(uri))"): "call_timeout + margin",
+        ("_read_as_tool", "self._request(self.client.read_resource(uri), asking)"):
+            "call_timeout + margin, counted while not waiting on a person",
         ("_prompt_entries", "self._up()"): "_ensure's own bounds",
         ("_prompt_entries", "self._pages(client.list_prompts, 'prompts')"): "_pages' bounds",
         ("prompts", "self._prompt_entries()"): "_pages' bounds", ("prompts", "self._gate('prompt', entries)"): "_STORE_SECONDS",
         ("prompt", "self._prompt_entries()"): "_pages' bounds",
         ("prompt", "self._gate('prompt', {name: entries[name]})"): "_STORE_SECONDS",
         ("prompt", "self._request(self.client.get_prompt(name, arguments))"): "call_timeout + margin",
-        ("call", "self._submit(self._read_as_tool(uri, tool), _call_bound(server))"): "_call_bound, held by the caller",
+        ("call", "self._submit(self._read_as_tool(uri, tool, asking), _asked_bound(server, asking))"):
+            "_call_bound, and each of three waits' approval_timeout, held by the caller",
         ("application", "self._engine.submit(on_the_mcp_loop(), _call_bound(self.servers[alias]))"):
             "_call_bound, held by the caller",
         ("on_the_mcp_loop", "getattr(self._engine.connection(alias, tenant_id, project_id), method)(*args)"):
             "one of resources, read, prompts or prompt: each bounded above",
+        # M36 (FR-133): a server's request for more input
+        ("_ask", "asyncio.wait_for(asyncio.to_thread(store.append_interruption, item), _STORE_SECONDS)"): "_STORE_SECONDS",
+        ("_ask", "asyncio.wait_for(asyncio.to_thread(store.interruption, tenant_id, project_id, ident), _STORE_SECONDS)"): "_STORE_SECONDS",
+        ("_ask", "asyncio.wait_for(asyncio.to_thread(store.append_decision, expiry), _STORE_SECONDS)"): "_STORE_SECONDS",
+        ("_ask", "asyncio.wait_for(event.wait(), timeout=pause)"): "five seconds at most, or the time left to its expiry",
+        ("_ask", "self._emit(asking, EventType.INPUT_REQUESTED, _input_event(item))"): "_STORE_SECONDS",
+        ("_ask", "self._emit(asking, EventType.INPUT_ANSWERED, {**_input_event(item), 'action': decision.decision})"): "_STORE_SECONDS",
+        ("_emit", "asyncio.wait_for(asyncio.to_thread(events.emit, event_type, payload, task_id=asking.scope.node_id), _STORE_SECONDS)"): "_STORE_SECONDS",
+        ("_emit", "with contextlib.suppress(Exception)"): "suppresses; waits on nothing",
+        ("_quietly", "asyncio.wait_for(asyncio.to_thread(write, *args), _STORE_SECONDS)"): "_STORE_SECONDS",
+        ("_quietly", "with contextlib.suppress(Exception)"): "suppresses; waits on nothing",
+        ("_unsupported", "asyncio.wait_for(asyncio.to_thread(store.append_interruption, item, decided), _STORE_SECONDS)"): "_STORE_SECONDS",
+        ("_on_elicit", "self._ask(asking, 'additional_user_input', payload)"):
+            "_ask's bounds: the store bound, and the request's expiry, approval_timeout",
+        ("_on_elicit", "self._emit(candidate, EventType.INPUT_UNATTRIBUTED, {'alias': self.server.alias, 'tool': candidate.tool})"): "_STORE_SECONDS",
+        ("seen", "dispatch(context, request)"):
+            "the library's own dispatch: an elicitation is _on_elicit's, bounded; sampling and roots answered at once",
+        ("seen", "self._unsupported(asking, method)"): "_STORE_SECONDS",
     }
     # Calls that wait on nothing, each by its callee as written. Every cost here is at most linear
     # in what it is given: anything that is not belongs in `bounds`, with its bound.
@@ -1189,6 +1222,14 @@ def test_every_wait_in_the_mcp_module_names_its_bound():
         "response.headers.get('content-encoding', 'identity').strip().lower",
         "response.headers.get('content-type', '').lower",
         "json.dumps(listed).encode", "json.loads(request.content or b'{}').get",  # text, linear
+        # M36: values, bookkeeping and the library's request clock, none of which waits
+        "contextvars.ContextVar", "contextvars.copy_context", "_CALL.set", "_CALL.reset", "_CALL.get",
+        "asking.context.get", "asking.waiters.add", "asking.waiters.discard", "asking.closings.append", "object", "self._in_flight.append",
+        "self._in_flight.remove", "clock.pause", "clock.resume", "event.clear", "event.wait", "waits.register",
+        "waits.unregister", "runner._interruption_store", "asking.scope._runner._interruption_store",
+        "(item.expires_at - datetime.now(timezone.utc)).total_seconds", "InterruptionKind", "RunInterruption",
+        "InterruptionDecision", "timedelta", "uuid.uuid4", "item.request_payload.get", "ElicitResult", "ErrorData",
+        "contextlib.suppress", "_MIME_PARAMETER.fullmatch", "part.strip", "value.split", "configured.items",
     }
     # M33 review caveat (M34 pre-flight): a call whose cost or reach is its argument's -- a path
     # opened, a pattern compiled, text parsed or decoded -- is exempt only as written here, with
@@ -1203,6 +1244,8 @@ def test_every_wait_in_the_mcp_module_names_its_bound():
         're.compile("[!#$%&\'*+.^_`|~0-9A-Za-z-]+")': "the SDK's own pattern, linear",
         "re.compile('[!-~](?:[ -~\\t]*[!-~])?')": "the SDK's own pattern, linear",
         "re.compile('[A-Za-z0-9!#$&^_.+-]{1,127}/[A-Za-z0-9!#$&^_.+-]{1,127}')": "the SDK's own pattern, linear",
+        're.compile(\'[A-Za-z0-9!#$&^_.+-]{1,127}=(?:[A-Za-z0-9!#$&^_.+-]{1,127}|"[^"\\\\s\\\\\\\\]{0,125}")\')':
+            "the SDK's own pattern, linear",
         "base64.b64decode(content.blob, validate=True)": "a resource's blob: linear",
         "json.loads(request.content or b'{}')": "the SDK's own request body: linear",
         "pathlib.Path(jsonschema.__file__)": "the installed package's own path",
@@ -1317,8 +1360,16 @@ def test_every_loop_in_the_mcp_module_names_what_it_iterates():
         ("refresh", "self._base.names()"): "the registry's names, a tuple",
         ("refresh", "self._known.get(alias, {}).items()"): built,
         # M35
-        ("<module>", "{'accept', 'connection', 'content-length', 'content-type', 'host', 'last-event-id', "
-                     "'mcp-protocol-version', 'mcp-session-id', 'transfer-encoding'}"): "a literal",
+        ("<module>", "{'accept', 'accept-encoding', 'connection', 'content-length', 'content-type', 'host', "
+                     "'last-event-id', 'mcp-protocol-version', 'mcp-session-id', 'transfer-encoding'}"): "a literal",
+        # M36
+        ("_caller", "self._in_flight"): "the calls in flight on one connection: " + built,
+        ("_ended_waits", "asking.waiters"): "one call's input requests: at most three",
+        ("_ended_waits", "waiting"): "one call's input requests: at most three",
+        ("_on_elicit", "candidates"): "the calls in flight on one connection: " + built,
+        ("_mime", "parameters"): "a content type's parameters: linear in its text",
+        ("_mime", "value.split(';')"): "a content type's parameters: linear in its text",
+        ("handle_async_request", "configured.items()"): config, ("_http_client", "server.headers"): config,
         ("__post_init__", "headers.items()"): config,
         ("__post_init__", "self.headers or {}"): config, ("record", "self.headers"): config,
         ("_check_common", "('call_timeout', 'connect_timeout')"): "a literal",
@@ -1368,6 +1419,23 @@ def test_every_loop_in_the_mcp_module_names_what_it_iterates():
         ("nested", "_check_common", "server.accept / item.tool_hashes"): "configuration by configuration",
         # M35
         ("import", "listen", "from mcp import MCPError"): "a module of the venv, imported once",
+        # M36 (FR-133)
+        ("while", "_ask", "decision is None"):
+            "ends at the decision, or at the request's expiry (approval_timeout), which decides it",
+        ("while", "_within", "True"): "ends with the request, or once the budget is spent",
+        ("import", "_ask", "from ..interruptions import InterruptionAlreadyDecided, InterruptionDecision"):
+            "the SDK's own module",
+        ("import", "_ask", "from ..outcomes import InterruptionKind"): "the SDK's own module",
+        ("import", "_interruption", "from ..outcomes import RunInterruption"): "the SDK's own module",
+        ("import", "_interruption", "from datetime import timedelta"): "the standard library",
+        ("import", "_unsupported", "from ..interruptions import InterruptionDecision"): "the SDK's own module",
+        ("import", "_unsupported", "from ..outcomes import InterruptionKind"): "the SDK's own module",
+        ("import", "_clock_of", "from mcp.shared._request_clock import _clock"): "a module of the venv, imported once",
+        ("import", "_on_elicit", "from mcp.types import ElicitResult"): "a module of the venv, imported once",
+        ("import", "_see_input_requests", "from mcp.types import CreateMessageRequest, ListRootsRequest"):
+            "a module of the venv, imported once",
+        ("import", "_too_many", "from mcp.types import ErrorData"): "a module of the venv, imported once",
+        ("import", "answer_problem", "from mcp.types import ElicitResult"): "a module of the venv, imported once",
         ("import", "listen", "from mcp.client.subscriptions import ListenNotSupportedError"): "a module of the venv, imported once",
         ("nested", "_prompt_entries", "listed / p.arguments or []"): "each prompt's own arguments: linear",
         ("import", "_check_url", "from urllib.parse import urlsplit"): "the standard library",

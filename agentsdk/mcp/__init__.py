@@ -16,6 +16,8 @@ import asyncio
 import base64
 import concurrent.futures
 import contextlib
+import contextvars
+import uuid
 import pathlib
 import json
 import math
@@ -31,14 +33,18 @@ from collections import Counter
 from datetime import datetime, timezone
 from collections.abc import Mapping
 from dataclasses import dataclass, field
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from ..catalog import (ToolVersion, changed_parts, checked_hash, entry_hash, prompt_entry, template_entry,
                        tool_entry, tool_hash)
 from ..errors import ToolBlocked, ToolExecutionError
 from ..events import EventType
 from ..primitives import ContentProvenance, InstructionAuthority, Origin, TaintFlag, TrustZone, unstorable_reason
-from ..tools import ApprovalPolicy, ResultProvenance, RiskClass, Tool, ToolOutput, ToolRegistry, ToolSpec
+from ..tools import (ApprovalPolicy, ApprovedCall, ResultProvenance, RiskClass, Tool, ToolOutput, ToolRegistry,
+                     ToolSpec)
+
+if TYPE_CHECKING:  # the executor matches the annotation by name (FR-76); nothing is imported for it
+    from ..scope import ToolScope
 
 __all__ = ["HttpServer", "McpAcceptance", "McpBlocked", "McpPrompt", "McpPromptInfo", "McpPrompts", "McpResource",
            "McpResourceTemplate", "McpResources", "StdioServer", "tool_hash"]
@@ -70,7 +76,10 @@ _MAX_VERSIONS = 10 * _MAX_TOOLS
 _UNTRUSTED = ResultProvenance(origin=Origin.MCP_RESOURCE, trust_zone=TrustZone.UNTRUSTED,
                               instruction_authority=InstructionAuthority.DATA_ONLY,
                               taint_flags=frozenset({TaintFlag.EXTERNAL_CONTENT}))
-_CONNECTION_CLOSED, _REQUEST_TIMEOUT, _METHOD_NOT_FOUND = -32000, -32001, -32601
+_CONNECTION_CLOSED, _REQUEST_TIMEOUT, _METHOD_NOT_FOUND, _INVALID_REQUEST = -32000, -32001, -32601, -32600
+# FR-133 (M36): the input requests one call may make; a fourth fails the call.
+_MAX_ASKED = 3
+_MAX_ANSWER = 64 * 1024  # an accepted form's content, as JSON (pre-review C3)
 # The 2026-07-28 era answers server/discover; anything older came through initialize.
 _MODERN = "2026-07-28"
 
@@ -221,8 +230,8 @@ class StdioServer:
 
 # FR-130: headers the SDK or the library sets on every request; a configured one would override
 # or confuse them.
-_OWN_HEADERS = frozenset({"accept", "connection", "content-length", "content-type", "host", "last-event-id",
-                          "mcp-protocol-version", "mcp-session-id", "transfer-encoding"})
+_OWN_HEADERS = frozenset({"accept", "accept-encoding", "connection", "content-length", "content-type", "host",
+                          "last-event-id", "mcp-protocol-version", "mcp-session-id", "transfer-encoding"})
 _TOKEN = re.compile(r"[!#$%&'*+.^_`|~0-9A-Za-z-]+")
 # Pre-review D1: visible ASCII, spaces and tabs only inside. A value the HTTP library refuses
 # would be quoted, whole, in its own debug log line.
@@ -371,6 +380,47 @@ def _common_record(server: Any) -> dict[str, Any]:
             "protocol": server.protocol, "resources_as_tool": server.resources_as_tool}
 
 
+@dataclass(eq=False)
+class _AskingCall:
+    """FR-133 (M36): one call to a server tool, as an input request finds it -- its run's scope, the
+    approval it runs under, and its request's context, where the library keeps that request's
+    clock. Found through `_CALL` on 2026-07-28, whose input requests run inside the call; on the
+    legacy era, as the one call in flight on its connection (DECISION-d4a40cfe)."""
+
+    scope: Any
+    tool: str
+    approved: Any = None
+    context: contextvars.Context | None = None
+    asked: int = 0
+    too_many: bool = False
+    # Pre-review D1: requests may wait side by side -- several in one input_required round, or
+    # concurrent elicitations -- so the call is waiting while any one is.
+    waiting: int = 0
+    waiters: set[asyncio.Task] = field(default_factory=set)
+    closings: list[asyncio.Task] = field(default_factory=list)  # cancel writes a call's end cut short
+
+
+# Pre-review D5: an application read's request context, which no input request is told is a call's.
+_NO_CALL = object()
+_CALL: contextvars.ContextVar[Any] = contextvars.ContextVar("agentsdk_mcp_call", default=None)
+
+
+def _asking(scope: Any, tool: str, approved: Any) -> _AskingCall | None:
+    """A call that can wait for input: one with a run's scope, whose Runner keeps interruptions."""
+    if getattr(scope, "_runner", None) is None or getattr(scope, "tool_call_id", None) is None:
+        return None
+    return _AskingCall(scope=scope, tool=tool, approved=approved)
+
+
+def _asked_bound(server: Any, asking: _AskingCall | None) -> float:
+    """The caller's deadline for a call that may wait on a person (pre-review D2): the call's own
+    bound, and each of its at most three waits up to approval_timeout, with their store work."""
+    if asking is None:
+        return _call_bound(server)
+    timeout = asking.scope._approval_timeout if asking.scope._approval_timeout is not None else 300.0
+    return _call_bound(server) + _MAX_ASKED * (timeout + 4 * _STORE_SECONDS + 5.0)
+
+
 def _named(profile: tuple[str, ...], alias: str, name: str) -> bool:
     """P4-D30: an MCP tool reaches an agent only when its profile names it."""
     return f"{alias}__{name}" in profile or f"{alias}__*" in profile
@@ -430,9 +480,18 @@ def _read_entries(store: Any, tenant_id: str, project_id: str, alias: str, versi
 _MIME = re.compile(r"[A-Za-z0-9!#$&^_.+-]{1,127}/[A-Za-z0-9!#$&^_.+-]{1,127}")
 
 
+_MIME_PARAMETER = re.compile(r'[A-Za-z0-9!#$&^_.+-]{1,127}=(?:[A-Za-z0-9!#$&^_.+-]{1,127}|"[^"\s\\]{0,125}")')
+
+
 def _mime(value: Any, default: str) -> str:
-    """A server's content type when it is one an artifact can store, else the default."""
-    return value if isinstance(value, str) and _MIME.fullmatch(value) else default
+    """A server's content type when it is one an artifact can store, its parameters kept
+    without spaces (M35 review), else the default."""
+    if not isinstance(value, str):
+        return default
+    base, *parameters = [part.strip() for part in value.split(";")]
+    if not _MIME.fullmatch(base) or not all(_MIME_PARAMETER.fullmatch(p) for p in parameters):
+        return default
+    return ";".join([base, *parameters])
 
 
 # M33 round 5: no schema a server supplied is ever evaluated in this process. Validating against
@@ -656,6 +715,9 @@ class _Connection:
         self._changes = 0  # notifications seen: a read that saw none arrive during it clears _stale
         self._listener: asyncio.Task | None = None
         self._listens: bool | None = None  # this session's server offers subscriptions/listen
+        # FR-133 (M36): the calls and application reads in flight on this connection, by which a
+        # legacy-era input request is told its call (DECISION-d4a40cfe).
+        self._in_flight: list[Any] = []
         self._nonce: str | None = None  # an HTTP session's mark on the SDK transport's refusals (FR-130)
         self._skips: set[tuple[str, str]] = set()
         # Each schema pair's verdict, by its canonical JSON: a listing read again unchanged -- each
@@ -919,9 +981,12 @@ class _Connection:
                                                            env=dict(server.env) or None, cwd=server.cwd)
                             transport = stdio_client(params, errlog=devnull)
                         # No response cache: the SDK decides when a listing is read again (FR-127).
+                        # FR-133: elicitation declared in both modes; sampling and roots never.
                         client = await stack.enter_async_context(Client(
-                            transport, mode=server.protocol, cache=None, message_handler=self._on_message))
+                            transport, mode=server.protocol, cache=None, message_handler=self._on_message,
+                            elicitation_callback=self._on_elicit))
                         _guard_output_validation(client)
+                        self._see_input_requests(client)
                         listed, ttl = await _read_listing(client)
                         if not ready.done():
                             ready.set_result((client, listed, ttl))
@@ -1052,8 +1117,12 @@ class _Connection:
             configuration={"mcp_server": server.alias, "tool_hash": entry_hash({"sdk": _READER, "alias": server.alias})},
         )
 
-        async def call(uri: str) -> ToolOutput:
-            return await self._submit(self._read_as_tool(uri, tool), _call_bound(server))
+        async def call(uri: str, _agentsdk_scope: ToolScope = None, _agentsdk_approved: ApprovedCall = None
+                       ) -> ToolOutput:
+            # Pre-review D6: a call of a run's, so a request for input during its read is recorded
+            # on the run, as for any server tool's call.
+            asking = _asking(_agentsdk_scope, f"{server.alias}__{_READER}", _agentsdk_approved)
+            return await self._submit(self._read_as_tool(uri, tool, asking), _asked_bound(server, asking))
 
         tool = Tool(spec=spec, fn=call)
         return tool
@@ -1081,14 +1150,20 @@ class _Connection:
             configuration={"mcp_server": server.alias, "tool_hash": digest},
         )
 
-        async def call(**arguments: Any) -> ToolOutput:
-            # Called on the run's loop; the call itself runs on the Runner's MCP loop.
-            return await self._submit(self._call(name, arguments, entry.output_schema, tool), _call_bound(server))
+        async def call(_agentsdk_scope: ToolScope = None, _agentsdk_approved: ApprovedCall = None,
+                       **arguments: Any) -> ToolOutput:
+            # Called on the run's loop; the call itself runs on the Runner's MCP loop. The executor
+            # hands the run's scope and the approval (FR-76, FR-118), by their annotations, never
+            # as the model's arguments: a request for input during the call is recorded on them.
+            asking = _asking(_agentsdk_scope, f"{server.alias}__{name}", _agentsdk_approved)
+            return await self._submit(self._call(name, arguments, entry.output_schema, tool, asking),
+                                      _asked_bound(server, asking))
 
         tool = Tool(spec=spec, fn=call)
         return tool
 
-    async def _call(self, name: str, arguments: dict[str, Any], output_schema: Any, tool: Tool) -> ToolOutput:
+    async def _call(self, name: str, arguments: dict[str, Any], output_schema: Any, tool: Tool,
+                    asking: _AskingCall | None = None) -> ToolOutput:
         from mcp import MCPError
 
         alias = self.server.alias
@@ -1111,8 +1186,7 @@ class _Connection:
         if client is None:
             raise ToolExecutionError(f"mcp server {alias} exited")
         timeout = float(self.server.call_timeout)
-        clock = asyncio.get_running_loop()
-        started = clock.time()
+        spent = [0.0]  # the call's time on the server's clock: never while it waits on a person
 
         async def wedged() -> bool:
             # Reaching the SDK's own deadline means the request was never taken -- whatever the
@@ -1120,23 +1194,39 @@ class _Connection:
             # stream may hold half a message, so this session is ended, and the next call starts
             # the server again under the restart-once rule. An honest timeout comes at
             # call_timeout, well before (M33 round 4).
-            if clock.time() - started < timeout + _WEDGE_MARGIN - 0.5:
+            if spent[0] < timeout + _WEDGE_MARGIN - 0.5:
                 return False
             await self._discard(client, task)
             return True
 
+        # FR-133: the request runs in a context of its own, held here, so an input request can
+        # find this call -- inherited on 2026-07-28 -- and stop the library's clock of this
+        # request while a person answers (the legacy era's tools/call stays pending meanwhile).
+        token = _CALL.set(asking)
+        context = contextvars.copy_context()
+        _CALL.reset(token)
+        entry = asking if asking is not None else object()
+        if asking is not None:
+            asking.context = context
+        self._in_flight.append(entry)
         try:
             # The SDK owns every wait on a server: the library arms its read timeout only once the
             # request is written, and a server that stops reading its input blocks the write. The
             # margin leaves the library's own timeout to decide a slow, honest tool; this loop is
-            # the Runner's own, so a stalled run's loop does not eat into it.
-            result = await asyncio.wait_for(client.call_tool(name, arguments, read_timeout_seconds=timeout),
-                                            timeout + _WEDGE_MARGIN)
+            # the Runner's own, so a stalled run's loop does not eat into it. Neither runs while
+            # the call waits for a person (FR-133).
+            request = asyncio.get_running_loop().create_task(
+                client.call_tool(name, arguments, read_timeout_seconds=timeout), context=context)
+            result = await _within(request, timeout + _WEDGE_MARGIN, asking, spent)
+            if asking is not None and asking.too_many:
+                raise ToolExecutionError("too many input requests")
         except TimeoutError:
             await wedged()
             raise TimeoutError(f"mcp server {alias} did not take or answer the request within "
                                f"{timeout + _WEDGE_MARGIN} s") from None
         except MCPError as exc:
+            if asking is not None and asking.too_many:
+                raise ToolExecutionError("too many input requests") from None
             refused = _refusal(exc, self._nonce)
             if refused is not None:  # FR-130: the SDK transport's own refusal of one response
                 raise ToolExecutionError(f"mcp server {alias} {refused[1]}") from None
@@ -1158,6 +1248,9 @@ class _Connection:
         except _InvalidOutput:
             # The SDK's own check of structured content, which replaced the library's.
             raise ToolExecutionError("output does not match its schema") from None
+        finally:
+            self._in_flight.remove(entry)
+            await _ended_waits(asking)
         text = "\n".join(_block(block) for block in result.content)
         if result.is_error:
             raise ToolExecutionError(text or "the tool reported an error")
@@ -1166,6 +1259,187 @@ class _Connection:
         if output_schema is not None and not any(getattr(b, "type", None) == "text" for b in result.content):
             text = "\n".join([*([text] if text else []), json.dumps(result.structured_content)])
         return ToolOutput(content=text, source_uri=f"mcp://{alias}/{name}")
+
+    # --- FR-133 (M36): a server's request for more input ---------------------------------------
+
+    def _caller(self) -> tuple[_AskingCall | None, list[_AskingCall]]:
+        """The call an input request belongs to: the one it runs inside (2026-07-28), or the one
+        call in flight on this connection; else None, with the calls it could have been."""
+        asking = _CALL.get()
+        if asking is _NO_CALL:
+            return None, []  # an application read's: no run to record it on, and none to tell
+        if asking is not None:
+            return asking, []
+        if len(self._in_flight) == 1 and isinstance(self._in_flight[0], _AskingCall):
+            return self._in_flight[0], []
+        return None, [e for e in self._in_flight if isinstance(e, _AskingCall)]
+
+    async def _on_elicit(self, context: Any, params: Any) -> Any:
+        """The library's elicitation callback, for both eras (KNOWLEDGE-fe6eb6d4): the request is
+        recorded on its call's run and waited on until a person answers, it expires, or the call
+        ends. One no call can be told -- an application read's, or one of several calls' on the
+        legacy era -- is answered cancel, and the calls it could have been are told."""
+        from mcp.types import ElicitResult
+
+        asking, candidates = self._caller()
+        if asking is None:
+            for candidate in candidates:
+                await self._emit(candidate, EventType.INPUT_UNATTRIBUTED,
+                                 {"alias": self.server.alias, "tool": candidate.tool})
+            return ElicitResult(action="cancel")
+        url = getattr(params, "mode", None) == "url"
+        payload = {"alias": self.server.alias, "tool": asking.tool, "message": params.message,
+                   "mode": "url" if url else "form"}
+        if url:
+            payload["url"] = params.url  # shown in full, never opened or fetched (the spec's rule)
+        else:
+            payload["requested_schema"] = params.requested_schema
+        answer = await self._ask(asking, "additional_user_input", payload)
+        if answer is None:
+            return _too_many()
+        return ElicitResult(action=answer.decision, content=answer.response if answer.decision == "accept" else None)
+
+    def _see_input_requests(self, client: Any) -> None:
+        """Every input request passes the session's one dispatch, in both eras: a sampling or roots
+        request -- which the client never declares -- is recorded declined, and the library then
+        answers it unsupported, as it would have (FR-133)."""
+        from mcp.types import CreateMessageRequest, ListRootsRequest
+
+        session = client.session
+        dispatch = session.dispatch_input_request
+
+        async def seen(context: Any, request: Any) -> Any:
+            if isinstance(request, (CreateMessageRequest, ListRootsRequest)):
+                asking, _ = self._caller()
+                if asking is not None:
+                    # Pre-review D4: counted as any input request, so a server cannot flood the store.
+                    asking.asked += 1
+                    if asking.asked > _MAX_ASKED:
+                        asking.too_many = True
+                        return await dispatch(context, request)
+                    method = "sampling/createMessage" if isinstance(request, CreateMessageRequest) else "roots/list"
+                    try:
+                        await self._unsupported(asking, method)
+                    except Exception:  # noqa: BLE001 - unrecorded; it is refused all the same
+                        pass
+            return await dispatch(context, request)
+
+        session.dispatch_input_request = seen
+
+    async def _unsupported(self, asking: _AskingCall, method: str) -> None:
+        from ..interruptions import InterruptionDecision
+        from ..outcomes import InterruptionKind
+
+        item = self._interruption(asking, InterruptionKind.EXTERNAL_TOOL_INPUT,
+                                  {"alias": self.server.alias, "tool": asking.tool, "method": method})
+        decided = InterruptionDecision(decision_id=str(uuid.uuid4()), interruption_id=item.interruption_id,
+                                       tenant_id=item.tenant_id, project_id=item.project_id, decision="decline",
+                                       source="unsupported", decided_at=datetime.now(timezone.utc))
+        store = asking.scope._runner._interruption_store()
+        await asyncio.wait_for(asyncio.to_thread(store.append_interruption, item, decided), _STORE_SECONDS)
+
+    def _interruption(self, asking: _AskingCall, kind: Any, payload: dict[str, Any]) -> Any:
+        from datetime import timedelta
+
+        from ..outcomes import RunInterruption
+
+        scope, now = asking.scope, datetime.now(timezone.utc)
+        if asking.approved is not None:
+            payload["approved_by"] = asking.approved.interruption_id
+        timeout = scope._approval_timeout if scope._approval_timeout is not None else 300.0
+        return RunInterruption(
+            kind=kind, run_id=scope.run_id, top_run_id=scope.ledger_run_id or scope.run_id, tenant_id=scope.tenant_id,
+            project_id=scope.project_id, node_id=scope.node_id, tool_call_id=scope.tool_call_id, tool_name=asking.tool,
+            agent_id=scope.agent_id or "unknown", trigger="server", request_payload=payload, created_at=now,
+            expires_at=now + timedelta(seconds=timeout))
+
+    async def _ask(self, asking: _AskingCall, kind: str, payload: dict[str, Any]) -> Any:
+        """FR-133: records the request on its call's run and waits for its one decision, as the
+        loop waits for an approval (FR-115): registered before it is recorded, re-read on each wake,
+        at least every five seconds and at its expiry. Its expiry decides cancel, as does the call
+        ending. None for a request past the third, which fails the call."""
+        from ..interruptions import InterruptionAlreadyDecided, InterruptionDecision
+        from ..outcomes import InterruptionKind
+
+        asking.asked += 1
+        if asking.asked > _MAX_ASKED:
+            asking.too_many = True
+            return None
+        item = self._interruption(asking, InterruptionKind(kind), payload)
+        runner = asking.scope._runner
+        store, waits = runner._interruption_store(), runner._approvals
+        tenant_id, project_id, ident = item.tenant_id, item.project_id, item.interruption_id
+        event = asyncio.Event()
+        waits.register([ident], asyncio.get_running_loop(), event, item.run_id)
+        clock, me = _clock_of(asking), asyncio.current_task()
+        asking.waiting += 1
+        asking.waiters.add(me)
+        if clock is not None:
+            clock.pause()  # counted: the clock runs again once every wait of this request has ended
+
+        def ended(source: str) -> Any:
+            return InterruptionDecision(decision_id=str(uuid.uuid4()), interruption_id=ident, tenant_id=tenant_id,
+                                        project_id=project_id, decision="cancel", source=source,
+                                        decided_at=datetime.now(timezone.utc))
+
+        try:
+            try:
+                await asyncio.wait_for(asyncio.to_thread(store.append_interruption, item), _STORE_SECONDS)
+            except Exception:  # noqa: BLE001 - not recorded, so nobody can answer it: the server is told cancel
+                return ended("cancel")
+            await self._emit(asking, EventType.INPUT_REQUESTED, _input_event(item))
+            decision = None
+            while decision is None:
+                event.clear()
+                try:
+                    view = await asyncio.wait_for(asyncio.to_thread(store.interruption, tenant_id, project_id, ident),
+                                                  _STORE_SECONDS)
+                    decision = view.decision
+                except Exception:  # noqa: BLE001 - unread is unanswered: it waits on
+                    pass
+                if decision is None and datetime.now(timezone.utc) >= item.expires_at:
+                    try:
+                        expiry = ended("expiry")
+                        await asyncio.wait_for(asyncio.to_thread(store.append_decision, expiry), _STORE_SECONDS)
+                        decision = expiry
+                    except InterruptionAlreadyDecided:
+                        continue  # answered first: read on the next pass
+                    except Exception:  # noqa: BLE001 - unrecorded, so still unanswered
+                        pass
+                if decision is None:
+                    left = (item.expires_at - datetime.now(timezone.utc)).total_seconds()
+                    pause = 5.0 if left > 5.0 else (left if left > 0.01 else 0.01)
+                    try:
+                        await asyncio.wait_for(event.wait(), timeout=pause)
+                    except TimeoutError:
+                        pass
+        except asyncio.CancelledError:
+            # The call ended -- its run cancelled -- while it waited: the request is decided
+            # cancel, whoever answers later finds it decided, and the cancellation goes on. The
+            # write is a task of its own: on the legacy era this wait runs in the library's anyio
+            # task group, whose cancellation every later await here would raise again; the call
+            # waits for it as it ends.
+            asking.closings.append(asyncio.get_running_loop().create_task(
+                _quietly(store.append_decision, ended("cancel"))))
+            raise
+        finally:
+            asking.waiting -= 1
+            asking.waiters.discard(me)
+            if clock is not None:
+                clock.resume()
+            waits.unregister([ident])
+        await self._emit(asking, EventType.INPUT_ANSWERED, {**_input_event(item), "action": decision.decision})
+        return decision
+
+    async def _emit(self, asking: _AskingCall, event_type: Any, payload: dict[str, Any]) -> None:
+        """An event on the call's run, from this loop: a store write, on a worker thread. Telemetry
+        never fails the call it describes."""
+        events = getattr(asking.scope, "_events", None)
+        if events is None:
+            return
+        with contextlib.suppress(Exception):
+            await asyncio.wait_for(asyncio.to_thread(events.emit, event_type, payload, task_id=asking.scope.node_id),
+                                   _STORE_SECONDS)
 
     # --- FR-131 (M35): resources and prompts, read by the application -------------------------
 
@@ -1179,21 +1453,39 @@ class _Connection:
             raise ToolExecutionError(f"mcp server {self.server.alias} is not running: {self._why}")
         return self.client
 
-    async def _request(self, coroutine: Any) -> Any:
-        """One request of an application's read, bounded by call_timeout, its errors named as a
-        call's are."""
+    async def _request(self, coroutine: Any, asking: _AskingCall | None = None) -> Any:
+        """One request of an application's read, or of `<alias>__read_resource` (`asking`), bounded
+        by call_timeout, its errors named as a call's are. It runs in a context of its own, so an
+        input request during it is told whose it is -- the call's, or an application read's,
+        which no run records (pre-review D5, D6)."""
         from mcp import MCPError
 
         alias, timeout = self.server.alias, float(self.server.call_timeout)
+        token = _CALL.set(asking if asking is not None else _NO_CALL)
+        context = contextvars.copy_context()
+        _CALL.reset(token)
+        entry = asking if asking is not None else object()
+        if asking is not None:
+            asking.context = context
+        self._in_flight.append(entry)
         try:
-            return await asyncio.wait_for(coroutine, timeout + _WEDGE_MARGIN)
+            task = asyncio.get_running_loop().create_task(coroutine, context=context)
+            answered = await _within(task, timeout + _WEDGE_MARGIN, asking, [0.0])
+            if asking is not None and asking.too_many:
+                raise ToolExecutionError("too many input requests")
+            return answered
         except TimeoutError:
             raise TimeoutError(f"mcp server {alias} did not answer within {timeout} s") from None
         except MCPError as exc:
+            if asking is not None and asking.too_many:
+                raise ToolExecutionError("too many input requests") from None
             refused = _refusal(exc, self._nonce)
             if refused is not None:
                 raise ToolExecutionError(f"mcp server {alias} {refused[1]}") from None
             raise ToolExecutionError(f"mcp server {alias} answered error {exc.code}: {exc.message}") from None
+        finally:
+            self._in_flight.remove(entry)
+            await _ended_waits(asking)
 
     async def _pages(self, method: Any, field_name: str) -> list[Any]:
         """Every page of a resource, template or prompt listing, within _MAX_PAGES and _MAX_TOOLS."""
@@ -1281,7 +1573,7 @@ class _Connection:
                   for c in contents]
         return json.dumps(listed).encode("utf-8"), "application/json"
 
-    async def _read_as_tool(self, uri: str, tool: Tool) -> ToolOutput:
+    async def _read_as_tool(self, uri: str, tool: Tool, asking: _AskingCall | None = None) -> ToolOutput:
         """FR-131: `<alias>__read_resource`, checked as any call is where it leaves (NFR-36)."""
         alias = self.server.alias
         offered, down = await self.current(_READER)
@@ -1291,7 +1583,7 @@ class _Connection:
             raise ToolBlocked(f"{alias}__{_READER} changed since it was offered; it is offered again next turn")
         if not isinstance(uri, str) or not uri or len(uri) > _MAX_URI or unstorable_reason(uri) is not None:
             raise ToolExecutionError(f"a resource uri is 1 to {_MAX_URI} characters of storable text")
-        result = await self._request(self.client.read_resource(uri))
+        result = await self._request(self.client.read_resource(uri), asking)
         text = "\n".join(c.text if getattr(c, "text", None) is not None
                          else f"[resource content omitted: {c.mime_type}, {_size(c.blob)}]" for c in result.contents)
         return ToolOutput(content=text, source_uri=f"mcp://{alias}/{_READER}")
@@ -1353,6 +1645,87 @@ class _Connection:
                 await asyncio.wait([task], timeout=_CLOSE_SECONDS)
             await _ended(task)
             self.client = None
+
+
+async def _ended_waits(asking: _AskingCall | None) -> None:
+    """As a call ends -- its run cancelled, say -- every input request still waiting on it, outside
+    its task on the legacy era, ends too, deciding cancel, and those cancel writes finish (FR-133)."""
+    if asking is None:
+        return
+    waiting = [task for task in asking.waiters if not task.done()]
+    for task in waiting:
+        task.cancel()
+    if waiting:
+        await asyncio.wait(waiting, timeout=_CLOSE_SECONDS)
+    if asking.closings:
+        await asyncio.wait(asking.closings, timeout=_STORE_SECONDS)
+
+
+def answer_problem(content: Any) -> str | None:
+    """FR-133, pre-review D3: why a form's content cannot be the server's answer -- not the
+    library's ElicitResult content (text keys; text, number, boolean, null or list of text
+    values), or over 64 KiB -- else None. Checked before anything is recorded."""
+    from mcp.types import ElicitResult
+
+    try:
+        ElicitResult(action="accept", content=content)
+    except Exception as exc:  # noqa: BLE001 - pydantic's ValidationError, or anything the model refuses
+        return f"it is not a form's answer: {type(exc).__name__}"
+    if len(json.dumps(content)) > _MAX_ANSWER:
+        return f"it is over {_MAX_ANSWER} bytes"
+    return None
+
+
+async def _quietly(write: Any, *args: Any) -> None:
+    """A store write on a worker thread, within the store bound; a failure leaves it unwritten."""
+    with contextlib.suppress(Exception):
+        await asyncio.wait_for(asyncio.to_thread(write, *args), _STORE_SECONDS)
+
+
+def _too_many() -> Any:
+    """The answer to a call's fourth input request: refused, and the call fails (FR-133)."""
+    from mcp.types import ErrorData
+
+    return ErrorData(code=_INVALID_REQUEST, message="too many input requests")
+
+
+def _input_event(item: Any) -> dict[str, Any]:
+    """InputRequested and InputAnswered: the request named, never its content or the response."""
+    return {"interruption_id": item.interruption_id, "kind": item.kind.value,
+            "alias": item.request_payload.get("alias"), "tool": item.tool_name}
+
+
+def _clock_of(asking: _AskingCall) -> Any:
+    """The library's clock of the request a legacy-era call waits on, which it keeps in the
+    request's context; None between 2026-07-28's rounds, when no request is pending. Private to
+    mcp 2.3.0, which the extra pins (declared)."""
+    if asking.context is None:
+        return None
+    try:
+        from mcp.shared._request_clock import _clock
+    except ImportError:
+        return None
+    return asking.context.get(_clock)
+
+
+async def _within(task: asyncio.Task, budget: float, asking: _AskingCall | None, spent: list[float]) -> Any:
+    """A call's own deadline, counted only while it is not waiting on a person (FR-133): past
+    `budget` the request is cancelled and TimeoutError raised. However it ends, the request does."""
+    clock = asyncio.get_running_loop()
+    try:
+        while True:
+            began = clock.time()
+            done, _ = await asyncio.wait({task}, timeout=0.25 if asking is not None else max(0.0, budget - spent[0]))
+            if not (asking is not None and asking.waiting):
+                spent[0] += clock.time() - began
+            if done:
+                return task.result()
+            if spent[0] >= budget:
+                raise TimeoutError
+    finally:
+        if not task.done():
+            task.cancel()
+            await asyncio.wait([task], timeout=_CLOSE_SECONDS)
 
 
 def _canonical(value: Any) -> str | None:
@@ -1434,11 +1807,20 @@ def _http_client(server: HttpServer, nonce: str) -> Any:
         async def aclose(self) -> None:
             await self._inner.aclose()
 
+    configured = dict(server.headers)
+
     class Guard(httpx2.AsyncBaseTransport):
         def __init__(self) -> None:
             self._inner = httpx2.AsyncHTTPTransport(trust_env=False)
 
+        def __repr__(self) -> str:
+            return "Guard()"
+
         async def handle_async_request(self, request: Any) -> Any:
+            # M35 review: httpx2 masks only Authorization in a client's repr, so the configured
+            # headers live here and join each request as it leaves -- never the client's own.
+            for name, value in configured.items():
+                request.headers[name] = value
             response = await self._inner.handle_async_request(request)
             status, kind = response.status_code, response.headers.get("content-type", "").lower()
             if 300 <= status < 400:
@@ -1472,7 +1854,7 @@ def _http_client(server: HttpServer, nonce: str) -> Any:
     # would end a legacy server's long-lived event stream.
     timeout = httpx2.Timeout(connect=server.connect_timeout, read=None, write=server.call_timeout,
                              pool=server.connect_timeout)
-    return httpx2.AsyncClient(transport=Guard(), headers={**server.headers, "Accept-Encoding": "identity"},
+    return httpx2.AsyncClient(transport=Guard(), headers={"Accept-Encoding": "identity"},
                               timeout=timeout, max_redirects=0,
                               follow_redirects=False, trust_env=False)
 

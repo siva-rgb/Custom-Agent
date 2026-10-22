@@ -62,6 +62,12 @@ class EventType(str, Enum):
     MCP_SERVER_UNAVAILABLE = "McpServerUnavailable"
     MCP_TOOL_SKIPPED = "McpToolSkipped"
     MCP_TOOL_BLOCKED = "McpToolBlocked"
+    # FR-133 (M36): a server asked for more input during a call, and the answer it got -- the
+    # interruption id, kind, alias and tool, and the action, never the response. And, on the
+    # legacy era, an input request that could not be told from another call's (DECISION-d4a40cfe).
+    INPUT_REQUESTED = "InputRequested"
+    INPUT_ANSWERED = "InputAnswered"
+    INPUT_UNATTRIBUTED = "InputUnattributed"
 
 
 @dataclass(frozen=True)

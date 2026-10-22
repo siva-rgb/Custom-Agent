@@ -67,6 +67,8 @@ EXPECTED_EXAMPLES = {
     "28_mcp_catalog.py",
     # FR-132 (M35): Streamable HTTP, resources and prompts.
     "29_mcp_http.py",
+    # FR-134 (M36): input requests and elicitation.
+    "30_mcp_input.py",
 }
 
 

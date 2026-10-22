@@ -239,9 +239,12 @@ async def test_listing_with_an_unreadable_run_id_lists_nothing(store):
 async def test_only_a_tool_approval_is_recorded(store):
     runner, (run, _, _) = await _runs(store)
     rows = runner._interruption_store()
+    # Edited at M36 (FR-133): an MCP server's input request is recorded too, as one of the two
+    # input kinds with trigger server. Every other kind is still refused, and so is an input kind
+    # under an approval's trigger -- this row's -- so no approval is recorded as an input request.
     for kind in InterruptionKind:
         if kind is not InterruptionKind.TOOL_APPROVAL:
-            with pytest.raises(ValueError, match="tool_approval"):
+            with pytest.raises(ValueError, match="tool approval or an input request|trigger server"):
                 await asyncio.to_thread(rows.append_interruption, dataclasses.replace(_interruption(run), kind=kind))
 
 

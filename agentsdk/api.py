@@ -51,6 +51,7 @@ from .interruptions import (
     InterruptionAlreadyDecided,
     InterruptionDecision,
     InterruptionExpired,
+    InterruptionKindMismatch,
     InterruptionNotWaiting,
     InterruptionView,
     StandingDecision,
@@ -655,6 +656,11 @@ class Runner:
             message=message, principal=principal, decided_at=datetime.now(timezone.utc))
         store = self._interruption_store()
         view = await asyncio.to_thread(store.interruption, tenant_id, project_id, interruption_id)
+        # FR-133 (M36): second, after tenancy -- an input request is answered with respond.
+        from .outcomes import InterruptionKind
+
+        if view.interruption.kind is not InterruptionKind.TOOL_APPROVAL:
+            raise InterruptionKindMismatch(f"interruption {interruption_id} is an input request: answer it with respond")
         if view.decision is not None:
             raise InterruptionAlreadyDecided(f"interruption {interruption_id} is already decided")
         item = view.interruption
@@ -680,6 +686,66 @@ class Runner:
                     f"the decision on interruption {interruption_id} was recorded, but its standing decision was "
                     f"not: {describe_exception(exc)}") from exc
             self._approvals.wake(item.interruption_id)
+        return made
+
+    async def respond(
+        self, tenant_id: str, project_id: str, interruption_id: str, *, action: str, content: Any = None,
+        principal: PrincipalContext,
+    ) -> InterruptionDecision:
+        """FR-133: answers an MCP server's request for more input -- `accept`, `decline` or
+        `cancel` -- and wakes the call waiting on it, which returns the answer to the server.
+
+        `principal` must name a user or a service. In form mode `accept` takes `content`, which
+        must match the schema the server asked for, checked in a process of its own since the
+        schema is the server's; in url mode `accept` means the person completed the flow
+        themselves, and the SDK opens nothing. No other answer takes content. Refused with nothing
+        recorded, in decide's order with the kind second: UnknownInterruption,
+        InterruptionKindMismatch, InterruptionAlreadyDecided, InterruptionExpired,
+        InterruptionNotWaiting. A Runner method in no tool registry; may be awaited on any loop."""
+        from datetime import datetime, timezone
+
+        from .interruptions import ANSWERS, INPUT_KINDS
+
+        if action not in ANSWERS:
+            raise ValueError(f"action must be one of {', '.join(ANSWERS)}, got {action!r}")
+        made = InterruptionDecision(
+            decision_id=str(uuid.uuid4()), interruption_id=str(uuid.uuid4()), tenant_id=tenant_id,
+            project_id=project_id, decision=action, source="principal", principal=principal,
+            decided_at=datetime.now(timezone.utc))
+        store = self._interruption_store()
+        view = await asyncio.to_thread(store.interruption, tenant_id, project_id, interruption_id)
+        item = view.interruption
+        if item.kind not in INPUT_KINDS:
+            raise InterruptionKindMismatch(f"interruption {interruption_id} is an approval: decide it with decide")
+        if view.decision is not None:
+            raise InterruptionAlreadyDecided(f"interruption {interruption_id} is already decided")
+        if datetime.now(timezone.utc) >= item.expires_at:
+            raise InterruptionExpired(f"interruption {interruption_id} expired at {item.expires_at.isoformat()}")
+        if not self._approvals.waiting(item.interruption_id):
+            raise InterruptionNotWaiting(f"no run of this Runner is waiting on interruption {interruption_id}")
+        response = None
+        form = item.request_payload.get("mode") == "form"
+        if action == "accept" and form:
+            if not isinstance(content, dict):
+                raise ValueError("accepting a form takes its content, a JSON object")
+            from .mcp import validate_untrusted
+
+            invalid, unreadable = await asyncio.to_thread(
+                validate_untrusted, content, item.request_payload.get("requested_schema"))
+            if invalid is not None or unreadable is not None:
+                raise ValueError(f"the content does not match the requested schema: {invalid or unreadable}")
+            from .mcp import answer_problem
+
+            problem = answer_problem(content)
+            if problem is not None:  # pre-review D3: recorded only if it can reach the server
+                raise ValueError(f"the content cannot be answered: {problem}")
+            response = content
+        elif content is not None:
+            raise ValueError("content is given only to accept a form")
+        made = replace(made, interruption_id=item.interruption_id, decided_at=datetime.now(timezone.utc),
+                       response=response)
+        await asyncio.to_thread(store.append_decision, made)
+        self._approvals.wake(item.interruption_id)
         return made
 
     async def interruptions(
@@ -1230,6 +1296,7 @@ class Runner:
                     lock=self._claim_lock,
                 ),
                 _events=events, _control=control, _runner=self, _lease=config.budget_lease,
+                _approval_timeout=float(config.approval_timeout),
             ),
         )
 

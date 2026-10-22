@@ -142,6 +142,16 @@ persisted so you can reconstruct exactly what happened afterwards.
   `Runner.mcp_prompts` and `mcp_prompt` (an `McpPrompt`, used only once its
   version is accepted). `resources_as_tool=True` offers an agent
   `<alias>__read_resource`, under the server's approval.
+- **Lets an MCP server ask a person for more input** (M36): a form to fill in, or
+  a URL to open, in either protocol era. The request is recorded as an
+  interruption of the run -- with the schema, or the full URL, which the SDK
+  never opens -- and the call waits, past its `call_timeout` and up to the run's
+  `approval_timeout`, until the application answers with `Runner.respond` (or
+  `RunHandle.respond`): `accept` with content matching the schema, `decline` or
+  `cancel`. The answer reaches the server and the same call continues under its
+  original approval; expiry and the run's cancellation answer `cancel`, a fourth
+  request fails the call, and a sampling or roots request is recorded and
+  answered unsupported. Events name each request, never the response.
 - **Fetches each page once, however many agents ask** (M24's claim-lock): one
   holder per page and per statement, across the tasks of a process and the
   processes sharing the database; the others wait, then take the holder's
@@ -201,6 +211,13 @@ Stated plainly, because an SDK that overstates itself costs you a week:
 | A resource template's acceptance gates its listing only: `mcp_read` and `<alias>__read_resource` read any URI the application, or an approved call, chooses, and what they return is untrusted either way (owner's choice, M35) | Declared (M35) |
 | With `resources_as_tool`, the SDK's `<alias>__read_resource` wins over a server tool of that name, which is skipped and recorded; it is approved by `approval_overrides["read_resource"]` when set, else by the server's `approval`, needs no acceptance (its description is the SDK's) (owner's choice, M35); it is not filtered by `allow` or `deny`, which name the server's own tools | Declared (M35) |
 | A server that sends a configured header's value back in its own output -- a result, a prompt, a resource -- has it stored as that output; the SDK never sends it anywhere else | Declared (M35) |
+| A 2026-07-28 server that changes its tools between a listing read and its `subscriptions/listen` stream opening, and says so in that window, is caught at the next read: within 60 seconds | Declared (M36) |
+| A server may ask for a secret in a form, though the specification forbids it, and the SDK cannot tell one: an accepted form's content is stored with the decision, labelled user-controlled data. A url-mode URL may carry a token, and is stored whole, since the person must see it whole | Declared (M36) |
+| An input request is recorded on the call it belongs to. On 2026-07-28, and on the legacy era over HTTP when the server sends it on the call's own response stream, that call is known exactly. A legacy-era request that names no call -- over stdio, or on the HTTP standalone stream -- is attributed only when one call is in flight on the connection, possibly another run's, and otherwise answered `cancel`, each call in flight told by `InputUnattributed` (owner's choice, M36). An application read's request is answered `cancel`, and no run is told | Declared (M36) |
+| When a call that waits for input is cancelled, the `mcp` library's Streamable HTTP client may log an "Error parsing SSE message" traceback for the stream it abandons; nothing is lost | Declared (M36) |
+| A fourth input request of one call fails it `too many input requests`: on 2026-07-28 the requests of that round still waiting are decided `cancel`, and on the legacy era the server's tool may finish its work before the call fails. Sampling and roots requests count toward the three | Declared (M36) |
+| An input request made during an application read -- `mcp_resources`, `mcp_read`, `mcp_prompts`, `mcp_prompt` -- has no run to record it on, and is answered `cancel`; one made during a `<alias>__read_resource` call is recorded on its run as any call's is. An accepted form's content must be the protocol's answer -- text keys; text, number, boolean, null or a list of text -- of at most 64 KiB, or `respond` refuses it | Declared (M36) |
+| While a call waits for a person, the `mcp` library's own read timeout for a legacy-era call is paused through its request clock, a private part of mcp 2.3.0 that the extra pins; a later library may move it | Declared (M36) |
 | A server that changes a tool without saying so is caught at the next read of its listing: once its `ttlMs` passes, once it is 60 seconds old, or before a call when either has passed. Its results are untrusted either way | Declared (M34) |
 | A 2026-07-28 server that sends `ttlMs` 0 -- the mcp library's own servers do by default -- has its listing read again at every turn, and before every call both at executor step 1 and as the call leaves, a round trip each, one read at a time per connection; its schemas are checked again only when they change. The legacy era carries no `ttlMs`, so its listings are kept 60 seconds unless the server says they changed | Declared (M34) |
 | A listing that cannot be read again ends that session: the server's tools are offered to no turn, and a call already offered one is refused at executor step 1, before its arguments are validated or its approval asked, until the server starts again under the restart-once rule -- at the next check before a call, or the next turn | Declared (M34) |
@@ -600,6 +617,7 @@ credentials -- which is also how the test suite checks them.
 | [`27_mcp.py`](scripts/27_mcp.py) | an agent using an MCP server's tools natively: qualified names, an allow list, a failing tool, every result untrusted, and the server named in the manifest |
 | [`28_mcp_catalog.py`](scripts/28_mcp_catalog.py) | the MCP catalog: each tool's first sight blocked then accepted, a changed description blocked and named, a sticky approval that does not carry to the new version, and the call asked again |
 | [`29_mcp_http.py`](scripts/29_mcp_http.py) | MCP over Streamable HTTP: a header the server requires, a prompt refused until accepted and then used as a task, a resource read into an untrusted artifact, and a child briefed with it |
+| [`30_mcp_input.py`](scripts/30_mcp_input.py) | MCP input requests: a server's form answered by a scripted person and its URL declined, each recorded as an interruption, the answers reaching the server, and the URL never opened |
 
 ```bash
 python scripts/02_custom_tools.py --offline

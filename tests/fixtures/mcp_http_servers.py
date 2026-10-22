@@ -80,11 +80,100 @@ async def call_tool(name, arguments, context=None):
         from mcp.shared.exceptions import MCPError
 
         raise MCPError(code=-32051, message="refused authorization", data={"agentsdk": arguments.get("nonce", "x")})
+    if name in ("ask", "sample", "roots", "slow"):
+        return await asked(name, arguments, context)
     if name == "notify":  # the tools were changed in the state file: say so
         await context.notify_tools_changed()
         return CallToolResult(content=[TextContent(type="text", text="notified")])
     text = f"called {name} {json.dumps(arguments, sort_keys=True)}"
     return CallToolResult(content=[TextContent(type="text", text=text)])
+
+
+# M36: tools that ask for more input, in either era. `ask` asks `times` times, in `mode` form or
+# url, and answers with every response it got; `sample` and `roots` ask for what the SDK does not
+# support; `slow` sleeps, keeping a call in flight. On 2026-07-28 a tool returns an
+# InputRequiredResult and is called again with the responses; on the legacy era it sends
+# elicitation/create (or a sampling or roots request) while the call waits.
+FORM = {"type": "object", "properties": {"name": {"type": "string"}, "age": {"type": "integer"}},
+        "required": ["name"]}
+
+
+def _request(kind, mode, index, url, schema=None):
+    from mcp.types import (CreateMessageRequest, CreateMessageRequestParams, ElicitRequest,
+                           ElicitRequestFormParams, ElicitRequestURLParams, ListRootsRequest, SamplingMessage)
+
+    if kind == "sample":
+        return CreateMessageRequest(params=CreateMessageRequestParams(
+            messages=[SamplingMessage(role="user", content=TextContent(type="text", text="hi"))], maxTokens=10))
+    if kind == "roots":
+        return ListRootsRequest()
+    if mode == "url":
+        return ElicitRequest(params=ElicitRequestURLParams(message=f"Open the page {index}", url=url))
+    return ElicitRequest(params=ElicitRequestFormParams(message=f"Who are you? ({index})",
+                                                        requested_schema=schema or FORM))
+
+
+def _answer(response):
+    data = response.model_dump(mode="json", exclude_none=True)
+    return {"action": data.get("action"), "content": data.get("content")} if "action" in data else {"other": data}
+
+
+async def asked(kind, arguments, context):
+    import asyncio
+    import uuid as _uuid
+
+    from mcp.types import InputRequiredResult
+
+    if kind == "slow":
+        await asyncio.sleep(float(arguments.get("seconds", 3)))
+        return CallToolResult(content=[TextContent(type="text", text="slept")])
+    mode, times, url = arguments.get("mode", "form"), int(arguments.get("times", 1)), arguments.get("url", "")
+    # `together`: that many questions at once -- one 2026-07-28 round, or concurrent elicitations.
+    together, schema = int(arguments.get("together", 1)), arguments.get("schema")
+    # A legacy session's requests are served one at a time: a call asking later lets another call
+    # be in flight on the client when the question comes.
+    await asyncio.sleep(float(arguments.get("delay", 0)))
+    if context.protocol_version == "2026-07-28":
+        held = json.loads(context.request_state) if context.request_state else {"round": 0, "answers": []}
+        if held["round"]:
+            for n in range(together):
+                key = f"q{held['round'] - 1}" + (f".{n}" if together > 1 else "")
+                response = (context.input_responses or {}).get(key)
+                held["answers"].append(None if response is None else _answer(response))
+        if held["round"] < times:
+            request = {f"q{held['round']}" + (f".{n}" if together > 1 else ""): _request(kind, mode, n, url, schema)
+                       for n in range(together)}
+            held["round"] += 1
+            return InputRequiredResult(input_requests=request, request_state=json.dumps(held))
+        answers = held["answers"]
+    else:
+        answers, session = [], context.session
+        for index in range(times):
+            try:
+                if kind == "sample":
+                    from mcp.types import SamplingMessage
+
+                    response = await session.create_message(
+                        [SamplingMessage(role="user", content=TextContent(type="text", text="hi"))], max_tokens=10,
+                        related_request_id=context.request_id)
+                elif kind == "roots":
+                    response = await session.list_roots()
+                elif mode == "url":
+                    response = await session.elicit_url(f"Open the page {index}", url, str(_uuid.uuid4()),
+                                                        related_request_id=context.request_id)
+                elif together > 1:
+                    many = await asyncio.gather(*(session.elicit_form(f"Who are you? ({n})", schema or FORM,
+                                                                      related_request_id=context.request_id)
+                                                  for n in range(together)))
+                    answers.extend(_answer(r) for r in many)
+                    continue
+                else:
+                    response = await session.elicit_form(f"Who are you? ({index})", schema or FORM,
+                                                         related_request_id=context.request_id)
+                answers.append(_answer(response))
+            except Exception as exc:  # the client refused: say so, as a tool would
+                answers.append({"refused": str(exc)})
+    return CallToolResult(content=[TextContent(type="text", text="answered " + json.dumps(answers, sort_keys=True))])
 
 
 async def list_resources():
@@ -100,6 +189,11 @@ async def list_resource_templates():
 
 
 async def read_resource(uri, context=None):
+    if str(uri) == "ask://form":  # M36: a resource that asks for input as it is read
+        answered = await asked("ask", {}, context)
+        if not isinstance(answered, CallToolResult):
+            return answered  # the 2026-07-28 round: an InputRequiredResult
+        return [ReadResourceContents(content=answered.content[0].text, mime_type="text/plain")]
     for r in state().get("resources", []):
         if r["uri"] == str(uri):
             content = base64.b64decode(r["blob"]) if "blob" in r else r["text"]

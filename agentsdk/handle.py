@@ -269,6 +269,23 @@ class RunHandle:
         """FR-115: Runner.decide for this run's interruption, rejecting."""
         return await self._decide(interruption_id, False, principal, message, sticky)
 
+    async def respond(self, interruption_id: str, *, action: str, content: Any = None, principal: Any) -> Any:
+        """FR-133: Runner.respond for this run's input request."""
+        await self._mine(interruption_id)
+        return await self._runner.respond(self._tenant_id, self._project_id, interruption_id, action=action,
+                                          content=content, principal=principal)
+
+    async def _mine(self, interruption_id: str) -> None:
+        """An interruption whose top-level run is not this run is refused as unknown."""
+        from .interruptions import UnknownInterruption
+
+        if self._runner is None:
+            raise UnknownInterruption(f"no interruption {interruption_id} for this run")
+        store = self._runner._interruption_store()
+        view = await asyncio.to_thread(store.interruption, self._tenant_id, self._project_id, interruption_id)
+        if self.run_id not in (view.interruption.run_id, view.interruption.top_run_id):
+            raise UnknownInterruption(f"no interruption {interruption_id} for this run")
+
     async def _decide(self, interruption_id: str, approve: bool, principal: Any, message: str | None,
                       sticky: bool) -> Any:
         """An interruption whose top-level run is not this run is refused as unknown, so

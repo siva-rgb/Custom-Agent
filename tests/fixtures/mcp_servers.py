@@ -191,7 +191,12 @@ TOOLS = [
     {"name": "bad_schema", "description": "Skipped.",
      "inputSchema": {"type": "object", "properties": {"x": {"type": "no-such-type"}}}},
     {"name": "clash", "description": "Skipped: the application registers legacy__clash.", "inputSchema": {"type": "object"}},
+    # M36: asks for input mid-call, after `delay` seconds, with elicitation/create.
+    {"name": "ask", "description": "Ask the person a question.",
+     "inputSchema": {"type": "object", "properties": {"delay": {"type": "number"}}}},
 ]
+# M36: requests read while `ask` waits for its answer, served after it, in order.
+BACKLOG = []
 
 # M33 round 2: servers that start but never answer, each a wait the client must bound.
 if "--banner" in sys.argv:  # a launcher's line on stdout, then silence
@@ -243,7 +248,29 @@ def text(value, is_error=False):
     return {"content": [{"type": "text", "text": value}], "isError": is_error}
 
 
+def ask(arguments):
+    """M36: sends elicitation/create and reads until its answer comes, holding any request read
+    meanwhile for the main loop: this server serves one request at a time."""
+    time.sleep(float(arguments.get("delay", 0)))
+    sys.stdout.write(json.dumps({"jsonrpc": "2.0", "id": "elicit-1", "method": "elicitation/create",
+                                 "params": {"mode": "form", "message": "Who are you?",
+                                            "requestedSchema": {"type": "object",
+                                                                "properties": {"name": {"type": "string"}}}}}) + "\n")
+    sys.stdout.flush()
+    while True:
+        line = sys.stdin.readline()
+        if not line:
+            return text("no answer")
+        message = json.loads(line)
+        if message.get("id") == "elicit-1" and "method" not in message:
+            answer = message.get("result") or {"error": message.get("error")}
+            return text("answered " + json.dumps([{"action": answer.get("action"), "content": answer.get("content")}]))
+        BACKLOG.append(message)
+
+
 def call(name, arguments):
+    if name == "ask":
+        return ask(arguments)
     if name == "echo":
         return text(arguments.get("text", ""))
     if name == "fail":
@@ -290,8 +317,19 @@ def call(name, arguments):
     return text(f"no tool {name}", is_error=True)
 
 
-for line in sys.stdin:
-    message = json.loads(line)
+def incoming():
+    """Each request in order: those `ask` held first, then stdin's."""
+    while True:
+        if BACKLOG:
+            yield BACKLOG.pop(0)
+            continue
+        line = sys.stdin.readline()
+        if not line:
+            return
+        yield json.loads(line)
+
+
+for message in incoming():
     method, msg_id = message.get("method"), message.get("id")
     if msg_id is None:
         continue  # a notification

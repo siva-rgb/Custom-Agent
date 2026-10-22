@@ -440,7 +440,7 @@ class ToolExecutor:
         state.ran = True
         state.started_at, state.started_ns = wall_clock(), now_ns()
         try:
-            value = await self._invoke(tool, tool_call.arguments, prepared.approved)
+            value = await self._invoke(tool, tool_call.arguments, prepared.approved, tool_call.id)
         except asyncio.TimeoutError:
             return await self._failed(
                 tool_call, ToolTimeout(f"tool {tool_call.name!r} exceeded its timeout"), state
@@ -585,13 +585,20 @@ class ToolExecutor:
         except Exception:  # noqa: BLE001
             pass
 
-    async def _invoke(self, tool: Any, arguments: dict[str, Any], approved: ApprovedCall | None = None) -> Any:
+    async def _invoke(self, tool: Any, arguments: dict[str, Any], approved: ApprovedCall | None = None,
+                      call_id: str | None = None) -> Any:
+        # FR-133 (M36): a tool's scope names the call it was handed to.
+        scope = self._scope
+        if (call_id is not None and dataclasses.is_dataclass(scope)
+                and any(f.name == "tool_call_id" for f in dataclasses.fields(scope))):
+            scope = dataclasses.replace(scope, tool_call_id=call_id)
+
         async def _run() -> Any:
             # Await whatever is awaitable rather than inspecting the callable:
             # iscoroutinefunction() is False for a wrapper or a class with an
             # async __call__, which would silently return an un-awaited
             # coroutine as if it were the tool's result.
-            value = tool.fn(**_with_approved(tool.fn, _with_scope(tool.fn, arguments, self._scope), approved))
+            value = tool.fn(**_with_approved(tool.fn, _with_scope(tool.fn, arguments, scope), approved))
             if inspect.isawaitable(value):
                 value = await value
             return value

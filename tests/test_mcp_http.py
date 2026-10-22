@@ -237,7 +237,9 @@ def test_a_header_value_with_spaces_or_tabs_inside_is_accepted_and_identity_is_a
 
     server = HttpServer(alias="web", url="https://example.com/mcp", headers={"Authorization": "Bearer a\tb c"})
     client = _http_client(server, "nonce")
-    assert client.headers["authorization"] == "Bearer a\tb c" and client.headers["accept-encoding"] == "identity"
+    # Edited at M36 (M35 review): the configured headers join each request in the transport,
+    # never the client's own headers, whose repr httpx2 masks only for Authorization.
+    assert "authorization" not in client.headers and client.headers["accept-encoding"] == "identity"
 
 
 def test_the_common_fields_are_checked_as_for_stdio():

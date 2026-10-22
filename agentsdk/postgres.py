@@ -1840,9 +1840,22 @@ class PostgresLedgerStore:
         return contributions
 
 
+def _labelled(response: dict[str, Any]) -> dict[str, Any]:
+    """FR-133: an accepted answer's content, stored as data with its labels (USER_CONTROLLED)."""
+    from .interruptions import RESPONSE_PROVENANCE as p
+
+    return {"content": response, "provenance": {
+        "origin": p.origin.value, "instruction_authority": p.instruction_authority.value,
+        "trust_zone": p.trust_zone.value, "taint_flags": sorted(f.value for f in p.taint_flags)}}
+
+
+def _unlabelled(stored: Any) -> Any:
+    return stored["content"] if isinstance(stored, dict) and "provenance" in stored else stored
+
+
 class PostgresInterruptionStore:
     """FR-112's durable store: interruptions, their decisions and standing decisions
-    (migration 0014).
+    (migration 0014), and from M36 input requests and their answers (FR-133, migration 0018).
 
     Insert-only. Every statement is filtered by tenant and project, and every row
     references its run with its own tenant and project, so the schema refuses a row of
@@ -1854,7 +1867,8 @@ class PostgresInterruptionStore:
 
     _COLUMNS = ("i.interruption_id, i.run_id, i.top_run_id, i.node_id, i.kind, i.tool_call_id, i.tool_name,"
                 " i.agent_id, i.trigger, i.request, i.created_at, i.expires_at, i.tenant_id, i.project_id,"
-                " d.decision_id, d.decision, d.source, d.message, d.principal, d.standing_id, d.decided_at")
+                " d.decision_id, d.decision, d.source, d.message, d.principal, d.standing_id, d.decided_at,"
+                " d.response")
 
     def __init__(self, dsn: str) -> None:
         self._dsn = dsn
@@ -1900,15 +1914,19 @@ class PostgresInterruptionStore:
     @staticmethod
     def _decision_inserted(conn: Any, decision: Any) -> None:
         """Checks and inserts one decision inside the caller's transaction."""
-        from .interruptions import InterruptionAlreadyDecided, UnknownInterruption
+        from .interruptions import ANSWERS, InterruptionAlreadyDecided, InterruptionKindMismatch, UnknownInterruption
 
         found = conn.execute(
-            "SELECT run_id FROM interruptions WHERE interruption_id = %s AND tenant_id = %s"
+            "SELECT run_id, kind FROM interruptions WHERE interruption_id = %s AND tenant_id = %s"
             " AND project_id = %s", (decision.interruption_id, decision.tenant_id, decision.project_id),
         ).fetchone()
         if found is None:
             raise UnknownInterruption(
                 f"no interruption {decision.interruption_id} in this tenant and project")
+        # FR-133: told here as the in-memory store tells it; migration 0018's trigger refuses it too.
+        if (found[1] != "tool_approval") != (decision.decision in ANSWERS):
+            raise InterruptionKindMismatch(
+                f"interruption {decision.interruption_id} is {found[1]}, and {decision.decision} is not its answer")
         if decision.standing_id is not None and conn.execute(
                 "SELECT 1 FROM standing_decisions WHERE standing_id = %s AND run_id = %s AND tenant_id = %s"
                 " AND project_id = %s", (decision.standing_id, found[0], decision.tenant_id,
@@ -1916,12 +1934,13 @@ class PostgresInterruptionStore:
             raise LookupError(f"standing decision {decision.standing_id} is not one of this run's")
         inserted = conn.execute(
             "INSERT INTO interruption_decisions (decision_id, interruption_id, tenant_id, project_id,"
-            " decision, source, message, principal, standing_id, decided_at)"
-            " VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s) ON CONFLICT (interruption_id) DO NOTHING",
+            " decision, source, message, principal, standing_id, decided_at, response)"
+            " VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s) ON CONFLICT (interruption_id) DO NOTHING",
             (decision.decision_id, decision.interruption_id, decision.tenant_id, decision.project_id,
              decision.decision, decision.source, decision.message,
              None if decision.principal is None else Jsonb(decision.principal.to_json()),
-             decision.standing_id, decision.decided_at)).rowcount
+             decision.standing_id, decision.decided_at,
+             None if decision.response is None else Jsonb(_labelled(decision.response)))).rowcount
         if not inserted:
             raise InterruptionAlreadyDecided(f"interruption {decision.interruption_id} is already decided")
 
@@ -1958,7 +1977,7 @@ class PostgresInterruptionStore:
             decision = None if r[14] is None else InterruptionDecision(
                 decision_id=str(r[14]), interruption_id=str(r[0]), tenant_id=r[12], project_id=r[13],
                 decision=r[15], source=r[16], message=r[17], principal=principal_from_json(r[18]),
-                standing_id=None if r[19] is None else str(r[19]), decided_at=r[20])
+                standing_id=None if r[19] is None else str(r[19]), decided_at=r[20], response=_unlabelled(r[21]))
             views.append(InterruptionView(item, decision, state_of(item, decision, now)))
         return views
 

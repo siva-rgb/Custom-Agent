@@ -10,6 +10,11 @@ deleted: an interruption's state is read from whether its decision exists and fr
 time.
 
 M29 adds the record only. Nothing writes it until M30's approval manager.
+
+M36 (FR-133): an MCP server's request for more input during a call is recorded here too, as an
+`additional_user_input` or `external_tool_input` interruption of trigger `server`, answered
+`accept`, `decline` or `cancel`; its expiry and its run's cancellation decide `cancel`. An
+approval is never answered, nor an input request decided: `InterruptionKindMismatch`.
 """
 
 from __future__ import annotations
@@ -23,7 +28,7 @@ from typing import Any, Callable
 from .artifacts import canonical_id
 from .identity import PrincipalContext
 from .outcomes import InterruptionKind, RunInterruption
-from .primitives import unstorable_reason
+from .primitives import ContentProvenance, InstructionAuthority, Origin, TaintFlag, TrustZone, unstorable_reason
 
 __all__ = [
     "DECISIONS",
@@ -33,17 +38,28 @@ __all__ = [
     "InterruptionAlreadyDecided",
     "InterruptionDecision",
     "InterruptionExpired",
+    "InterruptionKindMismatch",
     "InterruptionNotWaiting",
     "InterruptionView",
+    "RESPONSE_PROVENANCE",
     "StandingDecision",
     "UnknownInterruption",
     "checked_interruption",
     "state_of",
 ]
 
-TRIGGERS = ("policy", "predicate", "hook")  # FR-113, in the order they are tried
-DECISIONS = ("approve", "reject")
-SOURCES = ("principal", "standing", "expiry", "cancel")
+TRIGGERS = ("policy", "predicate", "hook", "server")  # FR-113 in the order they are tried; FR-133's server
+APPROVALS = ("approve", "reject")
+ANSWERS = ("accept", "decline", "cancel")  # FR-133 (M36)
+DECISIONS = APPROVALS + ANSWERS
+# `unsupported` (M36): a sampling or roots request the client does not support, declined by the SDK.
+SOURCES = ("principal", "standing", "expiry", "cancel", "unsupported")
+INPUT_KINDS = (InterruptionKind.ADDITIONAL_USER_INPUT, InterruptionKind.EXTERNAL_TOOL_INPUT)
+# FR-133: an accepted form's content is the person's answer -- data a user controls, never an
+# instruction, whatever the server asked for.
+RESPONSE_PROVENANCE = ContentProvenance(origin=Origin.USER, instruction_authority=InstructionAuthority.DATA_ONLY,
+                                        trust_zone=TrustZone.UNTRUSTED,
+                                        taint_flags=frozenset({TaintFlag.USER_CONTROLLED}))
 
 
 class UnknownInterruption(LookupError):
@@ -61,6 +77,12 @@ class InterruptionExpired(Exception):
 
 class InterruptionNotWaiting(Exception):
     """No run in this Runner is waiting on the interruption (P4-D14)."""
+
+
+class InterruptionKindMismatch(Exception):
+    """FR-133 (M36): an approval answered with `respond`, or an input request decided with
+    `decide`, `approve` or `reject`. Told after tenancy, so another tenant's interruption still
+    reads as unknown (NFR-31)."""
 
 
 def _id(name: str, value: Any) -> str:
@@ -129,6 +151,8 @@ class InterruptionDecision:
     message: str | None = None
     principal: PrincipalContext | None = None
     standing_id: str | None = None
+    # FR-133 (M36): an accepted form's content, stored as data labelled RESPONSE_PROVENANCE.
+    response: dict[str, Any] | None = None
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "decision_id", _id("decision_id", self.decision_id))
@@ -147,10 +171,23 @@ class InterruptionDecision:
             object.__setattr__(self, "standing_id", _id("standing_id", self.standing_id))
         elif self.standing_id is not None:
             raise ValueError(f"only a standing decision names a standing_id, not one of source {self.source}")
-        if self.source in ("expiry", "cancel") and self.decision != "reject":
-            raise ValueError(f"a decision of source {self.source} is a reject")
+        # An approval's expiry or cancellation rejects it; an input request's cancels it (FR-133).
+        if self.source in ("expiry", "cancel") and self.decision not in ("reject", "cancel"):
+            raise ValueError(f"a decision of source {self.source} is a reject, or a cancel of an input request")
+        if self.source == "unsupported" and self.decision != "decline":
+            raise ValueError("a decision of source unsupported is a decline")
+        if self.source == "standing" and self.decision not in APPROVALS:
+            raise ValueError("a standing decision decides approvals only")
+        if self.response is not None:
+            if self.decision != "accept" or not isinstance(self.response, dict) or unstorable_reason(self.response):
+                raise ValueError("a response is the storable content of an accepted answer")
         _message(self.message)
         _when("decided_at", self.decided_at)
+
+    @property
+    def response_provenance(self) -> ContentProvenance | None:
+        """FR-133: the labels an accepted answer's content carries, stored with it."""
+        return None if self.response is None else RESPONSE_PROVENANCE
 
 
 @dataclass(frozen=True)
@@ -206,8 +243,8 @@ def checked_interruption(item: Any) -> RunInterruption:
     """The fields FR-112 requires of an interruption about to be recorded."""
     if not isinstance(item, RunInterruption):
         raise ValueError(f"an interruption must be a RunInterruption, got {type(item).__name__}")
-    if item.kind is not InterruptionKind.TOOL_APPROVAL:
-        raise ValueError(f"only tool_approval interruptions are recorded in this increment, got {item.kind!r}")
+    if item.kind is not InterruptionKind.TOOL_APPROVAL and item.kind not in INPUT_KINDS:
+        raise ValueError(f"an interruption is a tool approval or an input request, got {item.kind!r}")
     _id("interruption_id", item.interruption_id)
     _id("run_id", item.run_id)
     _id("top_run_id", item.top_run_id)
@@ -216,6 +253,8 @@ def checked_interruption(item: Any) -> RunInterruption:
     _text("node_id", item.node_id, optional=True)
     if item.trigger not in TRIGGERS:
         raise ValueError(f"trigger must be one of {', '.join(TRIGGERS)}, got {item.trigger!r}")
+    if (item.trigger == "server") != (item.kind in INPUT_KINDS):
+        raise ValueError("an input request has trigger server, and only an input request has")
     if not isinstance(item.request_payload, dict):
         raise ValueError("request_payload must be a JSON object")
     reason = unstorable_reason(item.request_payload)
@@ -235,9 +274,18 @@ def state_of(item: RunInterruption, decision: InterruptionDecision | None, now: 
             return "expired"
         if decision.source == "cancel":
             return "cancelled"
-        return "approved" if decision.decision == "approve" else "rejected"
+        return {"approve": "approved", "reject": "rejected", "accept": "accepted", "decline": "declined",
+                "cancel": "cancelled"}[decision.decision]
     now = now or datetime.now(timezone.utc)
     return "expired" if item.expires_at is not None and now >= item.expires_at else "pending"
+
+
+def kind_checked(item: RunInterruption, decision: InterruptionDecision) -> None:
+    """FR-133: an approval is decided approve or reject, an input request answered accept, decline
+    or cancel -- what migration 0018's constraints refuse otherwise."""
+    if (item.kind in INPUT_KINDS) != (decision.decision in ANSWERS):
+        raise InterruptionKindMismatch(
+            f"interruption {item.interruption_id} is {item.kind.value}, and {decision.decision} is not its answer")
 
 
 def _copied(item: RunInterruption) -> RunInterruption:
@@ -332,6 +380,7 @@ class InMemoryInterruptionStore:
         decision it applies is one of that interruption's run. The caller holds the lock."""
         if item is None or (item.tenant_id, item.project_id) != (decision.tenant_id, decision.project_id):
             raise UnknownInterruption(f"no interruption {decision.interruption_id} in this tenant and project")
+        kind_checked(item, decision)
         if decision.standing_id is not None and not any(
                 s.standing_id == decision.standing_id and s.run_id == item.run_id for s in self._standing):
             raise LookupError(f"standing decision {decision.standing_id} is not one of this run's")

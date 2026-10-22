@@ -1,0 +1,22 @@
+{
+  "task": "M36-mcp-input",
+  "gate": "unit",
+  "command": ".venv\\Scripts\\python.exe -m pytest tests/test_mcp_input.py -q",
+  "started_at": "2026-10-22T07:52:40.061Z",
+  "observed_at": "2026-10-22T07:55:41.431Z",
+  "exit_code": 0,
+  "signal": null,
+  "stdout": ".....................................................................    [100%]\r\n69 passed in 180.42s (0:03:00)\r\n",
+  "stderr": "",
+  "revision": {
+    "commit": "7f52a13602691334820b729fb1c7cfc10296eedd",
+    "dirty": true
+  },
+  "source_hash": "e77a34f886979c3c4bedce35373e729f80c1bfd8a7fa273ce6151509724e37ec",
+  "environment": {
+    "node": "v20.10.0",
+    "platform": "win32",
+    "arch": "x64"
+  },
+  "hash": "248f6316a31edee33566972714a67d7841ccf70b344dc30b50450ebe4b9842a5"
+}

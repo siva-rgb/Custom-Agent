@@ -338,15 +338,15 @@
 
 ### M36-mcp-input — A server request for input pauses its call as an interruption a person answers
 
-- state/risk: active / high
+- state/risk: done / high
 - requirements: FR-133, FR-134, AC-93, NFR-30, NFR-31, NFR-38
 - scope: not bounded
-- gates: unit: .venv\Scripts\python.exe -m pytest tests/test_mcp_input.py -q, regression: .venv\Scripts\python.exe -m pytest -q, independent-review: pending
+- gates: unit: .venv\Scripts\python.exe -m pytest tests/test_mcp_input.py -q, regression: .venv\Scripts\python.exe -m pytest -q, independent-review: pass
 - next: Run the task pre-flight.
 
 ### M37-mcp-contention — Hostile MCP servers under orchestration are contained on both stores
 
-- state/risk: queued / high
+- state/risk: active / high
 - requirements: FR-135, AC-94, NFR-22, NFR-34, NFR-35, NFR-36, NFR-37, NFR-38, NFR-39
 - scope: not bounded
 - gates: unit: .venv\Scripts\python.exe -m pytest tests/test_mcp_contention.py -q, regression: .venv\Scripts\python.exe -m pytest -q, independent-review: pending
