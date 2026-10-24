@@ -152,6 +152,15 @@ persisted so you can reconstruct exactly what happened afterwards.
   original approval; expiry and the run's cancellation answer `cancel`, a fourth
   request fails the call, and a sampling or roots request is recorded and
   answered unsupported. Events name each request, never the response.
+- **Holds against hostile MCP servers under orchestration** (M37, Phase 4's exit
+  signal): example 31 runs a plan whose children use five servers at once -- one
+  changing a tool mid-run, one poisoning a description, one shadowing another's
+  tool name, one injecting instructions in a result, one asking for input -- with
+  an approver deciding from the top-level run. `Runner.mcp_blocked` lists the
+  tool versions a tenancy's connection blocks now, so a version only a child's
+  run met can be accepted from anywhere. An input request whose message, with
+  its schema or URL, is over 64 KiB as JSON is refused, recorded nowhere, and
+  fails its call `input request too large`.
 - **Fetches each page once, however many agents ask** (M24's claim-lock): one
   holder per page and per statement, across the tasks of a process and the
   processes sharing the database; the others wait, then take the holder's
@@ -217,6 +226,12 @@ Stated plainly, because an SDK that overstates itself costs you a week:
 | When a call that waits for input is cancelled, the `mcp` library's Streamable HTTP client may log an "Error parsing SSE message" traceback for the stream it abandons; nothing is lost | Declared (M36) |
 | A fourth input request of one call fails it `too many input requests`: on 2026-07-28 the requests of that round still waiting are decided `cancel`, and on the legacy era the server's tool may finish its work before the call fails. Sampling and roots requests count toward the three | Declared (M36) |
 | An input request made during an application read -- `mcp_resources`, `mcp_read`, `mcp_prompts`, `mcp_prompt` -- has no run to record it on, and is answered `cancel`; one made during a `<alias>__read_resource` call is recorded on its run as any call's is. An accepted form's content must be the protocol's answer -- text keys; text, number, boolean, null or a list of text -- of at most 64 KiB, or `respond` refuses it | Declared (M36) |
+| A cancelled run's input requests are decided `cancel` before the run reports `cancelled` (FR-50): a cancelled call waits for its work on the MCP loop to end, for at most 40 s. If the store hangs past that, the run reports `cancelled` first and the decision is written when the store answers -- bounded best effort (M37) | Declared (M37) |
+| The 64 KiB cap is per request: one call may make three requests, so one 2026-07-28 round, or one call, may store up to three requests of 64 KiB (M37) | Declared (M37) |
+| An input request's size is measured as JSON with non-ASCII characters escaped, so a request in another script is refused sooner than its stored size suggests: strict, never a bypass. Once one request of a call is refused -- too large, or past three -- every later request of that call is refused unrecorded, and the call fails for the first reason (M37) | Declared (M37) |
+| `Runner.mcp_blocked` reads through the tenancy's connection, as `mcp_resources` does: it starts a server not yet started, and a restart it causes counts toward the server's one restart. It lists the tools the server lists now, never one the SDK skipped as unusable (M37) | Declared (M37) |
+| Live, examples 30 and 31 report a check whose subject the model never brought about as `[SKIP] not exercised`, naming why. In example 31 a subject is the least the servers' own journals show happened -- a server ran anything, a call that asks ran, the server asked -- so a violation fails rather than skips; the secrets check is asked of every run. Each server returns an id for every execution, which tells the execution to exactly one call: nothing is matched by arguments, and an error raised before a call left is never counted as a server's. An execution whose result never reached a call -- a cancelled plan's -- fails the approval check live. The full witnesses a scripted run must show are asked offline only. Every `[FAIL]` names the clause that failed (M37 rounds 2 and 3) | Declared (M37) |
+| Example 31's checks read a child's events and manifest only on PostgreSQL; the in-memory store keeps no child's events, so there they read the plan run's events, the histories, the interruptions and the catalog's answers | Declared (M37) |
 | While a call waits for a person, the `mcp` library's own read timeout for a legacy-era call is paused through its request clock, a private part of mcp 2.3.0 that the extra pins; a later library may move it | Declared (M36) |
 | A server that changes a tool without saying so is caught at the next read of its listing: once its `ttlMs` passes, once it is 60 seconds old, or before a call when either has passed. Its results are untrusted either way | Declared (M34) |
 | A 2026-07-28 server that sends `ttlMs` 0 -- the mcp library's own servers do by default -- has its listing read again at every turn, and before every call both at executor step 1 and as the call leaves, a round trip each, one read at a time per connection; its schemas are checked again only when they change. The legacy era carries no `ttlMs`, so its listings are kept 60 seconds unless the server says they changed | Declared (M34) |
@@ -618,6 +633,7 @@ credentials -- which is also how the test suite checks them.
 | [`28_mcp_catalog.py`](scripts/28_mcp_catalog.py) | the MCP catalog: each tool's first sight blocked then accepted, a changed description blocked and named, a sticky approval that does not carry to the new version, and the call asked again |
 | [`29_mcp_http.py`](scripts/29_mcp_http.py) | MCP over Streamable HTTP: a header the server requires, a prompt refused until accepted and then used as a task, a resource read into an untrusted artifact, and a child briefed with it |
 | [`30_mcp_input.py`](scripts/30_mcp_input.py) | MCP input requests: a server's form answered by a scripted person and its URL declined, each recorded as an interruption, the answers reaching the server, and the URL never opened |
+| [`31_mcp_contention.py`](scripts/31_mcp_contention.py) | Phase 4's exit signal: five hostile MCP servers under orchestration, over stdio and HTTP in both eras -- a mid-run change accepted through `mcp_blocked`, a poisoned description, a shadowed name, an injected result, a form answered -- checked against each server's journal of its executions, the store, and the server processes |
 
 ```bash
 python scripts/02_custom_tools.py --offline

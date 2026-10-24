@@ -80,6 +80,7 @@ _CONNECTION_CLOSED, _REQUEST_TIMEOUT, _METHOD_NOT_FOUND, _INVALID_REQUEST = -320
 # FR-133 (M36): the input requests one call may make; a fourth fails the call.
 _MAX_ASKED = 3
 _MAX_ANSWER = 64 * 1024  # an accepted form's content, as JSON (pre-review C3)
+_MAX_REQUEST = 64 * 1024  # a request's message with its schema or URL, as JSON (owner, M37 pre-flight)
 # The 2026-07-28 era answers server/discover; anything older came through initialize.
 _MODERN = "2026-07-28"
 
@@ -392,7 +393,7 @@ class _AskingCall:
     approved: Any = None
     context: contextvars.Context | None = None
     asked: int = 0
-    too_many: bool = False
+    refused: str | None = None  # why a request was refused, which fails the call: too many, or too large
     # Pre-review D1: requests may wait side by side -- several in one input_required round, or
     # concurrent elicitations -- so the call is waiting while any one is.
     waiting: int = 0
@@ -1218,15 +1219,15 @@ class _Connection:
             request = asyncio.get_running_loop().create_task(
                 client.call_tool(name, arguments, read_timeout_seconds=timeout), context=context)
             result = await _within(request, timeout + _WEDGE_MARGIN, asking, spent)
-            if asking is not None and asking.too_many:
-                raise ToolExecutionError("too many input requests")
+            if asking is not None and asking.refused is not None:
+                raise ToolExecutionError(asking.refused)
         except TimeoutError:
             await wedged()
             raise TimeoutError(f"mcp server {alias} did not take or answer the request within "
                                f"{timeout + _WEDGE_MARGIN} s") from None
         except MCPError as exc:
-            if asking is not None and asking.too_many:
-                raise ToolExecutionError("too many input requests") from None
+            if asking is not None and asking.refused is not None:
+                raise ToolExecutionError(asking.refused) from None
             refused = _refusal(exc, self._nonce)
             if refused is not None:  # FR-130: the SDK transport's own refusal of one response
                 raise ToolExecutionError(f"mcp server {alias} {refused[1]}") from None
@@ -1296,7 +1297,7 @@ class _Connection:
             payload["requested_schema"] = params.requested_schema
         answer = await self._ask(asking, "additional_user_input", payload)
         if answer is None:
-            return _too_many()
+            return _refused(asking.refused)
         return ElicitResult(action=answer.decision, content=answer.response if answer.decision == "accept" else None)
 
     def _see_input_requests(self, client: Any) -> None:
@@ -1314,8 +1315,9 @@ class _Connection:
                 if asking is not None:
                     # Pre-review D4: counted as any input request, so a server cannot flood the store.
                     asking.asked += 1
-                    if asking.asked > _MAX_ASKED:
-                        asking.too_many = True
+                    if asking.refused is not None or asking.asked > _MAX_ASKED:
+                        # M37 pre-review D1, D2: unrecorded once refused, and the first reason stands.
+                        asking.refused = asking.refused or "too many input requests"
                         return await dispatch(context, request)
                     method = "sampling/createMessage" if isinstance(request, CreateMessageRequest) else "roots/list"
                     try:
@@ -1357,13 +1359,19 @@ class _Connection:
         """FR-133: records the request on its call's run and waits for its one decision, as the
         loop waits for an approval (FR-115): registered before it is recorded, re-read on each wake,
         at least every five seconds and at its expiry. Its expiry decides cancel, as does the call
-        ending. None for a request past the third, which fails the call."""
+        ending. None for a request past the third, or one over _MAX_REQUEST, which fails the call
+        with nothing recorded."""
         from ..interruptions import InterruptionAlreadyDecided, InterruptionDecision
         from ..outcomes import InterruptionKind
 
         asking.asked += 1
+        if asking.refused is not None:  # M37 pre-review D1: a refused call asks nobody again
+            return None
         if asking.asked > _MAX_ASKED:
-            asking.too_many = True
+            asking.refused = "too many input requests"
+            return None
+        if _request_size(payload) > _MAX_REQUEST:  # owner, M37 pre-flight: counted, then refused
+            asking.refused = "input request too large"
             return None
         item = self._interruption(asking, InterruptionKind(kind), payload)
         runner = asking.scope._runner
@@ -1447,11 +1455,25 @@ class _Connection:
         """The session an application's read uses, started if it may be, or why there is none.
         Its events wait for the next run of this tenancy, as a call's do."""
         self._unreported += [e for e in await self._ensure() if e[0] is not EventType.MCP_TOOL_BLOCKED]
+        return self._session()
+
+    def _session(self) -> Any:
         if self.closed:
             raise ToolExecutionError(f"mcp server {self.server.alias} was closed with its Runner")
         if self.client is None:
             raise ToolExecutionError(f"mcp server {self.server.alias} is not running: {self._why}")
         return self.client
+
+    async def blocked(self) -> tuple[McpBlocked, ...]:
+        """FR-127 (owner, M37 pre-flight): each tool the server lists now that is not accepted in
+        its current version, as McpToolBlocked records it. Through `_ensure`, so a stale listing
+        is read again first; its other events wait for the next run of this tenancy."""
+        events = await self._ensure()
+        self._unreported += [e for e in events if e[0] is not EventType.MCP_TOOL_BLOCKED]
+        self._session()
+        return tuple(McpBlocked(kind="tool", name=p["tool"], tool_hash=p["tool_hash"], previous_hash=p["previous_hash"],
+                                changed=p["changed"], error=p["error"] if "error" in p else None)
+                     for kind, p in events if kind is EventType.MCP_TOOL_BLOCKED)
 
     async def _request(self, coroutine: Any, asking: _AskingCall | None = None) -> Any:
         """One request of an application's read, or of `<alias>__read_resource` (`asking`), bounded
@@ -1471,14 +1493,14 @@ class _Connection:
         try:
             task = asyncio.get_running_loop().create_task(coroutine, context=context)
             answered = await _within(task, timeout + _WEDGE_MARGIN, asking, [0.0])
-            if asking is not None and asking.too_many:
-                raise ToolExecutionError("too many input requests")
+            if asking is not None and asking.refused is not None:
+                raise ToolExecutionError(asking.refused)
             return answered
         except TimeoutError:
             raise TimeoutError(f"mcp server {alias} did not answer within {timeout} s") from None
         except MCPError as exc:
-            if asking is not None and asking.too_many:
-                raise ToolExecutionError("too many input requests") from None
+            if asking is not None and asking.refused is not None:
+                raise ToolExecutionError(asking.refused) from None
             refused = _refusal(exc, self._nonce)
             if refused is not None:
                 raise ToolExecutionError(f"mcp server {alias} {refused[1]}") from None
@@ -1682,11 +1704,18 @@ async def _quietly(write: Any, *args: Any) -> None:
         await asyncio.wait_for(asyncio.to_thread(write, *args), _STORE_SECONDS)
 
 
-def _too_many() -> Any:
-    """The answer to a call's fourth input request: refused, and the call fails (FR-133)."""
+def _refused(reason: str | None) -> Any:
+    """The answer to a call's fourth input request, or one too large: refused, and the call
+    fails (FR-133)."""
     from mcp.types import ErrorData
 
-    return ErrorData(code=_INVALID_REQUEST, message="too many input requests")
+    return ErrorData(code=_INVALID_REQUEST, message=reason or "input request refused")
+
+
+def _request_size(payload: dict[str, Any]) -> int:
+    """What a server sent, as the cap measures it (owner, M37 pre-flight): the message with its
+    schema in form mode or its URL in url mode, as JSON."""
+    return len(json.dumps({key: payload[key] for key in ("message", "requested_schema", "url") if key in payload}))
 
 
 def _input_event(item: Any) -> dict[str, Any]:
@@ -1918,7 +1947,17 @@ class _Engine:
                 self._thread = threading.Thread(target=_serve_forever, args=(self.loop, self), name="agentsdk-mcp",
                                                 daemon=True)
                 self._thread.start()
-            future = asyncio.run_coroutine_threadsafe(coroutine, self.loop)
+            started, ended = threading.Event(), concurrent.futures.Future()
+
+            async def tracked() -> Any:
+                started.set()
+                try:
+                    return await coroutine
+                finally:
+                    if not ended.done():
+                        ended.set_result(None)
+
+            future = asyncio.run_coroutine_threadsafe(tracked(), self.loop)
         # asyncio.wait, not wait_for: a TimeoutError the call itself raised (an honest timeout at
         # call_timeout) must reach the caller as itself, not read as this deadline passing.
         wrapped = asyncio.wrap_future(future)
@@ -1926,6 +1965,11 @@ class _Engine:
             done, _ = await asyncio.wait({wrapped}, timeout=timeout)
         except asyncio.CancelledError:
             wrapped.cancel()  # the caller was cancelled: so is its work on the MCP loop
+            # FR-50 (the owner, M37 round 3; M36's caveat 2): work that had begun ends first -- an
+            # input request deciding cancel, and its write -- so the run never reports cancelled
+            # before it, within the waits' own bound. Work never begun has nothing to finish.
+            if started.is_set():
+                await asyncio.wait({asyncio.wrap_future(ended)}, timeout=_CLOSE_SECONDS + _STORE_SECONDS)
             raise
         if not done:
             wrapped.cancel()
@@ -2087,8 +2131,8 @@ class McpClients:
 
     async def application(self, alias: str, tenant_id: str, project_id: str, method: str, *args: Any) -> Any:
         """FR-131: one of a tenancy's connection's application reads -- `resources`, `read`,
-        `prompts` or `prompt` -- on the MCP loop, bounded as a call is. Never another tenancy's
-        connection."""
+        `prompts`, `prompt` or `blocked` -- on the MCP loop, bounded as a call is. Never another
+        tenancy's connection."""
 
         async def on_the_mcp_loop():
             return await getattr(self._engine.connection(alias, tenant_id, project_id), method)(*args)

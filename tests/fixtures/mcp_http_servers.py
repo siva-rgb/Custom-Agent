@@ -168,7 +168,9 @@ async def asked(kind, arguments, context):
                     answers.extend(_answer(r) for r in many)
                     continue
                 else:
-                    response = await session.elicit_form(f"Who are you? ({index})", schema or FORM,
+                    # M37: `schema` may be a list, one schema a request, so one call can ask big then small.
+                    one = schema[index] if isinstance(schema, list) else schema
+                    response = await session.elicit_form(f"Who are you? ({index})", one or FORM,
                                                          related_request_id=context.request_id)
                 answers.append(_answer(response))
             except Exception as exc:  # the client refused: say so, as a tool would

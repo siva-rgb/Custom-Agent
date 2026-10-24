@@ -520,6 +520,15 @@ class Runner:
         return await asyncio.to_thread(self._catalog_store().accept, tenant_id, project_id, alias,
                                        list(tool_hashes), principal)
 
+    async def mcp_blocked(self, tenant_id: str, project_id: str, alias: str) -> tuple[Any, ...]:
+        """FR-127 (owner, M37 pre-flight): through this tenancy's connection, an `McpBlocked` of
+        kind `tool` for each tool the server lists now whose current version is not accepted --
+        its hash, and the last accepted one with the parts that differ, or none on first sight --
+        so an application can accept a version any run of the tenancy met, a child's included. A
+        stale listing is read again first. Refused as `mcp_resources` is; never a tool."""
+        self._mcp_tenancy(tenant_id, project_id, alias)
+        return await self._mcp.application(alias, tenant_id, project_id, "blocked")
+
     def _mcp_tenancy(self, tenant_id: Any, project_id: Any, alias: Any) -> None:
         """FR-131: the tenancy whose connection an application read uses, and a server this
         Runner was given."""

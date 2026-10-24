@@ -9,7 +9,7 @@
     "non_goals": [],
     "trust_boundary": "local repository",
     "created_at": "2026-09-05T14:48:57.894Z",
-    "updated_at": "2026-10-22T09:44:46.427Z"
+    "updated_at": "2026-10-24T14:17:43.642Z"
   },
   "policy": {
     "ponytail": "full",
@@ -23,19 +23,19 @@
     }
   },
   "lifecycle": {
-    "phase": "build",
-    "status": "active",
-    "active_task": "M37-mcp-contention",
+    "phase": "verify",
+    "status": "ready",
+    "active_task": null,
     "blocker": null,
-    "next_action": "Run the task pre-flight."
+    "next_action": "Review completed work and choose the next bounded outcome."
   },
   "commands": {},
   "workflow": {
     "type": "new-product",
     "started_at": "2026-09-05T14:48:57.897Z",
     "spec_check": {
-      "at": "2026-10-22T04:16:28.819Z",
-      "source_hash": "8eba256ae69ade35581c7f8e73ae9a623db54455d6fd2ad33c864c10140be4c2",
+      "at": "2026-10-22T10:20:12.801Z",
+      "source_hash": "67c1c723bc59d876fcdb71608d5638f2aedea7a7b6ec20eb040d8e7dd101e6a7",
       "requirements": [
         "AC-1",
         "AC-10",
@@ -308,13 +308,13 @@
       ]
     },
     "plan_check": {
-      "at": "2026-10-22T04:16:29.124Z",
+      "at": "2026-10-22T10:20:18.484Z",
       "source_hash": "1aa46ef258a4ffc5cef9fc219db09ba95c88c7db57a1985872c65ed63795434a"
     },
     "plan_approval": {
       "human": "siva-rgb (owner)",
-      "reason": "Plan unchanged; re-approved after the NFR-38 amendment",
-      "at": "2026-10-22T04:16:29.280Z",
+      "reason": "Plan re-approved after the M37 pre-flight SPEC amendment; M37 resumes",
+      "at": "2026-10-22T10:20:18.627Z",
       "source_hash": "1aa46ef258a4ffc5cef9fc219db09ba95c88c7db57a1985872c65ed63795434a"
     }
   },
@@ -594,12 +594,12 @@
         "NFR-8",
         "NFR-9"
       ],
-      "source_hash": "8eba256ae69ade35581c7f8e73ae9a623db54455d6fd2ad33c864c10140be4c2",
+      "source_hash": "67c1c723bc59d876fcdb71608d5638f2aedea7a7b6ec20eb040d8e7dd101e6a7",
       "approval": {
         "human": "siva-rgb (owner)",
-        "reason": "NFR-38 amended after M35: the permitted test edits gain any other edit an increment needs, named in its review prompt with its reason and checked by content, the practice settled since M34 (M35 reviewer finding)",
-        "at": "2026-10-22T04:16:28.969Z",
-        "source_hash": "8eba256ae69ade35581c7f8e73ae9a623db54455d6fd2ad33c864c10140be4c2"
+        "reason": "M37 pre-flight amendment approved by the owner: FR-127 Runner.mcp_blocked, FR-133 input request size cap of 64 KiB, AC-94 pre-flight additions",
+        "at": "2026-10-22T10:20:18.324Z",
+        "source_hash": "67c1c723bc59d876fcdb71608d5638f2aedea7a7b6ec20eb040d8e7dd101e6a7"
       }
     }
   ],
@@ -1846,6 +1846,62 @@
       "status": "accepted",
       "source": null,
       "recorded_at": "2026-10-22T04:28:30.694Z"
+    },
+    {
+      "id": "DECISION-8e3e2ea1",
+      "title": "M37 pre-flight: Runner.mcp_blocked, and input requests capped at 64 KiB",
+      "text": "Owner decisions 2026-10-22, SPEC amended (FR-127, FR-133, AC-94) and spec and plan re-approved after requeueing M37. (1) Caveat 3 of M36: an input request whose message with its schema or URL is over 64 KiB as JSON is refused before anything is recorded, answered to the server as an error, counted toward the three, and its call fails ToolExecutionError('input request too large'); the shape of the fourth-request refusal. Rejected: recording it declined with only its size; per-field caps. (2) Under orchestration a changed tool's McpToolBlocked is emitted on a child run, and an application has no public read of a child's events, so a top-level approver cannot learn the new hash. Runner.mcp_blocked(tenant_id, project_id, alias) returns, through that tenancy's live connection, an McpBlocked of kind tool for each currently listed tool not accepted in its current version, reading a stale listing first; it reuses McpBlocked and needs no migration or store query. Rejected: the example reading child events through private stores (teaches a private API); forwarding child MCP events to the top-level handle (a larger change to the event model).",
+      "status": "accepted",
+      "source": null,
+      "recorded_at": "2026-10-22T10:20:26.084Z"
+    },
+    {
+      "id": "DECISION-9e28294e",
+      "title": "M37 round 2: repair D1 to D4, print failing clauses, fix example 30 live",
+      "text": "Owner, 2026-10-23, after M37 round 1. Repair all four: D1 match approvals only to calls whose results show they reached a server; D2 to D4 live subjects minimal and from the journals only, the full witnesses offline only, NAMES also failing when a named call has no execution on its own server; each defect pinned by a test running its violation with live semantics and asserting FAIL, not SKIP, and a D1 case repeating an approved-then-refused call. Each FAIL line names the failing clause. Example 30's live checks skip a step the model did not take, in round 2 (not carried).",
+      "status": "accepted",
+      "source": null,
+      "recorded_at": "2026-10-23T11:17:44.499Z"
+    },
+    {
+      "id": "DECISION-d8afbea6",
+      "title": "M37 round 3: link executions to calls by an execution tag; artifacts baseline now 0",
+      "text": "Owner, 2026-10-23, after M37 round 2. (1) Each example-31 server gives every execution an id, journals it, and returns it in its result, error or read; the tag links each journal entry to exactly one call, and a result without one never reached a server. APPROVED requires an approve decision for that exact call (run and tool call id), before it ran, its arguments agreeing with what the server received; issue order and the input retry checked per call (the retry records the execution it repeats); SECRETS never skips. No argument matching. Rejected: journalling the arguments as sent (repeats still ambiguous; depends on reaching raw request arguments in the server library). (2) The 6 baseline artifacts deleted by the round-2 reviewer's cleanup are accepted as lost; the store baseline is now artifacts 0, runs 10351, example-tenant 19. Rejected: regenerating them, which would move the runs baseline.",
+      "status": "accepted",
+      "source": null,
+      "recorded_at": "2026-10-23T16:22:08.056Z"
+    },
+    {
+      "id": "DECISION-7888353c",
+      "title": "M37 round 3: a cancelled caller waits, bounded, for its MCP work to end, closing M36 caveat 2",
+      "text": "Owner, 2026-10-23. M37 round 3's regression gate failed once on tests/test_mcp_input.py::test_cancelling_the_run_decides_the_request_cancel[legacy]: the run reported cancelled before its input request's cancel decision was written. Measured: 2 of 15 runs on M37 and 2 of 25 on M36's committed code (a detached worktree at 3f7753f), so pre-existing, M36's declared caveat 2. Cause: McpClients submit cancels the call's task on the MCP loop and re-raises at once, so the task's finally (_ended_waits, the cancel write) completes after the run's terminal writes, contrary to FR-50 (a store write already started when cancellation takes effect is completed before the run's terminal writes). Decision: when the caller is cancelled, submit waits for the work on the MCP loop to end, within a bound (_CLOSE_SECONDS + _STORE_SECONDS), before the cancellation goes on. Pinned deterministically by slowing the cancel write. Rejected: editing M36's test to poll (caveat stays); rerunning the gate and carrying it.",
+      "status": "accepted",
+      "source": null,
+      "recorded_at": "2026-10-23T17:30:29.303Z"
+    },
+    {
+      "id": "DECISION-33c3ecb3",
+      "title": "M37 round 4: an execution id only where its server puts it, and the reviewer's items",
+      "text": "Owner, 2026-10-24, after M37 round 3. (1) An execution id is recognised only where its server places it: at the start of a result or read, or straight after the error prefix ToolExecutionError: Error executing tool <name>: . Servers keep echoing arguments, as real ones do. Pinned by scripted children that quote earlier results, ids included, into later calls' arguments, and type a fake id into one: neither may fail any check. Rejected: stopping the echo. (2) Also in round 4: the M36 approval 2 ledger row corrected; UNTRUSTED requires the EXTERNAL_CONTENT taint; the invariant row says 40 s (10 + 30); example 31 prints every run under the plan from the store's parent links; README declares hung-store degradation and up to 3 x 64 KiB a round; and a call is made to meet the change at executor step 1, so both catalog guards are witnessed.",
+      "status": "accepted",
+      "source": null,
+      "recorded_at": "2026-10-24T11:08:10.877Z"
+    },
+    {
+      "id": "DECISION-a00773b0",
+      "title": "Pre-flight rule for every exit signal: checks hold under a model that quotes earlier results",
+      "text": "Owner, 2026-10-24, adopting M37 round 3's reviewer's clause verbatim: every live check must hold under a model that quotes any earlier tool result verbatim into a later call's arguments, with an execution id recognised only where its server places it, pinned by a scripted-child test of that shape. With KNOWLEDGE-1afcf6b2 (each check's witness independent of the property it witnesses, tested by construction by a live-semantics violation control) this is required at the pre-flight of every future exit signal.",
+      "status": "accepted",
+      "source": null,
+      "recorded_at": "2026-10-24T11:08:11.067Z"
+    },
+    {
+      "id": "DECISION-a7d6a1f5",
+      "title": "Pre-flight rule for every exit signal: no vacuous live check, and timeouts checked against those in force",
+      "text": "Owner, 2026-10-24, adopting M37 round 4's reviewer's clause: every live check must be non-vacuous over the results it judges -- a result it cannot judge is a failure, not an omission -- and every timeout a check relies on must be compared against the tool and approval timeouts actually in force. With DECISION-a00773b0 (checks hold under a model quoting earlier results) and KNOWLEDGE-1afcf6b2 (witnesses independent of the property, tested by construction), required at the pre-flight of every future exit signal; applied first at Phase 5's pre-flight, with M37's two carried repairs (KNOWLEDGE of M37's approval).",
+      "status": "accepted",
+      "source": null,
+      "recorded_at": "2026-10-24T14:17:43.488Z"
     }
   ],
   "knowledge": [
@@ -3000,6 +3056,94 @@
       "source": null,
       "tags": [],
       "recorded_at": "2026-10-22T09:44:42.818Z"
+    },
+    {
+      "id": "KNOWLEDGE-95493841",
+      "title": "M37 pre-review: two cap defects fixed, six weak checks in example 31 hardened",
+      "text": "An adversarial pre-review (runtime probes only, about 110 offline runs of example 31, its DB rows removed by recorded ids) found: D1, on the legacy era a request after an over-cap refusal was still recorded and put to the person, whose answer would reach a server whose call had already failed; D2, a later refusal overwrote the first reason. Fixed: once refused, every later request of the call is refused unrecorded (in _ask and the sampling/roots path) and the first reason stands; pinned by test_once_a_request_is_refused_the_calls_later_requests_ask_nobody (legacy HTTP, both stores, 1 and 3 later requests) with the HTTP fixture's ask taking a list of schemas; mutant killed. Weak checks hardened: W2 live witnesses came from SDK records, so an SDK that dropped a record turned a violation into SKIP; every witness is now read from the servers' journals alone (revise changed, NEEDS_APPROVAL executions, intake asked, injected fetch/error/read), and the reviewer's usable_all, sdk_no_approval and auto_answer controls now FAIL live. W3 UNTRUSTED now covers a server error and a resource read (inject raises on I2-fail and serves page://I3 through read_resource). W4 R4 moved into the change's turn, so it is refused as it leaves, not as ToolNotFound; on PostgreSQL the reviser's McpToolBlocked row is checked in the example. W5 journals record arguments and APPROVED compares them with the approved request (args_tamper now fails). W6 EXITED covers the Runner's processes only, labelled so. Temp folders are removed. W1 declared: in memory no store keeps a child's events or manifest. The reviewer's always_usable control still passes because a second guard (changed since offered) refuses R4: defence in depth, not a weak check. Lesson, seventh recurrence of witness discipline: a witness read from the system under test can hide that system's failure; read it from an independent record.",
+      "source": null,
+      "tags": [],
+      "recorded_at": "2026-10-22T12:45:22.156Z"
+    },
+    {
+      "id": "KNOWLEDGE-c59cba3a",
+      "title": "M37 live: the first live run of example 31 failed five checks on matching, not on the SDK",
+      "text": "The first live run (gateway model, PostgreSQL) failed five of eight checks. The model followed the injected instructions, calling catalog__revise many times with other children's tickets; children ran out of their four turns and the plan was replanned (16 child runs). Diagnosis from the store before cleanup: the new lookup version was accepted at 19:04:59.28 and the only lookup that started before it began at 19:04:58.21, before any revise, so it ran the old version: no SDK violation. The checks were at fault: (1) they matched journal entries to calls by ticket, assumed unique; (2) they required the change's McpToolBlocked row, which a child records only if its next turn meets the change before the approver accepts it; (3) they required the plan to complete. Reworked to hold whatever the models decide: journal entries matched to calls by qualified name and arguments, counted; approvals matched greedily by tool, arguments and decision time, each used once; input requests checked in aggregate; the McpToolBlocked row, the blocked call and per-call pairing required offline only; plan completion reported live, not required. The issue-order witness counts calls by name, so a call whose arguments changed on the way cannot turn APPROVED into SKIP (args_tamper control). All of the pre-review's runtime controls still fail their checks. Second live run: seven safety checks PASS, plan completion SKIP (13 child runs, the model again followed the injection). Examples 27 to 30 pass live (3, 6, 6, 5). Every live row was removed by recorded run id, and catalog rows by counted project; the store is at baseline.",
+      "source": null,
+      "tags": [],
+      "recorded_at": "2026-10-22T13:48:56.156Z"
+    },
+    {
+      "id": "KNOWLEDGE-7d24c4c5",
+      "title": "M37 final mutation: the change check named no guard, until it named the catalog's refusal",
+      "text": "The final mutation run killed 10 of 11; the survivor was the approver accepting the change at once. After pre-review W4 moved R4 into the change's turn, R4 is refused either by the catalog (not accepted in its current version) or by the run's own guard (changed since it was offered), so CHANGED passed with either. Offline the approver waits, so the catalog's refusal is deterministic; the offline check now requires its exact text. The mutant is killed, and the pre-review's always_usable control (current() ignoring acceptance), which passed before as defence in depth, now fails CHANGED too: both guards are witnessed, each by its own control. Live is unchanged, since that branch is offline only. 11 of 11 killed by named assertions; every file restored by SHA-256.",
+      "source": null,
+      "tags": [],
+      "recorded_at": "2026-10-22T14:18:20.992Z"
+    },
+    {
+      "id": "KNOWLEDGE-1afcf6b2",
+      "title": "M37 round 1 rejected (Fable 5.1): four defects in example 31 live checks; the SDK sound",
+      "text": "Fable 5.1 rejected M37 round 1 at 11:00:46Z on source hash 8c511046; the orchestrator verified: hash unchanged, gates unit and regression pass, store at baseline, no process or temp folder left. The SDK held every probe (mcp_blocked under 60 concurrent listings, closed Runner, dead server, cross-tenancy; the cap against non-ASCII, 12000 euro signs measured 72134 escaped and refused, no reverse bypass; NFR-22 contiguous after a mid-plan cancellation; no configured secret in a 19-table sweep). Defects, all in example 31 live checks: D1 false failure, approvals_held matches each execution to the earliest unused approval of its key, so a call approved then refused as it left leaves a surplus approval that cascades and unsorts issue-order positions (live run 1: 1,0,3,4,5,6,7,2 in one child with every call approved before it ran, in order). D2 APPROVED subject includes a same-turn pair read from SDK histories: an SDK that asked no approval printed SKIP over three unapproved executions. D3 NAMES witnesses the shadow server running a lookup, the routing under test: misrouted, it printed SKIP. D4 conjunctive subjects: UNTRUSTED skipped over trusted-labelled results when the model skipped the read; SECRETS and NAMES skipped over an env value in the manifest when the model never called poison. Caveats: in memory SECRETS passes over a manifest leak (declared W1); example 30 live failed 1 of 2 when the model skipped connect_calendar. Lesson, third outing of the witness rule in an exit signal (M32 twice): a witness must be independent of the property it witnesses, and that independence should be tested by construction -- a live-semantics violation control per check -- not found by review. Also: checks should print the failing clause, so a live failure needs no replay.",
+      "source": null,
+      "tags": [],
+      "recorded_at": "2026-10-23T11:17:41.928Z"
+    },
+    {
+      "id": "KNOWLEDGE-33f03394",
+      "title": "M37 round 2 built: D1 to D4 repaired and each pinned by a live-semantics violation test",
+      "text": "Example 31 round 2: demonstrate takes strict (default: not live), so a test runs scripted children with the live checks. Each check returns (passed, clause); report prints the clause on FAIL and SKIP. Subjects live are the least the journals show: NAMES, UNTRUSTED and SECRETS any server ran anything; APPROVED a call that asks ran; INPUT the server asked; CHANGED revise changed. Full witnesses only when strict. D1: approvals matched by existence -- each execution, in server order, takes the unused approve decision of its name and arguments decided first, made before it ran -- so a surplus approval never fails; issue order held only on calls whose name and arguments were made once. D3: NAMES also fails when a result from a server (MCP origin, not ToolBlocked) has no execution of its name and arguments on its own server. Tests: a call approved, refused as it leaves and made again fails nothing (D1); no approval and no two-call turn fails APPROVED live (D2); shadow__lookup routed to the catalog fails NAMES live (D3); results relabelled trusted with the read skipped fail UNTRUSTED live (D4); env values written into the manifest with poison never called fail SECRETS live on PostgreSQL (D4); report names clauses; example 30 reports a request the model never made as None live and a failure offline (owner's round-2 choice). Mutation 18 of 18, each round-1 defect put back killed by its own test. M37 test file 40 passed.",
+      "source": null,
+      "tags": [],
+      "recorded_at": "2026-10-23T11:30:54.946Z"
+    },
+    {
+      "id": "KNOWLEDGE-529f7200",
+      "title": "M37 round 2 rejected (Sonnet 5): the D1 repair deviated from the owner's instruction and made its mirror image",
+      "text": "Sonnet 5 rejected M37 round 2 at 14:54:00Z on source hash 468af8e0; the orchestrator verified: hash unchanged, gates pass, store at baseline except artifacts. The SDK sound again (2550 suite, 40 unit, live 27 to 31, 26 offline reps, cap and mcp_blocked held, 19-table secret sweep clean, contiguous sequences after mid-plan cancels). Defects in example 31 live checks: D1 false FAIL, calls keyed by the model's arguments against the server's schema-filtered ones, and any MCP-labelled error not starting ToolBlocked counted as a server result (executor labels every MCP failure so, FR-40): a call with an extra, missing or wrong-typed argument fails NAMES (extra also UNTRUSTED and APPROVED) with nothing violated, and the injection invites such calls. D2 false PASS: matching by existence let R4's surplus approval (approved, refused as it left) pay for an identical repeat the SDK ran with no approval asked. Cause, the orchestrator's: DECISION-9e28294e said match only calls that reached a server; round 2 matched by existence instead and the ledger called that the fix, itself false. Third round running where a witness repair produced its mirror image. Caveats: SECRETS skipped over a manifest leak when no call was made; a cancelled plan fails NAMES and UNTRUSTED (unreachable as written); UNTRUSTED counted pre-send errors as labelled. Also: the reviewer's cleanup deleted the 6 baseline artifacts (WHERE ... OR project_id = ANY(projects), one being examples); self-reported; nothing referenced them (swept all text and jsonb columns of 19 tables). Lesson: a repair must follow the decision's mechanism as written, or the deviation is raised with the owner before it is built.",
+      "source": null,
+      "tags": [],
+      "recorded_at": "2026-10-23T16:22:07.916Z"
+    },
+    {
+      "id": "KNOWLEDGE-72fb2086",
+      "title": "M37 round 3 built: every execution told to its one call by the id its server returns",
+      "text": "Per DECISION-d8afbea6. Each example-31 server's note() gives an execution an id (role#pid-n), journals it, and the execution returns it in its result, its error (raised as the library's ToolError, whose text reaches the client; any other exception is reduced to Error executing tool) or its read. A result carrying an id came from that execution; one carrying none never reached a server. NAMES: every id in a result is journalled, answers one call, by the server and tool the call's name says (strict: every execution that returns reached a call). UNTRUSTED: every result carrying an id is labelled. APPROVED: each execution of a tool that asks is told to its call, which needs its own approve decision, before it ran, whose arguments agree with every argument the server received; a call runs once; a child's calls in issue order by position. INPUT: each asking execution has one retry naming it (retry_of, from request_state), run with the answer, answering one call whose input request was accepted with that answer. SECRETS is asked of every run. Nothing is matched by arguments. Tests: malformed calls (extra, missing, wrong type) fail nothing live; an unapproved repeat of R4 fails APPROVED; an env value in the manifest of a run calling no server fails SECRETS; a forged execution id fails NAMES; arguments changed after approval fail APPROVED; each of the four round-2 tests fails against round 2's example (swapped in, restored by SHA-256). M37 test file 45 passed; mutation 20 of 20, each round-2 defect killed by its own test.",
+      "source": null,
+      "tags": [],
+      "recorded_at": "2026-10-23T16:34:48.908Z"
+    },
+    {
+      "id": "KNOWLEDGE-03e21e25",
+      "title": "M37 round 3: M36 caveat 2 closed, a cancelled caller waits for its MCP work to end",
+      "text": "Per DECISION-7888353c. McpClients submit runs its work through a tracked wrapper that sets started as it begins and ended as it ends however it ends; when the caller is cancelled and the work had begun, submit waits for ended within _CLOSE_SECONDS + _STORE_SECONDS before re-raising, so an input request's cancel decision is written before the run reports cancelled (FR-50). Work never begun is not waited for. Pinned deterministically by test_a_cancelled_runs_input_request_is_decided_before_the_run_reports_cancelled (both eras), which slows the cancel write by half a second: it failed every time before the fix. M36's test_cancelling_the_run_decides_the_request_cancel: 2 of 15 failed on M37 before the fix, 2 of 25 on M36's committed code (a detached worktree), 25 of 25 passed after. Mutant removing the wait killed by the pin. The MCP invariant tables gain submit's new wait and calls and the tracked wrapper's (approved-test edit, listed).",
+      "source": null,
+      "tags": [],
+      "recorded_at": "2026-10-23T17:34:28.805Z"
+    },
+    {
+      "id": "KNOWLEDGE-02dfeff6",
+      "title": "M37 round 3 rejected (Fable 5.1): an execution id quoted into arguments is read as provenance",
+      "text": "Fable 5.1 rejected M37 round 3 at 10:05:47Z on source hash 89783545; the orchestrator verified: hash unchanged, gates pass, store exactly at the new baseline, no process. The owner's mechanism was followed (checked against DECISION-d8afbea6 before the review) and the SDK's cancel fix in submit held: 42 cancelled runs over both eras and stores with the write slowed 0, 0.5 and 2 s, the write always before result(); a double cancel is unreachable through the SDK; the started race touches one segment that sends nothing; a hung store degrades to bounded best effort (reported at about 1.4 s, decision 3.5 s later with the store bound at 1 s). D1: EXECUTION.findall scans whole result texts while catalog, shadow and poison echo their arguments, so an id a model types or quotes into an argument returns inside a result: NAMES fails (an id no server journalled; one execution answering two calls) and APPROVED fails (a result reaching two calls) with nothing violated -- quoting an earlier result into a later call is ordinary model behaviour. Ledger: the M36 approval 2 row still said declared though round 3 fixed that race. Caveats: UNTRUSTED never checks the EXTERNAL_CONTENT taint NFR-35 names; only the leave-time guard refuses R4, never step 1; the invariant row's text for the 40 s bound (10 + 30) misdescribes it; a cancelled plan printed 4 of its 6 run ids, and examples 27 and 29 leave catalog and artifact rows they never print; hung-store degradation and one round storing up to 3 x 64 KiB are not in the README. Cleanup was exact, including those unprinted rows, by full keys.",
+      "source": null,
+      "tags": [],
+      "recorded_at": "2026-10-24T11:08:10.678Z"
+    },
+    {
+      "id": "KNOWLEDGE-2ca5aeb2",
+      "title": "M37 round 4 built: ids only where servers put them; both catalog guards witnessed; a strict-run timing flake found and fixed",
+      "text": "Per DECISION-33c3ecb3. EXECUTION matches only at a result's start or after ToolExecutionError: Error executing tool <name>: ; servers still echo arguments. Scripted children can quote the last result (): test_a_model_quoting_earlier_results_ids_included_fails_no_check and ..._typing_an_execution_id_... fail on round 3's reading (findall; the quoting test against round 3 with only the quoting worker added) and pass now. UNTRUSTED requires EXTERNAL_CONTENT. Every run under the plan is read from the store's parent links (descendants). The catalog server gains define (approval never), changed with lookup, never accepted; a stepper child's turn begins before the change -- the approver holds decisions until its first-party barrier runs -- and its define call meets the change at executor step 1: refused, never sent, and on PostgreSQL its ToolCalled has no started_at (an SDK refusing only as the call leaves fails strict CHANGED). README declares hung-store degradation and up to 3 x 64 KiB a round; the invariant row says 40 s. Found while building: the approver's live fallback (accept after WAIT_BOUND) ran offline, and the removal tests shorten WAIT_BOUND to 2 s; with round 4's hold delaying the reviser, the change was accepted before R4 left, so R4 met the run's guard instead of the catalog's -- 15 of 15 on the input removal, intermittent elsewhere. Fixed: strictly the change is accepted only when the reviser waits; the hold and the barrier have their own HOLD_BOUND, the hold only with a stepper, and the barrier also returns when the reviser waits. Removals 30 of 30 exact; the M37 test file 3 of 3 clean (52 each); mutation 25 of 25.",
+      "source": null,
+      "tags": [],
+      "recorded_at": "2026-10-24T12:28:29.215Z"
+    },
+    {
+      "id": "KNOWLEDGE-d9ea0d40",
+      "title": "M37 approved at round 4 (Sonnet 5): Phase 4's exit signal; two example caveats carried to Phase 5 pre-flight",
+      "text": "Sonnet 5 approved M37 round 4 at 14:01:43Z on source hash f3d28b3d; the orchestrator verified: hash unchanged, unit, regression and independent-review pass on that hash, store at baseline (10351 runs, 19 example-tenant, 0 SYN, 0 artifacts, catalog and interruptions empty), no process. The reviewer re-ran its own round-3 probes unchanged: a typed id and a quoted result, which failed NAMES and APPROVED on round 3, pass all eight on round 4; its sweep (quotes of results, errors and reads into every argument of every tool, typed ids, wrong types, 40 KB arguments, both stores) found no path that puts model text at an id's position. It ran example 31 live (seven safety checks PASS, completion SKIP) and the 52-test M37 file; it relied on gate evidence for the full suite and on the orchestrator's live runs for examples 27 to 30 (all passed on f3d28b3d). Caveats, carried to Phase 5's pre-flight by the owner rather than a fifth round: (1) NAMES and UNTRUSTED judge only results whose id matches at position 0, and the clause catching an execution whose result reached no call runs only strictly, so live a result whose id were displaced -- by any future change wrapping the text the SDK builds at mcp/__init__.py ToolOutput(content=text) -- would be invisible to them; repair: run that clause live for every run not cancelled. (2) The barrier waits HOLD_BOUND (60 s) but is registered with ToolSpec's default timeout_seconds 30.0 (tools.py:130), so it is abandoned at about 30 s, halving the guard; repair: give it a timeout above HOLD_BOUND. Both are in example 31, not in shipped SDK code. M37 took four review rounds; each rejection was a check that misread what the model did (rounds 1 to 3), and round 2's came from a repair that deviated from the owner's mechanism.",
+      "source": null,
+      "tags": [],
+      "recorded_at": "2026-10-24T14:17:43.354Z"
     }
   ],
   "tasks": [
@@ -3022,9 +3166,9 @@
           "status": "pass",
           "evidence": {
             "human": "siva-rgb (owner)",
-            "reason": "NFR-38 amended after M35: the permitted test edits gain any other edit an increment needs, named in its review prompt with its reason and checked by content, the practice settled since M34 (M35 reviewer finding)",
-            "source_hash": "2cabf244b9dedc6e92ae7dff8bafd498687e5fe42ec805c91a7e263fc6fccbf1",
-            "observed_at": "2026-10-22T04:16:28.969Z"
+            "reason": "M37 pre-flight amendment approved by the owner: FR-127 Runner.mcp_blocked, FR-133 input request size cap of 64 KiB, AC-94 pre-flight additions",
+            "source_hash": "84f14ad22c7d1472a5c37148bbdba2452dd82e2df1d2487541beee4dfd7e70de",
+            "observed_at": "2026-10-22T10:20:18.324Z"
           }
         }
       ],
@@ -3034,7 +3178,7 @@
       "failures": [],
       "limitations": [],
       "created_at": "2026-09-05T14:48:57.897Z",
-      "updated_at": "2026-10-22T04:16:28.969Z"
+      "updated_at": "2026-10-22T10:20:18.324Z"
     },
     {
       "id": "M1-primitives",
@@ -5627,7 +5771,7 @@
     {
       "id": "M37-mcp-contention",
       "outcome": "Hostile MCP servers under orchestration are contained on both stores",
-      "state": "active",
+      "state": "done",
       "risk": "high",
       "owner": null,
       "scope": [],
@@ -5648,22 +5792,37 @@
           "id": "unit",
           "command": ".venv\\Scripts\\python.exe -m pytest tests/test_mcp_contention.py -q",
           "mandatory": true,
-          "status": "pending",
-          "evidence": null
+          "status": "pass",
+          "evidence": {
+            "path": ".genesis/evidence/M37-mcp-contention-unit.json",
+            "source_hash": "f3d28b3d7a559a94d6f143be02fc6426f0a04b556245242afe1343129cc42081",
+            "hash": "4ea86b6372ccd23d445c87434a50ffca140605d51f2240b5f8c0670c10636e9b",
+            "observed_at": "2026-10-24T12:34:06.017Z"
+          }
         },
         {
           "id": "regression",
           "command": ".venv\\Scripts\\python.exe -m pytest -q",
           "mandatory": true,
-          "status": "pending",
-          "evidence": null
+          "status": "pass",
+          "evidence": {
+            "path": ".genesis/evidence/M37-mcp-contention-regression.json",
+            "source_hash": "f3d28b3d7a559a94d6f143be02fc6426f0a04b556245242afe1343129cc42081",
+            "hash": "451e72c1cec24546438fd17413c0ef7d5ae9f9966d12d1bdddd4fa9bf7b008e2",
+            "observed_at": "2026-10-24T12:56:10.828Z"
+          }
         },
         {
           "id": "independent-review",
           "command": "",
           "mandatory": true,
-          "status": "pending",
-          "evidence": null
+          "status": "pass",
+          "evidence": {
+            "human": "Sonnet 5",
+            "reason": "Round 4 checked against DECISION-a00773b0 and DECISION-33c3ecb3 first. Execution id is matched only at position 0 of a result/read or right after the error prefix; I quoted earlier results, errors and reads into every argument of every tool, typed ids, sent wrong-typed and 40 KB arguments, on both stores: no check failed, and no SDK or server text puts model text at position 0. 52 tests pass (324 s), 25 memory and 15 PostgreSQL offline runs clean, a cancelled plan returns all 6 children from parent links on PostgreSQL, live example 31 passed the seven safety checks, gate evidence matches source hash f3d28b3d, store back at baseline. Caveats, none blocking: (1) the barrier is a first-party tool with the default 30 s tool timeout, so it gives up at 34 s measured, not HOLD_BOUND 60 s as its comment says; (2) HOLD_BOUND equals approval_timeout 60 s, so a model that never calls the barrier leaves only the time to the first request as margin; (3) anchoring makes UNTRUSTED and NAMES vacuous live for results whose id is not at the start: an SDK that decorates result text and marks it trusted passes UNTRUSTED when only poison runs (probed); (4) the round-4 gloss string in test_mcp_client is not named in the brief edit list, only in the table. Future pre-flight should require: every live check non-vacuous over the results it judges, i.e. an execution whose result is unreadable fails live except on a cancelled run, plus every timeout bound a check relies on compared with the tool and approval timeouts in force.",
+            "source_hash": "f3d28b3d7a559a94d6f143be02fc6426f0a04b556245242afe1343129cc42081",
+            "observed_at": "2026-10-24T14:01:43.578Z"
+          }
         }
       ],
       "next_action": "Run the task pre-flight.",
@@ -5672,7 +5831,7 @@
       "failures": [],
       "limitations": [],
       "created_at": "2026-10-18T07:40:34.069Z",
-      "updated_at": "2026-10-18T07:40:34.070Z"
+      "updated_at": "2026-10-24T14:17:43.641Z"
     }
   ],
   "learning_proposals": [],
@@ -6963,6 +7122,78 @@
       "task": "M36-mcp-input",
       "human": "Sonnet 5",
       "reason": "Round 1, first-hand. Source hash e77a34f8 recomputed equal to both gate evidence files; I reran the full suite myself (no cacheprovider, awake wrapper): 2510 passed in 1071.63s. Migration 0018 on PostgreSQL in one rolled-back transaction: the trigger is the sole guard of kind (dropping it let 9 wrong-kind decisions in; with all CHECKs dropped the trigger alone refused all 11 kind cases), the CHECKs are the sole guard of unsupported, response and array-response (trigger alone allows them); expiry/cancel on an input request is refused by both, an accepted overlap. Wait: two requests answered in reverse with a 9 s gap under call_timeout 2 completed on both eras; the deadline resumed afterwards (a 12 s tool timed out at 2 s); cancel with 1 to 3 waits decided every request cancel/cancel on both stores and eras; aclose mid-wait decided both cancel; respond racing cancel left one decision; the MCP loop held an identical task set after echo, answered, cancelled and expired calls, and no process was left. Three runs of one tenancy over HTTP in both eras each got their own answer, no InputUnattributed. A catastrophic-pattern schema was refused after 10 s with the loop gap 0.12 s. M35 fixes: no configured header value reachable from the client object graph (five headers, repr, vars walk), Accept-Encoding refused in three spellings, content-type parameters kept, quoted kept, unquoted-space and CRLF refused. Examples 27 to 30 pass live (4 of 4 exit 0, all PASS lines). Test edits checked by content; the approvals alternation is looser than one reason per kind but every non-approval kind still must raise. Store restored to baseline: runs 10351, example-tenant 19, SYN 0, interruptions 0/0/0, catalog 0/0, artifacts 6. Caveats, not blockers: (1) cancel immediately followed by aclose without awaiting the result left one of two interruptions undecided with the run still running in 2 of 6 modern attempts, the abandoned-run shape approvals share; (2) a run reports cancelled up to about 0.2 s before its cancel decision is written; (3) no size bound on an input request message, schema or url: a 3 MB schema was stored whole on the modern era, unlike the 50000 character tool output cap, bounded to three requests per call.",
+      "revision": null
+    },
+    {
+      "id": "8f56e427-b5e6-4831-9b76-9262f4fdfaac",
+      "at": "2026-10-22T10:19:39.761Z",
+      "action": "requeue",
+      "task": "M37-mcp-contention",
+      "human": "siva-rgb (owner)",
+      "reason": "M37 pre-flight SPEC amendment (owner approved): mcp_blocked and the input request size cap; requeued so plan approve reactivates only M37",
+      "revision": null
+    },
+    {
+      "id": "c1cbaa26-7ca1-4d29-aa47-b9c1927ade17",
+      "at": "2026-10-23T11:00:46.839Z",
+      "action": "reject",
+      "task": "M37-mcp-contention",
+      "human": "Fable 5.1",
+      "reason": "Reject, round 1. The SDK code is sound: mcp_blocked and the 64 KiB cap held under every probe, the full suite passed 2544 in 1208 s on source hash 8c511046, and store and tree are at baseline. The defects are in example 31 live checks, which FR-135 requires to hold whatever the models decide. D1: APPROVED fails live with no SDK violation. A call approved and then refused as blocked at leave time leaves a surplus approve decision, and approvals_held (scripts/31_mcp_contention.py lines 599-614) matches each later execution of that key to the earliest unused approval, so the issue-order positions read from the matched call come out unsorted. My first live run failed exactly so, replayed from its rows (positions 1, 0, 3, 4, 5, 6, 7, 2 in one child) while the store showed every executed call approved before it ran and in issue order; a second live run passed. D2: APPROVED reports SKIP over a real violation when no child turn issues two approval-needing calls, because its subject (line 616) includes in_one_turn read from SDK histories: an SDK that never asked approval printed SKIP with three unapproved executions in the journal. D3: NAMES (lines 567-569) witnesses the shadow server running a lookup, which is the SDK routing under test: with every shadow__lookup executed by the catalog server it printed SKIP. D4: conjunctive subjects: UNTRUSTED (line 585) printed SKIP over trusted-labelled results when the model skipped the resource read; SECRETS (lines 643-644) and NAMES printed SKIP over an env value in the manifest when the model never called poison. Caveats, not blocking: in memory SECRETS passes over a manifest leak (declared W1); example 30 live failed 1 of 2 runs when the model skipped connect_calendar; the ledger is true and the three approved-test edits match their declarations.",
+      "revision": null
+    },
+    {
+      "id": "28c684e7-e1ae-442f-9000-e80ade6af6f4",
+      "at": "2026-10-23T11:17:44.626Z",
+      "action": "resume",
+      "task": "M37-mcp-contention",
+      "human": "siva-rgb (owner)",
+      "reason": "Round 2 repair of the M37 round 1 rejection, per the owner's decision",
+      "revision": null
+    },
+    {
+      "id": "3b17db6d-4800-4ee2-a10e-c92801195954",
+      "at": "2026-10-23T14:54:00.667Z",
+      "action": "reject",
+      "task": "M37-mcp-contention",
+      "human": "Sonnet 5",
+      "reason": "SDK sound: 2550 suite and 40 unit passed, live 27-31 pass, 26 offline reps clean, mcp_blocked and the 64 KiB cap held every probe. Rejected for example 31 live checks, run with strict False. D1 false FAIL: NAMES, UNTRUSTED and APPROVED match calls to server executions by exact arguments and count any MCP-labelled error not starting ToolBlocked as a server result, so a call missing a required argument, with a wrong type, or with an extra argument the server drops fails NAMES (extra argument also UNTRUSTED and APPROVED) with nothing violated; the injection text invites such calls. D2 false PASS: APPROVED matches by existence, so the surplus approval of R4, approved then refused as it leaves, pays for an identical repeat that ran with no approval; DECISION-9e28294e asked to match only calls that reached a server. Minor: SECRETS skips over a manifest leak when no call is made; cancelled plan fails NAMES and UNTRUSTED; UNTRUSTED counts ToolBlocked as labelled.",
+      "revision": null
+    },
+    {
+      "id": "7a961da9-eaa3-47ed-88a4-2e9badb94c35",
+      "at": "2026-10-23T16:22:08.189Z",
+      "action": "resume",
+      "task": "M37-mcp-contention",
+      "human": "siva-rgb (owner)",
+      "reason": "Round 3 repair of the M37 round 2 rejection, per DECISION on execution tags",
+      "revision": null
+    },
+    {
+      "id": "a03c455c-8669-4d03-9d7f-6c0191536feb",
+      "at": "2026-10-24T10:05:47.206Z",
+      "action": "reject",
+      "task": "M37-mcp-contention",
+      "human": "Fable 5.1",
+      "reason": "D1, a false FAIL live against the FR-135 rule that live checks hold whatever the models decide: the execution-id link applies EXECUTION.findall over the whole result content (scripts/31_mcp_contention.py lines 78 and 538) while three servers echo their arguments into their results (catalog lookup line 117 no entry for word, shadow lookup line 136, poison summarize line 144 text[:60]); a child that passes an earlier result, or any exec-looking text, into such an argument makes one result carry two ids or an unjournalled id, so NAMES fails (one execution answered 2 calls, or a result carries an execution no server journalled) and, when the echoed id is a lookup, APPROVED fails (its result reached 2 calls) with nothing violated. Reproduced offline with scripted children under strict False (probes S1 and S1b in m37-r3-probes/p_signal.py); the same class as round 1 D1 and round 2 D1; anchoring the id to the start of the result or error text, or not echoing arguments, would close it. Ledger: the M36 approval 2 row still reads Declared, reporting order while the round 3 gate row says it is fixed. Everything else held: the SDK cancel fix is sound, FR-50 order on both eras and both stores over 42 cancelled runs with cancel writes of 0, 0.5 and 2 s, a triple handle.cancel too, and a store slower than the bound degrades bounded (the run reports cancelled, the decision lands later); engine-level a second cancel inside the wait skips it but the SDK delivers one cancel only; suite 2557 passed on hash 89783545; live 27 to 31 pass (31: seven safety checks PASS, completion SKIP, 14 children); 22 offline repetitions clean with no leftover process or folder; mcp_blocked under 60 concurrent listings, closed Runner, dead server and other tenancy held; the cap held on non-ASCII, two in one round, after a refusal, sampling and the boundary; NFR-22 contiguous after a mid-plan cancellation with no execution starting after its child ended; 19-table secret sweep clean; all results labelled. Caveats: UNTRUSTED does not check the EXTERNAL_CONTENT taint NFR-35 names (M33 and M35 tests pin it); in the example only the leave-time guard refuses R4, step 1 never fires there; the hung-store degradation is not declared in the README; a cancelled plan returns 4 of its 6 run ids; the wait invariant row glosses a 50 s chain as 40 s; the cap is per request so one round may store up to three times 64 KiB.",
+      "revision": null
+    },
+    {
+      "id": "b5f83751-159a-4bc2-bcca-7d8547444d0f",
+      "at": "2026-10-24T11:08:11.287Z",
+      "action": "resume",
+      "task": "M37-mcp-contention",
+      "human": "siva-rgb (owner)",
+      "reason": "Round 4 repair of the M37 round 3 rejection, per the owner's round-4 decision",
+      "revision": null
+    },
+    {
+      "id": "d2c76c0e-ba9f-41f2-a170-698d66c54116",
+      "at": "2026-10-24T14:01:43.578Z",
+      "action": "approve",
+      "task": "M37-mcp-contention",
+      "human": "Sonnet 5",
+      "reason": "Round 4 checked against DECISION-a00773b0 and DECISION-33c3ecb3 first. Execution id is matched only at position 0 of a result/read or right after the error prefix; I quoted earlier results, errors and reads into every argument of every tool, typed ids, sent wrong-typed and 40 KB arguments, on both stores: no check failed, and no SDK or server text puts model text at position 0. 52 tests pass (324 s), 25 memory and 15 PostgreSQL offline runs clean, a cancelled plan returns all 6 children from parent links on PostgreSQL, live example 31 passed the seven safety checks, gate evidence matches source hash f3d28b3d, store back at baseline. Caveats, none blocking: (1) the barrier is a first-party tool with the default 30 s tool timeout, so it gives up at 34 s measured, not HOLD_BOUND 60 s as its comment says; (2) HOLD_BOUND equals approval_timeout 60 s, so a model that never calls the barrier leaves only the time to the first request as margin; (3) anchoring makes UNTRUSTED and NAMES vacuous live for results whose id is not at the start: an SDK that decorates result text and marks it trusted passes UNTRUSTED when only poison runs (probed); (4) the round-4 gloss string in test_mcp_client is not named in the brief edit list, only in the table. Future pre-flight should require: every live check non-vacuous over the results it judges, i.e. an execution whose result is unreadable fails live except on a cancelled run, plus every timeout bound a check relies on compared with the tool and approval timeouts in force.",
       "revision": null
     }
   ],

@@ -1055,6 +1055,15 @@ def test_every_wait_in_the_mcp_module_names_its_bound():
         ("validate_tool_result", "asyncio.to_thread(validate_untrusted, result.structured_content, schema)"): "the validation deadline",
         ("submit", "asyncio.wait({wrapped}, timeout=timeout)"): "the caller's own timeout",
         ("submit", "call wrapped.result"): "an asyncio future known to be done: returns at once",
+        # M37 round 3 (DECISION-7888353c): a cancelled caller waits for its work on the MCP loop.
+        ("submit", "asyncio.wait({asyncio.wrap_future(ended)}, timeout=_CLOSE_SECONDS + _STORE_SECONDS)"):
+            "_CLOSE_SECONDS + _STORE_SECONDS, 10 + 30 = 40 s: the work's waiters ending, then its cancel writes",
+        ("submit", "call started.is_set"): "reads a threading.Event: returns at once",
+        ("submit", "call threading.Event"): "constructs an event: returns at once",
+        ("tracked", "call ended.done"): "reads a concurrent future: returns at once",
+        ("tracked", "call ended.set_result"): "sets a concurrent future: returns at once",
+        ("tracked", "call started.set"): "sets a threading.Event: returns at once",
+        ("tracked", "coroutine"): "the work submit runs, whose bound is submit's own timeout",
         ("_close_all", "asyncio.gather(*(connection.close() for connection in connections), return_exceptions=True)"): "each close is bounded",
         ("_close_all", "asyncio.sleep(0)"): "one loop pass",
         ("_close_all", "asyncio.wait(rest, timeout=_CLOSE_SECONDS)"): "_CLOSE_SECONDS",
@@ -1110,6 +1119,7 @@ def test_every_wait_in_the_mcp_module_names_its_bound():
         ("__aiter__", "async for self._inner"): "an event stream, ended past 4 MiB; its time is the caller's wait",
         ("aclose", "self._inner.aclose()"): "closes the transport's pool, within the session's close bound",
         ("_up", "self._ensure()"): "_ensure's own bounds",
+        ("blocked", "self._ensure()"): "_ensure's own bounds",  # M37 (FR-127, mcp_blocked)
         ("_request", "_within(task, timeout + _WEDGE_MARGIN, asking, [0.0])"):
             "call_timeout + margin, counted while not waiting on a person",
         ("_request", "_ended_waits(asking)"): "_CLOSE_SECONDS, then _STORE_SECONDS",
@@ -1389,6 +1399,9 @@ def test_every_loop_in_the_mcp_module_names_what_it_iterates():
         ("_read_entries", "store.acceptances(tenant_id, project_id, alias, list(pending.values()))"):
             "the store's answer for the hashes asked: at most _MAX_TOOLS",
         ("_up", "await self._ensure()"): "the events of one ensure: a list the SDK built",
+        # M37 (FR-127 mcp_blocked; FR-133's request cap)
+        ("blocked", "events"): "the events of one ensure: a list the SDK built",
+        ("_request_size", "('message', 'requested_schema', 'url')"): "a literal",
         ("_read_as_tool", "result.contents"): "a read's contents, within the 4 MiB body: " + built,
         ("read", "contents"): built, ("read", "result.contents"): "a read's contents: " + built,
         ("prompt", "result.messages"): "a prompt's messages: " + built,
@@ -1434,7 +1447,7 @@ def test_every_loop_in_the_mcp_module_names_what_it_iterates():
         ("import", "_on_elicit", "from mcp.types import ElicitResult"): "a module of the venv, imported once",
         ("import", "_see_input_requests", "from mcp.types import CreateMessageRequest, ListRootsRequest"):
             "a module of the venv, imported once",
-        ("import", "_too_many", "from mcp.types import ErrorData"): "a module of the venv, imported once",
+        ("import", "_refused", "from mcp.types import ErrorData"): "a module of the venv, imported once",  # M37: was _too_many
         ("import", "answer_problem", "from mcp.types import ElicitResult"): "a module of the venv, imported once",
         ("import", "listen", "from mcp.client.subscriptions import ListenNotSupportedError"): "a module of the venv, imported once",
         ("nested", "_prompt_entries", "listed / p.arguments or []"): "each prompt's own arguments: linear",

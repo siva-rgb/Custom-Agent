@@ -768,6 +768,7 @@ KNOWLEDGE-9593410e.
 
       A hash already accepted is returned unchanged. Like `decide`, it is never a tool.
     - **Accepting in code:** a server's `accept=McpAcceptance(tenant_id, project_id, principal, tool_hashes)` records its rows when that tenancy's connection first lists the tool. Its principal must be a service principal. Several are allowed, one per tenancy.
+    - **Listing what is blocked (owner, M37 pre-flight):** `Runner.mcp_blocked(tenant_id, project_id, alias)` returns, through that tenancy's connection, an `McpBlocked` of kind `tool` for each tool the server lists now whose current version is not accepted. Each carries what `McpToolBlocked` records: the hash, and the last accepted hash with the parts that differ, or none on first sight. A stale listing is read again first, as before a call. A tool past the version limit, or one whose acceptances could not be read, carries `error`. An application can so accept a version that any run of the tenancy met, a child's included. Its refusals are `mcp_resources`' (FR-131). Like `accept_tools`, it is never a tool.
   - **When the catalog is read:**
     - at connection;
     - on a list-changed notification. On the 2026-07-28 era, the client opens `subscriptions/listen` with `toolsListChanged` after connecting, when the server offers it, and reopens it at the next read if it closes. On the legacy era it uses `notifications/tools/list_changed`;
@@ -834,6 +835,7 @@ KNOWLEDGE-9593410e.
     - the alias, the tool and the server's message;
     - in form mode, the requested schema;
     - in url mode, the full URL, since the person must see it whole. It is shown, never opened or fetched by the SDK (the spec's rule, and CVE-2025-6514's lesson).
+    - **its size is bounded (owner, M37 pre-flight):** a request whose message, with its schema in form mode or its URL in url mode, is over 64 KiB as JSON is refused before anything is recorded. The server is answered with an error, the request counts toward the three, and the call fails `ToolExecutionError("input request too large")`. This bounds what a server sends as an accepted answer and tool output are already bounded.
   - **Answering:** `Runner.respond(tenant_id, project_id, interruption_id, *, action, content=None, principal)` answers with `accept`, `decline` or `cancel`, and returns the decision. `RunHandle.respond` is its shortcut.
     - Its refusals follow `decide`'s, in its order (FR-115). `InterruptionKindMismatch` comes second, after tenancy: for `respond` on an approval, or `decide`, `approve` or `reject` on an input request.
     - `content` is required for `accept` in form mode, and must match the requested schema.
@@ -1226,6 +1228,11 @@ found the defects, turned into assertions.
   - **Example 31** holds every check of FR-135 ten times, with the children's start order shuffled and random delays.
   - **Each check fails without its subject:** a test removes, in turn, the change, the shadowing tool, the injection, the input request and the approval. Each removal fails the check that names it.
   - **NFR-34:** the package's runtime dependencies are unchanged, and `mcp` appears only in the `mcp` and `examples` extras.
+  - **Pre-flight additions (owner, M37):**
+    - `mcp_blocked` lists a first-sighted tool and a changed tool, with their previous hash and changed parts;
+    - it lists neither once they are accepted;
+    - it reads a stale listing again.
+    - An input request over 64 KiB, in either mode and either era, records nothing and fails its call. One of exactly 64 KiB is recorded.
 
 ## Risks
 

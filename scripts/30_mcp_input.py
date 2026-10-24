@@ -129,7 +129,7 @@ class Watched:
         self._socket.close()
 
 
-async def demonstrate(model, model_id: str, persistence=None):
+async def demonstrate(model, model_id: str, persistence=None, live: bool = False):
     watched = Watched()
     server = StdioServer(alias=SERVER_NAME, command=PYTHON,
                          args=(os.path.abspath(__file__), "--serve", PACKAGES, "--consent", watched.url),
@@ -170,10 +170,11 @@ async def demonstrate(model, model_id: str, persistence=None):
                 result = await asyncio.wait_for(handle.result(), 300)
             finally:
                 answering.cancel()
-            tools = {r.tool_call_id: r.content for m in await asyncio.to_thread(
+            history = await asyncio.to_thread(
                 runner._sessions_for(__import__("agentsdk.postgres", fromlist=["RunScope"]).RunScope(
                     run_id=result.run_id, tenant_id=TENANT, project_id=PROJECT)).history, result.run_id)
-                for r in m.tool_results}
+            tools = {r.tool_call_id: r.content for m in history for r in m.tool_results}
+            calls = [c.name for m in history for c in m.tool_calls]
     finally:
         watched.close()
     print(f"run {result.run_id}: {result.status.value}; tool results {list(tools.values())}")
@@ -181,19 +182,29 @@ async def demonstrate(model, model_id: str, persistence=None):
     answered = [e for e in result.events if e.event_type is EventType.INPUT_ANSWERED]
     form = next((v for v in asked if v.interruption.request_payload["mode"] == "form"), None)
     url = next((v for v in asked if v.interruption.request_payload["mode"] == "url"), None)
+    # M37 round 2 (owner): live, a model may skip a tool, and a request never made tests nothing;
+    # such a check is None -- `[SKIP] not exercised` live, a failure offline, where both are made.
+    made = set(calls)
+
+    def witnessed(subject: bool, holds: bool) -> bool | None:
+        return holds if subject or not live else None
+
     checks = [
         ("the run completed", result.status is RunStatus.COMPLETED),
-        ("the form request was recorded with its schema, and the person's answer reached the server",
-         form is not None and form.interruption.request_payload["requested_schema"] == FORM
-         and any(a.decision == "accept" and a.response == {"name": "Ada", "team": "analytics"} for a in answers)
-         and "registered Ada to analytics" in tools.values()),
-        ("the url request was recorded with the full URL and declined, and the server was told",
-         url is not None and url.interruption.request_payload["url"] == watched.url
-         and any(a.decision == "decline" for a in answers)
-         and any("calendar not connected (decline)" in str(v) for v in tools.values())),
-        ("the events name each request and its answer, and never the response",
-         len(requested) == 2 and len(answered) == 2
-         and not any("analytics" in json.dumps(e.payload) for e in requested + answered)),
+        ("the form request was recorded with its schema, and the person's answer reached the server", witnessed(
+            "intake__register" in made,
+            form is not None and form.interruption.request_payload["requested_schema"] == FORM
+            and any(a.decision == "accept" and a.response == {"name": "Ada", "team": "analytics"} for a in answers)
+            and "registered Ada to analytics" in tools.values())),
+        ("the url request was recorded with the full URL and declined, and the server was told", witnessed(
+            "intake__connect_calendar" in made,
+            url is not None and url.interruption.request_payload["url"] == watched.url
+            and any(a.decision == "decline" for a in answers)
+            and any("calendar not connected (decline)" in str(v) for v in tools.values()))),
+        ("the events name each request and its answer, and never the response", witnessed(
+            bool(made),
+            len(requested) == len(asked) and len(answered) == len(answers) and (live or len(requested) == 2)
+            and not any("analytics" in json.dumps(e.payload) for e in requested + answered))),
         ("the SDK never opened the URL", watched.hits == 0),
     ]
     return checks, [first.run_id, result.run_id]
@@ -228,7 +239,7 @@ def live():
         client = OpenAICompatibleModelClient(base_url=settings.base_url, api_key=settings.api_key,
                                              model=settings.default_model)
         try:
-            checks, runs = await demonstrate(client, f"m:{settings.default_model}", persistence)
+            checks, runs = await demonstrate(client, f"m:{settings.default_model}", persistence, live=True)
             print(f"\nrun ids (to remove the demo's rows): {' '.join(runs)}")
             print(f"catalog rows: tenant {TENANT}, project {PROJECT}, alias {SERVER_NAME}")
             return checks
@@ -245,9 +256,12 @@ if __name__ == "__main__":
     sys.stdout.reconfigure(errors="replace")
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--offline", action="store_true", help="run in memory with a scripted model")
-    checks = asyncio.run(offline())[0] if parser.parse_args().offline else live()
+    offline_run = parser.parse_args().offline
+    checks = asyncio.run(offline())[0] if offline_run else live()
     for label, passed in checks:
-        print(f"[{'PASS' if passed else 'FAIL'}] {label}")
-    failed = [label for label, passed in checks if not passed]
+        # None: the model never made that request (live only); offline it is a failure.
+        print(f"[SKIP] not exercised: {label}" if passed is None and not offline_run
+              else f"[{'PASS' if passed else 'FAIL'}] {label}")
+    failed = [label for label, passed in checks if not passed and (passed is not None or offline_run)]
     if failed:
         raise SystemExit(f"failed: {failed}")

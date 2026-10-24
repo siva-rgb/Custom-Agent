@@ -1,0 +1,22 @@
+{
+  "task": "M37-mcp-contention",
+  "gate": "unit",
+  "command": ".venv\\Scripts\\python.exe -m pytest tests/test_mcp_contention.py -q",
+  "started_at": "2026-10-24T12:28:30.381Z",
+  "observed_at": "2026-10-24T12:34:06.017Z",
+  "exit_code": 0,
+  "signal": null,
+  "stdout": "....................................................                     [100%]\r\n52 passed in 334.46s (0:05:34)\r\n",
+  "stderr": "",
+  "revision": {
+    "commit": "3f7753f8ddd04759852eb28448ad4c98a220a2fc",
+    "dirty": true
+  },
+  "source_hash": "f3d28b3d7a559a94d6f143be02fc6426f0a04b556245242afe1343129cc42081",
+  "environment": {
+    "node": "v20.10.0",
+    "platform": "win32",
+    "arch": "x64"
+  },
+  "hash": "4ea86b6372ccd23d445c87434a50ffca140605d51f2240b5f8c0670c10636e9b"
+}

@@ -69,6 +69,8 @@ EXPECTED_EXAMPLES = {
     "29_mcp_http.py",
     # FR-134 (M36): input requests and elicitation.
     "30_mcp_input.py",
+    # FR-135 (M37): hostile MCP servers under orchestration, Phase 4's exit signal.
+    "31_mcp_contention.py",
 }
 
 
