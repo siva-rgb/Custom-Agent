@@ -27,7 +27,7 @@ from enum import Enum
 from .compaction import ContextCompactor
 from .context import ContextAssembler
 from .context_policy import ContextPolicy
-from .errors import UnknownMcpServer, UnpricedModel, describe_exception
+from .errors import UnknownMcpServer, UnpricedModel, WorkspaceUnavailable, describe_exception
 from .events import EventSink, EventType, InMemoryEventSink, RunEvent
 from .executor import ToolExecutor
 from .handle import PublishingSink, RunControl, RunHandle, RunState
@@ -68,6 +68,7 @@ from .session import InMemorySessionStore, SessionStore
 from .timings import elapsed_ms, now_ns, wall_clock
 from .tools import Tool, ToolRegistry
 from .version import __version__
+from .workspace import WorkspaceProvider, WorkspaceSpec
 
 __all__ = ["AgentSpec", "RunConfig", "RunHandle", "RunResult", "RunState", "RunStatus", "Runner"]
 
@@ -163,9 +164,14 @@ class AgentSpec:
     # value set on the RunConfig overrides the agent's.
     max_output_tokens: int | None = None
     reasoning_effort: ReasoningEffort | str | None = None
+    # FR-137 (M38): where the agent's commands run. None gives it no workspace and none of the
+    # workspace tools, and leaves its agent_spec_hash as it was (NFR-41).
+    workspace: WorkspaceSpec | None = None
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "tool_profile", tuple(self.tool_profile))
+        if self.workspace is not None and not isinstance(self.workspace, WorkspaceSpec):
+            raise ValueError(f"AgentSpec.workspace must be a WorkspaceSpec, got {type(self.workspace).__name__}")
         _refuse_bad_output_limit(self.max_output_tokens, "AgentSpec")
         object.__setattr__(
             self, "reasoning_effort", _reasoning_effort(self.reasoning_effort, "AgentSpec")
@@ -388,6 +394,8 @@ class Runner:
         model_registry: ModelRegistry | None = None,
         scheduler_limits: SchedulerLimits | None = None,
         mcp_servers: Sequence[Any] | None = None,
+        workspace_provider: WorkspaceProvider | None = None,
+        max_concurrent_workspaces: int = 4,
     ) -> None:
         if not model_clients:
             raise ValueError("Runner requires at least one model client")
@@ -431,6 +439,30 @@ class Runner:
             catalog = (persistence.catalog_store if persistence is not None
                        else (lambda store=self._memory_catalog: store))
             self._mcp = McpClients(list(mcp_servers), frozenset(self._registry.names()), catalog=catalog)
+        # FR-138 (M38): the workspace provider, which only the WorkspaceManager calls. A registered
+        # tool runs on the host, so none may take a workspace tool's name beside a provider: an
+        # agent's run_command would run outside its sandbox (M38 pre-flight).
+        if (isinstance(max_concurrent_workspaces, bool) or not isinstance(max_concurrent_workspaces, int)
+                or max_concurrent_workspaces < 1):
+            raise ValueError(f"max_concurrent_workspaces must be a whole number of at least 1, "
+                             f"got {max_concurrent_workspaces!r}")
+        self._memory_workspaces: Any = None
+        if persistence is None:
+            from .workspace.records import InMemoryWorkspaceStore
+
+            self._memory_workspaces = InMemoryWorkspaceStore()
+        self._workspaces: Any = None
+        self._workspace_runs: dict[str, Any] = {}  # run id -> its RunWorkspace, while the run is under way
+        if workspace_provider is not None:
+            from .workspace.manager import WorkspaceManager
+            from .workspace.tools import RESERVED
+
+            if not isinstance(workspace_provider, WorkspaceProvider):
+                raise ValueError(f"workspace_provider must be a WorkspaceProvider, got {type(workspace_provider).__name__}")
+            taken = sorted(set(RESERVED) & set(self._registry.names()))
+            if taken:
+                raise ValueError(f"registered tools take workspace tool names: {taken}")
+            self._workspaces = WorkspaceManager(workspace_provider, self._workspace_store, max_concurrent_workspaces)
         self._hook = hook if hook is not None else RuntimeHook()
         self._assembler = assembler if assembler is not None else ContextAssembler()
         # FR-76 (M19): with no persistence, the in-memory artifact and run-state
@@ -491,6 +523,32 @@ class Runner:
             self._memory_interruptions = InMemoryInterruptionStore(
                 runs=self._admits, parent=lambda tenant, project, run: self._parents.get((tenant, project, run)))
         return self._memory_interruptions
+
+    def _workspace_store(self) -> Any:
+        """Where this Runner's workspaces and commands are recorded (FR-140): the database, or one
+        in-memory store for the Runner's life."""
+        if self._persistence is not None:
+            return self._persistence.workspace_store()
+        return self._memory_workspaces
+
+    def _workspace_refusal(self, spec: WorkspaceSpec) -> str:
+        """FR-138: why a run whose agent has a workspace was given none."""
+        if self._workspaces is None:
+            return "this Runner was given no workspace_provider"
+        if spec.scope != "run":
+            return f"WorkspaceSpec.scope {spec.scope!r} is not supported yet; only 'run' is"
+        return "WorkspaceSpec.keep=True is not supported yet"
+
+    async def _end_workspace(self, run_id: str, events: EventSink, control: RunControl) -> None:
+        """FR-140: a run's workspace is removed, and recorded so, before the run's terminal event,
+        whatever its status. Never raises."""
+        workspace = self._workspace_runs.pop(str(run_id), None)
+        if workspace is not None:
+            await workspace.end("run_ended", partial(self._safe_emit_kind, events, control))
+
+    async def _safe_emit_kind(self, events: EventSink, control: RunControl, event_type: EventType,
+                              payload: dict) -> None:
+        await self._safe_emit(events, event_type, payload, control)
 
     def _catalog_store(self) -> Any:
         """Where this Runner's MCP catalog is kept (FR-127): the database, or one in-memory store
@@ -975,6 +1033,8 @@ class Runner:
                 # failed on the way out (FR-50).
                 return await self._cancelled(scope, events, meter, control, config.budget_lease)
             reason = describe_exception(exc)
+            if not control.terminal_written:
+                await self._end_workspace(scope.run_id, events, control)
             already_terminal = control.terminal_written
             control.terminal = True
             if not already_terminal:
@@ -1024,6 +1084,7 @@ class Runner:
         in flight, that call may be billed and reports no usage, so the cost is
         unknown rather than understated (P2-D7, NFR-11).
         """
+        await self._end_workspace(scope.run_id, events, control)
         control.terminal = True
         reason = _cancellation_reason(control.reason)
         cost = None if control.cancelled_in_flight else meter.cost_usd
@@ -1176,6 +1237,21 @@ class Runner:
         # executor resolves. Every registered tool when the run carries no policy.
         policy = config.context_policy
         registry = self._registry if policy is None else policy.visible(self._registry, spec.tool_profile)
+        # FR-146 (M38): plus the workspace tools its agent names, bound to this run's workspace,
+        # which is created at their first need (FR-138). None for a run without one.
+        if (spec.workspace is not None and self._workspaces is not None and spec.workspace.scope == "run"
+                and not spec.workspace.keep):
+            from .workspace.tools import NAMES, workspace_tools
+
+            workspace = self._workspaces.for_run(spec.workspace, scope.tenant_id, scope.project_id, run_id,
+                                                 partial(control.store, events.emit), control.store)
+            self._workspace_runs[run_id] = workspace
+            extended = ToolRegistry()
+            for name in registry.names():
+                extended.register(registry.get(name))
+            for tool in workspace_tools(workspace, spec.workspace, [n for n in NAMES if n in spec.tool_profile]):
+                extended.register(tool)
+            registry = extended
         # FR-125 (M33): plus the MCP tools its agent names, rebuilt each turn; read once
         # here so the manifest records the tools usable at start.
         if self._mcp is not None:
@@ -1208,6 +1284,9 @@ class Runner:
                     gate_policy=None if config.gate_policy is None else config.gate_policy.to_json(),
                     approval_timeout=float(config.approval_timeout),
                     mcp_servers=[] if self._mcp is None else self._mcp.records(),
+                    workspace=None if spec.workspace is None else {
+                        "provider": None if self._workspaces is None else self._workspaces.provider.name,
+                        **spec.workspace.record()},
                     model_id=recorded_model or "unspecified",
                     **self._model_versions(recorded_model, client_key),
                     policy_version=type(spec.checker()).__name__,
@@ -1243,6 +1322,11 @@ class Runner:
                 ),
             },
         )
+
+        # FR-138 (M38): a run whose agent has a workspace and was given none fails before its first
+        # model call, with no workspace tool offered.
+        if spec.workspace is not None and run_id not in self._workspace_runs:
+            raise WorkspaceUnavailable(self._workspace_refusal(spec.workspace))
 
         # FR-44: the calls of a parallel batch can finish together. Emitting one
         # ToolCalled of this run at a time keeps their events in the order they
@@ -1383,6 +1467,7 @@ class Runner:
         # written, a cancellation has no effect.
         if control.requested:
             raise asyncio.CancelledError()
+        await self._end_workspace(run_id, events, control)
         control.terminal = True
         await control.store(
             events.emit,

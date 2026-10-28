@@ -25,6 +25,7 @@ from .postgres import (
     PostgresEventStore,
     PostgresRunStore,
     PostgresSessionStore,
+    PostgresWorkspaceStore,
     RunScope,
     apply_schema,
 )
@@ -132,3 +133,7 @@ class Persistence:
     def catalog_store(self) -> PostgresCatalogStore:
         """The Postgres store of MCP tool versions and acceptances (FR-127, M34)."""
         return PostgresCatalogStore(self.dsn)
+
+    def workspace_store(self) -> PostgresWorkspaceStore:
+        """The Postgres store of workspaces and their commands (FR-140, M38)."""
+        return PostgresWorkspaceStore(self.dsn)

@@ -44,6 +44,7 @@ from .errors import (
     ToolPermissionDenied,
     ToolTimeout,
     ToolValidationError,
+    WorkspaceRefused,
     describe_exception,
 )
 from .hooks import HookAction, RuntimeHook
@@ -448,6 +449,9 @@ class ToolExecutor:
         except ToolBlocked as exc:
             # FR-127 (M34): refused as the call left for its server -- the same refusal as step 1's,
             # for a call whose tool changed while it waited (an approval, a slot).
+            return await self._failed(tool_call, exc, state)
+        except WorkspaceRefused as exc:
+            # FR-144 (M38): a workspace past a bound refuses by name, which the model reads.
             return await self._failed(tool_call, exc, state)
         except Exception as exc:  # noqa: BLE001 - any tool failure is a tool error
             return await self._failed(tool_call, ToolExecutionError(str(exc)), state)

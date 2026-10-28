@@ -514,12 +514,16 @@ async def _demonstrate(models, worker, planner, *, live, rng, tenant, project, p
         except TimeoutError:
             return "nothing was accepted"
 
+    # Each tool's own timeout outlasts the bound it waits for: ToolSpec's default of 30 s abandoned
+    # the barrier at about 30 s, halving HOLD_BOUND's guard (M37 approval, caveat 2; FR-136).
     waiting_tool = Tool(spec=ToolSpec(
         name="wait", description="Wait until the revised glossary is accepted.", input_schema={"type": "object"},
-        risk_class=RiskClass.READ_ONLY, read_only=True, approval_policy=ApprovalPolicy.AUTO), fn=wait)
+        risk_class=RiskClass.READ_ONLY, read_only=True, approval_policy=ApprovalPolicy.AUTO,
+        timeout_seconds=WAIT_BOUND + 15.0), fn=wait)
     barrier_tool = Tool(spec=ToolSpec(
         name="barrier", description="Wait until the glossary changes.", input_schema={"type": "object"},
-        risk_class=RiskClass.READ_ONLY, read_only=True, approval_policy=ApprovalPolicy.AUTO), fn=barrier)
+        risk_class=RiskClass.READ_ONLY, read_only=True, approval_policy=ApprovalPolicy.AUTO,
+        timeout_seconds=HOLD_BOUND + 15.0), fn=barrier)
     role = AgentSpec(id="worker", instructions="You make tool calls exactly as told.", preferred_model=worker,
                      tool_profile=tuple(f"{alias}__*" for alias in (*STDIO, *HTTP)) + ("wait", "barrier"),
                      max_output_tokens=LIVE_OUTPUT_TOKENS if live else None)
@@ -686,10 +690,22 @@ async def _demonstrate(models, worker, planner, *, live, rng, tenant, project, p
             name = call_of[keys[0]][2]
             if name != f"{e['server']}__{e['tool']}":
                 return f"{name} was answered by {e['server']}'s {e['tool']} ({execution})"
+        lost = [e for e in ran if came_back(e) and e["exec"] not in answered]
+        if strict and lost:
+            return f"executions whose results reached no call: {[e['exec'] for e in lost]}"
+        # Live too, for every run not cancelled (M37 approval, caveat 1; DECISION-97fb116b): a journal
+        # names no run, so per qualified tool, an execution whose result reached no call must be
+        # matched by a call of that tool that ended without its server's result -- cut short by its
+        # run's cancellation, or timed out. Both results are the executor's errors: a server's own error
+        # is always `ToolExecutionError: ...`, and a success is no error whatever its text (M38 pre-review D5).
+        cut_short = Counter(name for child, cid, name, _, _ in calls if (child, cid) not in from_server
+                            and returned.get((child, cid)) is not None and returned[(child, cid)].is_error
+                            and returned[(child, cid)].content.startswith(("ToolCancelled:", "ToolTimeout:")))
+        unmatched = Counter(f"{e['server']}__{e['tool']}" for e in lost) - cut_short
+        if unmatched:
+            return (f"executions whose results reached no call, beyond each tool's calls cut short by a "
+                    f"cancellation or a timeout: {dict(sorted(unmatched.items()))}")
         if strict:
-            lost = [e["exec"] for e in ran if came_back(e) and e["exec"] not in answered]
-            if lost:
-                return f"executions whose results reached no call: {lost}"
             if not ({"catalog", "shadow"} <= looked_up and any(e["server"] == "poison" for e in ran)):
                 return "both servers' lookups and the poisoned tool must run"
         return None

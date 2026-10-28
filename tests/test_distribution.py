@@ -71,6 +71,8 @@ EXPECTED_EXAMPLES = {
     "30_mcp_input.py",
     # FR-135 (M37): hostile MCP servers under orchestration, Phase 4's exit signal.
     "31_mcp_contention.py",
+    # FR-141 (M38): a workspace, on the fake provider.
+    "32_workspace.py",
 }
 
 

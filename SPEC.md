@@ -1,4 +1,4 @@
-# Product specification — custom-agent-sdk (Phase 0 to Phase 4)
+# Product specification — custom-agent-sdk (Phase 0 to Phase 5)
 
 > Status: draft. A coding agent must not implement product code until this specification is approved through Genesis.
 
@@ -874,6 +874,158 @@ KNOWLEDGE-9593410e.
     - every server process has exited after `aclose`.
   - **Repetitions:** the test runs it 10 times, with the children's start order shuffled and random delays (KNOWLEDGE-14f3ec8b). Live, it checks only what must hold whatever the models decide.
 
+### Phase 5, increment 1: the workspace and sandboxed execution (M38 to M42)
+
+Increment 1 lets an agent run code. Until now no tool could execute anything (M10's non-goal), and
+a stdio MCP server ran with the user's rights. A run can now be given a workspace: storage the host
+never shares, used by containers that have no network, no capabilities and bounded resources. The
+model's commands run there and nowhere else. Everything a command prints or writes is untrusted.
+
+**The design rests on a measured study** (KNOWLEDGE-bdc63cbf). This host is Windows 11 Home, with
+WSL2 and Docker Desktop and no Hyper-V, so ADR-09's microVM is not the first provider
+(DECISION-31b2c79d). Containers run inside the WSL2 VM: the host is behind a VM boundary, while
+containers share that VM's kernel. What the study found shapes the decisions:
+- the default network reaches the host, including its PostgreSQL port;
+- killing the client of `docker exec` or `docker run` does not stop the work, containers outlive
+  their client, and a process can leave its group; only killing a container is total;
+- `docker exec -u 0` is root in any container;
+- no disk quota is enforced for a workspace that persists between containers;
+- a bind mount is ~190x slower for small files, and a link made inside it appears on the host,
+  one of them as a reparse point `os.path.islink` does not report;
+- an exported tar carries absolute symlinks, hard links and FIFOs as they are.
+
+The attacks to design against are code that:
+- reaches the network or the host;
+- escapes the workspace through a link, on either side;
+- exhausts processes, memory, disk or output;
+- outlives its cancellation, its run or its `Runner`;
+- reads a secret it was never given.
+
+**The decisions.** The owner accepted P5-D1 to P5-D15 on 2026-10-24 (DECISION-47158c90), choosing
+P5-D1's scope, P5-D5's container per command and P5-D10's default of approval. At M38's
+pre-flight the owner moved the workspace tools and their approval (FR-146, FR-147) into M38, so a
+run uses its workspace from the first milestone (DECISION-97fb116b); P5-D15 reads as amended.
+
+| Decision | P5-D1 to P5-D15, 2026-10-24 |
+|---|---|
+| P5-D1 Split | Increment 1 is the workspace and sandboxed execution in single runs and in a plan's children. Increment 2 is stdio MCP servers inside the sandbox (P4-D25's deferral), snapshots, compute cost in budgets and network egress by allow list. Browser and computer-use tools come after increment 2, specified once it exists |
+| P5-D2 Abstraction | `WorkspaceSpec` (image, limits, lifetime) and a `WorkspaceProvider` protocol are defined first; the `WorkspaceManager` owns every workspace a `Runner` creates and is the only caller of a provider. ADR-09 is amended: a microVM is a later provider, not the first |
+| P5-D3 Providers | `DockerProvider`, driven through the `docker` CLI as a subprocess, adds no runtime dependency (NFR-6). `FakeProvider`, in process, keeps the same contract for gates (DECISION-31b2c79d); one contract test suite runs against both, the Docker half marked live |
+| P5-D4 Workspace | A workspace is a Docker volume mounted `volume-nocopy`, owned by uid 65534, labelled with its tenant, project, run and `Runner` instance. Never a host bind mount |
+| P5-D5 Execution | One container per command, removed when it ends, over the workspace's volume: a timeout or a cancel kills the container, the only total kill. ~0.4 s a command, against ~0.12 s for `exec` into a long-lived container whose commands cannot be killed totally |
+| P5-D6 Hardening | Fixed, never configurable down: `--network none`; `--cap-drop ALL`; `no-new-privileges`; read-only root with a size-capped `/tmp`; `--user 65534:65534` and never `exec -u`; `--pids-limit`; `--memory` equal to `--memory-swap`; `--cpus`; an empty environment apart from what `WorkspaceSpec` names; the image pinned by digest |
+| P5-D7 Disk | No quota exists here, so the bound is measured: the workspace's size is read after each command, and past `max_workspace_bytes` the workspace refuses further commands. Declared: one command can overshoot the bound before it is read |
+| P5-D8 Transfer | Files cross only as tar streams through the provider. The host accepts regular files and directories only, never a link, hard link, FIFO or device, with path, size and count bounds, through `tarfile`'s data filter plus a type allow list. The host never opens a path inside a workspace |
+| P5-D9 Tools | Tier 3 built-ins offered only to a run that has a workspace and whose `tool_profile` names them: `run_command` (an argument list, run without a shell unless the model calls one), `read_workspace_file`, `write_workspace_file` and `list_workspace`. Output is cut at `max_output_chars` and carries `Origin.INTERNAL_TOOL`, `TrustZone.UNTRUSTED`, `InstructionAuthority.DATA_ONLY`, `EXTERNAL_CONTENT` and `EXECUTABLE_CONTENT` |
+| P5-D10 Approval | `run_command` is `DESTRUCTIVE`, and by default every call needs approval through the approval manager, as an MCP tool's does (P4-D20). An agent may set it to `auto` in code; the sandbox's hardening does not depend on that choice |
+| P5-D11 Lifetime | A workspace lives as long as its run, or is kept by `WorkspaceSpec(keep=True)` until released. `Runner.aclose()` removes its own; a `Runner` reaps containers and volumes left by a dead `Runner`, by label. `max_concurrent_workspaces` bounds a `Runner`, and a plan's children each get their own workspace unless the plan shares one |
+| P5-D12 Artifacts | A file leaves the workspace only as an artifact, through `export_workspace_file`, into the Phase 2 `ArtifactStore`, with the run, the command that last wrote it and its taint as provenance |
+| P5-D13 Records | Migration `0019`: `workspaces` (provider, image digest, limits, created, removed) and `workspace_commands` (arguments, exit code, timings, output bytes, the reason it was killed), tenant-scoped; new events; the manifest records the provider, the digest and the limits |
+| P5-D14 Exit signal | Hostile code in the sandbox: a plan's children run model-written code that tries the network, the host's database port, a link out on both sides, a fork bomb, memory and disk exhaustion, endless output, a process that ignores cancellation, and a `Runner` killed mid-run. Each is contained, recorded and cleaned up, on both stores, ten times, and every live check meets DECISION-a00773b0 and DECISION-a7d6a1f5 |
+| P5-D15 Milestones | M38 the carried items, `WorkspaceSpec`, the provider protocol, `FakeProvider`, the records, and the workspace tools with their approval (example 32); M39 `DockerProvider`, hardening and transfer (example 33); M40 timeouts and cancellation (example 34); M41 artifacts, lifetime, reaping and concurrency, in plans (example 35); M42 the exit signal (example 36) |
+
+#### M38: the carried items, the workspace contract, the fake provider and the tools
+
+- FR-136: The items carried from M37's review are settled first (KNOWLEDGE-d9ea0d40). Each repair comes with a test that fails without it.
+  - **Example 31's "lost executions" clause runs live** for every run not cancelled, not only offline. A server's journal does not name the run that called it, so the clause counts per qualified tool: live, it fails when a tool's executions whose result reached no call outnumber that tool's calls that ended without a server result -- left in flight by a cancelled run, or timed out (DECISION-97fb116b).
+  - **Example 31's barrier waits longer than the hold.** The barrier's own timeout is greater than `HOLD_BOUND`, so a stepper waiting on it cannot be released by its own timeout before the hold has ended.
+  - **The exit-signal rules** of DECISION-a00773b0 (a live check holds under a model quoting earlier results; an id is recognised only where its producer places it) and DECISION-a7d6a1f5 (no vacuous live check; timeouts compared with those in force) apply to every example of this increment.
+- FR-137: `WorkspaceSpec` is a public frozen type in a new package, `agentsdk.workspace`, added to `pyproject.toml`'s `packages`. It imports only the standard library.
+  - **Its fields:**
+    - **`image`:** a reference pinned by digest, `<name>@sha256:<64 hex>`. A tag alone raises `ValueError`. The provider never pulls: an image absent from the host fails the workspace `WorkspaceUnavailable`, so a run never reaches the network to start one;
+    - **`memory_bytes`** (default 512 MiB), **`cpus`** (default 1.0), **`pids`** (default 128), **`tmp_bytes`** (default 64 MiB), **`max_workspace_bytes`** (default 1 GiB) and **`max_command_seconds`** (default 120): each a positive number with a fixed maximum, and none can be switched off;
+    - **`max_output_bytes`:** the most kept of each of a command's stdout and stderr, default 1 MiB; the rest is read and dropped;
+    - **`env`:** names to values a command receives, and nothing else (P5-D6). A value `unstorable_reason` refuses raises `ValueError`;
+    - **`scope`:** `"run"` (default), one workspace per run, or `"plan"`, one workspace shared by a plan's children whose specs say `"plan"` (P5-D11);
+    - **`keep`:** False by default (FR-151);
+    - **`run_command_approval`:** `ApprovalPolicy.REQUIRE_APPROVAL` by default (P5-D10).
+  - **Where it goes:** `AgentSpec` gains `workspace: WorkspaceSpec | None = None`. An agent without one is given no workspace and none of the workspace tools, and its `agent_spec_hash` is unchanged (NFR-41).
+- FR-138: The `WorkspaceProvider` protocol and the `WorkspaceManager` (P5-D2).
+  - **The protocol** has coroutines `create(spec, labels) -> handle`, `run(handle, argv, timeout, stdin=None) -> CommandOutcome`, `kill(handle, command_id)`, `size(handle) -> int`, `export(handle, path) -> tar bytes`, `import_(handle, tar bytes)`, `remove(handle)` and `list_owned(labels) -> handles`. `CommandOutcome` carries the exit code (None when killed), stdout and stderr as kept, whether each was cut, the duration, and `killed`: None, `"timeout"`, `"cancelled"` or `"limit"`.
+  - **The manager** is created by the `Runner`, `Runner(..., workspace_provider=None, max_concurrent_workspaces=4)`. It is the only caller of the provider, and it:
+    - creates a run's workspace when the run first needs it, never before;
+    - keys each workspace by tenant, project and run (or plan, under `scope="plan"`), so no run reaches another tenancy's workspace;
+    - serialises nothing across workspaces, and holds no lock across a provider call.
+  - **Without a provider:** a run whose agent has a workspace fails `WorkspaceUnavailable` before its first model call, with no workspace tools offered.
+  - **The loop thread:** a provider's subprocess I/O runs on the event loop through `asyncio` subprocesses; no store call is made on it (FR-81).
+- FR-139: `FakeProvider` is an in-process provider for tests and offline examples (P5-D3). It runs no host process and no model-written code.
+  - **Its workspace** is an in-memory tree of directories and regular files, whose size is the sum of its files' sizes.
+  - **Its commands** are Python callables registered by name; `run` dispatches on `argv[0]`, and an unregistered name exits 127 with `command not found` on stderr. A command may write the tree, print, sleep, ignore cancellation, or exceed a limit, so every limit FR-142 to FR-148 states is exercised in gates.
+  - **The contract suite,** `tests/workspace_contract.py`, holds every behaviour both providers share. It runs against `FakeProvider` in the gates and against `DockerProvider` in tests marked `docker`, which are run live before each review (DECISION-31b2c79d).
+- FR-140: Migration `0019` records workspaces and their commands (P5-D13). Every row carries its tenant and project (NFR-2).
+  - **`workspaces`:** its id, provider, image digest, the limits in force, the run (or plan) it serves, `created_at`, and `removed_at` and `removed_reason` (`run_ended`, `released`, `aclose`, `reaped`). The removal columns are its only update, made once.
+  - **`workspace_commands`:** written once when the command ends: its id, workspace, run and tool call id, `argv` as JSON, exit code, `killed`, start and end times, and the bytes each stream produced and kept. The output itself lives only in the tool result.
+  - **Events** (new `EventType` members): `WorkspaceCreated`, `WorkspaceCommandStarted`, `WorkspaceCommandEnded`, `WorkspaceRefused` (with the bound named), `WorkspaceWaiting` (FR-152) and `WorkspaceRemoved`.
+  - **The manifest** gains a `workspace` column: the provider, the image digest and the limits, never `env` values (NFR-37 applies to them).
+  - `tests/conftest.py`'s tracked tables gain both tables (NFR-16).
+- FR-146: The workspace tools (P5-D9) are never registered in the `Runner`'s `ToolRegistry`. Each turn, a run with a workspace adds to its view (FR-77) the ones its agent's `tool_profile` names, bound to that run's workspace. The executor resolves against the same view, as FR-125 does for MCP tools.
+  - **`run_command(argv, stdin=None, timeout_seconds=None)`:** `argv` is a non-empty list of strings, run without a shell; `timeout_seconds` is at most `max_command_seconds`, its default. The result states the exit code, `killed`, the duration, and stdout and stderr in labelled sections, each marked when cut. `risk_class` `DESTRUCTIVE`.
+  - **`read_workspace_file(path)`:** a regular file's text, decoded as UTF-8 with replacement. `READ_ONLY`.
+  - **`write_workspace_file(path, content)`:** creates or replaces a regular file, creating its parent directories. `WRITE`.
+  - **`list_workspace(path=".")`:** names, kinds and sizes, at most 1000 entries. `READ_ONLY`.
+  - **Paths:** relative, normalised, inside `/workspace`; anything else is refused at step 2.
+  - **Provenance:** every result and error carries `Origin.INTERNAL_TOOL`, `TrustZone.UNTRUSTED`, `InstructionAuthority.DATA_ONLY`, `EXTERNAL_CONTENT` and `EXECUTABLE_CONTENT`, cut at `max_output_chars` (FR-41, NFR-42).
+- FR-147: `run_command` requires approval unless its agent's `WorkspaceSpec.run_command_approval` is `AUTO` (P5-D10). The approver sees the full `argv` and `stdin`, as FR-113's sources do. Nothing else about the sandbox depends on this setting.
+- FR-141: `scripts/32_workspace.py` gives an agent a workspace on `FakeProvider` and the workspace tools, and shows a command's output, a non-zero exit, a command waiting for approval and then approved, a refused bound, and the records FR-140 writes. It runs offline on both stores and live.
+
+#### M39: the Docker provider, hardening and transfer
+
+- FR-142: `DockerProvider(docker="docker")` drives the `docker` CLI found on `PATH`, or the path given, through `asyncio` subprocesses with argument lists, never a shell (P5-D3).
+  - **A workspace** is a volume created with the labels `agentsdk.tenant`, `agentsdk.project`, `agentsdk.run`, `agentsdk.workspace` and `agentsdk.owner` (FR-151). Its root is owned by 65534 before any command runs, and it is mounted at `/workspace` with `volume-nocopy`, never a bind mount (P5-D4).
+  - **A command** is one container, `docker run --rm` over that volume with the same labels, working directory `/workspace`, and exactly these limits (P5-D6): `--network none`, `--cap-drop ALL`, `--security-opt no-new-privileges`, `--read-only`, `--tmpfs /tmp` capped at `tmp_bytes`, `--user 65534:65534`, `--pids-limit`, `--memory` and `--memory-swap` both `memory_bytes`, `--cpus`, and the image by digest. No other flag a model or a spec can reach is passed, and `docker exec` is never used (P5-D5).
+  - **Its environment** holds only `WorkspaceSpec.env`. Each is passed as `-e NAME`, its value given in the `docker` subprocess's own environment, so no value appears on a command line or in `docker inspect`'s `Cmd`.
+  - **Docker unavailable:** a missing CLI or a stopped daemon fails the workspace `WorkspaceUnavailable`, with the cause's class only.
+- FR-143: Files cross between host and workspace only as tar streams (P5-D8). `write_workspace_file` and FR-150's export use these, and nothing on the host opens a path inside a volume.
+  - **Into the workspace:** the SDK builds the tar itself: regular files only, owned by 65534, at normalised relative paths.
+  - **Out of the workspace:** the stream from `docker cp <container>:/workspace/<path> -` is read with `tarfile`'s `data_filter` and a type allow list. Only regular files and directories are accepted: a symlink, hard link, FIFO, device or absolute or `..` path fails the transfer and is named in the error.
+  - **Bounds:** a transfer over 16 MiB or 10,000 members fails while reading, never after.
+- FR-144: Bounds a container cannot enforce are measured.
+  - **Disk (P5-D7):** after each command the workspace's size is read. Past `max_workspace_bytes`, the workspace refuses every later command and write with `WorkspaceRefused`, which names the bound, until files are removed. Declared: one command can overshoot the bound before it is read; the overshoot is recorded.
+  - **Output:** each stream is read to its end and kept up to `max_output_bytes`. A command printing without end is ended by its timeout, not by the host's memory.
+- FR-145: `scripts/33_docker_workspace.py` runs example 32's agent on `DockerProvider` and shows `--network none`, the read-only root, the user, the limits in force, and an exported file. It runs live with Docker running, and prints `[SKIP] docker not running` otherwise; offline in the gates it runs on `FakeProvider`.
+
+#### M40: timeouts and cancellation
+
+- FR-148: A command ends on its own, on its timeout, or on cancellation, and in every case its container is gone before its result is recorded.
+  - **Timeout:** the container is killed; the result is a normal tool result with `killed: "timeout"`, so the model learns of it.
+  - **Cancellation:** cancelling the run kills the container, and the run reports cancelled only after the kill returns, bounded at 10 s (FR-50). A failed kill is recorded, and the container is removed later by its owner or by reaping (FR-151).
+  - **A process that ignores signals, forks, or leaves its group** ends with its container.
+- FR-149: `scripts/34_sandboxed_tools.py` has an agent write a program, run it, read what it wrote, have a command refused for approval and another approved, a command timed out, and a run cancelled mid-command. It runs offline on `FakeProvider` on both stores, and live on `DockerProvider`.
+
+#### M41: artifacts, lifetime and concurrency in plans
+
+- FR-150: `export_workspace_file(path, mime_type="application/octet-stream")` is a fifth workspace tool, `WRITE`, offered as FR-146 states (P5-D12). It reads the file through FR-143 and stores it in the run's `ArtifactStore` with `source_run` set to the run, and with the taint of FR-146's results plus the id of the last command that ran before it. It returns the `ArtifactRef`'s id. It is the only way a file leaves a workspace.
+- FR-151: A workspace's lifetime (P5-D11).
+  - **Ends with its run:** a `"run"` workspace is removed when its run ends, whatever its status; a `"plan"` workspace when its top-level run ends.
+  - **Kept:** with `keep=True` it stays until `Runner.release_workspace(tenant_id, project_id, workspace_id)`, or the `Runner`'s `aclose()`.
+  - **`aclose()`** kills every command the `Runner` started and removes every workspace it created, kept ones included.
+  - **Reaping:** every container and volume carries `agentsdk.owner`, the `Runner`'s process id and start time. Before its first workspace, a `Runner` removes those whose owner process is no longer running, and records `removed_reason='reaped'` on their rows. It never touches a container or volume without that label, nor one whose owner is alive.
+- FR-152: Concurrency and plans.
+  - **`max_concurrent_workspaces`** bounds the workspaces a `Runner` holds at once. A run needing one beyond it waits, cancellably, and `WorkspaceWaiting` records the wait.
+  - **A plan's children** each get their own workspace under `scope="run"`. Under `"plan"` they share one, each command still its own container, and no child sees another plan's workspace.
+  - **Concurrent commands** in one workspace each run in their own container; the SDK adds no lock between them.
+- FR-153: `scripts/35_workspace_plan.py` runs an orchestrated plan whose children write, run and export files, some sharing a plan workspace, and shows the artifacts, the removal of every workspace when the plan ends, and a kept workspace released. It runs offline on `FakeProvider` on both stores, and live on `DockerProvider`.
+
+#### M42: hostile code in the sandbox, the exit signal
+
+- FR-154: The exit signal (P5-D14) is a test and an example. `scripts/36_sandbox_contention.py` runs an orchestrated plan whose children run code that:
+  - opens a TCP connection to `host.docker.internal:5432` and to a public address, and resolves a name;
+  - makes links out of the workspace, absolute and relative, and exports them;
+  - forks without end, allocates without end, writes past `max_workspace_bytes`, and prints without end;
+  - ignores `SIGTERM` and leaves its process group, then is cancelled;
+  - prints its environment;
+
+  and a child `Runner` process is killed mid-command, then a new `Runner` starts.
+  - **Checked against the store, the provider and the commands' own output, on both stores.** Every check names its subject and has a witness, independent of the property, that its subject happened (KNOWLEDGE-1afcf6b2):
+    - no connection or name resolution succeeded;
+    - no link crossed: every export of one failed, and nothing outside a workspace changed;
+    - each exhaustion ended at its bound, recorded with the bound's name;
+    - no command outlived its timeout, its cancellation, its run or its `Runner`, and no container or volume with the SDK's labels remains after `aclose` and reaping;
+    - no value of the host's environment appears in any row, event, manifest or result, and a `WorkspaceSpec.env` value appears only in the result of a command that printed it (NFR-45);
+    - every command requiring approval ran only after an approve decision, at most once;
+    - every result is untrusted and data-only.
+  - **Repetitions:** the test runs it 10 times on `DockerProvider`, with the children's start order shuffled and random delays, as a live-marked test before review; the gates run the same plan on `FakeProvider`. Live, it checks only what must hold whatever the model decides, under DECISION-a00773b0 and DECISION-a7d6a1f5.
+
 ## Non-functional requirements
 
 - NFR-1: Provider-agnostic. Switching between `openai.*`, `bedrock.*`, `azure.*`, and `vertex_ai.*` models is a configuration change only — no SDK source file changes, no new adapter.
@@ -921,13 +1073,20 @@ KNOWLEDGE-9593410e.
   - any other edit an increment's work needs -- an invariant table gaining the new code's waits and loops, a fixture gaining a mode, an allowlist gaining a pinned dependency -- each named in its review prompt with its reason, and checked by content, never by modification time (owner, after M35).
 - NFR-39: No server process outlives its `Runner`. After `aclose()`, or once the `Runner` is garbage-collected with its event loop closed, no process a stdio server started is still running, its children included. This is measured on Windows by process id.
 
+- NFR-40: Phase 5's first increment adds no runtime dependency (NFR-6, NFR-33). `DockerProvider` runs the `docker` CLI as an external program, needed only when a `Runner` is given that provider; `import agentsdk` and every run without a workspace work with no Docker installed.
+- NFR-41: Runs without a workspace are unchanged. They send the same requests and record the same events and rows as before M38, apart from the manifest's `workspace` column, recorded empty; their `agent_spec_hash` is unchanged. A test pins this against the committed NFR-29 fixture, normalised as FR-111 states. The existing tests pass, with only the edits NFR-38's list allows, plus those FR-136 names, each listed in the review prompts.
+- NFR-42: Nothing from a workspace is trusted. Every result and error of a workspace tool, and every artifact exported from one, carries `TrustZone.UNTRUSTED`, `InstructionAuthority.DATA_ONLY`, `EXTERNAL_CONTENT` and `EXECUTABLE_CONTENT`, and nothing a command produces clears taint (ADR-26). FR-40's rule for errors raised before the tool ran, and an `after_tool` hook's power to replace provenance, are unchanged.
+- NFR-43: Nothing leaves a workspace except as a tool result or an exported artifact. No command reaches a network, the host or another workspace; no link, hard link, FIFO or device crosses to the host; and the host never opens a path inside a workspace (P5-D4, P5-D6, P5-D8).
+- NFR-44: No command outlives its bound. Once a command's timeout has passed, its run was cancelled or ended, or its `Runner` was closed, its container is gone, measured by listing containers by the SDK's labels; after `aclose()` no container or volume the `Runner` created remains, and after reaping none of a dead `Runner`'s remains.
+- NFR-45: No secret enters a workspace unless `WorkspaceSpec.env` names it. A command's environment holds those values only, never the host's; and those values, like MCP's (NFR-37), reach no row, event, manifest, span, log line, exception text or `docker` command line -- only the output of a command that prints them, and the arguments a model itself writes into a call, recorded as written, as every argument is (owner, M38 pre-review D7, DECISION-bb81ebbe).
+
 ## Constraints
 
 - Python with async/await, matching the existing FastAPI/LangGraph stack.
 - PostgreSQL is the sole durable backend; one database, multiple tables, no separate infrastructure per store.
 - The model endpoint is the configured `BASE_URL` LiteLLM gateway, authenticated by `MODEL_API_KEY` from `.env`. Both are read from environment, never committed.
 - The gateway blocks `GET /v1/models` at the Envoy layer (403 "fault filter abort"); the working model-listing path is `GET /models`. `POST /v1/chat/completions` works normally.
-- Windows development host: PostgreSQL 16 native service on localhost:5432, Docker daemon currently not running.
+- Windows development host: PostgreSQL 16 native service on localhost:5432. Docker Desktop 29.6.2 on WSL2 (Windows 11 Home: no Hyper-V) is started for Phase 5's live sandbox tests; the gates never need it (DECISION-31b2c79d).
 - Personal product development (ADR-04) — no external review gating.
 - M10's AC-28 creates real symlinks, which this host refuses without Windows Developer Mode (measured 2026-09-12: WinError 1314 for file and directory symlinks; junctions, hard links and alternate data streams succeed). Developer Mode must be on before M10's gate is run (D7).
 
@@ -943,6 +1102,7 @@ KNOWLEDGE-9593410e.
 - Phase 4's second increment has no HTTP+SSE transport, no sampling, roots or logging (all deprecated in MCP 2026-07-28), no tasks extension, no server discovery from a registry, and no sandbox for a stdio server (Phase 5). It publishes no agent as an MCP server (after Phase 4). Phase 4 approves tool calls only: no approval of a plan, a message or a claim's trust in increment 1, and no standing decision outlives its run (P4-D7).
 - A paused run resumes only in the `Runner` that paused it; restart-surviving resume and recovering a run paused at a crash are Phase 6 (P4-D2, P4-D14, ADR-29).
 - Phase 4's first increment ships no delete, move or patch tool, and its write tools create no directories (P4-D10).
+- Phase 5's first increment has no stdio MCP server inside the sandbox, no snapshot, no compute cost in budgets and no network for a workspace, not even by allow list (increment 2, P5-D1); no browser or computer-use tool (after increment 2); no microVM provider (ADR-09 amended, P5-D2). It never pulls or builds an image, runs no Windows container and offers no GPU. A workspace does not survive its `Runner`, except as debris reaping removes; resuming one is Phase 6.
 - No sandbox or workspace (Phase 5).
 - No durable interruptions, replay, or idempotency (Phase 6).
 - No context compaction in the first increment. The owner moved it from Phase 7 to Phase 2's second increment on 2026-09-14.
@@ -1234,6 +1394,38 @@ found the defects, turned into assertions.
     - it reads a stale listing again.
     - An input request over 64 KiB, in either mode and either era, records nothing and fails its call. One of exactly 64 KiB is recorded.
 
+### Phase 5, increment 1
+
+- AC-95: FR-136:
+  - **Example 31:** a journalled execution whose call is absent from a `completed` run fails the "lost executions" clause in its live checks, run over an offline record;
+  - **the barrier:** its timeout is greater than `HOLD_BOUND`, asserted on the values in force.
+- AC-96: FR-137 to FR-141, FR-146 and FR-147, on both stores, on `FakeProvider`:
+  - **The spec:** a tag without a digest, a limit at 0, over its maximum or switched off, and an `env` value `unstorable_reason` refuses each raise `ValueError`.
+  - **The manager:** a workspace is created at a run's first need and never before; two tenancies' runs, and two runs of one tenancy, never share a `"run"` workspace; a run without a provider fails `WorkspaceUnavailable` before its first model call.
+  - **The fake provider** honours every behaviour of the contract suite.
+  - **The records:** `workspaces` and `workspace_commands` hold what FR-140 states; a row's removal columns are written once; the manifest's `workspace` column names no `env` value.
+  - **The tools:** they are offered only to a run with a workspace whose profile names them, and a path outside `/workspace` is refused at step 2; `run_command` waits for approval by default and runs after an approve decision only, once, and with `AUTO` runs without one; every result and error carries NFR-42's labels.
+  - **NFR-41:** a run without a workspace matches the committed NFR-29 fixture.
+- AC-97: FR-142 to FR-145, in tests marked `docker`, run live before review:
+  - **The contract suite** passes on `DockerProvider` as on `FakeProvider`.
+  - **Hardening, observed from inside a command:** uid and gid 65534; no capability; `no_new_privs` set; no network interface but loopback; the root read-only; `/tmp` capped; the cgroup's memory, swap, CPU and pid limits equal the spec's.
+  - **The environment:** a command sees `WorkspaceSpec.env` and nothing of the host's; no value appears in `docker inspect`.
+  - **Transfer:** a symlink, absolute and relative, a hard link, a FIFO, an absolute path and a `..` path each fail an export, named; a stream over 16 MiB or 10,000 members fails while reading.
+  - **Bounds:** a write past `max_workspace_bytes` refuses the next command with `WorkspaceRefused` naming the bound, and the overshoot is recorded; a command printing 20 MB keeps `max_output_bytes` and is marked cut.
+- AC-98: FR-148 and FR-149, on both stores, on `FakeProvider` and, marked `docker`, on `DockerProvider`:
+  - FR-146 and FR-147's behaviour, settled on `FakeProvider` in M38, holds on `DockerProvider`;
+  - a timed-out command returns `killed: "timeout"`; a cancelled run reports cancelled only after its command's container is gone; a process ignoring `SIGTERM` that left its group is gone too;
+  - every result and error carries NFR-42's labels.
+- AC-99: FR-150 to FR-153, on both stores:
+  - an exported file is an artifact of its run with NFR-42's labels and the last command's id; a link exported fails;
+  - a `"run"` workspace is removed when its run ends, completed, failed or cancelled; a `"plan"` workspace when its top-level run ends; a kept one only when released or at `aclose`;
+  - reaping removes the containers and volumes of a dead owner, records `reaped`, and touches neither an unlabelled one nor one whose owner is alive;
+  - `max_concurrent_workspaces` holds, the wait is cancellable and recorded, and no child reaches another plan's workspace.
+- AC-100: FR-154, the exit signal, on both stores:
+  - **Example 36** holds every check of FR-154 ten times on `DockerProvider`, with the children's start order shuffled and random delays, and the gates hold its plan on `FakeProvider`.
+  - **Each check fails without its subject:** a test removes, in turn, `--network none`, the transfer filter, the pid limit, the disk bound, the container kill on cancel, and reaping. Each removal fails the check that names it.
+  - **NFR-40:** the package's runtime dependencies are unchanged.
+
 ## Risks
 
 - **A published history publishes every file ever committed.** Removing a file from the tree does not remove it from history, so an exclusion applied only to the current tree publishes the excluded file anyway. Mitigation: decide what is published per commit, not per tree, before the first push.
@@ -1264,6 +1456,10 @@ found the defects, turned into assertions.
 - **A running walk can delay interpreter exit** by up to its 20-second budget, because pool threads are joined at exit. Mitigation: stated; the walk budget bounds it.
 - **Artifact reads carry hex.** psycopg reads `BYTEA` as text by default, so a 10 MiB read carries about 20 MiB. Mitigation: bounded by the cap and the pool size; the store reads `content` in binary where it can.
 - **The comparison is not like for like.** The arms use different wire formats, only the Claude arm sends cache markers, and the Claude Agent SDK's own cost is an estimate. Mitigation: one `ModelPricing` for both arms, the estimate labelled separately, and each arm's wire format named in the report.
+- **Containers share a kernel.** A kernel exploit inside one container reaches the WSL2 VM and every other workspace, though not the Windows host directly. Mitigation: no capability, no new privileges, seccomp's default profile, a non-root user and no network; a microVM provider remains possible behind the same protocol (P5-D2).
+- **Docker Desktop is in the trust base.** Its daemon runs every command, and its VM's other contents (another project's images and containers) share that VM. Mitigation: the SDK touches only what carries its labels, and pins its image by digest.
+- **The disk bound is measured, not enforced.** A command can fill the VM's disk before the workspace's size is read. Mitigation: the overshoot is bounded by one command's timeout and recorded; a quota needs a provider with one.
+- **An image is code the user chose.** Whatever is in it runs with every command. Mitigation: a digest, never a tag, recorded in the manifest; the SDK never pulls one.
 - **An MCP server is code the SDK runs.** A stdio server runs with the user's rights, outside any sandbox, until Phase 5. Mitigation: servers come only from code-level configuration, the exact command is in the manifest, and the Job Object ends the process tree with the `Runner` (P4-D25, NFR-39).
 - **The MCP library moves fast.** `mcp` 2.0.0 shipped on 2026-07-28 and 2.3.0 by 2026-10-02, and whether it handles `input_required` itself is unverified. Mitigation: one pinned version (P4-D24), with M36's pre-flight settling MRTR before any requirement depends on it.
 - **A catalog read can be late.** A server that changes a tool without notifying is caught only at the next read. Mitigation: results stay untrusted whatever the catalog says (NFR-35), and listings are re-read before a turn's first call once they are older than 60 seconds.

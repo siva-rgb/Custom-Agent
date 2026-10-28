@@ -1,0 +1,496 @@
+"""Workspaces: where an agent's commands run (Phase 5, P5-D1 to P5-D15).
+
+A run whose agent has a `WorkspaceSpec` is given a workspace the first time one of its
+workspace tools needs it (FR-138). The `Runner`'s `WorkspaceManager` is the only caller of its
+`WorkspaceProvider`; `FakeProvider` keeps the provider contract in process for tests and
+offline examples, and runs no host process and no model-written code (FR-139).
+
+Imports nothing outside the standard library and the SDK (FR-137, NFR-40).
+"""
+
+from __future__ import annotations
+
+import asyncio
+import io
+import math
+import posixpath
+import re
+import tarfile
+import time
+import uuid
+from collections.abc import Awaitable, Callable, Mapping
+from dataclasses import dataclass, field
+from types import MappingProxyType
+from typing import Any, Protocol, runtime_checkable
+
+from ..errors import WorkspaceUnavailable
+from ..primitives import unstorable_reason
+from ..tools import ApprovalPolicy
+
+__all__ = [
+    "CommandOutcome",
+    "FakeCommand",
+    "FakeFiles",
+    "FakeProvider",
+    "WorkspaceHandle",
+    "WorkspaceProvider",
+    "WorkspaceSpec",
+]
+
+_MiB, _GiB = 2**20, 2**30
+_DIGEST = re.compile(r"[a-z0-9][a-z0-9._/:-]*@sha256:[0-9a-f]{64}")
+_ENV_NAME = re.compile(r"[A-Za-z_][A-Za-z0-9_]*")
+# Each limit's default and fixed maximum (FR-137). None can be switched off.
+_LIMITS: dict[str, tuple[float, float, type]] = {
+    "memory_bytes": (512 * _MiB, 16 * _GiB, int),
+    "cpus": (1.0, 16.0, float),
+    "pids": (128, 4096, int),
+    "tmp_bytes": (64 * _MiB, 1 * _GiB, int),
+    "max_workspace_bytes": (1 * _GiB, 64 * _GiB, int),
+    "max_command_seconds": (120, 3600, float),
+    "max_output_bytes": (1 * _MiB, 16 * _MiB, int),
+}
+SCOPES = ("run", "plan")
+
+
+def _limit(name: str, value: Any) -> float:
+    _, maximum, kind = _LIMITS[name]
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        raise ValueError(f"WorkspaceSpec.{name} must be a number, got {type(value).__name__}")
+    if kind is int and not isinstance(value, int):
+        raise ValueError(f"WorkspaceSpec.{name} must be a whole number, got {value!r}")
+    if not math.isfinite(value) or value <= 0 or value > maximum:
+        raise ValueError(f"WorkspaceSpec.{name} must be over 0 and at most {maximum}, got {value!r}")
+    return value
+
+
+@dataclass(frozen=True)
+class WorkspaceSpec:
+    """FR-137: what a run's workspace is made from and bound by. Frozen; `env`'s values are never
+    shown -- not by `repr`, `record()`, a row, an event or the manifest (NFR-45)."""
+
+    image: str
+    memory_bytes: int = _LIMITS["memory_bytes"][0]
+    cpus: float = _LIMITS["cpus"][0]
+    pids: int = _LIMITS["pids"][0]
+    tmp_bytes: int = _LIMITS["tmp_bytes"][0]
+    max_workspace_bytes: int = _LIMITS["max_workspace_bytes"][0]
+    max_command_seconds: float = _LIMITS["max_command_seconds"][0]
+    max_output_bytes: int = _LIMITS["max_output_bytes"][0]
+    env: Mapping[str, str] = field(default_factory=dict, repr=False)
+    scope: str = "run"
+    keep: bool = False
+    run_command_approval: ApprovalPolicy = ApprovalPolicy.REQUIRE_APPROVAL
+
+    def __post_init__(self) -> None:
+        # P5-D6: by digest, never a tag, so what runs is what was recorded; the provider never
+        # pulls, so a run never reaches the network to start one.
+        if not isinstance(self.image, str) or not _DIGEST.fullmatch(self.image):
+            raise ValueError("WorkspaceSpec.image must be pinned by digest: <name>@sha256:<64 lowercase hex>")
+        for name in _LIMITS:
+            _limit(name, getattr(self, name))
+        if not isinstance(self.env, Mapping):
+            raise ValueError(f"WorkspaceSpec.env must map names to values, got {type(self.env).__name__}")
+        env = {}
+        for name, value in self.env.items():
+            if not isinstance(name, str) or not _ENV_NAME.fullmatch(name):
+                raise ValueError(f"WorkspaceSpec.env has an invalid name: {name!r}")
+            if not isinstance(value, str):
+                raise ValueError(f"WorkspaceSpec.env[{name!r}] must be a str, got {type(value).__name__}")
+            if unstorable_reason(value) is not None or "\x00" in value:
+                # Named, never shown: the value itself is the secret (NFR-45).
+                raise ValueError(f"WorkspaceSpec.env[{name!r}] is a value no store or process can take")
+            env[name] = value
+        object.__setattr__(self, "env", MappingProxyType(env))
+        if self.scope not in SCOPES:
+            raise ValueError(f"WorkspaceSpec.scope must be one of {SCOPES}, got {self.scope!r}")
+        if not isinstance(self.keep, bool):
+            raise ValueError(f"WorkspaceSpec.keep must be a bool, got {type(self.keep).__name__}")
+        if not isinstance(self.run_command_approval, ApprovalPolicy):
+            raise ValueError("WorkspaceSpec.run_command_approval must be an ApprovalPolicy")
+
+    def record(self) -> dict[str, Any]:
+        """What the manifest and the `workspaces` row record: the image, the limits in force, the
+        scope, and the env's names -- never its values (FR-140)."""
+        return {
+            "image": self.image,
+            **{name: getattr(self, name) for name in _LIMITS},
+            "env": sorted(self.env),
+            "scope": self.scope,
+            "keep": self.keep,
+            "run_command_approval": self.run_command_approval.value,
+        }
+
+
+@dataclass(frozen=True)
+class CommandOutcome:
+    """FR-138: how one command ended. `exit_code` is None when it was killed; `killed` says why:
+    None, "timeout", "cancelled" or "limit". Each stream is kept up to the spec's
+    `max_output_bytes` and marked cut past it, with the bytes it produced counted."""
+
+    exit_code: int | None
+    stdout: bytes
+    stderr: bytes
+    stdout_cut: bool
+    stderr_cut: bool
+    stdout_bytes: int
+    stderr_bytes: int
+    duration: float
+    killed: str | None = None
+
+
+@dataclass(frozen=True)
+class WorkspaceHandle:
+    """A provider's reference to one workspace. `workspace_id` names it everywhere."""
+
+    workspace_id: str
+    spec: WorkspaceSpec
+    labels: Mapping[str, str] = field(default_factory=dict)
+
+
+@runtime_checkable
+class WorkspaceProvider(Protocol):
+    """FR-138, P5-D2: what the `WorkspaceManager` asks of a provider. Every method is a
+    coroutine. `run` never raises for what a command does -- its exit, a timeout, a kill, a limit
+    are its `CommandOutcome` -- and raises `WorkspaceUnavailable` when the workspace cannot run
+    anything. `import_` takes a tar stream of regular files and directories only, and raises
+    `ValueError` for anything else (P5-D8); `export` returns one, and raises
+    `FileNotFoundError` for a missing path."""
+
+    name: str
+
+    async def create(self, spec: WorkspaceSpec, labels: Mapping[str, str]) -> WorkspaceHandle: ...
+
+    async def run(self, handle: WorkspaceHandle, argv: list[str], *, timeout: float, stdin: bytes | None = None,
+                  command_id: str | None = None) -> CommandOutcome: ...
+
+    async def kill(self, handle: WorkspaceHandle, command_id: str) -> None: ...
+
+    async def size(self, handle: WorkspaceHandle) -> int: ...
+
+    async def export(self, handle: WorkspaceHandle, path: str) -> bytes: ...
+
+    async def import_(self, handle: WorkspaceHandle, data: bytes) -> None: ...
+
+    async def remove(self, handle: WorkspaceHandle) -> None: ...
+
+    async def list_owned(self, labels: Mapping[str, str]) -> list[WorkspaceHandle]: ...
+
+
+# =================================================================================================
+# FakeProvider (FR-139)
+# =================================================================================================
+
+
+def normal_path(path: str) -> str:
+    """A workspace path as the fake keeps it: relative, `/`-separated, normalised. Anything that
+    would leave the workspace raises ValueError (the tools refuse it earlier, at step 2)."""
+    if not isinstance(path, str) or "\x00" in path or "\\" in path or path.startswith("/"):
+        raise ValueError(f"not a workspace path: {path!r}")
+    parts = [p for p in path.split("/") if p not in ("", ".")]
+    if any(p == ".." for p in parts):
+        raise ValueError(f"not a workspace path: {path!r}")
+    return "/".join(parts)
+
+
+class FakeFiles:
+    """FR-139: a fake workspace's tree, directories and regular files only. Writes from a command
+    that was killed are discarded: a kill is total (P5-D5)."""
+
+    def __init__(self) -> None:
+        self._files: dict[str, bytes] = {}
+        self._dirs: set[str] = set()
+
+    def size(self) -> int:
+        return sum(len(data) for data in self._files.values())
+
+    def read(self, path: str) -> bytes:
+        key = normal_path(path)
+        if key not in self._files:
+            raise FileNotFoundError(path)
+        return self._files[key]
+
+    def write(self, path: str, data: bytes | str) -> None:
+        key = normal_path(path)
+        if not key or key in self._dirs:
+            raise IsADirectoryError(path)
+        parent = posixpath.dirname(key)
+        while parent:
+            if parent in self._files:
+                raise NotADirectoryError(parent)
+            self._dirs.add(parent)
+            parent = posixpath.dirname(parent)
+        self._files[key] = data.encode("utf-8") if isinstance(data, str) else bytes(data)
+
+    def exists(self, path: str) -> bool:
+        key = normal_path(path)
+        return key == "" or key in self._files or key in self._dirs
+
+    def is_dir(self, path: str) -> bool:
+        key = normal_path(path)
+        return key == "" or key in self._dirs
+
+    def listdir(self, path: str = "") -> list[tuple[str, str, int]]:
+        """(name, "file" or "dir", size) of each direct entry, sorted by name."""
+        key = normal_path(path)
+        if not self.is_dir(key):
+            raise (NotADirectoryError if key in self._files else FileNotFoundError)(path)
+        prefix = f"{key}/" if key else ""
+        found: dict[str, tuple[str, int]] = {}
+        for name, data in self._files.items():
+            if name.startswith(prefix) and "/" not in name[len(prefix):]:
+                found[name[len(prefix):]] = ("file", len(data))
+        for name in self._dirs:
+            if name.startswith(prefix) and name != key and "/" not in name[len(prefix):]:
+                found[name[len(prefix):]] = ("dir", 0)
+        return [(name, kind, size) for name, (kind, size) in sorted(found.items())]
+
+    def remove(self, path: str) -> None:
+        key = normal_path(path)
+        if key in self._files:
+            del self._files[key]
+            return
+        raise FileNotFoundError(path)
+
+    def tar(self, path: str) -> bytes:
+        key = normal_path(path)
+        if not self.exists(key):
+            raise FileNotFoundError(path)
+        buffer = io.BytesIO()
+        with tarfile.open(fileobj=buffer, mode="w") as tar:
+            if key in self._files:
+                self._add(tar, posixpath.basename(key), self._files[key])
+            else:
+                base = f"{key}/" if key else ""
+                directory = tarfile.TarInfo(".")
+                directory.type, directory.mode = tarfile.DIRTYPE, 0o755
+                tar.addfile(directory)
+                for name in sorted(n for n in self._dirs if n.startswith(base)):
+                    info = tarfile.TarInfo("./" + name[len(base):])
+                    info.type, info.mode = tarfile.DIRTYPE, 0o755
+                    tar.addfile(info)
+                for name, data in sorted(self._files.items()):
+                    if name.startswith(base):
+                        self._add(tar, "./" + name[len(base):], data)
+        return buffer.getvalue()
+
+    @staticmethod
+    def _add(tar: tarfile.TarFile, name: str, data: bytes) -> None:
+        info = tarfile.TarInfo(name)
+        info.size, info.mode, info.uid, info.gid = len(data), 0o644, 65534, 65534
+        tar.addfile(info, io.BytesIO(data))
+
+    def untar(self, data: bytes) -> None:
+        """Regular files and directories only (P5-D8); anything else refuses the whole stream,
+        before anything is written."""
+        staged: list[tuple[str, bytes | None]] = []
+        try:
+            with tarfile.open(fileobj=io.BytesIO(data)) as tar:
+                for member in tar.getmembers():
+                    if not (member.isfile() or member.isdir()):
+                        raise ValueError(f"not a regular file or directory: {member.name!r}")
+                    key = normal_path(member.name)
+                    staged.append((key, tar.extractfile(member).read() if member.isfile() else None))
+        except tarfile.TarError as exc:
+            raise ValueError(f"not a tar stream: {type(exc).__name__}") from None
+        for key, content in staged:
+            # Nothing may turn a file into a folder or a folder into a file (pre-review D9).
+            if (content is None and key in self._files) or (content is not None and key in self._dirs):
+                raise ValueError(f"{key!r} is already a {'file' if content is None else 'folder'}")
+        for key, content in staged:
+            if content is None:
+                if key:
+                    self._dirs.add(key)
+            else:
+                self.write(key, content)
+
+
+class _Killed(BaseException):
+    """Raised inside a fake command that went over a limit."""
+
+    def __init__(self, limit: str) -> None:
+        self.limit = limit
+
+
+class _CommandFiles:
+    """One command's view of its workspace's files. Once the command is killed its writes go
+    nowhere -- through this view, however the command holds it (pre-review D6)."""
+
+    def __init__(self, tree: FakeFiles) -> None:
+        self._tree, self.alive = tree, True
+
+    def size(self) -> int:
+        return self._tree.size()
+
+    def read(self, path: str) -> bytes:
+        return self._tree.read(path)
+
+    def exists(self, path: str) -> bool:
+        return self._tree.exists(path)
+
+    def is_dir(self, path: str) -> bool:
+        return self._tree.is_dir(path)
+
+    def listdir(self, path: str = "") -> list[tuple[str, str, int]]:
+        return self._tree.listdir(path)
+
+    def write(self, path: str, data: bytes | str) -> None:
+        if self.alive:
+            self._tree.write(path, data)
+
+    def remove(self, path: str) -> None:
+        if self.alive:
+            self._tree.remove(path)
+
+
+class FakeCommand:
+    """What a fake command sees: its argv, stdin and environment, the workspace's files, and its
+    two output streams, each kept up to the spec's `max_output_bytes` and counted past it."""
+
+    def __init__(self, argv: list[str], stdin: bytes | None, env: Mapping[str, str], files: _CommandFiles,
+                 keep: int) -> None:
+        self.argv, self.stdin, self.env, self.files = list(argv), stdin, dict(env), files
+        self._keep = keep
+        self._out, self._err = bytearray(), bytearray()
+        self.out_bytes = self.err_bytes = 0
+
+    def _write(self, buffer: bytearray, data: bytes | str) -> int:
+        data = data.encode("utf-8") if isinstance(data, str) else bytes(data)
+        room = self._keep - len(buffer)
+        if room > 0:
+            buffer += data[:room]
+        return len(data)
+
+    def out(self, data: bytes | str) -> None:
+        self.out_bytes += self._write(self._out, data)
+
+    def err(self, data: bytes | str) -> None:
+        self.err_bytes += self._write(self._err, data)
+
+    async def sleep(self, seconds: float) -> None:
+        await asyncio.sleep(seconds)
+
+    def limit(self, name: str) -> None:
+        """Ends the command as a container's limit would: killed, `killed="limit"`."""
+        raise _Killed(name)
+
+
+FakeCommandFn = Callable[[FakeCommand], Awaitable[int]]
+
+
+class _FakeWorkspace:
+    def __init__(self, handle: WorkspaceHandle) -> None:
+        self.handle = handle
+        self.files = FakeFiles()
+        self.running: dict[str, asyncio.Task[Any]] = {}
+        self.kills: dict[str, asyncio.Event] = {}
+
+
+class FakeProvider:
+    """FR-139: a provider in process. Commands are Python callables registered by name, dispatched
+    on `argv[0]`; an unregistered name exits 127. Every limit a container enforces can be
+    exercised: a timeout and a kill end the command totally -- one that ignores its cancellation
+    is abandoned, and whatever it writes afterwards is discarded -- and `FakeCommand.limit` ends
+    it as an exhausted limit would. No host process is started."""
+
+    name = "fake"
+
+    def __init__(self, commands: Mapping[str, FakeCommandFn] | None = None) -> None:
+        self._commands = dict(commands or {})
+        self._spaces: dict[str, _FakeWorkspace] = {}
+
+    def _space(self, handle: WorkspaceHandle) -> _FakeWorkspace:
+        space = self._spaces.get(handle.workspace_id)
+        if space is None:
+            raise WorkspaceUnavailable(f"workspace {handle.workspace_id} does not exist")
+        return space
+
+    async def create(self, spec: WorkspaceSpec, labels: Mapping[str, str]) -> WorkspaceHandle:
+        workspace_id = labels.get("agentsdk.workspace") or str(uuid.uuid4())
+        handle = WorkspaceHandle(workspace_id=workspace_id, spec=spec, labels=MappingProxyType(dict(labels)))
+        self._spaces[workspace_id] = _FakeWorkspace(handle)
+        return handle
+
+    async def run(self, handle: WorkspaceHandle, argv: list[str], *, timeout: float, stdin: bytes | None = None,
+                  command_id: str | None = None) -> CommandOutcome:
+        space = self._space(handle)
+        command_id = command_id or str(uuid.uuid4())
+        fn = self._commands.get(argv[0]) if argv else None
+        files = _CommandFiles(space.files)
+        command = FakeCommand(argv, stdin, handle.spec.env, files, handle.spec.max_output_bytes)
+        started = time.monotonic()
+        if fn is None:
+            command.err(f"{argv[0] if argv else ''}: command not found\n")
+            return self._outcome(command, 127, started)
+        task = asyncio.ensure_future(fn(command))
+        space.running[command_id] = task
+        space.kills[command_id] = kill = asyncio.Event()
+        killing = asyncio.ensure_future(kill.wait())
+        killed: str | None = None
+        exit_code: int | None = None
+        try:
+            # A kill returns at once, even from a command that ignores its cancellation.
+            done, _ = await asyncio.wait({task, killing}, timeout=timeout, return_when=asyncio.FIRST_COMPLETED)
+            done.discard(killing)
+            if kill.is_set():
+                killed = "cancelled"
+            elif not done:
+                killed = "timeout"
+            else:
+                try:
+                    exit_code = int(task.result())
+                except _Killed:
+                    killed = "limit"
+                except asyncio.CancelledError:
+                    killed = "cancelled"
+                except Exception as exc:  # noqa: BLE001 - a command that raised exits 1, as a process would
+                    command.err(f"{type(exc).__name__}: {exc}\n")
+                    exit_code = 1
+        finally:
+            killing.cancel()
+            space.running.pop(command_id, None)
+            space.kills.pop(command_id, None)
+            if not task.done():
+                # Total: the command is cancelled and abandoned, and whatever it does afterwards
+                # reaches no workspace.
+                files.alive = False
+                task.cancel()
+                task.add_done_callback(lambda t: t.cancelled() or t.exception())
+        return self._outcome(command, None if killed else exit_code, started, killed)
+
+    @staticmethod
+    def _outcome(command: FakeCommand, exit_code: int | None, started: float, killed: str | None = None):
+        return CommandOutcome(
+            exit_code=exit_code, stdout=bytes(command._out), stderr=bytes(command._err),
+            stdout_cut=command.out_bytes > len(command._out), stderr_cut=command.err_bytes > len(command._err),
+            stdout_bytes=command.out_bytes, stderr_bytes=command.err_bytes, duration=time.monotonic() - started,
+            killed=killed)
+
+    async def kill(self, handle: WorkspaceHandle, command_id: str) -> None:
+        space = self._spaces.get(handle.workspace_id)
+        if space is None:
+            return
+        task, kill = space.running.get(command_id), space.kills.get(command_id)
+        if task is not None and kill is not None and not task.done():
+            kill.set()
+            task.cancel()
+
+    async def size(self, handle: WorkspaceHandle) -> int:
+        return self._space(handle).files.size()
+
+    async def export(self, handle: WorkspaceHandle, path: str) -> bytes:
+        return self._space(handle).files.tar(path)
+
+    async def import_(self, handle: WorkspaceHandle, data: bytes) -> None:
+        self._space(handle).files.untar(data)
+
+    async def remove(self, handle: WorkspaceHandle) -> None:
+        space = self._spaces.pop(handle.workspace_id, None)
+        if space is None:
+            return
+        for command_id in list(space.running):
+            await self.kill(handle, command_id)
+
+    async def list_owned(self, labels: Mapping[str, str]) -> list[WorkspaceHandle]:
+        return [s.handle for s in self._spaces.values()
+                if all(s.handle.labels.get(k) == v for k, v in labels.items())]

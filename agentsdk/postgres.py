@@ -947,6 +947,8 @@ class PostgresRunStore:
         approval_timeout = manifest.get("approval_timeout")
         # FR-123 (0016): NULL for every manifest before M33.
         mcp_servers = manifest.get("mcp_servers")
+        # FR-140 (0019): NULL for a run without a workspace, and every manifest before M38.
+        workspace = manifest.get("workspace")
         conn.execute(
             """
                 INSERT INTO execution_manifests (
@@ -955,12 +957,12 @@ class PostgresRunStore:
                     model_adapter_version, tool_spec_hashes, policy_version,
                     max_output_tokens, reasoning_effort, pricing, scheduler_limits,
                     budget_policy, budget_reservations, price_table_date, tools_sent, gate_policy,
-                    approval_timeout, mcp_servers
+                    approval_timeout, mcp_servers, workspace
                 )
                 -- Tenancy from the run row, as everywhere else. Inside
                 -- start_run the row is written in this same transaction, so
                 -- the SELECT sees it.
-                SELECT r.run_id, r.tenant_id, r.project_id, %s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s
+                SELECT r.run_id, r.tenant_id, r.project_id, %s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s
                 FROM runs r
                 WHERE r.run_id = %s AND r.tenant_id = %s AND r.project_id = %s
             """,
@@ -984,6 +986,7 @@ class PostgresRunStore:
                 Jsonb(gate_policy) if gate_policy is not None else None,
                 approval_timeout,
                 Jsonb(mcp_servers) if mcp_servers is not None else None,
+                Jsonb(workspace) if workspace is not None else None,
                 scope.run_id,
                 scope.tenant_id,
                 scope.project_id,
@@ -2152,3 +2155,91 @@ class PostgresCatalogStore:
                 " AND v.kind = %s ORDER BY a.tool_name, a.seq DESC",
                 (tenant_id, project_id, alias, list(tool_names), kind)).fetchall()
         return {r[4]: self._version(r) for r in rows}
+
+
+class PostgresWorkspaceStore:
+    """FR-140's durable store (migration 0019): each workspace a Runner created and each command it
+    ran. A workspace row is written once and its removal filled once, which a trigger enforces; a
+    command row is written once. Every statement names its tenant and project. Synchronous:
+    callers on an event loop use a worker thread (FR-81)."""
+
+    def __init__(self, dsn: str) -> None:
+        self._dsn = dsn
+
+    _SPACE = ("workspace_id, tenant_id, project_id, run_id, scope, provider, image, limits, created_at,"
+              " removed_at, removed_reason")
+    _COMMAND = ("command_id, workspace_id, tenant_id, project_id, run_id, tool_call_id, argv, exit_code, killed,"
+                " started_at, ended_at, stdout_bytes, stderr_bytes, stdout_kept, stderr_kept")
+
+    @staticmethod
+    def _space(row: Any) -> Any:
+        from .workspace.records import WorkspaceRecord
+
+        return WorkspaceRecord(str(row[0]), row[1], row[2], str(row[3]), row[4], row[5], row[6], row[7], row[8],
+                               row[9], row[10])
+
+    @staticmethod
+    def _command(row: Any) -> Any:
+        from .workspace.records import CommandRecord
+
+        return CommandRecord(str(row[0]), str(row[1]), row[2], row[3], str(row[4]), row[5], row[6], row[7], row[8],
+                             row[9], row[10], row[11], row[12], row[13], row[14])
+
+    def record_workspace(self, record: Any) -> None:
+        with _checkout(self._dsn) as conn, conn.transaction():
+            conn.execute(
+                f"INSERT INTO workspaces ({self._SPACE}) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)",
+                (record.workspace_id, record.tenant_id, record.project_id, record.run_id, record.scope,
+                 record.provider, record.image, Jsonb(record.limits), record.created_at, record.removed_at,
+                 record.removed_reason))
+
+    def record_removal(self, tenant_id: str, project_id: str, workspace_id: str, reason: str,
+                       removed_at: datetime | None = None) -> bool:
+        """Fills a workspace's removal, once: False when it was already removed, or is not a
+        workspace of this tenant and project."""
+        from .workspace.records import REMOVAL_REASONS
+
+        if reason not in REMOVAL_REASONS:
+            raise ValueError(f"unknown removal reason: {reason!r}")
+        try:
+            workspace_id = str(uuid.UUID(str(workspace_id)))
+        except ValueError:
+            return False
+        with _checkout(self._dsn) as conn, conn.transaction():
+            done = conn.execute(
+                "UPDATE workspaces SET removed_at = %s, removed_reason = %s WHERE workspace_id = %s"
+                " AND tenant_id = %s AND project_id = %s AND removed_at IS NULL",
+                (removed_at or datetime.now(timezone.utc), reason, workspace_id, tenant_id, project_id))
+            return done.rowcount == 1
+
+    def record_command(self, record: Any) -> None:
+        with _checkout(self._dsn) as conn, conn.transaction():
+            # Tenancy from the workspace row: a command is never recorded against another
+            # tenancy's workspace.
+            done = conn.execute(
+                f"INSERT INTO workspace_commands ({self._COMMAND}) SELECT %s, w.workspace_id, w.tenant_id,"
+                " w.project_id, %s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s FROM workspaces w WHERE w.workspace_id = %s"
+                " AND w.tenant_id = %s AND w.project_id = %s",
+                (record.command_id, record.run_id, record.tool_call_id, Jsonb(list(record.argv)), record.exit_code,
+                 record.killed, record.started_at, record.ended_at, record.stdout_bytes, record.stderr_bytes,
+                 record.stdout_kept, record.stderr_kept, record.workspace_id, record.tenant_id, record.project_id))
+            if done.rowcount != 1:
+                raise ValueError(f"no workspace {record.workspace_id} in this tenant and project")
+
+    def workspaces(self, tenant_id: str, project_id: str, run_id: str | None = None) -> list[Any]:
+        with _checkout(self._dsn) as conn:
+            rows = conn.execute(
+                f"SELECT {self._SPACE} FROM workspaces WHERE tenant_id = %s AND project_id = %s"
+                " AND (%s::uuid IS NULL OR run_id = %s::uuid) ORDER BY created_at",
+                (tenant_id, project_id, run_id, run_id)).fetchall()
+        return [self._space(r) for r in rows]
+
+    def commands(self, tenant_id: str, project_id: str, run_id: str | None = None,
+                 workspace_id: str | None = None) -> list[Any]:
+        with _checkout(self._dsn) as conn:
+            rows = conn.execute(
+                f"SELECT {self._COMMAND} FROM workspace_commands WHERE tenant_id = %s AND project_id = %s"
+                " AND (%s::uuid IS NULL OR run_id = %s::uuid) AND (%s::uuid IS NULL OR workspace_id = %s::uuid)"
+                " ORDER BY started_at",
+                (tenant_id, project_id, run_id, run_id, workspace_id, workspace_id)).fetchall()
+        return [self._command(r) for r in rows]

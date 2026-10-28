@@ -161,6 +161,17 @@ persisted so you can reconstruct exactly what happened afterwards.
   run met can be accepted from anywhere. An input request whose message, with
   its schema or URL, is over 64 KiB as JSON is refused, recorded nowhere, and
   fails its call `input request too large`.
+- **Runs an agent's commands in a workspace, not on the host** (M38, Phase 5's
+  first increment): an agent whose spec has a `WorkspaceSpec` is given a
+  workspace the first time one of its workspace tools needs it --
+  `run_command`, `read_workspace_file`, `write_workspace_file` and
+  `list_workspace`, offered only when its profile names them -- through the
+  Runner's `workspace_provider`. `run_command` waits for approval by default,
+  every result is untrusted executable data, a workspace past
+  `max_workspace_bytes` refuses further work by name, and the workspace, each
+  command and its removal are recorded on both stores. M38's provider is
+  `FakeProvider`, in process, for tests and offline examples; M39 runs commands
+  in Docker containers.
 - **Fetches each page once, however many agents ask** (M24's claim-lock): one
   holder per page and per statement, across the tasks of a process and the
   processes sharing the database; the others wait, then take the holder's
@@ -232,6 +243,14 @@ Stated plainly, because an SDK that overstates itself costs you a week:
 | `Runner.mcp_blocked` reads through the tenancy's connection, as `mcp_resources` does: it starts a server not yet started, and a restart it causes counts toward the server's one restart. It lists the tools the server lists now, never one the SDK skipped as unusable (M37) | Declared (M37) |
 | Live, examples 30 and 31 report a check whose subject the model never brought about as `[SKIP] not exercised`, naming why. In example 31 a subject is the least the servers' own journals show happened -- a server ran anything, a call that asks ran, the server asked -- so a violation fails rather than skips; the secrets check is asked of every run. Each server returns an id for every execution, which tells the execution to exactly one call: nothing is matched by arguments, and an error raised before a call left is never counted as a server's. An execution whose result never reached a call -- a cancelled plan's -- fails the approval check live. The full witnesses a scripted run must show are asked offline only. Every `[FAIL]` names the clause that failed (M37 rounds 2 and 3) | Declared (M37) |
 | Example 31's checks read a child's events and manifest only on PostgreSQL; the in-memory store keeps no child's events, so there they read the plan run's events, the histories, the interruptions and the catalog's answers | Declared (M37) |
+| Workspaces run only on `FakeProvider` until M39 brings `DockerProvider`: its commands are Python functions the application registers, and it isolates nothing from the host process. It is for tests and offline examples | Declared (M38) |
+| A workspace's disk bound is measured after each command and write, not enforced while they run: the one that passes `max_workspace_bytes` completes, and every later one is refused until files are removed (P5-D7) | Declared (M38) |
+| `WorkspaceSpec(scope="plan")` and `keep=True` are accepted by the spec and refused when a run starts, until M41; `max_concurrent_workspaces` is checked and not yet enforced (M41) | Declared (M38) |
+| A workspace is removed when its run ends, before the run's last event. `Runner.aclose()` does not yet remove the workspaces of runs still under way, and nothing yet reaps a workspace a crashed process left (M41) | Declared (M38) |
+| Beside a `workspace_provider`, no registered tool may be named `run_command`, `read_workspace_file`, `write_workspace_file`, `list_workspace` or `export_workspace_file`: it would run on the host, so such a Runner is refused when it is built | Declared (M38) |
+| A `WorkspaceSpec.env` value reaches nothing the SDK records but the output of a command that prints it -- and, when a model copies it into a later command, that command's arguments, recorded as written in its event and row as every argument is in the run's messages (NFR-45 as amended, DECISION-bb81ebbe) | Declared (M38) |
+| A command cut short by its run's cancellation is recorded `killed: cancelled`, with no output: what it printed before the cancellation is not kept | Declared (M38) |
+| Example 31's live "lost executions" clause counts per qualified tool: a server's journal names no run, so an execution whose result reached no call is matched only by a call of that tool cut short by a cancellation or a timeout (DECISION-97fb116b) | Declared (M38) |
 | While a call waits for a person, the `mcp` library's own read timeout for a legacy-era call is paused through its request clock, a private part of mcp 2.3.0 that the extra pins; a later library may move it | Declared (M36) |
 | A server that changes a tool without saying so is caught at the next read of its listing: once its `ttlMs` passes, once it is 60 seconds old, or before a call when either has passed. Its results are untrusted either way | Declared (M34) |
 | A 2026-07-28 server that sends `ttlMs` 0 -- the mcp library's own servers do by default -- has its listing read again at every turn, and before every call both at executor step 1 and as the call leaves, a round trip each, one read at a time per connection; its schemas are checked again only when they change. The legacy era carries no `ttlMs`, so its listings are kept 60 seconds unless the server says they changed | Declared (M34) |
@@ -249,7 +268,7 @@ Stated plainly, because an SDK that overstates itself costs you a week:
 | A server that cannot be reached is retried once a minute per tenant and project, so N tenancies of one Runner each wait one `connect_timeout` a minute on a server that is down | Declared (M33) |
 | A server that writes something other than MCP to its stdout -- its environment, say -- has that line quoted in the `mcp` library's own parse-error log record (`mcp.client.stdio`), which the SDK does not silence | Declared (M33) |
 | A paused run resuming after its process restarts | Phase 6 |
-| Sandboxed tool execution | Phase 5 |
+| Sandboxed execution: commands in a Docker container (M39); timeouts and cancellation that kill a command's container (M40); files out of a workspace as artifacts, plan workspaces, kept workspaces and reaping (M41) | Phase 5 |
 | Pause and resume; durable interruptions (cancel is built) | Phase 6 |
 | The execution manifest's `tools_sent` records the tools a run's agent is sent, written at run start with the rest of its configuration, so a run that ends before its first request records a set it never sent | Declared (M21) |
 | A fetch tool widened to a broader cache scope keeps serving the run's own version recorded at the narrower one until that version expires | Declared (M23) |
@@ -634,6 +653,7 @@ credentials -- which is also how the test suite checks them.
 | [`29_mcp_http.py`](scripts/29_mcp_http.py) | MCP over Streamable HTTP: a header the server requires, a prompt refused until accepted and then used as a task, a resource read into an untrusted artifact, and a child briefed with it |
 | [`30_mcp_input.py`](scripts/30_mcp_input.py) | MCP input requests: a server's form answered by a scripted person and its URL declined, each recorded as an interruption, the answers reaching the server, and the URL never opened |
 | [`31_mcp_contention.py`](scripts/31_mcp_contention.py) | Phase 4's exit signal: five hostile MCP servers under orchestration, over stdio and HTTP in both eras -- a mid-run change accepted through `mcp_blocked`, a poisoned description, a shadowed name, an injected result, a form answered -- checked against each server's journal of its executions, the store, and the server processes |
+| [`32_workspace.py`](scripts/32_workspace.py) | A workspace on `FakeProvider`: a command's output, a non-zero exit, `run_command` waiting for an operator's approval, a workspace past `max_workspace_bytes` refusing the next command, every result untrusted, and the workspace and its commands recorded |
 
 ```bash
 python scripts/02_custom_tools.py --offline
@@ -689,6 +709,7 @@ agentsdk/
   model.py          ModelRequest, ModelResponse, Usage, the ModelClient protocol
   registry.py       ModelRegistry, ModelPricing and cost
   providers/        the OpenAI-compatible HTTP client
+  workspace/        WorkspaceSpec, the provider protocol, FakeProvider, the workspace tools
   primitives.py     Message, ToolCall, ToolResult, ContentProvenance
   persistence.py    Persistence
   postgres.py       Postgres stores, pool and trace

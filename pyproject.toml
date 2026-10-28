@@ -36,7 +36,7 @@ eval = ["claude-agent-sdk==0.2.152"]
 Repository = "https://github.com/siva-rgb/Custom-Agent"
 
 [tool.setuptools]
-packages = ["agentsdk", "agentsdk.providers", "agentsdk.mcp"]
+packages = ["agentsdk", "agentsdk.providers", "agentsdk.mcp", "agentsdk.workspace"]
 
 [tool.setuptools.package-data]
 # apply_schema reads these from the installed package, not from a checkout (FR-22),

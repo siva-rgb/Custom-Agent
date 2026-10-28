@@ -70,6 +70,8 @@ from .errors import (
     UnknownMcpServer,
     UnknownToolVersion,
     WorkflowError,
+    WorkspaceRefused,
+    WorkspaceUnavailable,
 )
 from .primitives import (
     ContentProvenance,
@@ -183,6 +185,8 @@ __all__ = [
     "ToolBlocked",
     "UnknownMcpServer",
     "UnknownToolVersion",
+    "WorkspaceRefused",
+    "WorkspaceUnavailable",
     "ArtifactNotFound",
     "ArtifactIntegrityError",
     "InvalidPlan",

@@ -59,6 +59,9 @@ _TRACKED = (
     # cleanup reaches them; a version is identified by its whole key.
     ("mcp_tool_versions", "tenant_id || '/' || project_id || '/' || alias || '/' || tool_hash"),
     ("mcp_tool_acceptances", "acceptance_id"),
+    # M38 (FR-140, NFR-41): workspaces and the commands they ran.
+    ("workspaces", "workspace_id"),
+    ("workspace_commands", "command_id"),
 )
 _RUN_TABLES = tuple(table for table, _ in _TRACKED)
 

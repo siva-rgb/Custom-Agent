@@ -114,6 +114,16 @@ class ToolBlocked(ToolError):
     run's tenant and project -- it changed, or was first seen, after its model was shown it."""
 
 
+class WorkspaceRefused(ToolError):
+    """FR-144 (M38): a workspace past one of its measured bounds refuses every later command and
+    write; the message names the bound."""
+
+
+class WorkspaceUnavailable(AgentSDKError):
+    """FR-137, FR-138 (M38): a run's workspace cannot be had -- no provider, a provider that
+    failed, an image absent from the host, or a workspace already removed."""
+
+
 class UnknownMcpServer(LookupError):
     """FR-123, FR-127 (M34): an MCP server alias the Runner was not given."""
 

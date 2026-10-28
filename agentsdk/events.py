@@ -68,6 +68,14 @@ class EventType(str, Enum):
     INPUT_REQUESTED = "InputRequested"
     INPUT_ANSWERED = "InputAnswered"
     INPUT_UNATTRIBUTED = "InputUnattributed"
+    # FR-140 (M38): a run's workspace was created, ran a command, refused one past a bound (named),
+    # waited for a slot (FR-152, M41) or was removed. Names and ids only, never an env value.
+    WORKSPACE_CREATED = "WorkspaceCreated"
+    WORKSPACE_COMMAND_STARTED = "WorkspaceCommandStarted"
+    WORKSPACE_COMMAND_ENDED = "WorkspaceCommandEnded"
+    WORKSPACE_REFUSED = "WorkspaceRefused"
+    WORKSPACE_WAITING = "WorkspaceWaiting"
+    WORKSPACE_REMOVED = "WorkspaceRemoved"
 
 
 @dataclass(frozen=True)

@@ -366,8 +366,10 @@ def test_claude_agent_sdk_is_declared_only_in_the_eval_extra_and_the_harness_req
 
 def test_the_harness_is_not_packaged_in_the_wheel():
     project = tomllib.loads((REPO / "pyproject.toml").read_text(encoding="utf-8"))
-    # Edited at M33 (FR-123): agentsdk.mcp joins the wheel; the harness still does not.
-    assert project["tool"]["setuptools"]["packages"] == ["agentsdk", "agentsdk.providers", "agentsdk.mcp"]
+    # Edited at M33 (FR-123): agentsdk.mcp joins the wheel; at M38 (FR-137) agentsdk.workspace does
+    # too; the harness still does not.
+    assert project["tool"]["setuptools"]["packages"] == ["agentsdk", "agentsdk.providers", "agentsdk.mcp",
+                                                         "agentsdk.workspace"]
 
 
 # =================================================================================================

@@ -9,7 +9,7 @@
     "non_goals": [],
     "trust_boundary": "local repository",
     "created_at": "2026-09-05T14:48:57.894Z",
-    "updated_at": "2026-10-24T14:17:43.642Z"
+    "updated_at": "2026-10-28T03:58:41.671Z"
   },
   "policy": {
     "ponytail": "full",
@@ -23,22 +23,23 @@
     }
   },
   "lifecycle": {
-    "phase": "verify",
-    "status": "ready",
-    "active_task": null,
+    "phase": "build",
+    "status": "active",
+    "active_task": "M39-docker-provider",
     "blocker": null,
-    "next_action": "Review completed work and choose the next bounded outcome."
+    "next_action": "Run the task pre-flight."
   },
   "commands": {},
   "workflow": {
     "type": "new-product",
     "started_at": "2026-09-05T14:48:57.897Z",
     "spec_check": {
-      "at": "2026-10-22T10:20:12.801Z",
-      "source_hash": "67c1c723bc59d876fcdb71608d5638f2aedea7a7b6ec20eb040d8e7dd101e6a7",
+      "at": "2026-10-27T16:18:24.078Z",
+      "source_hash": "f8488098b767bc996d9bf7a8605743c7838f97d933f4dcac63a5f41cb6fa31d5",
       "requirements": [
         "AC-1",
         "AC-10",
+        "AC-100",
         "AC-11",
         "AC-12",
         "AC-13",
@@ -131,6 +132,11 @@
         "AC-92",
         "AC-93",
         "AC-94",
+        "AC-95",
+        "AC-96",
+        "AC-97",
+        "AC-98",
+        "AC-99",
         "FR-1",
         "FR-10",
         "FR-100",
@@ -172,8 +178,27 @@
         "FR-133",
         "FR-134",
         "FR-135",
+        "FR-136",
+        "FR-137",
+        "FR-138",
+        "FR-139",
         "FR-14",
+        "FR-140",
+        "FR-141",
+        "FR-142",
+        "FR-143",
+        "FR-144",
+        "FR-145",
+        "FR-146",
+        "FR-147",
+        "FR-148",
+        "FR-149",
         "FR-15",
+        "FR-150",
+        "FR-151",
+        "FR-152",
+        "FR-153",
+        "FR-154",
         "FR-16",
         "FR-17",
         "FR-18",
@@ -300,6 +325,12 @@
         "NFR-38",
         "NFR-39",
         "NFR-4",
+        "NFR-40",
+        "NFR-41",
+        "NFR-42",
+        "NFR-43",
+        "NFR-44",
+        "NFR-45",
         "NFR-5",
         "NFR-6",
         "NFR-7",
@@ -308,14 +339,14 @@
       ]
     },
     "plan_check": {
-      "at": "2026-10-22T10:20:18.484Z",
-      "source_hash": "1aa46ef258a4ffc5cef9fc219db09ba95c88c7db57a1985872c65ed63795434a"
+      "at": "2026-10-27T16:18:24.587Z",
+      "source_hash": "33dc413979f287ff6abbc8bcd55abc3614bb4d11e30bd581292761a38e09b634"
     },
     "plan_approval": {
       "human": "siva-rgb (owner)",
-      "reason": "Plan re-approved after the M37 pre-flight SPEC amendment; M37 resumes",
-      "at": "2026-10-22T10:20:18.627Z",
-      "source_hash": "1aa46ef258a4ffc5cef9fc219db09ba95c88c7db57a1985872c65ed63795434a"
+      "reason": "NFR-45 amended at M38's pre-review (D7, DECISION-bb81ebbe)",
+      "at": "2026-10-27T16:18:24.783Z",
+      "source_hash": "33dc413979f287ff6abbc8bcd55abc3614bb4d11e30bd581292761a38e09b634"
     }
   },
   "artifacts": [
@@ -327,6 +358,7 @@
       "requirements": [
         "AC-1",
         "AC-10",
+        "AC-100",
         "AC-11",
         "AC-12",
         "AC-13",
@@ -419,6 +451,11 @@
         "AC-92",
         "AC-93",
         "AC-94",
+        "AC-95",
+        "AC-96",
+        "AC-97",
+        "AC-98",
+        "AC-99",
         "FR-1",
         "FR-10",
         "FR-100",
@@ -460,8 +497,27 @@
         "FR-133",
         "FR-134",
         "FR-135",
+        "FR-136",
+        "FR-137",
+        "FR-138",
+        "FR-139",
         "FR-14",
+        "FR-140",
+        "FR-141",
+        "FR-142",
+        "FR-143",
+        "FR-144",
+        "FR-145",
+        "FR-146",
+        "FR-147",
+        "FR-148",
+        "FR-149",
         "FR-15",
+        "FR-150",
+        "FR-151",
+        "FR-152",
+        "FR-153",
+        "FR-154",
         "FR-16",
         "FR-17",
         "FR-18",
@@ -588,18 +644,24 @@
         "NFR-38",
         "NFR-39",
         "NFR-4",
+        "NFR-40",
+        "NFR-41",
+        "NFR-42",
+        "NFR-43",
+        "NFR-44",
+        "NFR-45",
         "NFR-5",
         "NFR-6",
         "NFR-7",
         "NFR-8",
         "NFR-9"
       ],
-      "source_hash": "67c1c723bc59d876fcdb71608d5638f2aedea7a7b6ec20eb040d8e7dd101e6a7",
+      "source_hash": "f8488098b767bc996d9bf7a8605743c7838f97d933f4dcac63a5f41cb6fa31d5",
       "approval": {
         "human": "siva-rgb (owner)",
-        "reason": "M37 pre-flight amendment approved by the owner: FR-127 Runner.mcp_blocked, FR-133 input request size cap of 64 KiB, AC-94 pre-flight additions",
-        "at": "2026-10-22T10:20:18.324Z",
-        "source_hash": "67c1c723bc59d876fcdb71608d5638f2aedea7a7b6ec20eb040d8e7dd101e6a7"
+        "reason": "NFR-45 amended at M38's pre-review (D7, DECISION-bb81ebbe)",
+        "at": "2026-10-27T16:18:24.402Z",
+        "source_hash": "f8488098b767bc996d9bf7a8605743c7838f97d933f4dcac63a5f41cb6fa31d5"
       }
     }
   ],
@@ -1902,6 +1964,54 @@
       "status": "accepted",
       "source": null,
       "recorded_at": "2026-10-24T14:17:43.488Z"
+    },
+    {
+      "id": "DECISION-a0e59f7e",
+      "title": "Branches after Phase 4: main fast-forwarded to M37, Phase 5 on a new phase-5 branch",
+      "text": "Owner, 2026-10-24, after Phase 4 closed. History is one straight line: main had stopped at M10, phase-2 at M28, phase-4 at M37. main is fast-forwarded to M37 (6e59220), no history rewritten; phase-5 is created from phase-4 at M37 and holds Phase 5's work; phase-4 stays frozen at M37 as Phase 4's record, as phase-2 does for Phases 2 and 3. The publish script's BRANCHES becomes (main phase-2 phase-4 phase-5). Its dry run verified: filtered main is 285c19c, GitHub's phase-4 tip, so GitHub's main fast-forwards from 51e48e7; phase-5 is new at 285c19c; phase-2 and phase-4 unchanged. Rejected: working Phase 5 on phase-4; leaving main at M10.",
+      "status": "accepted",
+      "source": null,
+      "recorded_at": "2026-10-24T14:42:59.360Z"
+    },
+    {
+      "id": "DECISION-31b2c79d",
+      "title": "Phase 5's first sandbox provider is Docker; gates use a fake provider",
+      "text": "Owner, 2026-10-24, before the Phase 5 spec. This host is Windows 11 Home: no Hyper-V, no Windows Sandbox; WSL2 works and Docker Desktop 29.6.2 is installed. A Firecracker microVM would need nested virtualisation in WSL2, fragile on Home. Chosen: the WorkspaceManager abstraction first, with Docker containers as the first real provider (no network, dropped capabilities, non-root, resource limits). Containers run inside the WSL2 VM, so the host is behind a VM boundary, but containers share that VM's kernel. This amends ADR-09: a microVM becomes a later provider. Gates test WorkspaceManager against an in-process fake provider enforcing the same contract; Docker-backed tests are marked live and run before review, with the result in the brief (gates have never needed a daemon running).",
+      "status": "accepted",
+      "source": null,
+      "recorded_at": "2026-10-24T15:15:35.685Z"
+    },
+    {
+      "id": "DECISION-47158c90",
+      "title": "Phase 5 increment 1's decisions P5-D1 to P5-D15 accepted",
+      "text": "Owner, 2026-10-24, accepted all fifteen as drafted (scratchpad p5/phase5-decisions-draft.md, to be placed in SPEC). The owner chose three trade-offs: P5-D1 increment 1 is the workspace and sandboxed execution in single runs and plan children, with sandboxed stdio MCP servers, snapshots, compute in budgets and egress allow lists in increment 2 and browser/computer use after it; P5-D5 one container per command over the workspace volume, since only killing a container stops all its processes (KNOWLEDGE-bdc63cbf); P5-D10 run_command is DESTRUCTIVE and needs approval by default, an agent may set auto in code. The rest: abstraction first (amends ADR-09), DockerProvider via the docker CLI plus a FakeProvider for gates under one contract suite, a nocopy volume never a bind mount, fixed hardening (network none, cap-drop ALL, no-new-privileges, read-only root, uid 65534, never exec -u, pids/memory=swap/cpus, empty environment, image by digest), a measured disk bound with declared overshoot, tar-only transfer accepting regular files and directories, four Tier 3 tools with untrusted EXTERNAL_CONTENT+EXECUTABLE_CONTENT output, run-long lifetime with keep, label reaping and max_concurrent_workspaces, export only as artifacts, migration 0019 workspaces and workspace_commands, the hostile-code exit signal on both stores ten times under DECISION-a00773b0 and DECISION-a7d6a1f5, milestones M38 to M42 (examples 32 to 36).",
+      "status": "accepted",
+      "source": null,
+      "recorded_at": "2026-10-24T16:55:25.881Z"
+    },
+    {
+      "id": "DECISION-97fb116b",
+      "title": "M38 pre-flight: the workspace tools and their approval move into M38; example 31's lost-executions clause counts per tool live",
+      "text": "Owner, 2026-10-24, at M38's pre-flight. (1) The spec as approved left M38 with no way for a run to use its workspace: the only use is the workspace tools, which were in M40, so AC-96's 'created at a run's first need' could not happen in M38. FR-146 (the workspace tools) and FR-147 (run_command needs approval by default, P5-D10) move into M38, keeping their numbers; M40 keeps FR-148 (timeouts and cancellation) and FR-149 (example 34). P5-D15 is amended to match; the Genesis tasks' requirement lists are unchanged (no CLI edits them), and the move is noted on M38 and M40. (2) KNOWLEDGE-d9ea0d40 caveat 1's repair, 'run that clause live for every run not cancelled': a server's journal does not name the run that called it, so the clause counts per qualified tool. Live, it fails when a tool's executions whose result reached no call outnumber that tool's calls that ended without a server result: left in flight by a cancelled run, or timed out. Counting timed-out calls goes beyond 'not cancelled', chosen by the owner so a timeout gives no false FAIL (round 1's rejection).",
+      "status": "accepted",
+      "source": null,
+      "recorded_at": "2026-10-24T17:02:51.588Z"
+    },
+    {
+      "id": "DECISION-bb81ebbe",
+      "title": "M38 pre-review D7: NFR-45 amended; an env value the model writes into arguments is recorded as written",
+      "text": "Owner, 2026-10-27. M38's pre-review found that a WorkspaceSpec.env value a model copies into run_command's argv (after a command printed it) reaches WorkspaceCommandStarted and workspace_commands.argv, while NFR-45 allowed such values only in the output of a command that prints them. The model's own call arguments are already stored in the run's messages, as every argument is, so redacting them in the workspace records alone would make the record differ from what ran without keeping the value out of the store. NFR-45 is amended: the values also reach the arguments the model itself writes into a call, recorded as written. Declared in the README. The pre-review's other findings (D1 to D6, D8 to D11) were repaired, each with a test that fails on the code before its repair (29 of 29 mutants killed).",
+      "status": "accepted",
+      "source": null,
+      "recorded_at": "2026-10-27T16:18:03.770Z"
+    },
+    {
+      "id": "DECISION-94bfee7c",
+      "title": "Standing rule: no check keys on an error message text",
+      "text": "Owner decision 2026-10-28, a standing pre-flight rule alongside DECISION-a00773b0. No check, in a test, an example or the SDK, may decide anything from an error's message text or a result's content prefix. Key on the error class, ToolCalled.error_type, or the provenance source instead. Why: a check reading provenance or outcome out of a string has been the defect in five consecutive review rounds (M37's D1 family and M38's example 32 untrusted check, in the very milestone that fixed M37's D1). How to apply: every milestone's pre-flight and pre-review brief lists it; a reviewer finding a text-keyed check reports it as a defect.",
+      "status": "accepted",
+      "source": null,
+      "recorded_at": "2026-10-28T03:58:41.511Z"
     }
   ],
   "knowledge": [
@@ -3144,6 +3254,30 @@
       "source": null,
       "tags": [],
       "recorded_at": "2026-10-24T14:17:43.354Z"
+    },
+    {
+      "id": "KNOWLEDGE-bdc63cbf",
+      "title": "Docker Desktop on this host, measured before the Phase 5 spec",
+      "text": "Measured 2026-10-24 with throwaway containers (label agentsdk-probe, all removed). Engine 29.6.2, runc 1.3.6, WSL2 kernel 6.6, cgroup v2, seccomp on, 16 CPUs and ~8 GB to the VM; daemon ready 12 s after Docker Desktop starts. (1) The default bridge reaches the host: host.docker.internal resolves to 192.168.65.254 and a TCP connect to the host's PostgreSQL port 5432 succeeded; --network none blocks it and DNS. (2) docker run --rm takes ~0.4 s (cold 0.6-1.3 s), docker exec ~0.12 s. (3) Killing a docker exec or an attached docker run client does not stop the process in the container, and detached and attached containers outlive the client process: orphans need reaping by label. (4) timeout -s KILL leaves grandchildren running, and a process can leave its group with setsid; only killing the container (its PID namespace) is total; docker kill took 0.11 s, exit 137. (5) docker exec -u 0 gives root in a container started --user 65534. (6) --read-only, --cap-drop ALL, no-new-privileges, --pids-limit (fork fails EAGAIN) and --memory=--memory-swap (exit 137) hold; a tmpfs size cap holds and counts against the container's memory. (7) --storage-opt size is accepted but NOT enforced (200 MB written into size=100m), and a local volume has no quota (300 MB written); a tmpfs-backed volume is capped but does not persist between containers. No hard disk quota exists here for a persistent workspace. (8) A Windows bind mount is ~190x slower for small files (2000 files: 7.5 s against 0.04 s on tmpfs and 0.05 s on a volume). A symlink made in the container appears on the host: ../../.. as a real Windows symlink leading out of the folder, /etc/passwd as a reparse point that os.path.islink reports False. (9) A fresh volume's root is reset to root ownership at each mount while empty; --mount ...,volume-nocopy keeps a chown. (10) docker cp container:/workspace/. - streams a tar with symlinks (including absolute ones), hard links and FIFOs as raw members; docker cp - into a created container imports a tar. (11) Images run by digest (python:3.12-alpine = sha256:6d43704b...). Python in the venv is 3.11.9 with tarfile.data_filter. Probes: scratchpad p5/docker_probe*.py.",
+      "source": null,
+      "tags": [],
+      "recorded_at": "2026-10-24T15:15:35.857Z"
+    },
+    {
+      "id": "KNOWLEDGE-6bbb571b",
+      "title": "M38 pre-review: eleven findings, ten repaired with tests, one an NFR-45 amendment",
+      "text": "An Opus 5.5 subagent probed M38 at runtime only (2026-10-27). Blocking: D1 a newline hid a .. path from the step-2 pattern (jsonschema uses re.search; . skips newline, $ admits a trailing one) so an escaping path reached the provider; D2 a cancel during removal on the completion path abandoned the removal, its row and its event. Should-fix: D3 a command cut short by its run's cancellation was never recorded; D4 record writes were bare to_thread, the handle was kept before its row, so a workspace ran commands unrecorded and a failed command row hid that it ran and skipped the disk measurement; D5 example 31's live per-tool count took a server success spelled ToolTimeout: as a timed-out call; D6 FakeProvider's kill swapped cmd.files, so a command holding its files wrote on. Caveats: D7 an env value the model copies into argv reaches the command's event and row (owner: NFR-45 amended, DECISION-bb81ebbe); D8 the refusal advised removing files; D9 untar let a folder replace a file; D10 argv admitted NUL (already refused as unstorable before step 2); D11 example 32's live checks matched approvals by argv and took the rows as their own subject. Also a per-run lock was held across provider.create. Repairs: control-character-free pattern ending at \\Z; record writes through control.store; creation, a cancelled command's record and removal run as tasks a cancellation waits for; per-command file views; is_error required; refusal text; untar conflicts; NUL pattern; example 32 by call id with WorkspaceCreated as subject; one shared creation task instead of the lock. 29 of 29 mutants killed, each repair reverted among them. First regression gate then failed on two real edits: tests/test_adr12_comparison.py pins the package list (approved-test edit, as at M33) and the README lost the word sandbox (NFR-10); both fixed; rerun unit 176 and regression 2738 passed.",
+      "source": null,
+      "tags": [],
+      "recorded_at": "2026-10-27T17:05:57.903Z"
+    },
+    {
+      "id": "KNOWLEDGE-1e7b2114",
+      "title": "M38 round 1 approved; caveats carried into M39 pre-flight",
+      "text": "Fable 5.1 approved M38-workspace-contract in round 1 at 2026-10-28T03:45:39Z (control 435bc8cd) on source hash 023def9c, after re-running both gates itself (unit 176 passed, regression 2738 passed, hash unchanged). Owner accepted 2026-10-28 with the fixes folded into M39's pre-flight. Verified first-hand by the author: (1) FakeProvider.remove (agentsdk/workspace/__init__.py) pops the space before calling kill(), which looks the space up again and returns, so removal kills no running command; no M38 path is affected because every Runner path cancels the command first, but tests/workspace_contract.py has no 'remove kills a running command' case, so an M39 DockerProvider leaving a container running would pass the contract. M39 pre-flight: swap the two statements and add the contract case. (2) scripts/32_workspace.py live untrusted check excludes results by content prefix ToolValidationError/ToolApprovalRejected, but a real rejection reads 'rejected: ...', 'rejected' or 'approval expired' (loop.py _rejection_text): a false FAIL on rejection or expiry, and a success whose text starts with those words is skipped. Latent (the scripted operator approves everything). M39 pre-flight: key on the error class or ToolCalled.error_type. (3) errors.py and executor.py comments cite 'FR-144 (M38)'; FR-144 is M39's. Smaller, carried: FakeFiles.untar checks conflicts against the tree, not within one stream; per-tool granularity lets a same-tool call that timed out absorb one displaced id (accepted by DECISION-97fb116b); a README row promises a re-measurement nothing performs; an approver may approve a run_command a full workspace then refuses; RunWorkspace._end awaits a creation with no timeout (M40). Reviewer's own FR-136 probe: with every MCP execution id displaced, example 31 at HEAD passed NAMES and the M38 tree fails it diagnostically; UNTRUSTED remains vacuous under displacement (it iterates only results carrying a recognised id). Examples 27 to 30 were not re-run live by the reviewer (unchanged since M37; author's live runs on the same hash).",
+      "source": null,
+      "tags": [],
+      "recorded_at": "2026-10-28T03:58:41.341Z"
     }
   ],
   "tasks": [
@@ -3166,9 +3300,9 @@
           "status": "pass",
           "evidence": {
             "human": "siva-rgb (owner)",
-            "reason": "M37 pre-flight amendment approved by the owner: FR-127 Runner.mcp_blocked, FR-133 input request size cap of 64 KiB, AC-94 pre-flight additions",
-            "source_hash": "84f14ad22c7d1472a5c37148bbdba2452dd82e2df1d2487541beee4dfd7e70de",
-            "observed_at": "2026-10-22T10:20:18.324Z"
+            "reason": "NFR-45 amended at M38's pre-review (D7, DECISION-bb81ebbe)",
+            "source_hash": "a0bc1ae95293b6b91bbd6ae2d1f6456fe1bb683af8da4e72aea252d5d776195f",
+            "observed_at": "2026-10-27T16:18:24.402Z"
           }
         }
       ],
@@ -3178,7 +3312,7 @@
       "failures": [],
       "limitations": [],
       "created_at": "2026-09-05T14:48:57.897Z",
-      "updated_at": "2026-10-22T10:20:18.324Z"
+      "updated_at": "2026-10-27T16:18:24.402Z"
     },
     {
       "id": "M1-primitives",
@@ -5832,6 +5966,276 @@
       "limitations": [],
       "created_at": "2026-10-18T07:40:34.069Z",
       "updated_at": "2026-10-24T14:17:43.641Z"
+    },
+    {
+      "id": "M38-workspace-contract",
+      "outcome": "A run can be given a workspace through WorkspaceSpec, a provider protocol and a fake provider, recorded on both stores",
+      "state": "done",
+      "risk": "high",
+      "owner": null,
+      "scope": [],
+      "dependencies": [],
+      "requirements": [
+        "FR-136",
+        "FR-137",
+        "FR-138",
+        "FR-139",
+        "FR-140",
+        "FR-141",
+        "AC-95",
+        "AC-96",
+        "NFR-40",
+        "NFR-41"
+      ],
+      "gates": [
+        {
+          "id": "unit",
+          "command": ".venv\\Scripts\\python.exe -m pytest tests/test_workspace.py -q",
+          "mandatory": true,
+          "status": "pass",
+          "evidence": {
+            "path": ".genesis/evidence/M38-workspace-contract-unit.json",
+            "source_hash": "023def9ca121c79d461d6c30213183300bed5c841a41ade97ec72a084bdfe40e",
+            "hash": "432146330b78d066a7792629080e82a2d7632842ce81ec943f87a2ea53a56ad5",
+            "observed_at": "2026-10-28T03:23:46.183Z"
+          }
+        },
+        {
+          "id": "regression",
+          "command": ".venv\\Scripts\\python.exe -m pytest -q",
+          "mandatory": true,
+          "status": "pass",
+          "evidence": {
+            "path": ".genesis/evidence/M38-workspace-contract-regression.json",
+            "source_hash": "023def9ca121c79d461d6c30213183300bed5c841a41ade97ec72a084bdfe40e",
+            "hash": "7e969b2050232ca5d9e6e5c61ef4e3d149c8d2b16335d8463aa451fa0bb78534",
+            "observed_at": "2026-10-28T03:44:44.587Z"
+          }
+        },
+        {
+          "id": "independent-review",
+          "command": "",
+          "mandatory": true,
+          "status": "pass",
+          "evidence": {
+            "human": "Fable 5.1",
+            "reason": "Round 1 approved on source hash 023def9c. Verified first-hand: gates re-run (unit 176 passed, regression 2738 passed, hash unchanged before and after); findings table true row by row, the two FR-136 tests fail on HEAD copy of example 31 and pass on the working tree (barrier 30 s to 75 s, wait 25 s); approved-test edits minimal by content; examples 31 and 32 live (8 of 8 and 4 of 4 PASS) and 32 offline; probes on both stores for max turns, cancel during creation, cancel waiting for approval, double decide (InterruptionAlreadyDecided), refusal provenance and events, cross-tenant store calls and triggers, env value only in output and in argv as amended, no loop-thread store call, no escape through the step-2 pattern or the fake tar import. WorkspaceRefused passes by class not text; a spoofed text is a success. Store back at baseline, every row removed by my run ids. Caveats, none reachable through a Runner in M38: (1) FakeProvider.remove pops the space before kill looks it up, so a command still running at removal is not killed and run returns later with exit 0; add a contract case before M39 DockerProvider; (2) example 32 live untrusted check omits results whose text starts ToolValidationError or ToolApprovalRejected, a prefix a real rejection never carries (its text is rejected or approval expired), so a live rejection would FAIL and a file starting with that text is skipped; key on the ToolCalled error_type or the provenance source instead; (3) FakeFiles.untar admits a file and a folder of one name in one stream and refuses dir-then-file after the folder is added; (4) the per-tool live clause absorbs a displaced id when a call of the same tool ended ToolTimeout without reaching its server, as DECISION-97fb116b declares; (5) README says refused until files are removed but nothing re-measures, the code cites FR-144 as M38, an approver is asked for a run_command the full workspace then refuses at step 6, and a removal waits on provider.create with no timeout (M40).",
+            "source_hash": "023def9ca121c79d461d6c30213183300bed5c841a41ade97ec72a084bdfe40e",
+            "observed_at": "2026-10-28T03:45:39.512Z"
+          }
+        }
+      ],
+      "next_action": "Run the task pre-flight.",
+      "blocker": null,
+      "notes": [
+        "Also implements FR-146 and FR-147 (the workspace tools, run_command's default approval) and NFR-42's labels, moved into M38 by DECISION-97fb116b; AC-96 covers them."
+      ],
+      "failures": [],
+      "limitations": [],
+      "created_at": "2026-10-24T17:00:17.453Z",
+      "updated_at": "2026-10-28T03:58:41.670Z"
+    },
+    {
+      "id": "M39-docker-provider",
+      "outcome": "Docker workspaces run every command hardened, with files crossing only as filtered tar streams and measured bounds",
+      "state": "active",
+      "risk": "high",
+      "owner": null,
+      "scope": [],
+      "dependencies": [
+        "M38-workspace-contract"
+      ],
+      "requirements": [
+        "FR-142",
+        "FR-143",
+        "FR-144",
+        "FR-145",
+        "AC-97",
+        "NFR-43",
+        "NFR-45"
+      ],
+      "gates": [
+        {
+          "id": "unit",
+          "command": ".venv\\Scripts\\python.exe -m pytest tests/test_docker_provider.py -q",
+          "mandatory": true,
+          "status": "pending",
+          "evidence": null
+        },
+        {
+          "id": "regression",
+          "command": ".venv\\Scripts\\python.exe -m pytest -q",
+          "mandatory": true,
+          "status": "pending",
+          "evidence": null
+        },
+        {
+          "id": "independent-review",
+          "command": "",
+          "mandatory": true,
+          "status": "pending",
+          "evidence": null
+        }
+      ],
+      "next_action": "Run the task pre-flight.",
+      "blocker": null,
+      "notes": [],
+      "failures": [],
+      "limitations": [],
+      "created_at": "2026-10-24T17:00:17.612Z",
+      "updated_at": "2026-10-24T17:00:17.613Z"
+    },
+    {
+      "id": "M40-workspace-tools",
+      "outcome": "An agent runs commands and edits files in its workspace, approved by default, killed totally on timeout and cancellation",
+      "state": "queued",
+      "risk": "high",
+      "owner": null,
+      "scope": [],
+      "dependencies": [
+        "M39-docker-provider"
+      ],
+      "requirements": [
+        "FR-146",
+        "FR-147",
+        "FR-148",
+        "FR-149",
+        "AC-98",
+        "NFR-42",
+        "NFR-44"
+      ],
+      "gates": [
+        {
+          "id": "unit",
+          "command": ".venv\\Scripts\\python.exe -m pytest tests/test_workspace_tools.py -q",
+          "mandatory": true,
+          "status": "pending",
+          "evidence": null
+        },
+        {
+          "id": "regression",
+          "command": ".venv\\Scripts\\python.exe -m pytest -q",
+          "mandatory": true,
+          "status": "pending",
+          "evidence": null
+        },
+        {
+          "id": "independent-review",
+          "command": "",
+          "mandatory": true,
+          "status": "pending",
+          "evidence": null
+        }
+      ],
+      "next_action": "Run the task pre-flight.",
+      "blocker": null,
+      "notes": [
+        "FR-146 and FR-147 moved to M38 (DECISION-97fb116b); M40 implements FR-148 and FR-149 and holds FR-146/FR-147 on DockerProvider (AC-98)."
+      ],
+      "failures": [],
+      "limitations": [],
+      "created_at": "2026-10-24T17:00:17.785Z",
+      "updated_at": "2026-10-24T17:03:24.999Z"
+    },
+    {
+      "id": "M41-workspace-plans",
+      "outcome": "Workspace files leave only as artifacts, and workspaces end with their run, are reaped after a dead Runner and are bounded in plans",
+      "state": "queued",
+      "risk": "high",
+      "owner": null,
+      "scope": [],
+      "dependencies": [
+        "M40-workspace-tools"
+      ],
+      "requirements": [
+        "FR-150",
+        "FR-151",
+        "FR-152",
+        "FR-153",
+        "AC-99",
+        "NFR-22",
+        "NFR-44"
+      ],
+      "gates": [
+        {
+          "id": "unit",
+          "command": ".venv\\Scripts\\python.exe -m pytest tests/test_workspace_plan.py -q",
+          "mandatory": true,
+          "status": "pending",
+          "evidence": null
+        },
+        {
+          "id": "regression",
+          "command": ".venv\\Scripts\\python.exe -m pytest -q",
+          "mandatory": true,
+          "status": "pending",
+          "evidence": null
+        },
+        {
+          "id": "independent-review",
+          "command": "",
+          "mandatory": true,
+          "status": "pending",
+          "evidence": null
+        }
+      ],
+      "next_action": "Run the task pre-flight.",
+      "blocker": null,
+      "notes": [],
+      "failures": [],
+      "limitations": [],
+      "created_at": "2026-10-24T17:00:17.957Z",
+      "updated_at": "2026-10-24T17:00:17.958Z"
+    },
+    {
+      "id": "M42-sandbox-contention",
+      "outcome": "Hostile code in a plan's sandboxed children is contained, recorded and cleaned up on both stores",
+      "state": "queued",
+      "risk": "high",
+      "owner": null,
+      "scope": [],
+      "dependencies": [
+        "M41-workspace-plans"
+      ],
+      "requirements": [
+        "FR-154",
+        "AC-100",
+        "NFR-40",
+        "NFR-42",
+        "NFR-43",
+        "NFR-44",
+        "NFR-45"
+      ],
+      "gates": [
+        {
+          "id": "unit",
+          "command": ".venv\\Scripts\\python.exe -m pytest tests/test_sandbox_contention.py -q",
+          "mandatory": true,
+          "status": "pending",
+          "evidence": null
+        },
+        {
+          "id": "regression",
+          "command": ".venv\\Scripts\\python.exe -m pytest -q",
+          "mandatory": true,
+          "status": "pending",
+          "evidence": null
+        },
+        {
+          "id": "independent-review",
+          "command": "",
+          "mandatory": true,
+          "status": "pending",
+          "evidence": null
+        }
+      ],
+      "next_action": "Run the task pre-flight.",
+      "blocker": null,
+      "notes": [],
+      "failures": [],
+      "limitations": [],
+      "created_at": "2026-10-24T17:00:18.119Z",
+      "updated_at": "2026-10-24T17:00:18.119Z"
     }
   ],
   "learning_proposals": [],
@@ -7195,17 +7599,44 @@
       "human": "Sonnet 5",
       "reason": "Round 4 checked against DECISION-a00773b0 and DECISION-33c3ecb3 first. Execution id is matched only at position 0 of a result/read or right after the error prefix; I quoted earlier results, errors and reads into every argument of every tool, typed ids, sent wrong-typed and 40 KB arguments, on both stores: no check failed, and no SDK or server text puts model text at position 0. 52 tests pass (324 s), 25 memory and 15 PostgreSQL offline runs clean, a cancelled plan returns all 6 children from parent links on PostgreSQL, live example 31 passed the seven safety checks, gate evidence matches source hash f3d28b3d, store back at baseline. Caveats, none blocking: (1) the barrier is a first-party tool with the default 30 s tool timeout, so it gives up at 34 s measured, not HOLD_BOUND 60 s as its comment says; (2) HOLD_BOUND equals approval_timeout 60 s, so a model that never calls the barrier leaves only the time to the first request as margin; (3) anchoring makes UNTRUSTED and NAMES vacuous live for results whose id is not at the start: an SDK that decorates result text and marks it trusted passes UNTRUSTED when only poison runs (probed); (4) the round-4 gloss string in test_mcp_client is not named in the brief edit list, only in the table. Future pre-flight should require: every live check non-vacuous over the results it judges, i.e. an execution whose result is unreadable fails live except on a cancelled run, plus every timeout bound a check relies on compared with the tool and approval timeouts in force.",
       "revision": null
+    },
+    {
+      "id": "d2f6d954-b001-40fc-949e-6ea0cb46582a",
+      "at": "2026-10-24T17:02:38.741Z",
+      "action": "requeue",
+      "task": "M38-workspace-contract",
+      "human": "siva-rgb (owner)",
+      "reason": "Spec amendment at M38 pre-flight: FR-146 and FR-147 move into M38",
+      "revision": null
+    },
+    {
+      "id": "8b98eccc-2cfe-4c54-8c68-a0019980f928",
+      "at": "2026-10-27T16:18:04.053Z",
+      "action": "requeue",
+      "task": "M38-workspace-contract",
+      "human": "siva-rgb (owner)",
+      "reason": "NFR-45 amendment at M38's pre-review (D7)",
+      "revision": null
+    },
+    {
+      "id": "435bc8cd-acbb-4b3a-8615-9a35faf9a5db",
+      "at": "2026-10-28T03:45:39.512Z",
+      "action": "approve",
+      "task": "M38-workspace-contract",
+      "human": "Fable 5.1",
+      "reason": "Round 1 approved on source hash 023def9c. Verified first-hand: gates re-run (unit 176 passed, regression 2738 passed, hash unchanged before and after); findings table true row by row, the two FR-136 tests fail on HEAD copy of example 31 and pass on the working tree (barrier 30 s to 75 s, wait 25 s); approved-test edits minimal by content; examples 31 and 32 live (8 of 8 and 4 of 4 PASS) and 32 offline; probes on both stores for max turns, cancel during creation, cancel waiting for approval, double decide (InterruptionAlreadyDecided), refusal provenance and events, cross-tenant store calls and triggers, env value only in output and in argv as amended, no loop-thread store call, no escape through the step-2 pattern or the fake tar import. WorkspaceRefused passes by class not text; a spoofed text is a success. Store back at baseline, every row removed by my run ids. Caveats, none reachable through a Runner in M38: (1) FakeProvider.remove pops the space before kill looks it up, so a command still running at removal is not killed and run returns later with exit 0; add a contract case before M39 DockerProvider; (2) example 32 live untrusted check omits results whose text starts ToolValidationError or ToolApprovalRejected, a prefix a real rejection never carries (its text is rejected or approval expired), so a live rejection would FAIL and a file starting with that text is skipped; key on the ToolCalled error_type or the provenance source instead; (3) FakeFiles.untar admits a file and a folder of one name in one stream and refuses dir-then-file after the folder is added; (4) the per-tool live clause absorbs a displaced id when a call of the same tool ended ToolTimeout without reaching its server, as DECISION-97fb116b declares; (5) README says refused until files are removed but nothing re-measures, the code cites FR-144 as M38, an approver is asked for a run_command the full workspace then refuses at step 6, and a removal waits on provider.create with no timeout (M40).",
+      "revision": null
     }
   ],
   "discovery": null,
   "checkpoint": {
-    "at": "2026-10-18T09:40:58.331Z",
+    "at": "2026-10-27T17:35:20.692Z",
     "revision": {
-      "commit": "ca8783d1a31e43921a5d363f4bc9af30dba359e9",
+      "commit": "6e5922076862dad442cf15807fb69293ca4a4ff8",
       "dirty": true,
-      "source_hash": "2058f874db0db26e2ea29327cf5a7880df6804192aa9f5e173ba341f4a31e667"
+      "source_hash": "023def9ca121c79d461d6c30213183300bed5c841a41ade97ec72a084bdfe40e"
     },
-    "active_task": "M33-mcp-stdio-client",
+    "active_task": "M38-workspace-contract",
     "next_action": "Run the task pre-flight."
   },
   "legacy": null
