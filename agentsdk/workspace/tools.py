@@ -108,20 +108,6 @@ def one_file(data: bytes, path: str) -> bytes:
         return tar.extractfile(member).read()
 
 
-def entries(data: bytes) -> list[tuple[str, str, int]]:
-    """A folder export's direct entries: (name, kind, size). Anything but a regular file or a
-    folder is listed as what it is, never followed."""
-    found: dict[str, tuple[str, int]] = {}
-    with tarfile.open(fileobj=io.BytesIO(data)) as tar:
-        for m in tar.getmembers():
-            name = m.name.removeprefix("./").rstrip("/")
-            if not name or name == "." or "/" in name:
-                continue
-            kind = "dir" if m.isdir() else "file" if m.isfile() else "link" if m.issym() or m.islnk() else "other"
-            found[name] = (kind, m.size if m.isfile() else 0)
-    return [(n, k, s) for n, (k, s) in sorted(found.items())]
-
-
 def one_file_tar(path: str, content: bytes) -> bytes:
     """FR-143: the tar the SDK builds itself: one regular file, owned by 65534."""
     buffer = io.BytesIO()
@@ -154,11 +140,11 @@ def workspace_tools(binding: Any, spec: WorkspaceSpec, names: Iterable[str]) -> 
         return f"wrote {len(data)} B to {posixpath.normpath(path)}"
 
     async def list_workspace(path: str = ".") -> str:
-        found = entries(await binding.export(path))
-        shown = found[:MAX_ENTRIES]
+        # Through the provider's list: no file's contents cross (DECISION-0004d2dc).
+        shown, total = await binding.list(path, MAX_ENTRIES)
         lines = [f"{name}\t{kind}\t{size}" for name, kind, size in shown]
-        if len(found) > len(shown):
-            lines.append(f"[{len(found) - len(shown)} more entries not shown]")
+        if total > len(shown):
+            lines.append(f"[{total - len(shown)} more entries not shown]")
         return "\n".join(lines) if lines else "(empty)"
 
     functions = {"run_command": run_command, "read_workspace_file": read_workspace_file,

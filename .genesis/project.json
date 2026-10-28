@@ -9,7 +9,7 @@
     "non_goals": [],
     "trust_boundary": "local repository",
     "created_at": "2026-09-05T14:48:57.894Z",
-    "updated_at": "2026-10-28T03:58:41.671Z"
+    "updated_at": "2026-10-28T08:49:41.075Z"
   },
   "policy": {
     "ponytail": "full",
@@ -25,7 +25,7 @@
   "lifecycle": {
     "phase": "build",
     "status": "active",
-    "active_task": "M39-docker-provider",
+    "active_task": "M40-workspace-tools",
     "blocker": null,
     "next_action": "Run the task pre-flight."
   },
@@ -34,8 +34,8 @@
     "type": "new-product",
     "started_at": "2026-09-05T14:48:57.897Z",
     "spec_check": {
-      "at": "2026-10-27T16:18:24.078Z",
-      "source_hash": "f8488098b767bc996d9bf7a8605743c7838f97d933f4dcac63a5f41cb6fa31d5",
+      "at": "2026-10-28T08:49:40.567Z",
+      "source_hash": "4547c44bf53749fe9cfd53a6eff5c895e03893e64b0c95bce9cd557bb16a63ad",
       "requirements": [
         "AC-1",
         "AC-10",
@@ -339,13 +339,13 @@
       ]
     },
     "plan_check": {
-      "at": "2026-10-27T16:18:24.587Z",
+      "at": "2026-10-28T08:49:40.884Z",
       "source_hash": "33dc413979f287ff6abbc8bcd55abc3614bb4d11e30bd581292761a38e09b634"
     },
     "plan_approval": {
       "human": "siva-rgb (owner)",
-      "reason": "NFR-45 amended at M38's pre-review (D7, DECISION-bb81ebbe)",
-      "at": "2026-10-27T16:18:24.783Z",
+      "reason": "M39 amendments: FR-138 list, FR-142 command mechanism and env deny-list, FR-143 parent link declared, FR-144 du and fail-closed reading, AC-97 (DECISION-504c7f04, DECISION-0004d2dc)",
+      "at": "2026-10-28T08:49:41.074Z",
       "source_hash": "33dc413979f287ff6abbc8bcd55abc3614bb4d11e30bd581292761a38e09b634"
     }
   },
@@ -656,12 +656,12 @@
         "NFR-8",
         "NFR-9"
       ],
-      "source_hash": "f8488098b767bc996d9bf7a8605743c7838f97d933f4dcac63a5f41cb6fa31d5",
+      "source_hash": "4547c44bf53749fe9cfd53a6eff5c895e03893e64b0c95bce9cd557bb16a63ad",
       "approval": {
         "human": "siva-rgb (owner)",
-        "reason": "NFR-45 amended at M38's pre-review (D7, DECISION-bb81ebbe)",
-        "at": "2026-10-27T16:18:24.402Z",
-        "source_hash": "f8488098b767bc996d9bf7a8605743c7838f97d933f4dcac63a5f41cb6fa31d5"
+        "reason": "M39 amendments: FR-138 list, FR-142 command mechanism and env deny-list, FR-143 parent link declared, FR-144 du and fail-closed reading, AC-97 (DECISION-504c7f04, DECISION-0004d2dc)",
+        "at": "2026-10-28T08:49:40.719Z",
+        "source_hash": "4547c44bf53749fe9cfd53a6eff5c895e03893e64b0c95bce9cd557bb16a63ad"
       }
     }
   ],
@@ -2012,6 +2012,30 @@
       "status": "accepted",
       "source": null,
       "recorded_at": "2026-10-28T03:58:41.511Z"
+    },
+    {
+      "id": "DECISION-504c7f04",
+      "title": "M39 pre-flight: env in inspect, the command mechanism, and the disk reading",
+      "text": "Owner decisions 2026-10-28 at M39 pre-flight, on the measurements of the M39 pre-flight knowledge record. (1) AC-97 is amended to follow FR-142: no WorkspaceSpec.env value appears on any docker command line, in docker inspect's Cmd, Args or labels, or in any record; inspect's Config.Env holds a value only while its command's container exists, and that container is removed when the command ends (whoever can run docker inspect is already root on the VM). DockerProvider refuses, at create with WorkspaceUnavailable naming the variable and never its value, a spec env name the CLI itself reads (DOCKER_* and the variables it needs to run) and two names that differ only in case, since the CLI's environment on Windows is case-insensitive. (2) A command is docker create, then docker start -a -i, then docker inspect for its exit code and whether memory ran out, then docker rm -f: a kill by name works from the moment the container exists, the exit code is the command's own, and an OOM kill is killed='limit'. FR-142's 'docker run --rm' is amended; the container is still gone when the command ends. (3) The disk bound is read by a hardened du -sk container, user 65534, over only that volume, after each command and write; the image must provide du (declared). A reading that fails or times out refuses every later command and write as a full workspace does (fail closed): M38's manager let commands go on after a failed reading.",
+      "status": "accepted",
+      "source": null,
+      "recorded_at": "2026-10-28T04:14:52.433Z"
+    },
+    {
+      "id": "DECISION-0004d2dc",
+      "title": "M39 pre-review: listing through the protocol, and a link in a parent folder declared",
+      "text": "Owner decisions 2026-10-28 on the M39 pre-review (findings P1 to P3, reproduced first-hand by the author with the reviewer's p9_tool.py). (1) FR-138's protocol gains list(handle, path, limit) -> (entries, total): each direct entry's name, kind (file, dir, link, other) and size, at most limit of them, and how many there are. FakeProvider reads its tree; DockerProvider runs a container hardened as a command is, with sh and stat from the image (declared beside du). list_workspace uses it, so listing never transfers file contents, shows links and FIFOs as what they are, and works on a folder over 16 MiB or 10,000 files; exports still refuse links (FR-143). Before, list_workspace exported the whole folder: on Docker it named the folder itself for any sub-folder (P1), and failed on any folder holding a link, a FIFO, over 16 MiB or over 10,000 files (P3). (2) A symlink in a parent folder of a read, export or import path is declared, not refused (P2): docker cp resolves it inside the never-started helper container, which holds the image's files and the workspace's volume only -- not the host, /proc, /tmp or another workspace -- and any command can already read the image's files. A link inside the transferred stream is still refused by name.",
+      "status": "accepted",
+      "source": null,
+      "recorded_at": "2026-10-28T05:18:11.210Z"
+    },
+    {
+      "id": "DECISION-bf71f0f2",
+      "title": "M39 closed: accepted, six items carried into M40's pre-flight",
+      "text": "The owner accepted M39 round 1 (2026-10-28) and carried into M40-workspace-tools pre-flight: (a) a cpus minimum in WorkspaceSpec and fixed-decimal --cpus formatting, failing closed; (b) rm -fv so image-declared volumes go with the container; (c) a contract case naming what size() counts, since Docker and the fake differ; (d) typed errors for a failed listing or du instead of a bare RuntimeError; (e) a test that fails when example 32 keys its refusal check on text; (f) a log cap for command containers, which needs the owner to amend P5-D6 first. SPEC re-approved after close with the owner's permission.",
+      "status": "accepted",
+      "source": null,
+      "recorded_at": "2026-10-28T08:49:31.944Z"
     }
   ],
   "knowledge": [
@@ -3278,6 +3302,30 @@
       "source": null,
       "tags": [],
       "recorded_at": "2026-10-28T03:58:41.341Z"
+    },
+    {
+      "id": "KNOWLEDGE-c0328243",
+      "title": "M39 pre-flight: what the docker CLI does on this host, measured",
+      "text": "Measured 2026-10-28 with throwaway containers and volumes labelled agentsdk-probe, all removed (scratchpad m39/probe1.py, probe2.py; engine 29.6.2, image python:3.12-alpine by digest sha256:6d43704b...). (1) Volume root ownership: docker cp -a of a tar whose '.' entry is 65534 leaves the root 0:0 755 and a 65534 command cannot write; docker cp -a of a 'workspace/' directory entry into '/' of a created, never-started helper container over the volume (volume-nocopy) makes the root 65534:65534, and it stays so across later mounts, also once emptied. No process runs. (2) -e NAME with the value only in the CLI's environment keeps it off the command line and out of inspect's Cmd and Args, but inspect's Config.Env holds NAME=value while the container exists. (3) docker run --rm true: 0.31-0.36 s; create + start -a -i + inspect + rm -f: 0.50-0.55 s. (4) start -a -i splits stdout and stderr, passes stdin and closes it, and returns the command's exit code; but for an unknown command start returns 1 while inspect's State.ExitCode is 127, and a command exiting 125 is indistinguishable from a docker failure by docker run's code alone. (5) rm -f: a created container 0.08 s, a running one 0.16 s (the attached start client then exits 137). (6) An OOM kill: start returns 137 and inspect shows OOMKilled true when the container was not --rm. (7) du -sk /workspace in a hardened container: 0.31-0.38 s, counting disk blocks (5 MB + 2000 small files + a 100 MB sparse file = 12932 KiB); busybox du has no --apparent-size. docker system df -v: 0.28 s with 5 volumes on the host, reporting apparent size (the sparse file counted as 100 MB), and it walks every volume. (8) On Windows the CLI's environment is case-insensitive: spec names probe_lc and PROBE_LC both reached the container with PROBE_LC's value. DOCKER_HOST in the CLI's environment redirects the CLI. (9) --read-only and the 64 MiB /tmp cap hold.",
+      "source": null,
+      "tags": [],
+      "recorded_at": "2026-10-28T04:14:52.263Z"
+    },
+    {
+      "id": "KNOWLEDGE-9505dd77",
+      "title": "M39 pre-review: eleven findings; P1-P3 by owner decision, P4-P7 and P11 repaired, P8-P10 declared or noted",
+      "text": "Fable 5.1 pre-review of DockerProvider, runtime probes only (scratchpad m39/prereview, p1 to p9), repository hash unchanged, nothing left on the host. The author reproduced P1 to P4 first-hand with the reviewer's p9_tool.py. P1 (blocking): list_workspace of a sub-folder named the folder itself, since docker cp names members <basename>/... and the tool's entries() kept only top-level names. P3: listing exported whole folders, so a folder with one link or FIFO, over 16 MiB or over 10,000 files could not be listed. Both settled by DECISION-0004d2dc: the protocol gains list(handle, path, limit) -> (entries, total); DockerProvider lists with sh and stat in a hardened container; contract case a_folder_is_listed_by_its_direct_entries; tools.entries removed. P2: a symlink in a parent folder is followed by docker cp inside the never-started helper (image files and the volume only), declared by DECISION-0004d2dc and pinned by a docker test reaching neither /proc, /tmp, another workspace's volume nor the Windows drive. P4: an argv over the Windows command line was reported as the docker CLI missing; now exit 126 'argument list too long', and _spawn refuses any over-long docker command line with ValueError; list_owned inspects volumes 100 at a time. P5: one volume with a damaged agentsdk.spec label failed list_owned; now _UNKNOWN_SPEC. P6: a stopped daemon was reported as a missing image; create asks docker version first. P7: a sparse pax member passed read_tar and expanded to 256 MiB in import_tar; read_tar now refuses sparse members, counts stored sizes against 16 MiB, and refuses a repeated path, a file that is also a folder and a path under a file. P11: GODEBUG, GOTRACEBACK, GOMAXPROCS, GOGC, GOMEMLIMIT join the env deny-list. P8 (a name with ':' refused on a Windows host by data_filter) declared in the README; P9 (kill -9 $$ in sh -c exits 0: PID 1 ignores its own signals) and P10 (a flooding command's timeout returns in ~2.5x) noted. Mutation: 41 of 41 killed, 11 of them the repairs reverted.",
+      "source": null,
+      "tags": [],
+      "recorded_at": "2026-10-28T05:29:30.926Z"
+    },
+    {
+      "id": "KNOWLEDGE-ddac8822",
+      "title": "M39 round 1 APPROVED by Sonnet 5 on 8d6b2cd7",
+      "text": "Sonnet 5 approved M39-docker-provider round 1 at 07:23:52Z on source hash 8d6b2cd7, all ten attack items probed; its own regression run gave 2774 passed / 26 deselected in 1409.74 s. The store and Docker were left at the baseline. Verified first-hand by the owner and the author: (1) --cpus is formatted with repr(float), and WorkspaceSpec admits any cpus over 0, so 1e-06 reaches docker in scientific notation, slips past its too-precise check and gives cpu.max=max (no CPU limit) while 1e-05 and 0.001 are refused - a silent fail-open; cpus=1/3 fails every create with a message about the image. (2) No --log-driver or --log-opt and no daemon log cap: a command output flood grows the json-file log for its whole life; a fix needs a P5-D6 amendment. (3) _rm is rm -f without -v and remove() deletes only the named volume, so an image declaring VOLUME (redis 7.4, jaeger, postgres here) leaks an anonymous volume per command. (7) the example-32 refusal half of the M38 fix is pinned by no failing test. Also: size() counts allocated blocks and directories on Docker but file bytes on the fake (2000 empty dirs read 8,228,864 B on Docker), and a failed listing or du raises a bare RuntimeError outside list's documented types.",
+      "source": null,
+      "tags": [],
+      "recorded_at": "2026-10-28T08:49:29.548Z"
     }
   ],
   "tasks": [
@@ -3300,9 +3348,9 @@
           "status": "pass",
           "evidence": {
             "human": "siva-rgb (owner)",
-            "reason": "NFR-45 amended at M38's pre-review (D7, DECISION-bb81ebbe)",
-            "source_hash": "a0bc1ae95293b6b91bbd6ae2d1f6456fe1bb683af8da4e72aea252d5d776195f",
-            "observed_at": "2026-10-27T16:18:24.402Z"
+            "reason": "M39 amendments: FR-138 list, FR-142 command mechanism and env deny-list, FR-143 parent link declared, FR-144 du and fail-closed reading, AC-97 (DECISION-504c7f04, DECISION-0004d2dc)",
+            "source_hash": "8d6b2cd7633509e14f9be803c7afbfe5edab84a091f3964dd089f6b2c9c1f713",
+            "observed_at": "2026-10-28T08:49:40.719Z"
           }
         }
       ],
@@ -3312,7 +3360,7 @@
       "failures": [],
       "limitations": [],
       "created_at": "2026-09-05T14:48:57.897Z",
-      "updated_at": "2026-10-27T16:18:24.402Z"
+      "updated_at": "2026-10-28T08:49:40.719Z"
     },
     {
       "id": "M1-primitives",
@@ -6038,7 +6086,7 @@
     {
       "id": "M39-docker-provider",
       "outcome": "Docker workspaces run every command hardened, with files crossing only as filtered tar streams and measured bounds",
-      "state": "active",
+      "state": "done",
       "risk": "high",
       "owner": null,
       "scope": [],
@@ -6059,22 +6107,37 @@
           "id": "unit",
           "command": ".venv\\Scripts\\python.exe -m pytest tests/test_docker_provider.py -q",
           "mandatory": true,
-          "status": "pending",
-          "evidence": null
+          "status": "pass",
+          "evidence": {
+            "path": ".genesis/evidence/M39-docker-provider-unit.json",
+            "source_hash": "8d6b2cd7633509e14f9be803c7afbfe5edab84a091f3964dd089f6b2c9c1f713",
+            "hash": "366652c929ec0b32714ff2b67f039c8dbc51939cf8a80da2476606b8f154a70b",
+            "observed_at": "2026-10-28T05:52:28.777Z"
+          }
         },
         {
           "id": "regression",
           "command": ".venv\\Scripts\\python.exe -m pytest -q",
           "mandatory": true,
-          "status": "pending",
-          "evidence": null
+          "status": "pass",
+          "evidence": {
+            "path": ".genesis/evidence/M39-docker-provider-regression.json",
+            "source_hash": "8d6b2cd7633509e14f9be803c7afbfe5edab84a091f3964dd089f6b2c9c1f713",
+            "hash": "d621601f37a049740ca811b9d64cc88f11052c42606b2d945e8ec19a6aa56626",
+            "observed_at": "2026-10-28T06:14:34.337Z"
+          }
         },
         {
           "id": "independent-review",
           "command": "",
           "mandatory": true,
-          "status": "pending",
-          "evidence": null
+          "status": "pass",
+          "evidence": {
+            "human": "Sonnet 5",
+            "reason": "Round 1, Sonnet 5 fresh session. Verified first-hand on source hash 8d6b2cd7 (recomputed, unchanged at the end; no repository file changed by content): regression 2774 passed 26 deselected in 1409.74s run again by me; docker marked tests 26 passed in 101s; collected set compared with HEAD (all 2738 earlier tests still collected, 36 new, the 26 deselected are all in test_docker_provider.py); example 32 offline and live 4 PASS; example 33 offline 7 PASS, scripted 13 of 13, live 10 of 10; all brief table rows true. Runtime probes: hardening observed from inside a command (uid 65534, no caps, seccomp 2, lo only, read-only root, /tmp capped, no exec in /tmp, fork bomb and child OOM held), no env value on any docker command line or in any exception, result, label or inspect apart from Config.Env while the container lives, no container or volume left after cancel, kill, timeout, remove-in-flight or create-cancel at 100+ timing offsets, argv and stdin fidelity, listing of tab newline backslash glob and link and FIFO names, disk reading including 000 and 111 folders failing closed, 9 further runtime mutations all killed, M38 remove defect reverted fails the new contract case on both providers. Caveats for M40 or the owner, none blocking: (1) the daemon json-file log stores a flooding commands output outside max_output_bytes and max_workspace_bytes (803 MB in 8 s for yes, about 100 MB/s, removed with the container); needs an owner amendment of P5-D6 such as log-driver none before M42 endless-output exit signal; (2) an image declaring VOLUME (redis 7.4, postgres) leaves 2 unlabelled anonymous volumes per command plus 2 per workspace after remove, because docker rm -f lacks -v; declare or fix; (3) cpus below 1e-5 formats as 1e-07 and docker reads it as no limit, and 1/3 or 0.1+0.2 fail every create as too precise with the misleading message image cannot measure; (4) a docker start client that dies while the container runs is read as exit 0 (inspect State.Running is not checked); not model reachable; (5) example 32 and 33 still read exit code 1 and 4 notes.txt from a result content (data, not an error class; the exit code is in the command-ended event); no check keys an error class, provenance or origin on text; (6) tarfile.data_filter needs Python 3.11.4 while requires-python says 3.11; (7) the example 32 refusal check change is not pinned by a failing test.",
+            "source_hash": "8d6b2cd7633509e14f9be803c7afbfe5edab84a091f3964dd089f6b2c9c1f713",
+            "observed_at": "2026-10-28T07:23:52.590Z"
+          }
         }
       ],
       "next_action": "Run the task pre-flight.",
@@ -6083,12 +6146,12 @@
       "failures": [],
       "limitations": [],
       "created_at": "2026-10-24T17:00:17.612Z",
-      "updated_at": "2026-10-24T17:00:17.613Z"
+      "updated_at": "2026-10-28T08:49:35.761Z"
     },
     {
       "id": "M40-workspace-tools",
       "outcome": "An agent runs commands and edits files in its workspace, approved by default, killed totally on timeout and cancellation",
-      "state": "queued",
+      "state": "active",
       "risk": "high",
       "owner": null,
       "scope": [],
@@ -7626,17 +7689,35 @@
       "human": "Fable 5.1",
       "reason": "Round 1 approved on source hash 023def9c. Verified first-hand: gates re-run (unit 176 passed, regression 2738 passed, hash unchanged before and after); findings table true row by row, the two FR-136 tests fail on HEAD copy of example 31 and pass on the working tree (barrier 30 s to 75 s, wait 25 s); approved-test edits minimal by content; examples 31 and 32 live (8 of 8 and 4 of 4 PASS) and 32 offline; probes on both stores for max turns, cancel during creation, cancel waiting for approval, double decide (InterruptionAlreadyDecided), refusal provenance and events, cross-tenant store calls and triggers, env value only in output and in argv as amended, no loop-thread store call, no escape through the step-2 pattern or the fake tar import. WorkspaceRefused passes by class not text; a spoofed text is a success. Store back at baseline, every row removed by my run ids. Caveats, none reachable through a Runner in M38: (1) FakeProvider.remove pops the space before kill looks it up, so a command still running at removal is not killed and run returns later with exit 0; add a contract case before M39 DockerProvider; (2) example 32 live untrusted check omits results whose text starts ToolValidationError or ToolApprovalRejected, a prefix a real rejection never carries (its text is rejected or approval expired), so a live rejection would FAIL and a file starting with that text is skipped; key on the ToolCalled error_type or the provenance source instead; (3) FakeFiles.untar admits a file and a folder of one name in one stream and refuses dir-then-file after the folder is added; (4) the per-tool live clause absorbs a displaced id when a call of the same tool ended ToolTimeout without reaching its server, as DECISION-97fb116b declares; (5) README says refused until files are removed but nothing re-measures, the code cites FR-144 as M38, an approver is asked for a run_command the full workspace then refuses at step 6, and a removal waits on provider.create with no timeout (M40).",
       "revision": null
+    },
+    {
+      "id": "9f717b4e-cef2-4eb5-9040-9157c2bfb86d",
+      "at": "2026-10-28T07:23:52.590Z",
+      "action": "approve",
+      "task": "M39-docker-provider",
+      "human": "Sonnet 5",
+      "reason": "Round 1, Sonnet 5 fresh session. Verified first-hand on source hash 8d6b2cd7 (recomputed, unchanged at the end; no repository file changed by content): regression 2774 passed 26 deselected in 1409.74s run again by me; docker marked tests 26 passed in 101s; collected set compared with HEAD (all 2738 earlier tests still collected, 36 new, the 26 deselected are all in test_docker_provider.py); example 32 offline and live 4 PASS; example 33 offline 7 PASS, scripted 13 of 13, live 10 of 10; all brief table rows true. Runtime probes: hardening observed from inside a command (uid 65534, no caps, seccomp 2, lo only, read-only root, /tmp capped, no exec in /tmp, fork bomb and child OOM held), no env value on any docker command line or in any exception, result, label or inspect apart from Config.Env while the container lives, no container or volume left after cancel, kill, timeout, remove-in-flight or create-cancel at 100+ timing offsets, argv and stdin fidelity, listing of tab newline backslash glob and link and FIFO names, disk reading including 000 and 111 folders failing closed, 9 further runtime mutations all killed, M38 remove defect reverted fails the new contract case on both providers. Caveats for M40 or the owner, none blocking: (1) the daemon json-file log stores a flooding commands output outside max_output_bytes and max_workspace_bytes (803 MB in 8 s for yes, about 100 MB/s, removed with the container); needs an owner amendment of P5-D6 such as log-driver none before M42 endless-output exit signal; (2) an image declaring VOLUME (redis 7.4, postgres) leaves 2 unlabelled anonymous volumes per command plus 2 per workspace after remove, because docker rm -f lacks -v; declare or fix; (3) cpus below 1e-5 formats as 1e-07 and docker reads it as no limit, and 1/3 or 0.1+0.2 fail every create as too precise with the misleading message image cannot measure; (4) a docker start client that dies while the container runs is read as exit 0 (inspect State.Running is not checked); not model reachable; (5) example 32 and 33 still read exit code 1 and 4 notes.txt from a result content (data, not an error class; the exit code is in the command-ended event); no check keys an error class, provenance or origin on text; (6) tarfile.data_filter needs Python 3.11.4 while requires-python says 3.11; (7) the example 32 refusal check change is not pinned by a failing test.",
+      "revision": null
+    },
+    {
+      "id": "0dde2534-424b-410e-a9e4-2a009fbf7142",
+      "at": "2026-10-28T08:49:35.916Z",
+      "action": "requeue",
+      "task": "M40-workspace-tools",
+      "human": "siva-rgb (owner)",
+      "reason": "Re-approving SPEC after M39 amendments (FR-138, FR-142, FR-143, FR-144, AC-97); requeue first so plan approve activates one task",
+      "revision": null
     }
   ],
   "discovery": null,
   "checkpoint": {
-    "at": "2026-10-27T17:35:20.692Z",
+    "at": "2026-10-28T06:18:30.575Z",
     "revision": {
-      "commit": "6e5922076862dad442cf15807fb69293ca4a4ff8",
+      "commit": "3e611ca2cca32ff1f647c7cd8a6b4c8e7466219a",
       "dirty": true,
-      "source_hash": "023def9ca121c79d461d6c30213183300bed5c841a41ade97ec72a084bdfe40e"
+      "source_hash": "8d6b2cd7633509e14f9be803c7afbfe5edab84a091f3964dd089f6b2c9c1f713"
     },
-    "active_task": "M38-workspace-contract",
+    "active_task": "M39-docker-provider",
     "next_action": "Run the task pre-flight."
   },
   "legacy": null

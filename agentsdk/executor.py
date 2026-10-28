@@ -451,7 +451,7 @@ class ToolExecutor:
             # for a call whose tool changed while it waited (an approval, a slot).
             return await self._failed(tool_call, exc, state)
         except WorkspaceRefused as exc:
-            # FR-144 (M38): a workspace past a bound refuses by name, which the model reads.
+            # FR-144: a workspace past a bound refuses by name, which the model reads.
             return await self._failed(tool_call, exc, state)
         except Exception as exc:  # noqa: BLE001 - any tool failure is a tool error
             return await self._failed(tool_call, ToolExecutionError(str(exc)), state)

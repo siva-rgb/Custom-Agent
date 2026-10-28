@@ -29,6 +29,7 @@ from ..tools import ApprovalPolicy
 
 __all__ = [
     "CommandOutcome",
+    "DockerProvider",
     "FakeCommand",
     "FakeFiles",
     "FakeProvider",
@@ -155,7 +156,10 @@ class WorkspaceProvider(Protocol):
     are its `CommandOutcome` -- and raises `WorkspaceUnavailable` when the workspace cannot run
     anything. `import_` takes a tar stream of regular files and directories only, and raises
     `ValueError` for anything else (P5-D8); `export` returns one, and raises
-    `FileNotFoundError` for a missing path."""
+    `FileNotFoundError` for a missing path. `list` names a folder's direct entries -- (name, kind,
+    size), kind "file", "dir", "link" or "other", sorted by name, at most `limit` of them -- and
+    how many there are, transferring no file's contents; it raises `FileNotFoundError` for a
+    missing path and `NotADirectoryError` for anything but a folder (DECISION-0004d2dc)."""
 
     name: str
 
@@ -167,6 +171,9 @@ class WorkspaceProvider(Protocol):
     async def kill(self, handle: WorkspaceHandle, command_id: str) -> None: ...
 
     async def size(self, handle: WorkspaceHandle) -> int: ...
+
+    async def list(self, handle: WorkspaceHandle, path: str, *,
+                   limit: int = 1000) -> tuple[list[tuple[str, str, int]], int]: ...
 
     async def export(self, handle: WorkspaceHandle, path: str) -> bytes: ...
 
@@ -478,6 +485,11 @@ class FakeProvider:
     async def size(self, handle: WorkspaceHandle) -> int:
         return self._space(handle).files.size()
 
+    async def list(self, handle: WorkspaceHandle, path: str, *,
+                   limit: int = 1000) -> tuple[list[tuple[str, str, int]], int]:
+        found = self._space(handle).files.listdir(path)
+        return found[:limit], len(found)
+
     async def export(self, handle: WorkspaceHandle, path: str) -> bytes:
         return self._space(handle).files.tar(path)
 
@@ -485,12 +497,17 @@ class FakeProvider:
         self._space(handle).files.untar(data)
 
     async def remove(self, handle: WorkspaceHandle) -> None:
-        space = self._spaces.pop(handle.workspace_id, None)
+        space = self._spaces.get(handle.workspace_id)
         if space is None:
             return
+        # Killed while the workspace can still be found, so removal ends what runs in it (M38 review).
         for command_id in list(space.running):
             await self.kill(handle, command_id)
+        self._spaces.pop(handle.workspace_id, None)
 
     async def list_owned(self, labels: Mapping[str, str]) -> list[WorkspaceHandle]:
         return [s.handle for s in self._spaces.values()
                 if all(s.handle.labels.get(k) == v for k, v in labels.items())]
+
+
+from .docker import DockerProvider  # noqa: E402 - it builds on the names above (FR-142)

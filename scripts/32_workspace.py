@@ -131,8 +131,12 @@ async def demonstrate(runner: Runner, model_id: str, *, live: bool, persisted: b
         print(f"  {name} {json.dumps(arguments)} -> {'error: ' if r.is_error else ''}"
               f"{r.content[:100]!r}  [{r.provenance.trust_zone.value}]")
 
+    # Each call's outcome by its error class, from its ToolCalled event, never from its text
+    # (DECISION-94bfee7c): a rejection or an expiry is the SDK's own decision, not workspace output.
+    error_types = {e.payload["tool_call_id"]: e.payload.get("error_type")
+                   for e in result.events if e.event_type is EventType.TOOL_CALLED}
     untrusted = [r for call_id, r in results.items() if issued.get(call_id, ("",))[0] in agent(model_id).tool_profile
-                 and not r.content.startswith(("ToolValidationError", "ToolApprovalRejected"))]
+                 and error_types.get(call_id) not in ("ToolValidationError", "ToolApprovalRejected")]
     removed = [e.payload for e in result.events if e.event_type is EventType.WORKSPACE_REMOVED]
     checks = [
         # Whatever a live model does: nothing ran unapproved, every result is untrusted, and a
@@ -159,7 +163,7 @@ async def demonstrate(runner: Runner, model_id: str, *, live: bool, persisted: b
             ("a non-zero exit was the command's result, not a tool failure",
              not results["t2"].is_error and "exit code: 1" in results["t2"].content),
             ("past max_workspace_bytes the next command was refused, naming the bound",
-             results["t4"].is_error and results["t4"].content.startswith("WorkspaceRefused")
+             results["t4"].is_error and error_types.get("t4") == "WorkspaceRefused"
              and "max_workspace_bytes" in results["t4"].content and ran == [c[1]["argv"] for c in ScriptedModel.CALLS[1:4]]),
         ]
     if persisted:

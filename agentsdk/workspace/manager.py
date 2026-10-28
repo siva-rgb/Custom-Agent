@@ -33,6 +33,7 @@ Call = Callable[..., Awaitable[Any]]
 # the removal is still recorded (M41 reaps what a provider left).
 _REMOVE_SECONDS = 30.0
 _KILL_SECONDS = 10.0
+_MEASURE_SECONDS = 120.0
 
 
 async def _completed(task: asyncio.Future[Any]) -> Any:
@@ -64,6 +65,7 @@ class RunWorkspace:
         self.handle: WorkspaceHandle | None = None
         self.removed = False
         self._full: int | None = None  # the size measured past the bound, once it was
+        self._unread: str | None = None  # why the size could not be read, once it could not
 
     @property
     def workspace_id(self) -> str | None:
@@ -112,16 +114,28 @@ class RunWorkspace:
         return handle
 
     async def _refuse_if_full(self, tool: str) -> None:
-        if self._full is None:
+        if self._full is None and self._unread is None:
             return
         await self._emit(EventType.WORKSPACE_REFUSED, {
             "workspace_id": self.workspace_id, "tool": tool, "bound": "max_workspace_bytes",
-            "size": self._full, "limit": self.spec.max_workspace_bytes})
+            "size": self._full, "limit": self.spec.max_workspace_bytes, "unread": self._unread})
+        if self._full is None:
+            raise WorkspaceRefused(f"the workspace's size could not be read ({self._unread}), so it is held past "
+                                   f"max_workspace_bytes ({self.spec.max_workspace_bytes} B); it refuses every "
+                                   f"later command and write")
         raise WorkspaceRefused(f"the workspace holds {self._full} B, past max_workspace_bytes "
                                f"({self.spec.max_workspace_bytes} B); it refuses every later command and write")
 
     async def _measure(self, handle: WorkspaceHandle) -> None:
-        size = await self._manager.provider.size(handle)
+        """FR-144: a size that cannot be read is held past the bound, so a workspace the bound
+        cannot see refuses as a full one does (fail closed, DECISION-504c7f04)."""
+        try:
+            size = await asyncio.wait_for(self._manager.provider.size(handle), _MEASURE_SECONDS)
+        except asyncio.CancelledError:
+            raise
+        except Exception as exc:  # noqa: BLE001 - named by class only
+            self._unread = type(exc).__name__
+            return
         if size > self.spec.max_workspace_bytes:
             self._full = size
 
@@ -198,6 +212,10 @@ class RunWorkspace:
     async def export(self, path: str) -> bytes:
         handle = await self.ensure()
         return await self._manager.provider.export(handle, path)
+
+    async def list(self, path: str, limit: int) -> tuple[list[tuple[str, str, int]], int]:
+        handle = await self.ensure()
+        return await self._manager.provider.list(handle, path, limit=limit)
 
     async def end(self, reason: str, emit: Emit) -> None:
         """Removes the workspace, if one was created, and records it. Never raises but for its

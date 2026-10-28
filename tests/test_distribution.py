@@ -73,6 +73,8 @@ EXPECTED_EXAMPLES = {
     "31_mcp_contention.py",
     # FR-141 (M38): a workspace, on the fake provider.
     "32_workspace.py",
+    # FR-145 (M39): the Docker provider.
+    "33_docker_workspace.py",
 }
 
 

@@ -169,9 +169,14 @@ persisted so you can reconstruct exactly what happened afterwards.
   Runner's `workspace_provider`. `run_command` waits for approval by default,
   every result is untrusted executable data, a workspace past
   `max_workspace_bytes` refuses further work by name, and the workspace, each
-  command and its removal are recorded on both stores. M38's provider is
-  `FakeProvider`, in process, for tests and offline examples; M39 runs commands
-  in Docker containers.
+  command and its removal are recorded on both stores. `FakeProvider` runs in
+  process, for tests and offline examples. `DockerProvider` (M39) makes the
+  workspace a Docker volume and runs each command in its own container over it:
+  no network, no capability, no new privileges, a read-only root, user 65534,
+  the spec's memory, CPU, process and `/tmp` limits, and the image by digest,
+  never pulled. Files cross only as tar streams the SDK checks: a link, FIFO,
+  device, absolute or `..` path, or a stream over 16 MiB or 10,000 members fails
+  the transfer by name.
 - **Fetches each page once, however many agents ask** (M24's claim-lock): one
   holder per page and per statement, across the tasks of a process and the
   processes sharing the database; the others wait, then take the holder's
@@ -243,8 +248,15 @@ Stated plainly, because an SDK that overstates itself costs you a week:
 | `Runner.mcp_blocked` reads through the tenancy's connection, as `mcp_resources` does: it starts a server not yet started, and a restart it causes counts toward the server's one restart. It lists the tools the server lists now, never one the SDK skipped as unusable (M37) | Declared (M37) |
 | Live, examples 30 and 31 report a check whose subject the model never brought about as `[SKIP] not exercised`, naming why. In example 31 a subject is the least the servers' own journals show happened -- a server ran anything, a call that asks ran, the server asked -- so a violation fails rather than skips; the secrets check is asked of every run. Each server returns an id for every execution, which tells the execution to exactly one call: nothing is matched by arguments, and an error raised before a call left is never counted as a server's. An execution whose result never reached a call -- a cancelled plan's -- fails the approval check live. The full witnesses a scripted run must show are asked offline only. Every `[FAIL]` names the clause that failed (M37 rounds 2 and 3) | Declared (M37) |
 | Example 31's checks read a child's events and manifest only on PostgreSQL; the in-memory store keeps no child's events, so there they read the plan run's events, the histories, the interruptions and the catalog's answers | Declared (M37) |
-| Workspaces run only on `FakeProvider` until M39 brings `DockerProvider`: its commands are Python functions the application registers, and it isolates nothing from the host process. It is for tests and offline examples | Declared (M38) |
-| A workspace's disk bound is measured after each command and write, not enforced while they run: the one that passes `max_workspace_bytes` completes, and every later one is refused until files are removed (P5-D7) | Declared (M38) |
+| `FakeProvider`'s commands are Python functions the application registers, and it isolates nothing from the host process. It is for tests and offline examples; `DockerProvider` is the one that sandboxes | Declared (M38) |
+| A workspace's disk bound is measured after each command and write, not enforced while they run: the one that passes `max_workspace_bytes` completes, and every later command and write is refused. Nothing in this increment removes a workspace's files, so it stays refused for the rest of its run (P5-D7) | Declared (M38, reworded M39) |
+| `list_workspace` reads a folder through the provider's `list`: on `DockerProvider` a hardened container runs `sh` and `stat`, so links, FIFOs and devices are listed as what they are and no file's contents cross (DECISION-0004d2dc) | Declared (M39) |
+| A symlink in a parent folder of a path read or exported from a Docker workspace is followed inside the never-started container `docker cp` reads from, which holds the image's files and the workspace only -- not the host, `/proc`, `/tmp` or another workspace -- files any command can already read; a link in the stream itself is refused (DECISION-0004d2dc) | Declared (M39) |
+| On a Windows host, a workspace file whose name holds `:` cannot be read or exported: `tarfile.data_filter` judges it as a Windows path. An argument list longer than the Windows command line (32,767 characters) ends as the command's exit code 126, `argument list too long` | Declared (M39) |
+| `DockerProvider` reads a workspace's size with `du -sk` in a hardened container, so its image must provide `du` (and `sh` and `stat`, for listing); a reading that fails or times out -- a folder the command made unreadable, say -- refuses every later command and write as a full workspace does (DECISION-504c7f04) | Declared (M39) |
+| A `DockerProvider` command's containers share the Docker VM's kernel: the host is behind the WSL2 VM's boundary, and a microVM provider comes later (ADR-09 as amended, DECISION-31b2c79d) | Declared (M39) |
+| A `WorkspaceSpec.env` value is in `docker inspect`'s `Config.Env` while its command's container exists, as the command's own environment is; no `docker` command line, label or record holds it. An env name the `docker` CLI itself reads (`DOCKER_*`, `PATH`, `USERPROFILE`, the proxy variables and the like), or two names that differ only in case, fail the workspace (DECISION-504c7f04) | Declared (M39) |
+| On `DockerProvider` a command costs about 0.5 s of container start and removal, and about 0.35 s more to read the workspace's size after it; creating and removing a workspace about 1.3 s together (KNOWLEDGE-c0328243, M39 smoke runs) | Declared (M39) |
 | `WorkspaceSpec(scope="plan")` and `keep=True` are accepted by the spec and refused when a run starts, until M41; `max_concurrent_workspaces` is checked and not yet enforced (M41) | Declared (M38) |
 | A workspace is removed when its run ends, before the run's last event. `Runner.aclose()` does not yet remove the workspaces of runs still under way, and nothing yet reaps a workspace a crashed process left (M41) | Declared (M38) |
 | Beside a `workspace_provider`, no registered tool may be named `run_command`, `read_workspace_file`, `write_workspace_file`, `list_workspace` or `export_workspace_file`: it would run on the host, so such a Runner is refused when it is built | Declared (M38) |
@@ -268,7 +280,7 @@ Stated plainly, because an SDK that overstates itself costs you a week:
 | A server that cannot be reached is retried once a minute per tenant and project, so N tenancies of one Runner each wait one `connect_timeout` a minute on a server that is down | Declared (M33) |
 | A server that writes something other than MCP to its stdout -- its environment, say -- has that line quoted in the `mcp` library's own parse-error log record (`mcp.client.stdio`), which the SDK does not silence | Declared (M33) |
 | A paused run resuming after its process restarts | Phase 6 |
-| Sandboxed execution: commands in a Docker container (M39); timeouts and cancellation that kill a command's container (M40); files out of a workspace as artifacts, plan workspaces, kept workspaces and reaping (M41) | Phase 5 |
+| Sandboxed execution: a cancelled run reporting cancelled only once its command's container is gone, bounded (M40); files out of a workspace as artifacts, plan workspaces, kept workspaces and reaping (M41) | Phase 5 |
 | Pause and resume; durable interruptions (cancel is built) | Phase 6 |
 | The execution manifest's `tools_sent` records the tools a run's agent is sent, written at run start with the rest of its configuration, so a run that ends before its first request records a set it never sent | Declared (M21) |
 | A fetch tool widened to a broader cache scope keeps serving the run's own version recorded at the narrower one until that version expires | Declared (M23) |
@@ -654,6 +666,7 @@ credentials -- which is also how the test suite checks them.
 | [`30_mcp_input.py`](scripts/30_mcp_input.py) | MCP input requests: a server's form answered by a scripted person and its URL declined, each recorded as an interruption, the answers reaching the server, and the URL never opened |
 | [`31_mcp_contention.py`](scripts/31_mcp_contention.py) | Phase 4's exit signal: five hostile MCP servers under orchestration, over stdio and HTTP in both eras -- a mid-run change accepted through `mcp_blocked`, a poisoned description, a shadowed name, an injected result, a form answered -- checked against each server's journal of its executions, the store, and the server processes |
 | [`32_workspace.py`](scripts/32_workspace.py) | A workspace on `FakeProvider`: a command's output, a non-zero exit, `run_command` waiting for an operator's approval, a workspace past `max_workspace_bytes` refusing the next command, every result untrusted, and the workspace and its commands recorded |
+| [`33_docker_workspace.py`](scripts/33_docker_workspace.py) | Example 32's agent on `DockerProvider`, then what a command sees from inside: user 65534, no capability, no network but loopback, a read-only root, a capped `/tmp`, the cgroup limits of its spec, and a file exported as a checked tar stream. Prints `[SKIP] docker not running` without Docker; `--offline` runs on `FakeProvider` |
 
 ```bash
 python scripts/02_custom_tools.py --offline
@@ -709,7 +722,7 @@ agentsdk/
   model.py          ModelRequest, ModelResponse, Usage, the ModelClient protocol
   registry.py       ModelRegistry, ModelPricing and cost
   providers/        the OpenAI-compatible HTTP client
-  workspace/        WorkspaceSpec, the provider protocol, FakeProvider, the workspace tools
+  workspace/        WorkspaceSpec, the provider protocol, FakeProvider, DockerProvider, the workspace tools
   primitives.py     Message, ToolCall, ToolResult, ContentProvenance
   persistence.py    Persistence
   postgres.py       Postgres stores, pool and trace

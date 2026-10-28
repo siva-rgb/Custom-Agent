@@ -188,6 +188,26 @@ async def contract_an_import_holding_anything_but_regular_files_is_refused(provi
         await provider.remove(handle)
 
 
+async def contract_a_folder_is_listed_by_its_direct_entries(provider, words, spec) -> None:
+    """DECISION-0004d2dc: `list` names a folder's own entries, not the folder, and transfers no
+    contents; a missing path and a file are refused as what they are."""
+    handle = await _fresh(provider, spec)
+    try:
+        await provider.import_(handle, regular_file_tar("sub/a.txt", b"payload"))
+        await provider.import_(handle, regular_file_tar("sub/deep/b.txt", b"b"))
+        assert await provider.list(handle, "sub") == ([("a.txt", "file", 7), ("deep", "dir", 0)], 2)
+        assert await provider.list(handle, "sub", limit=1) == ([("a.txt", "file", 7)], 2)
+        assert await provider.list(handle, "") == ([("sub", "dir", 0)], 1)
+        for path, error in (("missing", FileNotFoundError), ("sub/a.txt", NotADirectoryError)):
+            try:
+                await provider.list(handle, path)
+            except error:
+                continue
+            raise AssertionError(f"listing {path} did not raise {error.__name__}")
+    finally:
+        await provider.remove(handle)
+
+
 async def contract_a_missing_path_cannot_be_exported(provider, words, spec) -> None:
     handle = await _fresh(provider, spec)
     try:
@@ -208,6 +228,21 @@ async def contract_a_removed_workspace_runs_nothing(provider, words, spec) -> No
     except WorkspaceUnavailable:
         return
     raise AssertionError("a removed workspace ran a command")
+
+
+async def contract_removing_a_workspace_kills_its_running_commands(provider, words, spec) -> None:
+    """M38 review: removal ends what still runs in the workspace, as a kill does (FR-151)."""
+    handle = await _fresh(provider, spec)
+    running = asyncio.ensure_future(provider.run(handle, words.nap(30), timeout=60, command_id="c-removed"))
+    await asyncio.sleep(1.5)
+    started = time.monotonic()
+    try:
+        await provider.remove(handle)
+        outcome = await asyncio.wait_for(running, 15)
+    finally:
+        running.cancel()
+    assert (outcome.exit_code, outcome.killed) == (None, "cancelled"), outcome
+    assert time.monotonic() - started < 15, "removal did not end the command"
 
 
 async def contract_owned_workspaces_are_listed_by_their_labels(provider, words, spec) -> None:

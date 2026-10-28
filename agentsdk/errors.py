@@ -115,7 +115,7 @@ class ToolBlocked(ToolError):
 
 
 class WorkspaceRefused(ToolError):
-    """FR-144 (M38): a workspace past one of its measured bounds refuses every later command and
+    """FR-144: a workspace past one of its measured bounds refuses every later command and
     write; the message names the bound."""
 
 

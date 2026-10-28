@@ -1,0 +1,22 @@
+{
+  "task": "M39-docker-provider",
+  "gate": "unit",
+  "command": ".venv\\Scripts\\python.exe -m pytest tests/test_docker_provider.py -q",
+  "started_at": "2026-10-28T05:52:12.958Z",
+  "observed_at": "2026-10-28T05:52:28.777Z",
+  "exit_code": 0,
+  "signal": null,
+  "stdout": "..................................                                       [100%]\r\n34 passed, 26 deselected in 15.15s\r\n",
+  "stderr": "",
+  "revision": {
+    "commit": "3e611ca2cca32ff1f647c7cd8a6b4c8e7466219a",
+    "dirty": true
+  },
+  "source_hash": "8d6b2cd7633509e14f9be803c7afbfe5edab84a091f3964dd089f6b2c9c1f713",
+  "environment": {
+    "node": "v20.10.0",
+    "platform": "win32",
+    "arch": "x64"
+  },
+  "hash": "366652c929ec0b32714ff2b67f039c8dbc51939cf8a80da2476606b8f154a70b"
+}

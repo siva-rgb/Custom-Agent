@@ -4,7 +4,7 @@
 
 - workflow: new-product
 - phase: build
-- plan approval: siva-rgb (owner) at 2026-10-27T16:18:24.783Z
+- plan approval: siva-rgb (owner) at 2026-10-28T08:49:41.074Z
 
 ## Tasks
 
@@ -362,15 +362,15 @@
 
 ### M39-docker-provider — Docker workspaces run every command hardened, with files crossing only as filtered tar streams and measured bounds
 
-- state/risk: active / high
+- state/risk: done / high
 - requirements: FR-142, FR-143, FR-144, FR-145, AC-97, NFR-43, NFR-45
 - scope: not bounded
-- gates: unit: .venv\Scripts\python.exe -m pytest tests/test_docker_provider.py -q, regression: .venv\Scripts\python.exe -m pytest -q, independent-review: pending
+- gates: unit: .venv\Scripts\python.exe -m pytest tests/test_docker_provider.py -q, regression: .venv\Scripts\python.exe -m pytest -q, independent-review: pass
 - next: Run the task pre-flight.
 
 ### M40-workspace-tools — An agent runs commands and edits files in its workspace, approved by default, killed totally on timeout and cancellation
 
-- state/risk: queued / high
+- state/risk: active / high
 - requirements: FR-146, FR-147, FR-148, FR-149, AC-98, NFR-42, NFR-44
 - scope: not bounded
 - gates: unit: .venv\Scripts\python.exe -m pytest tests/test_workspace_tools.py -q, regression: .venv\Scripts\python.exe -m pytest -q, independent-review: pending
