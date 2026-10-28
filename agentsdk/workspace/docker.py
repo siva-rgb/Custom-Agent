@@ -59,10 +59,11 @@ _COMMAND_LINE = 32_767 - 512
 # FR-146 via DECISION-0004d2dc: one folder's direct entries, read in a container hardened as a
 # command is. $1 is the path under /workspace, $2 the most to describe; each entry is printed as
 # kind, size and name separated by tabs and ended by a NUL, then the count. Exit 20: no such path;
-# 21: not a folder (a link to one included); 23: an entry could not be read.
+# 21: not a folder (a link to one included); 22: the folder cannot be read; 23: an entry cannot.
 _LIST = r"""d="/workspace/$1"
 if [ ! -e "$d" ] && [ ! -L "$d" ]; then exit 20; fi
 if [ -L "$d" ] || [ ! -d "$d" ]; then exit 21; fi
+if [ ! -r "$d" ]; then exit 22; fi
 cd -- "$d" || exit 22
 n=0
 for f in * .[!.]* ..?*; do
@@ -100,7 +101,10 @@ def hardening(spec: WorkspaceSpec) -> list[str]:
     return [
         "--network", "none", "--cap-drop", "ALL", "--security-opt", "no-new-privileges", "--read-only",
         "--tmpfs", f"/tmp:size={spec.tmp_bytes}", "--user", f"{UID}:{UID}", "--pids-limit", str(spec.pids),
-        "--memory", str(spec.memory_bytes), "--memory-swap", str(spec.memory_bytes), "--cpus", repr(float(spec.cpus)),
+        "--memory", str(spec.memory_bytes), "--memory-swap", str(spec.memory_bytes), "--cpus", f"{spec.cpus:.2f}",
+        # The daemon keeps nothing of a command's output: it is read only through the attached
+        # client, kept up to max_output_bytes (DECISION-d4ede901).
+        "--log-driver", "none",
     ]
 
 
@@ -349,9 +353,10 @@ class DockerProvider:
         return code, bytes(out.data), bytes(err.data)
 
     async def _rm(self, *names: str) -> None:
+        # -v: with any volume the image declares, which no one else could ever remove (M39 review).
         if names:
             with contextlib.suppress(Exception):
-                await self._cli("rm", "-f", *names)
+                await self._cli("rm", "-fv", *names)
 
     def _space(self, handle: WorkspaceHandle) -> _Space:
         space = self._spaces.get(handle.workspace_id)
@@ -508,7 +513,15 @@ class DockerProvider:
         if command is None:
             return
         command.kill.set()
-        await self._rm(command.name)
+        code, _, _ = await self._cli("rm", "-fv", command.name)
+        # By state, not by docker's message: a container already gone was killed (FR-148). One the
+        # daemon cannot say is gone is not taken as gone (M40 round 1, DECISION-f3e99c07).
+        if code != 0:
+            if await self._alive(command.name):
+                raise WorkspaceUnavailable(f"docker could not remove the command's container (exit {code})")
+            code, _, _ = await self._cli("version", "--format", "{{.Server.Version}}")
+            if code != 0:
+                raise WorkspaceUnavailable("the docker daemon could not say whether the command's container is gone")
 
     # --- the measured bound (FR-144) -------------------------------------------------------------
 
@@ -519,11 +532,11 @@ class DockerProvider:
         ended = await self._contained(handle, _Command(f"agentsdk-du-{uuid.uuid4()}"), ["du", "-sk", MOUNT],
                                       timeout=_MEASURE_SECONDS, stdin=None, env={}, keep=4096)
         if ended.killed is not None or ended.exit_code != 0:
-            raise RuntimeError(f"du ended with exit code {ended.exit_code}, killed {ended.killed}")
+            raise WorkspaceUnavailable(f"du ended with exit code {ended.exit_code}, killed {ended.killed}")
         try:
             return int(bytes(ended.stdout.data).split()[0]) * 1024
         except (IndexError, ValueError):
-            raise RuntimeError("du printed no size") from None
+            raise WorkspaceUnavailable("du printed no size") from None
 
     async def size(self, handle: WorkspaceHandle) -> int:
         space = self._space(handle)
@@ -544,12 +557,14 @@ class DockerProvider:
             raise FileNotFoundError(path)
         if ended.exit_code == 21:
             raise NotADirectoryError(path)
+        if ended.exit_code in (22, 23):
+            raise PermissionError(path)  # the folder, or one of its entries, cannot be read
         out = bytes(ended.stdout.data)
         if ended.killed is not None or ended.exit_code != 0 or ended.stdout.count > len(out):
-            raise RuntimeError(f"the listing ended with exit code {ended.exit_code}, killed {ended.killed}")
+            raise WorkspaceUnavailable(f"the listing ended with exit code {ended.exit_code}, killed {ended.killed}")
         records = [r.decode("utf-8", errors="replace").split("\t", 2) for r in out.split(b"\0") if r]
         if not records or records[-1][0] != "total":
-            raise RuntimeError("the listing printed no count")
+            raise WorkspaceUnavailable("the listing printed no count")
         found = sorted((name, kind, int(size)) for kind, size, name in records[:-1])
         return found, int(records[-1][1])
 

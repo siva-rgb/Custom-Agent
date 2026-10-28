@@ -4,7 +4,7 @@
 
 - workflow: new-product
 - phase: build
-- plan approval: siva-rgb (owner) at 2026-10-28T08:49:41.074Z
+- plan approval: siva-rgb (owner) at 2026-10-28T18:22:17.898Z
 
 ## Tasks
 
@@ -370,15 +370,15 @@
 
 ### M40-workspace-tools — An agent runs commands and edits files in its workspace, approved by default, killed totally on timeout and cancellation
 
-- state/risk: active / high
+- state/risk: done / high
 - requirements: FR-146, FR-147, FR-148, FR-149, AC-98, NFR-42, NFR-44
 - scope: not bounded
-- gates: unit: .venv\Scripts\python.exe -m pytest tests/test_workspace_tools.py -q, regression: .venv\Scripts\python.exe -m pytest -q, independent-review: pending
+- gates: unit: .venv\Scripts\python.exe -m pytest tests/test_workspace_tools.py -q, regression: .venv\Scripts\python.exe -m pytest -q, independent-review: pass
 - next: Run the task pre-flight.
 
 ### M41-workspace-plans — Workspace files leave only as artifacts, and workspaces end with their run, are reaped after a dead Runner and are bounded in plans
 
-- state/risk: queued / high
+- state/risk: active / high
 - requirements: FR-150, FR-151, FR-152, FR-153, AC-99, NFR-22, NFR-44
 - scope: not bounded
 - gates: unit: .venv\Scripts\python.exe -m pytest tests/test_workspace_plan.py -q, regression: .venv\Scripts\python.exe -m pytest -q, independent-review: pending

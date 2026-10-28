@@ -176,7 +176,11 @@ persisted so you can reconstruct exactly what happened afterwards.
   the spec's memory, CPU, process and `/tmp` limits, and the image by digest,
   never pulled. Files cross only as tar streams the SDK checks: a link, FIFO,
   device, absolute or `..` path, or a stream over 16 MiB or 10,000 members fails
-  the transfer by name.
+  the transfer by name. Every command ends (M40): past its timeout its container
+  is killed and the model reads `killed: timeout`; when its run is cancelled the
+  container is killed through the provider and the run reports cancelled only
+  once it is gone, within 10 s, whatever the process inside ignores -- a kill
+  that fails is recorded by its error class.
 - **Fetches each page once, however many agents ask** (M24's claim-lock): one
   holder per page and per statement, across the tasks of a process and the
   processes sharing the database; the others wait, then take the holder's
@@ -257,6 +261,10 @@ Stated plainly, because an SDK that overstates itself costs you a week:
 | A `DockerProvider` command's containers share the Docker VM's kernel: the host is behind the WSL2 VM's boundary, and a microVM provider comes later (ADR-09 as amended, DECISION-31b2c79d) | Declared (M39) |
 | A `WorkspaceSpec.env` value is in `docker inspect`'s `Config.Env` while its command's container exists, as the command's own environment is; no `docker` command line, label or record holds it. An env name the `docker` CLI itself reads (`DOCKER_*`, `PATH`, `USERPROFILE`, the proxy variables and the like), or two names that differ only in case, fail the workspace (DECISION-504c7f04) | Declared (M39) |
 | On `DockerProvider` a command costs about 0.5 s of container start and removal, and about 0.35 s more to read the workspace's size after it; creating and removing a workspace about 1.3 s together (KNOWLEDGE-c0328243, M39 smoke runs) | Declared (M39) |
+| A cancelled run waits at most 10 s for its command's kill, then records it without reading the workspace's size; the next command or write in that workspace reads it first (DECISION-fe7243f1). A cancel that lands while the size is read after a command ended does the same, and the command is recorded with its own outcome (DECISION-f3e99c07). The run's removal of its workspace keeps its own 30 s bound, so on a slow daemon a cancelled run can report later than 10 s after the cancel. A kill that fails or does not return in time is recorded as `kill_error`, by class, on `WorkspaceCommandEnded`, the command's row still says `cancelled` with none of its output, and whatever it left is removed with its workspace when the run ends, or by reaping (M41) (DECISION-d4ede901) | Declared (M40) |
+| A workspace's size counts as `du` does, on both providers: each file in whole 4 KiB blocks and each folder one block, so many small files or empty folders weigh against `max_workspace_bytes` more than their bytes. They still differ: `FakeProvider` does not count a folder's own growth with thousands of entries (up to 64 KiB measured) and counts a sparse file at its full length (DECISION-d4ede901, M40 pre-review) | Declared (M40) |
+| A `WorkspaceSpec.cpus` above the host's CPU count passes the spec and fails every Docker workspace, reported as the image being unable to measure one. Listing a folder under one that cannot be read raises `FileNotFoundError`, as a missing path does (M40 pre-review) | Declared (M40) |
+| A command's container keeps no log on the daemon (`--log-driver none`): its output is read only through the attached client, up to `max_output_bytes`, and `docker logs` shows nothing. `WorkspaceSpec.cpus` is from 0.01 to 16 in whole hundredths, a value within 1e-9 of one kept as that hundredth (DECISION-d4ede901, DECISION-f3e99c07) | Declared (M40) |
 | `WorkspaceSpec(scope="plan")` and `keep=True` are accepted by the spec and refused when a run starts, until M41; `max_concurrent_workspaces` is checked and not yet enforced (M41) | Declared (M38) |
 | A workspace is removed when its run ends, before the run's last event. `Runner.aclose()` does not yet remove the workspaces of runs still under way, and nothing yet reaps a workspace a crashed process left (M41) | Declared (M38) |
 | Beside a `workspace_provider`, no registered tool may be named `run_command`, `read_workspace_file`, `write_workspace_file`, `list_workspace` or `export_workspace_file`: it would run on the host, so such a Runner is refused when it is built | Declared (M38) |
@@ -280,7 +288,7 @@ Stated plainly, because an SDK that overstates itself costs you a week:
 | A server that cannot be reached is retried once a minute per tenant and project, so N tenancies of one Runner each wait one `connect_timeout` a minute on a server that is down | Declared (M33) |
 | A server that writes something other than MCP to its stdout -- its environment, say -- has that line quoted in the `mcp` library's own parse-error log record (`mcp.client.stdio`), which the SDK does not silence | Declared (M33) |
 | A paused run resuming after its process restarts | Phase 6 |
-| Sandboxed execution: a cancelled run reporting cancelled only once its command's container is gone, bounded (M40); files out of a workspace as artifacts, plan workspaces, kept workspaces and reaping (M41) | Phase 5 |
+| Sandboxed execution: files out of a workspace as artifacts, plan workspaces, kept workspaces, reaping and `Runner.aclose()` removing what it created (M41) | Phase 5 |
 | Pause and resume; durable interruptions (cancel is built) | Phase 6 |
 | The execution manifest's `tools_sent` records the tools a run's agent is sent, written at run start with the rest of its configuration, so a run that ends before its first request records a set it never sent | Declared (M21) |
 | A fetch tool widened to a broader cache scope keeps serving the run's own version recorded at the narrower one until that version expires | Declared (M23) |
@@ -667,6 +675,7 @@ credentials -- which is also how the test suite checks them.
 | [`31_mcp_contention.py`](scripts/31_mcp_contention.py) | Phase 4's exit signal: five hostile MCP servers under orchestration, over stdio and HTTP in both eras -- a mid-run change accepted through `mcp_blocked`, a poisoned description, a shadowed name, an injected result, a form answered -- checked against each server's journal of its executions, the store, and the server processes |
 | [`32_workspace.py`](scripts/32_workspace.py) | A workspace on `FakeProvider`: a command's output, a non-zero exit, `run_command` waiting for an operator's approval, a workspace past `max_workspace_bytes` refusing the next command, every result untrusted, and the workspace and its commands recorded |
 | [`33_docker_workspace.py`](scripts/33_docker_workspace.py) | Example 32's agent on `DockerProvider`, then what a command sees from inside: user 65534, no capability, no network but loopback, a read-only root, a capped `/tmp`, the cgroup limits of its spec, and a file exported as a checked tar stream. Prints `[SKIP] docker not running` without Docker; `--offline` runs on `FakeProvider` |
+| [`34_sandboxed_tools.py`](scripts/34_sandboxed_tools.py) | An agent writes a Python program, runs it and reads back what it wrote; its operator approves each command and refuses one; a command past its timeout is killed and the model told; then a run cancelled mid-command reports cancelled only once the command's container is gone, within 10 s. `--offline` runs on `FakeProvider`, `--scripted` on Docker |
 
 ```bash
 python scripts/02_custom_tools.py --offline

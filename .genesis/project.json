@@ -9,7 +9,7 @@
     "non_goals": [],
     "trust_boundary": "local repository",
     "created_at": "2026-09-05T14:48:57.894Z",
-    "updated_at": "2026-10-28T08:49:41.075Z"
+    "updated_at": "2026-10-28T18:22:17.898Z"
   },
   "policy": {
     "ponytail": "full",
@@ -25,7 +25,7 @@
   "lifecycle": {
     "phase": "build",
     "status": "active",
-    "active_task": "M40-workspace-tools",
+    "active_task": "M41-workspace-plans",
     "blocker": null,
     "next_action": "Run the task pre-flight."
   },
@@ -34,8 +34,8 @@
     "type": "new-product",
     "started_at": "2026-09-05T14:48:57.897Z",
     "spec_check": {
-      "at": "2026-10-28T08:49:40.567Z",
-      "source_hash": "4547c44bf53749fe9cfd53a6eff5c895e03893e64b0c95bce9cd557bb16a63ad",
+      "at": "2026-10-28T18:22:17.448Z",
+      "source_hash": "1681a874c68fd04a2b659f459dbc84c2d925195521023842d4ce62c26cb707f5",
       "requirements": [
         "AC-1",
         "AC-10",
@@ -339,13 +339,13 @@
       ]
     },
     "plan_check": {
-      "at": "2026-10-28T08:49:40.884Z",
+      "at": "2026-10-28T18:22:17.757Z",
       "source_hash": "33dc413979f287ff6abbc8bcd55abc3614bb4d11e30bd581292761a38e09b634"
     },
     "plan_approval": {
       "human": "siva-rgb (owner)",
-      "reason": "M39 amendments: FR-138 list, FR-142 command mechanism and env deny-list, FR-143 parent link declared, FR-144 du and fail-closed reading, AC-97 (DECISION-504c7f04, DECISION-0004d2dc)",
-      "at": "2026-10-28T08:49:41.074Z",
+      "reason": "Re-approved with the SPEC after M40 closed (DECISION-89f2b384); M41 is next.",
+      "at": "2026-10-28T18:22:17.898Z",
       "source_hash": "33dc413979f287ff6abbc8bcd55abc3614bb4d11e30bd581292761a38e09b634"
     }
   },
@@ -656,12 +656,12 @@
         "NFR-8",
         "NFR-9"
       ],
-      "source_hash": "4547c44bf53749fe9cfd53a6eff5c895e03893e64b0c95bce9cd557bb16a63ad",
+      "source_hash": "1681a874c68fd04a2b659f459dbc84c2d925195521023842d4ce62c26cb707f5",
       "approval": {
         "human": "siva-rgb (owner)",
-        "reason": "M39 amendments: FR-138 list, FR-142 command mechanism and env deny-list, FR-143 parent link declared, FR-144 du and fail-closed reading, AC-97 (DECISION-504c7f04, DECISION-0004d2dc)",
-        "at": "2026-10-28T08:49:40.719Z",
-        "source_hash": "4547c44bf53749fe9cfd53a6eff5c895e03893e64b0c95bce9cd557bb16a63ad"
+        "reason": "Re-approved after M40's amendments to P5-D6, FR-137, FR-138, FR-139, FR-142, FR-148, AC-97 and AC-98 (DECISION-d4ede901, DECISION-fe7243f1, DECISION-f3e99c07), per DECISION-89f2b384.",
+        "at": "2026-10-28T18:22:17.594Z",
+        "source_hash": "1681a874c68fd04a2b659f459dbc84c2d925195521023842d4ce62c26cb707f5"
       }
     }
   ],
@@ -2036,6 +2036,38 @@
       "status": "accepted",
       "source": null,
       "recorded_at": "2026-10-28T08:49:31.944Z"
+    },
+    {
+      "id": "DECISION-d4ede901",
+      "title": "M40 pre-flight: no daemon log, cpus in hundredths, a failed kill on the event, size as du counts",
+      "text": "Owner decisions 2026-10-28 at M40 pre-flight, carrying M39 round 1's caveats (DECISION-bf71f0f2). (1) P5-D6 and AC-97 are amended: every command container runs with --log-driver none, so the daemon stores nothing of a command's output (measured: attach still carries stdout, stderr, stdin and the exit code); the approved test exactly_the_p5_d6 is edited to match. (2) WorkspaceSpec.cpus is from 0.01 to 16 in whole hundredths, refused otherwise with ValueError when the spec is built, and passed to docker as '%.2f': no value reaches docker in scientific notation (1e-06 had given cpu.max=max, no CPU limit) and none fails every create (1/3). (3) A failed kill is recorded on WORKSPACE_COMMAND_ENDED as kill_error naming the exception class, in run_events; the command row stays killed='cancelled'; no migration. DockerProvider's kill reports a failed rm -f instead of swallowing it. (4) FakeProvider.size counts as du does: each file rounded up to 4 KiB and 4 KiB for each folder, so a bound tuned on the fake holds on Docker; a contract case pins that 2000 empty folders measure at least 2000 * 4096 B on both providers. Also carried, no decision needed: rm -fv so an image's declared VOLUME goes with its container; a listing or du that fails raises PermissionError for an unreadable folder and WorkspaceUnavailable otherwise, never a bare RuntimeError; a test that fails when example 32 keys its refusal check on text.",
+      "status": "accepted",
+      "source": null,
+      "recorded_at": "2026-10-28T09:06:36.800Z"
+    },
+    {
+      "id": "DECISION-fe7243f1",
+      "title": "M40 pre-review: a cancelled command is recorded without a size reading; the next use reads it first",
+      "text": "Owner decision 2026-10-28 on the M40 pre-review's F1. A command cancelled with its run is recorded without reading the workspace's size, so the cancel path is the kill (bounded at 10 s, FR-148) and the record. The workspace is marked unread, and the next command or write in it reads the size first, failing closed as FR-144 states (a reading that fails refuses it). The run's removal of its workspace keeps its own 30 s bound, declared. F2 is fixed without a decision: the listing exits 22 for a folder it cannot read. F3 to F9 are declared or noted.",
+      "status": "accepted",
+      "source": null,
+      "recorded_at": "2026-10-28T10:35:50.380Z"
+    },
+    {
+      "id": "DECISION-f3e99c07",
+      "title": "M40 round 2: abandon the reading on cancel and still record; three caveats in scope; gate timeout 2400000",
+      "text": "Owner decisions 2026-10-28 after M40 round 1's rejection. (1) A cancellation that arrives while the workspace size is read after a command ended abandons the reading, marks the workspace stale, and still records the command's real outcome and emits WorkspaceCommandEnded, shielded, so the record is never lost and a cancel never waits for du (consistent with DECISION-fe7243f1). The stale mark is cleared only after a reading completes, and import_ cancelled during its reading marks the workspace stale. (2) Also in round 2: after a failed rm, a daemon that cannot answer whether the container exists is reported as kill_error (the daemon is asked with docker version, never by parsing a message, DECISION-94bfee7c); WorkspaceSpec.record() and the labels keep cpus rounded to hundredths, as docker receives it; AC-98 reworded so the 10 s bound covers the kill and the record, the workspace removal keeping its own declared bound. (3) DECISION-066e317a's gate timeout is raised from 1500000 to 2400000: the regression suite took 25:57 at M40 and was killed at about 95% as a false failure; gates and briefs use --timeout 2400000 from M40 on.",
+      "status": "accepted",
+      "source": null,
+      "recorded_at": "2026-10-28T15:18:38.903Z"
+    },
+    {
+      "id": "DECISION-89f2b384",
+      "title": "M40 close: resume recorded late and the approve kept; caveats and parity carried to M41",
+      "text": "The owner chose: (1) record the missed resume now and keep Sonnet 5's approve as recorded, since resume changes only the task state, the approve's gate evidence is on source hash 5752e41b, and no code changed since; (2) carry every caveat to M41 without changing M40's code: the cancel absorbed at the store while Started is written, the provider failure that leaves Started with no Ended or row (declare or close it in M41), and RuntimeError surfacing instead of a cancellation when the record fails; and make fake-versus-Docker contract parity M41 pre-review's first attack item, with stubborn processes and the daemon-unreachable kill branch as further items; (3) re-ratify M40's SPEC amendments (SPEC.md 1681a874 against the approval's 4547c44b) by requeueing M41, then spec check and approve, plan check and approve under the owner; (4) commit to phase-5 and publish through publish.sh.",
+      "status": "accepted",
+      "source": null,
+      "recorded_at": "2026-10-28T18:21:58.538Z"
     }
   ],
   "knowledge": [
@@ -3326,6 +3358,38 @@
       "source": null,
       "tags": [],
       "recorded_at": "2026-10-28T08:49:29.548Z"
+    },
+    {
+      "id": "KNOWLEDGE-e011b0c9",
+      "title": "M40 pre-flight: what FR-148 already has and lacks, and --log-driver none measured",
+      "text": "Read 2026-10-28 at M40 pre-flight. Already in place: a timeout removes the command's container and returns killed='timeout'; a cancellation removes it in DockerProvider._contained's finally before re-raising; the manager records a cancelled command killed='cancelled'. Lacking: (1) on Docker a cancellation waits on rm -f for up to _CLI_SECONDS (60 s) and then on the attached client for up to 60 s more, past FR-148's 10 s bound; (2) a failed kill is recorded nowhere: _rm ignores rm -f's exit code and swallows every error, and the manager's _cancelled drops what kill() raised; (3) no docker test covers a process that ignores SIGTERM, forks or leaves its group. NFR-44's aclose and reaping clauses belong to FR-151 (M41). Measured with a throwaway container labelled agentsdk-probe, removed: with --log-driver none, docker start -a -i still carries stdout, stderr, stdin and the exit code (7), inspect shows LogConfig.Type none and no LogPath, and docker logs refuses (the driver does not support reading).",
+      "source": null,
+      "tags": [],
+      "recorded_at": "2026-10-28T09:06:36.586Z"
+    },
+    {
+      "id": "KNOWLEDGE-92de4ac9",
+      "title": "M40 pre-review: the cancel bound held for the kill only, and a searchable unreadable folder listed empty",
+      "text": "A Fable 5.1 subagent probed M40 at runtime only (2026-10-28; scratchpad m40/prereview p01-p10; no repo edit, no pytest, no DB; Docker left at baseline). Reproduced first-hand by the author: F1 (should-fix) a cancelled run reported cancelled 1.02 s after the cancel on a healthy daemon, but 11.56 s with every docker call 1.5 s late, 10.86 s with the kill's rm held 14 s (kill_error TimeoutError), and 20.92 s with the du container's create held 20 s: _KILL_SECONDS bounded the kill and the wait for the command, then _finished read the size (up to 120 s) and end removed the workspace (up to 30 s). F2 (should-fix) a folder with search but no read permission (chmod 311) listed as ([], 0): cd succeeded and the globs matched nothing. Notes: F3 a folder under an unreadable parent raises FileNotFoundError; F4 cpus above the host's CPU count (16 here) passes the spec and fails every create, named as the image unable to measure; F5 FakeProvider.size undercounts a folder's own growth (up to 64 KiB for thousands of entries; the root's growth is not counted) and overcounts sparse files, the contract's 2000 * 4096 B holds on both; F6 a cancellation landing as the command ends records it cancelled with no output; F7 cpus within 1e-9 of a hundredth is accepted and recorded unrounded; F8 example 34 live turns None into SKIP; F9 the kill's rm and the command's own race, 0 of 10 spurious kill_error. Probed clean: kill races before create and between create and start, stubborn processes (setsid, double fork, fork loop, signal-ignoring writer), timeouts, --log-driver none output fidelity, rm -fv keeping the named volume, list names with tabs and newlines, no message text or env value in any payload.",
+      "source": null,
+      "tags": [],
+      "recorded_at": "2026-10-28T10:35:50.215Z"
+    },
+    {
+      "id": "KNOWLEDGE-d6b2ea68",
+      "title": "M40 round 1 REJECTED by Opus 5: a cancel during the post-command size reading loses the command record",
+      "text": "Opus 5 rejected M40-workspace-tools round 1 at 13:41:43Z on source hash b2fc39c2 (gates unit 43, regression 2818 in 1449 s, live docker 36 reproduced). Reproduced first-hand by the owner and the author (scratchpad m40/r1_repro.py, FakeProvider, size() 2 s): cancelling while the size is read after a command ended gives run cancelled, WorkspaceCommandStarted 1, WorkspaceCommandEnded 0, no row; without the cancel the row is written. RunWorkspace.run awaits _finished outside its except CancelledError, and _measure re-raises CancelledError before _record and the emit (M38 line, shipped in M39, edited by M40 without moving it). Violates FR-140 (written once when the command ends) and FR-148. On Docker the window is the du container whole life (about 0.85 s). Why every review missed it: all tests and examples cancel during a long command, never during the reading after it; M39 swept cancel timings but asserted on containers, not records. Lesson: when a milestone claims X always happens, sweep the cancel against the record as well as the resources. Also: _refuse_if_full clears _stale before awaiting the reading, so a cancel there fails open; import_ cancelled during its reading sets no stale mark. Caveats: kill_error is None when the daemon cannot answer inspect (_alive treats cannot-ask as gone); record() keeps cpus unrounded; AC-98 says within 10 s while the removal keeps 30 s. Verified by the owner: --cpus fixed decimals with cgroup equal to the spec, --log-driver none, rm -fv leaks no anonymous volume.",
+      "source": null,
+      "tags": [],
+      "recorded_at": "2026-10-28T15:18:38.696Z"
+    },
+    {
+      "id": "KNOWLEDGE-fed41aae",
+      "title": "M40 round 2 APPROVED by Sonnet 5: the record survives a cancel at every point",
+      "text": "Sonnet 5 approved M40 round 2 (control 45809a8e) on source hash 5752e41b. It reran regression (2826 passed), the 38 live Docker tests and examples 32, 33 and 34, and swept cancels against the record: 1000 in-process points plus 6 double-cancel cases, and 41 (memory) and 31 (PostgreSQL) real Docker points, with started = ended = rows, no lost or duplicate record and no spurious kill_error. Mutants of round 1's code (lost record, stale cleared first, import without the mark, double record) each fail the new tests; the owner's orchestrator reproduced the lost-record mutant independently (4 failed, 47 passed; the sweep fails as (8, started [id] ended [] rows [])). cpu.max inside a command matches cpus at 0.01, 0.29, 0.50, 1.00 and 16.00, and 0.1+0.2 is recorded as 0.3. Caveats, none blocking: (1) a cancel that lands while WorkspaceCommandStarted is written is absorbed by the store (handle.py:135, deliberate and older than M40), so the command runs to its end or timeout before the run reports cancelled; (2) a provider run that raises (e.g. WorkspaceUnavailable) leaves Started with no Ended and no row: older than M40 (HEAD catches CancelledError only), not an FR-148 breach because the command never ran, but an undeclared observability shape; (3) a cancel landing while the record itself fails surfaces RuntimeError instead of the cancellation; (4) AC-98 and FR-148 carve the 30 s removal out of the 10 s bound, as DECISION-f3e99c07 sanctioned. Coverage the reviewer declared it did not probe: attack item 8, fake-versus-Docker parity beyond the green suites (the gap behind M38's remove defect and M39's volume leak); attack item 3, stubborn processes, beyond the existing live test; the kill's daemon-unreachable branch, scripted only. Process error: the round-2 resume was not recorded before the round, so the approve passed the gate while the task read rejected; resumed afterwards.",
+      "source": null,
+      "tags": [],
+      "recorded_at": "2026-10-28T18:21:58.405Z"
     }
   ],
   "tasks": [
@@ -3348,9 +3412,9 @@
           "status": "pass",
           "evidence": {
             "human": "siva-rgb (owner)",
-            "reason": "M39 amendments: FR-138 list, FR-142 command mechanism and env deny-list, FR-143 parent link declared, FR-144 du and fail-closed reading, AC-97 (DECISION-504c7f04, DECISION-0004d2dc)",
-            "source_hash": "8d6b2cd7633509e14f9be803c7afbfe5edab84a091f3964dd089f6b2c9c1f713",
-            "observed_at": "2026-10-28T08:49:40.719Z"
+            "reason": "Re-approved after M40's amendments to P5-D6, FR-137, FR-138, FR-139, FR-142, FR-148, AC-97 and AC-98 (DECISION-d4ede901, DECISION-fe7243f1, DECISION-f3e99c07), per DECISION-89f2b384.",
+            "source_hash": "5752e41b8cfef7d538aa9e9d6aced6247f6d0302fbc3e330ae894be4a009f876",
+            "observed_at": "2026-10-28T18:22:17.594Z"
           }
         }
       ],
@@ -3360,7 +3424,7 @@
       "failures": [],
       "limitations": [],
       "created_at": "2026-09-05T14:48:57.897Z",
-      "updated_at": "2026-10-28T08:49:40.719Z"
+      "updated_at": "2026-10-28T18:22:17.594Z"
     },
     {
       "id": "M1-primitives",
@@ -6151,7 +6215,7 @@
     {
       "id": "M40-workspace-tools",
       "outcome": "An agent runs commands and edits files in its workspace, approved by default, killed totally on timeout and cancellation",
-      "state": "active",
+      "state": "done",
       "risk": "high",
       "owner": null,
       "scope": [],
@@ -6172,22 +6236,37 @@
           "id": "unit",
           "command": ".venv\\Scripts\\python.exe -m pytest tests/test_workspace_tools.py -q",
           "mandatory": true,
-          "status": "pending",
-          "evidence": null
+          "status": "pass",
+          "evidence": {
+            "path": ".genesis/evidence/M40-workspace-tools-unit.json",
+            "source_hash": "5752e41b8cfef7d538aa9e9d6aced6247f6d0302fbc3e330ae894be4a009f876",
+            "hash": "4b6435ff6c97aa2f05bdba88ae246b5328e1f30368294040cee976854f61813d",
+            "observed_at": "2026-10-28T15:31:56.179Z"
+          }
         },
         {
           "id": "regression",
           "command": ".venv\\Scripts\\python.exe -m pytest -q",
           "mandatory": true,
-          "status": "pending",
-          "evidence": null
+          "status": "pass",
+          "evidence": {
+            "path": ".genesis/evidence/M40-workspace-tools-regression.json",
+            "source_hash": "5752e41b8cfef7d538aa9e9d6aced6247f6d0302fbc3e330ae894be4a009f876",
+            "hash": "7889b55ca63cd2a76fbf7803dbb3f9c00c60b0b36bcd1cb4fcb1c22d14f83ec9",
+            "observed_at": "2026-10-28T15:54:00.225Z"
+          }
         },
         {
           "id": "independent-review",
           "command": "",
           "mandatory": true,
-          "status": "pending",
-          "evidence": null
+          "status": "pass",
+          "evidence": {
+            "human": "Sonnet 5",
+            "reason": "Round 2, fresh Sonnet 5 session. Verified first-hand: regression 2826 passed 38 deselected (28:45) run by me; live docker tests 38 passed; examples 32 and 33 offline, 34 offline, scripted and live all PASS; approved-test edits byte-identical to the brief (2 hunks in test_docker_provider, additive contract case, 2 lines in test_distribution). Record sweeps: 1000 in-process cancel points (every loop iteration and 4 ms steps, plain and cancel-absorbing store, two commands, slow emit) and 6 targeted double-cancel cases during record and emit on all three paths, 0 lost or duplicate records; real Docker sweeps 41 points on memory and 31 on postgres from 0 to 6 s: started equals ended equals rows, workspace created equals removed, nothing left, 0 spurious kill_error. Runtime mutants of round 1 code (lost record, stale cleared first, import without mark, double record) each fail the new tests. cpu.max inside a command is 1000, 29000, 50000, 100000, 1600000 per 100000 for 0.01 0.29 0.50 1.00 16.00 and record shows 0.3 for 0.1+0.2. Caveats not blocking: (1) a cancel that lands while WorkspaceCommandStarted is written through control.store is absorbed there, so the command runs to its end or timeout before the run reports cancelled (measured 8.4 s with a widened window; milliseconds wide in practice; same for any tool, older than M40); (2) a provider run that raises WorkspaceUnavailable leaves Started with no Ended or row (older than M40, not a cancel); (3) a cancel landing while the record itself fails surfaces RuntimeError rather than the cancellation; (4) AC-98 and FR-148 now carve the 30 s removal out of the 10 s bound, owner-sanctioned in DECISION-f3e99c07. No repository file changed by content; store and Docker at baseline.",
+            "source_hash": "5752e41b8cfef7d538aa9e9d6aced6247f6d0302fbc3e330ae894be4a009f876",
+            "observed_at": "2026-10-28T17:57:30.643Z"
+          }
         }
       ],
       "next_action": "Run the task pre-flight.",
@@ -6198,12 +6277,12 @@
       "failures": [],
       "limitations": [],
       "created_at": "2026-10-24T17:00:17.785Z",
-      "updated_at": "2026-10-24T17:03:24.999Z"
+      "updated_at": "2026-10-28T18:22:05.795Z"
     },
     {
       "id": "M41-workspace-plans",
       "outcome": "Workspace files leave only as artifacts, and workspaces end with their run, are reaped after a dead Runner and are bounded in plans",
-      "state": "queued",
+      "state": "active",
       "risk": "high",
       "owner": null,
       "scope": [],
@@ -7707,17 +7786,53 @@
       "human": "siva-rgb (owner)",
       "reason": "Re-approving SPEC after M39 amendments (FR-138, FR-142, FR-143, FR-144, AC-97); requeue first so plan approve activates one task",
       "revision": null
+    },
+    {
+      "id": "cf9cdd38-47e1-4e0b-83b7-3bf1cf242d60",
+      "at": "2026-10-28T13:41:43.349Z",
+      "action": "reject",
+      "task": "M40-workspace-tools",
+      "human": "Opus 5",
+      "reason": "A command that ran and completed can be recorded nowhere. RunWorkspace.run awaits _finished outside its own try, and _finished awaits _measure under except Exception, which does not catch CancelledError, so a run cancelled while the post-command size reading is in flight abandons record_command and WorkspaceCommandEnded for a command that already returned exit 0. Measured through the public Runner cancel on DockerProvider with argv true: cancels 0.5 s to 1.1 s after WorkspaceCommandStarted gave started=1, ended=0 and no row at 7 of 18 sweep points, a window wider than the command cycle itself; reproduced on FakeProvider too, so a gate can hold it. That breaks FR-140, each command written once when it ends, and FR-148, its result recorded in every case, and it contradicts the README M40 row saying the command row still says cancelled. The same cancellation leaves _stale False, so the skipped bound reading is lost as well: _refuse_if_full clears _stale before awaiting _measure, and a cancel during that deferred reading let a later command run on a workspace measured at 999999999999 B against a 1024 B bound with no refusal. Everything else was verified sound: both gates reproduced first-hand at 2818 passed 36 deselected and 43 passed 9 deselected, 36 docker-marked tests passed live, cpu.max read inside a command equals the spec at 0.01, 0.50, 1.00 and 16.00 while the spec refuses 0.015, 1e-06 and a third naming the variable, log driver none leaves LogPath empty while the client still reads output capped at max_output_bytes, rm -fv left no anonymous volume on the normal, timeout, kill, cancel or remove path, a cancelled run reported cancelled in 0.16 to 0.20 s with its container already gone in 6 of 6 samples, a signal-ignoring command with a setsid child stopped writing at its kill, 0 of 10 spurious kill_error, no check anywhere keys on an error message text, and examples 32, 33 and 34 offline plus 34 scripted all passed with no SKIP. Caveats: kill_error is None when the daemon cannot answer inspect, so a surviving container reads as gone, measured against a real running container; import_ cancelled after its write sets no stale mark; with every command-container removal failing the row is written at 10.02 s while the container still stands, swept later by the workspace removal. Store and Docker left at the baseline and no repository file changed.",
+      "revision": null
+    },
+    {
+      "id": "45809a8e-320c-4b88-a300-94fadf3b164d",
+      "at": "2026-10-28T17:57:30.643Z",
+      "action": "approve",
+      "task": "M40-workspace-tools",
+      "human": "Sonnet 5",
+      "reason": "Round 2, fresh Sonnet 5 session. Verified first-hand: regression 2826 passed 38 deselected (28:45) run by me; live docker tests 38 passed; examples 32 and 33 offline, 34 offline, scripted and live all PASS; approved-test edits byte-identical to the brief (2 hunks in test_docker_provider, additive contract case, 2 lines in test_distribution). Record sweeps: 1000 in-process cancel points (every loop iteration and 4 ms steps, plain and cancel-absorbing store, two commands, slow emit) and 6 targeted double-cancel cases during record and emit on all three paths, 0 lost or duplicate records; real Docker sweeps 41 points on memory and 31 on postgres from 0 to 6 s: started equals ended equals rows, workspace created equals removed, nothing left, 0 spurious kill_error. Runtime mutants of round 1 code (lost record, stale cleared first, import without mark, double record) each fail the new tests. cpu.max inside a command is 1000, 29000, 50000, 100000, 1600000 per 100000 for 0.01 0.29 0.50 1.00 16.00 and record shows 0.3 for 0.1+0.2. Caveats not blocking: (1) a cancel that lands while WorkspaceCommandStarted is written through control.store is absorbed there, so the command runs to its end or timeout before the run reports cancelled (measured 8.4 s with a widened window; milliseconds wide in practice; same for any tool, older than M40); (2) a provider run that raises WorkspaceUnavailable leaves Started with no Ended or row (older than M40, not a cancel); (3) a cancel landing while the record itself fails surfaces RuntimeError rather than the cancellation; (4) AC-98 and FR-148 now carve the 30 s removal out of the 10 s bound, owner-sanctioned in DECISION-f3e99c07. No repository file changed by content; store and Docker at baseline.",
+      "revision": null
+    },
+    {
+      "id": "a2d574f0-efa9-48ec-b859-e973e0c18750",
+      "at": "2026-10-28T18:21:54.467Z",
+      "action": "resume",
+      "task": "M40-workspace-tools",
+      "human": "siva-rgb (owner)",
+      "reason": "Round 2 repair of the M40 round 1 rejection (DECISION-f3e99c07). This resume was missed before round 2 began and is recorded after Sonnet 5's approve (45809a8e); the owner chose to record it now and keep that approve, which passed the gate on source hash 5752e41b with no code changed since.",
+      "revision": null
+    },
+    {
+      "id": "bbb1f8a4-d6a2-491d-9dd1-5ac2af521fc8",
+      "at": "2026-10-28T18:22:17.307Z",
+      "action": "requeue",
+      "task": "M41-workspace-plans",
+      "human": "siva-rgb (owner)",
+      "reason": "Requeued before re-approving the SPEC after M40's amendments, so that only one task goes active (DECISION-89f2b384).",
+      "revision": null
     }
   ],
   "discovery": null,
   "checkpoint": {
-    "at": "2026-10-28T06:18:30.575Z",
+    "at": "2026-10-28T18:22:02.774Z",
     "revision": {
-      "commit": "3e611ca2cca32ff1f647c7cd8a6b4c8e7466219a",
+      "commit": "8fdc5539e6aa1e836c864d08a67f21bd57a9f00c",
       "dirty": true,
-      "source_hash": "8d6b2cd7633509e14f9be803c7afbfe5edab84a091f3964dd089f6b2c9c1f713"
+      "source_hash": "5752e41b8cfef7d538aa9e9d6aced6247f6d0302fbc3e330ae894be4a009f876"
     },
-    "active_task": "M39-docker-provider",
+    "active_task": "M40-workspace-tools",
     "next_action": "Run the task pre-flight."
   },
   "legacy": null

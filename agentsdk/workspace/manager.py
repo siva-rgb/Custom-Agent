@@ -16,6 +16,7 @@ caller waits for rather than abandons (M38 pre-review D2 to D4).
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import os
 import time
 import uuid
@@ -66,6 +67,7 @@ class RunWorkspace:
         self.removed = False
         self._full: int | None = None  # the size measured past the bound, once it was
         self._unread: str | None = None  # why the size could not be read, once it could not
+        self._stale = False  # a cancelled command left the size unread; the next use reads it first
 
     @property
     def workspace_id(self) -> str | None:
@@ -113,7 +115,13 @@ class RunWorkspace:
             "scope": self.spec.scope})
         return handle
 
-    async def _refuse_if_full(self, tool: str) -> None:
+    async def _refuse_if_full(self, handle: WorkspaceHandle, tool: str) -> None:
+        if self._stale:
+            # DECISION-fe7243f1: the reading a cancelled command skipped, taken before anything
+            # else runs here, and failing closed as any reading does. The mark goes only once a
+            # reading has ended: a cancellation during it leaves the workspace stale (M40 round 1).
+            await self._measure(handle)
+            self._stale = False
         if self._full is None and self._unread is None:
             return
         await self._emit(EventType.WORKSPACE_REFUSED, {
@@ -142,47 +150,74 @@ class RunWorkspace:
     async def run(self, argv: list[str], *, stdin: bytes | None, timeout: float,
                   tool_call_id: str | None) -> CommandOutcome:
         handle = await self.ensure()
-        await self._refuse_if_full("run_command")
+        await self._refuse_if_full(handle, "run_command")
         command_id = str(uuid.uuid4())
         await self._emit(EventType.WORKSPACE_COMMAND_STARTED, {
             "command_id": command_id, "workspace_id": handle.workspace_id, "tool_call_id": tool_call_id,
             "argv": list(argv)})
         started_at, started = now(), time.monotonic()
+        # The command runs as its own task, so a cancellation of this call reaches the kill below
+        # first, and not the command's own ending half way (FR-148).
+        running = asyncio.ensure_future(self._manager.provider.run(handle, list(argv), timeout=timeout,
+                                                                   stdin=stdin, command_id=command_id))
         try:
-            outcome = await self._manager.provider.run(handle, list(argv), timeout=timeout, stdin=stdin,
-                                                       command_id=command_id)
+            outcome = await asyncio.shield(running)
         except asyncio.CancelledError:
             # Its run was cancelled: the command is killed and recorded so before the cancellation
-            # goes on (FR-140; pre-review D3).
+            # goes on (FR-140, FR-148; pre-review D3).
             await _completed(asyncio.ensure_future(
-                self._cancelled(handle, command_id, argv, tool_call_id, started_at, started)))
+                self._cancelled(handle, command_id, running, argv, tool_call_id, started_at, started)))
             raise
-        await self._finished(handle, command_id, argv, tool_call_id, started_at, started, outcome)
+        try:
+            await self._measure(handle)
+        except asyncio.CancelledError:
+            # The command ended; its run was cancelled while the size was read. The reading is
+            # abandoned and left to the next use, never the record (M40 round 1, DECISION-f3e99c07).
+            self._stale = True
+            with contextlib.suppress(Exception):  # the cancellation decides how the run ends
+                await _completed(asyncio.ensure_future(
+                    self._finished(handle, command_id, argv, tool_call_id, started_at, started, outcome)))
+            raise
+        await _completed(asyncio.ensure_future(
+            self._finished(handle, command_id, argv, tool_call_id, started_at, started, outcome)))
         return outcome
 
-    async def _cancelled(self, handle: WorkspaceHandle, command_id: str, argv: list[str], tool_call_id: str | None,
-                         started_at: Any, started: float) -> None:
+    async def _cancelled(self, handle: WorkspaceHandle, command_id: str, running: asyncio.Future[CommandOutcome],
+                         argv: list[str], tool_call_id: str | None, started_at: Any, started: float) -> None:
+        """FR-148: kills the command through its provider and waits for it to end, all within
+        `_KILL_SECONDS`, then records it cancelled. A kill that fails or does not return is
+        recorded as `kill_error`, by class; what it left is reaped (FR-151). The size is not read
+        here, so a slow daemon cannot hold the cancellation past its bound: the next command or
+        write reads it first (DECISION-fe7243f1)."""
+        deadline = time.monotonic() + _KILL_SECONDS
+        kill_error: str | None = None
         try:
             await asyncio.wait_for(self._manager.provider.kill(handle, command_id), _KILL_SECONDS)
-        except Exception:  # noqa: BLE001 - recorded as cancelled; what a provider left is reaped (M41)
+        except Exception as exc:  # noqa: BLE001 - named by class only
+            kill_error = type(exc).__name__
+        try:
+            await asyncio.wait_for(asyncio.shield(running), max(0.0, deadline - time.monotonic()))
+        except BaseException:  # noqa: BLE001 - the command's own ending, whatever it was, is not the run's
             pass
+        if not running.done():
+            running.cancel()
+            running.add_done_callback(lambda task: task.cancelled() or task.exception())
         outcome = CommandOutcome(exit_code=None, stdout=b"", stderr=b"", stdout_cut=False, stderr_cut=False,
                                  stdout_bytes=0, stderr_bytes=0, duration=time.monotonic() - started,
                                  killed="cancelled")
+        self._stale = True
         try:
-            await self._finished(handle, command_id, argv, tool_call_id, started_at, started, outcome)
+            await self._finished(handle, command_id, argv, tool_call_id, started_at, started, outcome,
+                                 kill_error=kill_error)
         except Exception:  # noqa: BLE001 - the cancellation, not its record, decides how the run ends
             pass
 
     async def _finished(self, handle: WorkspaceHandle, command_id: str, argv: list[str], tool_call_id: str | None,
-                        started_at: Any, started: float, outcome: CommandOutcome) -> None:
-        """Measures the workspace, records the command and tells the run, whatever fails first: a
-        failed record still leaves the bound measured and the end told (pre-review D4)."""
+                        started_at: Any, started: float, outcome: CommandOutcome, *,
+                        kill_error: str | None = None) -> None:
+        """Records the command and tells the run, whatever fails first: a failed record still
+        leaves the end told (pre-review D4). The size is read before this, by the caller."""
         failure: Exception | None = None
-        try:
-            await self._measure(handle)
-        except Exception as exc:  # noqa: BLE001
-            failure = exc
         try:
             await self._record("record_command", CommandRecord(
                 command_id=command_id, workspace_id=handle.workspace_id, tenant_id=self.tenant_id,
@@ -194,7 +229,7 @@ class RunWorkspace:
             failure = failure or exc
         await self._emit(EventType.WORKSPACE_COMMAND_ENDED, {
             "command_id": command_id, "workspace_id": handle.workspace_id, "tool_call_id": tool_call_id,
-            "exit_code": outcome.exit_code, "killed": outcome.killed,
+            "exit_code": outcome.exit_code, "killed": outcome.killed, "kill_error": kill_error,
             "duration_ms": round((time.monotonic() - started) * 1000, 3),
             "stdout_bytes": outcome.stdout_bytes, "stderr_bytes": outcome.stderr_bytes,
             "stdout_cut": outcome.stdout_cut, "stderr_cut": outcome.stderr_cut})
@@ -205,9 +240,14 @@ class RunWorkspace:
 
     async def import_(self, data: bytes) -> None:
         handle = await self.ensure()
-        await self._refuse_if_full("write_workspace_file")
-        await self._manager.provider.import_(handle, data)
-        await self._measure(handle)
+        await self._refuse_if_full(handle, "write_workspace_file")
+        try:
+            await self._manager.provider.import_(handle, data)
+            await self._measure(handle)
+        except asyncio.CancelledError:
+            # The write may have landed, unmeasured: the next use reads first (M40 round 1).
+            self._stale = True
+            raise
 
     async def export(self, path: str) -> bytes:
         handle = await self.ensure()

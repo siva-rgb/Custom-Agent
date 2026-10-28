@@ -75,6 +75,8 @@ EXPECTED_EXAMPLES = {
     "32_workspace.py",
     # FR-145 (M39): the Docker provider.
     "33_docker_workspace.py",
+    # FR-149 (M40): timeouts and cancellation.
+    "34_sandboxed_tools.py",
 }
 
 

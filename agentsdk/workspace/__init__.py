@@ -62,6 +62,10 @@ def _limit(name: str, value: Any) -> float:
         raise ValueError(f"WorkspaceSpec.{name} must be a whole number, got {value!r}")
     if not math.isfinite(value) or value <= 0 or value > maximum:
         raise ValueError(f"WorkspaceSpec.{name} must be over 0 and at most {maximum}, got {value!r}")
+    if name == "cpus" and (value < 0.01 or abs(value * 100 - round(value * 100)) > 1e-9):
+        # Docker reads `--cpus` to the nanocpu: a value in scientific notation gave no limit at
+        # all, and one past two decimals failed every create (DECISION-d4ede901).
+        raise ValueError(f"WorkspaceSpec.cpus must be from 0.01 in whole hundredths, got {value!r}")
     return value
 
 
@@ -90,6 +94,9 @@ class WorkspaceSpec:
             raise ValueError("WorkspaceSpec.image must be pinned by digest: <name>@sha256:<64 lowercase hex>")
         for name in _LIMITS:
             _limit(name, getattr(self, name))
+        if self.cpus != round(self.cpus, 2):
+            # Kept as docker receives it, so the record names the limit in force (DECISION-f3e99c07).
+            object.__setattr__(self, "cpus", round(self.cpus, 2))
         if not isinstance(self.env, Mapping):
             raise ValueError(f"WorkspaceSpec.env must map names to values, got {type(self.env).__name__}")
         env = {}
@@ -159,7 +166,10 @@ class WorkspaceProvider(Protocol):
     `FileNotFoundError` for a missing path. `list` names a folder's direct entries -- (name, kind,
     size), kind "file", "dir", "link" or "other", sorted by name, at most `limit` of them -- and
     how many there are, transferring no file's contents; it raises `FileNotFoundError` for a
-    missing path and `NotADirectoryError` for anything but a folder (DECISION-0004d2dc)."""
+    missing path, `NotADirectoryError` for anything but a folder (DECISION-0004d2dc),
+    `PermissionError` for a folder that cannot be read, and `WorkspaceUnavailable` otherwise.
+    `size` counts as `du` does. `kill` raises when the command may still be running; on a run's
+    cancellation the manager records that as `kill_error` (DECISION-d4ede901)."""
 
     name: str
 
@@ -189,6 +199,9 @@ class WorkspaceProvider(Protocol):
 # =================================================================================================
 
 
+_BLOCK = 4096  # what `du` counts in, on the file systems Docker's volumes live on
+
+
 def normal_path(path: str) -> str:
     """A workspace path as the fake keeps it: relative, `/`-separated, normalised. Anything that
     would leave the workspace raises ValueError (the tools refuse it earlier, at step 2)."""
@@ -209,7 +222,9 @@ class FakeFiles:
         self._dirs: set[str] = set()
 
     def size(self) -> int:
-        return sum(len(data) for data in self._files.values())
+        """As `du` counts (DECISION-d4ede901): each file in whole 4 KiB blocks and each folder one
+        block, the root apart, so a bound tuned on the fake holds on Docker."""
+        return _BLOCK * (len(self._dirs) + sum(-(-len(data) // _BLOCK) for data in self._files.values()))
 
     def read(self, path: str) -> bytes:
         key = normal_path(path)

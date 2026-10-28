@@ -149,8 +149,8 @@ def test_a_command_container_gets_exactly_the_p5_d6_limits_and_the_argv_after_th
                 "--label", "agentsdk.tenant=t", "--label", "agentsdk.workspace=w-1",
                 "--network", "none", "--cap-drop", "ALL", "--security-opt", "no-new-privileges", "--read-only",
                 "--tmpfs", f"/tmp:size={8 * 2**20}", "--user", "65534:65534", "--pids-limit", "64",
-                "--memory", str(300 * 2**20), "--memory-swap", str(300 * 2**20), "--cpus", "0.5",
-                "-w", "/workspace", "--mount", "type=volume,src=agentsdk-w-1,dst=/workspace,volume-nocopy",
+                "--memory", str(300 * 2**20), "--memory-swap", str(300 * 2**20), "--cpus", "0.50",
+                "--log-driver", "none", "-w", "/workspace", "--mount", "type=volume,src=agentsdk-w-1,dst=/workspace,volume-nocopy",
                 "-e", "GREETING", "--entrypoint="]
     assert flags == expected
     assert SECRET not in " ".join(args), "an env value reached the command line (NFR-45)"
@@ -714,7 +714,7 @@ async def test_a_folder_the_measurement_cannot_read_refuses_the_next_command(doc
     types = error_types(result)
     assert types == {"t0-0": None, "t1-0": "WorkspaceRefused"}, types
     [refused] = events(result, EventType.WORKSPACE_REFUSED)
-    assert refused["unread"] == "RuntimeError" and refused["size"] is None, refused
+    assert refused["unread"] == "WorkspaceUnavailable" and refused["size"] is None, refused
 
 
 @pytest.mark.docker

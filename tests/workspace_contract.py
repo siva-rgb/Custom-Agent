@@ -169,6 +169,23 @@ async def contract_files_round_trip_and_count_towards_the_size(provider, words, 
         await provider.remove(handle)
 
 
+async def contract_a_workspaces_size_counts_its_folders_as_du_does(provider, words, spec) -> None:
+    """DECISION-d4ede901: the size counts what files and folders occupy, as `du` does -- 2000 empty
+    folders measure at least 8 MB on every provider, so a bound tuned on one holds on another."""
+    handle = await _fresh(provider, spec)
+    try:
+        buffer = io.BytesIO()
+        with tarfile.open(fileobj=buffer, mode="w") as tar:
+            for i in range(2000):
+                info = tarfile.TarInfo(f"d{i}/empty")
+                info.uid = info.gid = 65534
+                tar.addfile(info, io.BytesIO(b""))
+        await provider.import_(handle, buffer.getvalue())
+        assert await provider.size(handle) >= 2000 * 4096
+    finally:
+        await provider.remove(handle)
+
+
 async def contract_an_import_holding_anything_but_regular_files_is_refused(provider, words, spec) -> None:
     handle = await _fresh(provider, spec)
     try:

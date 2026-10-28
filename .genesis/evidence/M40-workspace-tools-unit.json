@@ -1,0 +1,22 @@
+{
+  "task": "M40-workspace-tools",
+  "gate": "unit",
+  "command": ".venv\\Scripts\\python.exe -m pytest tests/test_workspace_tools.py -q",
+  "started_at": "2026-10-28T15:31:16.456Z",
+  "observed_at": "2026-10-28T15:31:56.179Z",
+  "exit_code": 0,
+  "signal": null,
+  "stdout": "...................................................                      [100%]\r\n51 passed, 11 deselected in 38.94s\r\n",
+  "stderr": "",
+  "revision": {
+    "commit": "8fdc5539e6aa1e836c864d08a67f21bd57a9f00c",
+    "dirty": true
+  },
+  "source_hash": "5752e41b8cfef7d538aa9e9d6aced6247f6d0302fbc3e330ae894be4a009f876",
+  "environment": {
+    "node": "v20.10.0",
+    "platform": "win32",
+    "arch": "x64"
+  },
+  "hash": "4b6435ff6c97aa2f05bdba88ae246b5328e1f30368294040cee976854f61813d"
+}
