@@ -5,6 +5,9 @@ the ones its agent's `tool_profile` names, bound to that run's workspace (FR-146
 and every error after a tool ran carries `TrustZone.UNTRUSTED`, `InstructionAuthority.DATA_ONLY`,
 `EXTERNAL_CONTENT` and `EXECUTABLE_CONTENT` (NFR-42): what a command prints, or a file holds, is
 whatever the model's code made of it.
+
+Since M41, `export_workspace_file` (FR-150, P5-D12) is the only way a file leaves a workspace: an
+artifact of the run, carrying the same taint.
 """
 
 from __future__ import annotations
@@ -13,16 +16,17 @@ import io
 import posixpath
 import tarfile
 from collections.abc import Iterable
+from dataclasses import replace
 from typing import Any
 
-from ..primitives import InstructionAuthority, Origin, TaintFlag, TrustZone
+from ..primitives import ContentProvenance, InstructionAuthority, Origin, TaintFlag, TrustZone
 from ..scope import ToolScope
 from ..tools import ApprovalPolicy, ResultProvenance, RiskClass, Tool, ToolSpec
 from . import CommandOutcome, WorkspaceSpec
 
-NAMES = ("run_command", "read_workspace_file", "write_workspace_file", "list_workspace")
-# Every name a workspace tool has or will have: none may be a registered tool's (M38 pre-flight).
-RESERVED = (*NAMES, "export_workspace_file")
+NAMES = ("run_command", "read_workspace_file", "write_workspace_file", "list_workspace", "export_workspace_file")
+# Every name a workspace tool has: none may be a registered tool's (M38 pre-flight).
+RESERVED = NAMES
 MAX_ENTRIES = 1000
 
 UNTRUSTED = ResultProvenance(
@@ -40,6 +44,13 @@ PATH = {
 }
 # No argument may hold a NUL, which no process can be given (pre-review D10).
 ARGUMENT = {"type": "string", "maxLength": 65536, "pattern": "^[^\\x00]*\\Z"}
+# An exported artifact's media type: type/subtype and nothing more, as the artifact store takes it
+# (M41 pre-review).
+MIME_TYPE = {"type": "string", "minLength": 3, "maxLength": 255,
+             "pattern": "^[A-Za-z0-9][A-Za-z0-9!#$&^_.+-]*/[A-Za-z0-9][A-Za-z0-9!#$&^_.+-]*\\Z"}
+ARTIFACT_PROVENANCE = ContentProvenance(
+    origin=Origin.INTERNAL_TOOL, trust_zone=TrustZone.UNTRUSTED, instruction_authority=InstructionAuthority.DATA_ONLY,
+    taint_flags=frozenset({TaintFlag.EXTERNAL_CONTENT, TaintFlag.EXECUTABLE_CONTENT}))
 
 
 def _spec(name: str, description: str, properties: dict[str, Any], required: list[str], risk: RiskClass,
@@ -76,6 +87,11 @@ def specs(spec: WorkspaceSpec) -> dict[str, ToolSpec]:
         "list_workspace": _spec(
             "list_workspace", "List a folder of your workspace: names, kinds and sizes.",
             {"path": PATH}, [], RiskClass.READ_ONLY, ApprovalPolicy.AUTO, deadline),
+        "export_workspace_file": _spec(
+            "export_workspace_file",
+            "Save a file of your workspace as an artifact of this run, the only way a file leaves it. "
+            "Returns the artifact's id.",
+            {"path": PATH, "mime_type": MIME_TYPE}, ["path"], RiskClass.WRITE, ApprovalPolicy.AUTO, deadline),
     }
 
 
@@ -99,9 +115,14 @@ def one_file(data: bytes, path: str) -> bytes:
     """The regular file a path's export holds. A link, a FIFO or a device is refused by name
     (P5-D8); nothing is written to the host."""
     with tarfile.open(fileobj=io.BytesIO(data)) as tar:
-        found = [m for m in tar.getmembers() if m.name.removeprefix("./") not in ("", ".")]
-        if len(found) != 1 or found[0].isdir():
+        members = tar.getmembers()
+        # A file's export never holds a folder entry: the fake packs a folder's own entry as `.`,
+        # docker as its name, and a folder holding one file was read as that file (M41).
+        if any(m.isdir() for m in members):
             raise IsADirectoryError(f"{path} is a folder")
+        found = [m for m in members if m.name.removeprefix("./") not in ("", ".")]
+        if len(found) != 1:
+            raise IsADirectoryError(f"{path} is not one regular file: its export holds {len(found)} entries")
         member = found[0]
         if not member.isfile():
             raise ValueError(f"{path} is not a regular file")
@@ -147,6 +168,16 @@ def workspace_tools(binding: Any, spec: WorkspaceSpec, names: Iterable[str]) -> 
             lines.append(f"[{total - len(shown)} more entries not shown]")
         return "\n".join(lines) if lines else "(empty)"
 
+    async def export_workspace_file(path: str, scope: ToolScope, mime_type: str = "application/octet-stream") -> str:
+        async def put(data: bytes, source: str) -> Any:
+            # Attributed to this run and node by the scope, over anything passed (FR-76).
+            return await scope.artifacts.put(data, mime_type=mime_type, created_by_agent=scope.agent_id or "",
+                                             provenance=replace(ARTIFACT_PROVENANCE, source_uri_or_hash=source))
+
+        ref = await binding.export_artifact(path, one_file, put)
+        return ref.artifact_id
+
     functions = {"run_command": run_command, "read_workspace_file": read_workspace_file,
-                 "write_workspace_file": write_workspace_file, "list_workspace": list_workspace}
+                 "write_workspace_file": write_workspace_file, "list_workspace": list_workspace,
+                 "export_workspace_file": export_workspace_file}
     return [Tool(spec=declared[name], fn=functions[name]) for name in NAMES if name in wanted]

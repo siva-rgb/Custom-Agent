@@ -9,7 +9,7 @@
     "non_goals": [],
     "trust_boundary": "local repository",
     "created_at": "2026-09-05T14:48:57.894Z",
-    "updated_at": "2026-10-28T18:22:17.898Z"
+    "updated_at": "2026-10-29T14:13:16.708Z"
   },
   "policy": {
     "ponytail": "full",
@@ -25,7 +25,7 @@
   "lifecycle": {
     "phase": "build",
     "status": "active",
-    "active_task": "M41-workspace-plans",
+    "active_task": "M42-sandbox-contention",
     "blocker": null,
     "next_action": "Run the task pre-flight."
   },
@@ -34,8 +34,8 @@
     "type": "new-product",
     "started_at": "2026-09-05T14:48:57.897Z",
     "spec_check": {
-      "at": "2026-10-28T18:22:17.448Z",
-      "source_hash": "1681a874c68fd04a2b659f459dbc84c2d925195521023842d4ce62c26cb707f5",
+      "at": "2026-10-29T14:13:16.261Z",
+      "source_hash": "13e73a2feb0451f9b97a74a212bfe56406bb1571364c092efec6520be125b0b2",
       "requirements": [
         "AC-1",
         "AC-10",
@@ -339,13 +339,13 @@
       ]
     },
     "plan_check": {
-      "at": "2026-10-28T18:22:17.757Z",
+      "at": "2026-10-29T14:13:16.566Z",
       "source_hash": "33dc413979f287ff6abbc8bcd55abc3614bb4d11e30bd581292761a38e09b634"
     },
     "plan_approval": {
       "human": "siva-rgb (owner)",
-      "reason": "Re-approved with the SPEC after M40 closed (DECISION-89f2b384); M41 is next.",
-      "at": "2026-10-28T18:22:17.898Z",
+      "reason": "Re-approved with the SPEC after M41 closed; M42 is next.",
+      "at": "2026-10-29T14:13:16.708Z",
       "source_hash": "33dc413979f287ff6abbc8bcd55abc3614bb4d11e30bd581292761a38e09b634"
     }
   },
@@ -656,12 +656,12 @@
         "NFR-8",
         "NFR-9"
       ],
-      "source_hash": "1681a874c68fd04a2b659f459dbc84c2d925195521023842d4ce62c26cb707f5",
+      "source_hash": "13e73a2feb0451f9b97a74a212bfe56406bb1571364c092efec6520be125b0b2",
       "approval": {
         "human": "siva-rgb (owner)",
-        "reason": "Re-approved after M40's amendments to P5-D6, FR-137, FR-138, FR-139, FR-142, FR-148, AC-97 and AC-98 (DECISION-d4ede901, DECISION-fe7243f1, DECISION-f3e99c07), per DECISION-89f2b384.",
-        "at": "2026-10-28T18:22:17.594Z",
-        "source_hash": "1681a874c68fd04a2b659f459dbc84c2d925195521023842d4ce62c26cb707f5"
+        "reason": "Re-approved after M41's amendments to FR-139, FR-140, FR-148 and FR-150 to FR-152 (DECISION-825b81a6, DECISION-b1498111), per the M41 close decision.",
+        "at": "2026-10-29T14:13:16.405Z",
+        "source_hash": "13e73a2feb0451f9b97a74a212bfe56406bb1571364c092efec6520be125b0b2"
       }
     }
   ],
@@ -2068,6 +2068,38 @@
       "status": "accepted",
       "source": null,
       "recorded_at": "2026-10-28T18:21:58.538Z"
+    },
+    {
+      "id": "DECISION-825b81a6",
+      "title": "M41 pre-flight: command id in provenance, owner is host:pid:start, provider failure recorded as killed='error', caveats 1 and 3 declared",
+      "text": "The owner chose: (1) FR-150's last command id goes in the exported artifact's provenance source_uri_or_hash as workspace://<workspace_id>/<path>?command=<id>, with no command part when no command ran; no migration and no ArtifactRef change. (2) The agentsdk.owner label is hostname:pid:start, the start time read with the standard library (ctypes on Windows, /proc on Linux, ps elsewhere); a Runner reaps only labels naming its own host; an owner whose liveness cannot be read (access denied, unreadable start time) counts as alive and is never touched; a pid that is gone, has exited, or whose start time differs is dead. (3) M40 caveat 2 is closed: migration 0020 widens workspace_commands.killed's CHECK to add 'error', and a provider run that raises is recorded and its WorkspaceCommandEnded emitted with killed='error' and the exception's class as kill_error, so started = ended = rows holds on every path. (4) M40 caveats 1 (a cancel absorbed by the store while WorkspaceCommandStarted is written, handle.py:135) and 3 (RuntimeError instead of the cancellation when the record fails under a cancel-absorbing store) are declared in the README as store-layer behaviour older than M40, not changed in M41.",
+      "status": "accepted",
+      "source": null,
+      "recorded_at": "2026-10-29T05:16:29.562Z"
+    },
+    {
+      "id": "DECISION-b1498111",
+      "title": "M41 pre-review repairs: siblings' waits released, a late plan run is its own top, parity closed, CancelledError declared",
+      "text": "The owner chose: (1) each slot wait is tied to its workspace; when one sibling begins creating a shared workspace, every sibling still queued for it is taken off the queue without a slot, under the slot lock, and awaits the creation, so one workspace never takes two slots. (3) A run whose named top-level run is not under way on this Runner is its own top-level run: its plan workspace is removed when it ends. (8) FakeProvider's import refuses duplicate members and a file under a file, and its export refuses past 16 MiB or 10,000 members, as Docker's read_tar does; DockerProvider.list_owned also finds labelled containers whose volume is gone, so reaping and aclose remove them (NFR-44); one_file names a stream that is not one regular file as such, its class unchanged. (5) Declared in the README: a provider must not raise CancelledError but on cancellation. Repaired without a choice, each obvious: the WorkspaceWaiting await inside take's try (2); is_dead takes ASCII digits only and each listed workspace is reaped in isolation (4); mime_type without parameters (6); the docker reaping test uses the SDK's volume name.",
+      "status": "accepted",
+      "source": null,
+      "recorded_at": "2026-10-29T06:22:20.416Z"
+    },
+    {
+      "id": "DECISION-f4e7dd24",
+      "title": "M41: gate timeout raised to 3600000 ms",
+      "text": "The owner raised the gates' --timeout from 2400000 (DECISION-f3e99c07) to 3600000 ms from M41 on. M41's regression passed in 30:44 and 31:55 on a quiet machine, but was killed twice at the 40-minute bound when the machine slowed or slept (64 and 51 minutes of wall-clock for a 40-minute timer; the second while Docker Desktop's VM was starting). Two MCP tests failed once under that load (a temp port file refused, a fixture server late) and passed rerun alone; the next full run passed 2883 with none failing.",
+      "status": "accepted",
+      "source": null,
+      "recorded_at": "2026-10-29T10:19:05.781Z"
+    },
+    {
+      "id": "DECISION-b7423cae",
+      "title": "M41 close: approve kept, caveats carried to M42, SPEC re-ratified, commit and publish",
+      "text": "The owner chose: (1) close M41 on the approved hash 728ea046 without changing code, and carry every caveat to M42's pre-flight: give example 35's aclose check a subject (or drop the README and docstring claim), declare cross-child provenance under a shared plan workspace, comment or re-check the latent cross-loop slot state, declare or ignore the one fake/Docker exception-class difference, drop _workspace_refusal's unused argument, and quote requirements exactly in review briefs; M42's exit signal (FR-154) must not have a check that passes without its subject (DECISION-a7d6a1f5); (2) re-ratify M41's SPEC amendments to FR-139, FR-140, FR-148 and FR-150 to FR-152 by requeueing M42, then spec check and approve, plan check and approve under the owner; (3) commit to phase-5 and publish through publish.sh.",
+      "status": "accepted",
+      "source": null,
+      "recorded_at": "2026-10-29T14:13:11.865Z"
     }
   ],
   "knowledge": [
@@ -3390,6 +3422,30 @@
       "source": null,
       "tags": [],
       "recorded_at": "2026-10-28T18:21:58.405Z"
+    },
+    {
+      "id": "KNOWLEDGE-87741d74",
+      "title": "M41 pre-flight: what M38 to M40 left for FR-150 to FR-153, and process start times measured",
+      "text": "Already in place: Runner(max_concurrent_workspaces=4) is validated and handed to WorkspaceManager but nothing enforces it; WorkspaceSpec.scope 'plan' and keep=True are refused by Runner._workspace_refusal as not supported yet; the manager labels every workspace agentsdk.owner with os.getpid() only; providers already offer list_owned(labels); REMOVAL_REASONS and migration 0019 already allow 'released', 'aclose' and 'reaped'; RESERVED already names export_workspace_file; one_file already refuses a link; Runner.aclose closes only MCP. A child run carries ledger_run_id, its top-level run, which can key a plan workspace. ArtifactRef has no column for a command id. workspace_commands.killed is CHECKed to timeout, cancelled or limit, and exit_code IS NULL iff killed IS NOT NULL, so recording a provider failure (M40 caveat 2) needs a new value. Measured on Windows with ctypes (OpenProcess with PROCESS_QUERY_LIMITED_INFORMATION, GetProcessTimes, GetExitCodeProcess): a live process's creation time reads identically twice; an exited process whose handle is still held elsewhere still opens and reports its creation time, so death must be read from the exit code (STILL_ACTIVE 259), not from the open; the System process (pid 4) refuses with error 5 (access denied); a pid that does not exist fails with error 87.",
+      "source": null,
+      "tags": [],
+      "recorded_at": "2026-10-29T05:16:29.344Z"
+    },
+    {
+      "id": "KNOWLEDGE-46ddc562",
+      "title": "M41 pre-review (Fable 5.1): a plan deadlock on one slot, a slot leak, a late plan workspace, a reaping abort",
+      "text": "Runtime probes on FakeProvider, in memory (scratchpad m41/prereview p01 to p09); the orchestrator reproduced findings 1, 2 and 4 first-hand. (1) Defect: with one free slot a plan's two plan-scoped children deadlock; the first creates the shared workspace and keeps the slot until the plan ends, the second waits in _Slots for a give that only the plan's end makes; on a fresh Runner with max_concurrent_workspaces=1 any plan with two independent plan children hangs (the first reap's listing puts both in take together). (2) Defect: _Slots.take's final await of the WorkspaceWaiting emit sat outside its try, so a cancel after the grant while the wait was being recorded leaked the slot for good. (3) Defect: a run naming an ended or never-run top-level run as ledger_run_id got a plan workspace no end_plans ever removes, holding a slot until aclose. (4) Defect: owner.is_dead took any str.isdigit pid ('²') to int() and raised, and _reap was one loop, so one such label on the daemon stopped every later reaping. Notes: (5) a provider run raising CancelledError with no cancel ends the run cancelled; (6) the mime_type schema admitted parameters the artifact store refuses; (7) one_file named every non-single-file stream 'a folder'; (8) parity, read only: DockerProvider.list_owned is volume-keyed so a labelled container without its volume is invisible to reaping and aclose; FakeProvider's import accepts duplicate members and a file under a file and its export has no 16 MiB / 10,000-member bound, which Docker's read_tar refuses; the M41 docker reaping test mounted agentsdk-ws-<id> while the SDK names volumes agentsdk-<id>, leaving an orphan volume each run. Held: slot accounting on every other path, plan lifetime and isolation across tenants and Runners, aclose with commands, creations, waiters and kept workspaces, every other owner-label edge, export source, quoting, last command and taint, caveat 2.",
+      "source": null,
+      "tags": [],
+      "recorded_at": "2026-10-29T06:22:17.034Z"
+    },
+    {
+      "id": "KNOWLEDGE-64360f90",
+      "title": "M41 round 1 APPROVED by Opus 5: plans, reaping and export hold on both providers",
+      "text": "Opus 5 approved M41 round 1 (control e0b13866) on source hash 728ea046. It reran regression (2883 passed in 1641.9 s), the 46 live Docker tests and examples 32 to 35 (35: offline 8/8, scripted on Docker 8/8, live 7/7, rows removed by its own run ids), applied migration 0020 to an isolated schema, and ran a 36-behaviour contract battery against the fake and Docker in one process on a live daemon, compared by exception class: two differences, folder packing (named in FR-150 and one_file) and NotADirectoryError against ValueError for a write under an existing file, which both surface as ToolExecutionError. It verified live that a labelled container whose volume is gone is listed, falls back to _UNKNOWN_SPEC and is removed, so the parity gap carried since M38 is closed. Caveats, none blocking, all confirmed first-hand by the owner's orchestrator: (1) example 35's last check (after aclose() nothing remains) is vacuous: with WorkspaceManager.aclose patched to a no-op the example still passes 8/8, because the plan workspaces are gone and the kept one released before aclose runs; it is the only check without the None 'not exercised' sentinel; FR-153 does not name aclose, the overclaim is README line 685 and the example's docstring; aclose itself is pinned by three real tests, one live on Docker. (2) Under a shared plan workspace an artifact exported by child B can name sibling A's command id: last_command is on _Space (manager.py:389 writes, :422 reads); source_run and source_task stay B's; FR-150 as amended allows it, the README does not say it. (3) A latent cross-loop slot state (a wait queued for a space already released) the reviewer constructed directly but could not provoke in 40 attempts. (4) Runner._workspace_refusal(spec) ignores its argument. (5) The review brief's FR-153 summary named aclose(), which FR-153 does not.",
+      "source": null,
+      "tags": [],
+      "recorded_at": "2026-10-29T14:13:11.696Z"
     }
   ],
   "tasks": [
@@ -3412,9 +3468,9 @@
           "status": "pass",
           "evidence": {
             "human": "siva-rgb (owner)",
-            "reason": "Re-approved after M40's amendments to P5-D6, FR-137, FR-138, FR-139, FR-142, FR-148, AC-97 and AC-98 (DECISION-d4ede901, DECISION-fe7243f1, DECISION-f3e99c07), per DECISION-89f2b384.",
-            "source_hash": "5752e41b8cfef7d538aa9e9d6aced6247f6d0302fbc3e330ae894be4a009f876",
-            "observed_at": "2026-10-28T18:22:17.594Z"
+            "reason": "Re-approved after M41's amendments to FR-139, FR-140, FR-148 and FR-150 to FR-152 (DECISION-825b81a6, DECISION-b1498111), per the M41 close decision.",
+            "source_hash": "728ea04604ef089148640aa51e0566a49375d23b4be42a1a04dbea5d93e04488",
+            "observed_at": "2026-10-29T14:13:16.405Z"
           }
         }
       ],
@@ -3424,7 +3480,7 @@
       "failures": [],
       "limitations": [],
       "created_at": "2026-09-05T14:48:57.897Z",
-      "updated_at": "2026-10-28T18:22:17.594Z"
+      "updated_at": "2026-10-29T14:13:16.405Z"
     },
     {
       "id": "M1-primitives",
@@ -6282,7 +6338,7 @@
     {
       "id": "M41-workspace-plans",
       "outcome": "Workspace files leave only as artifacts, and workspaces end with their run, are reaped after a dead Runner and are bounded in plans",
-      "state": "active",
+      "state": "done",
       "risk": "high",
       "owner": null,
       "scope": [],
@@ -6303,22 +6359,37 @@
           "id": "unit",
           "command": ".venv\\Scripts\\python.exe -m pytest tests/test_workspace_plan.py -q",
           "mandatory": true,
-          "status": "pending",
-          "evidence": null
+          "status": "pass",
+          "evidence": {
+            "path": ".genesis/evidence/M41-workspace-plans-unit.json",
+            "source_hash": "728ea04604ef089148640aa51e0566a49375d23b4be42a1a04dbea5d93e04488",
+            "hash": "e9450f9163fc9e8c71f6e5e93a455466347fc0f7314f55eaacafddd01e491526",
+            "observed_at": "2026-10-29T11:06:06.497Z"
+          }
         },
         {
           "id": "regression",
           "command": ".venv\\Scripts\\python.exe -m pytest -q",
           "mandatory": true,
-          "status": "pending",
-          "evidence": null
+          "status": "pass",
+          "evidence": {
+            "path": ".genesis/evidence/M41-workspace-plans-regression.json",
+            "source_hash": "728ea04604ef089148640aa51e0566a49375d23b4be42a1a04dbea5d93e04488",
+            "hash": "f66a83c4fe781d3445ca9efce848aa905b40fbc4825f4f96ab6f0cd2061fd20a",
+            "observed_at": "2026-10-29T11:34:49.198Z"
+          }
         },
         {
           "id": "independent-review",
           "command": "",
           "mandatory": true,
-          "status": "pending",
-          "evidence": null
+          "status": "pass",
+          "evidence": {
+            "human": "Opus 5 independent L4 reviewer",
+            "reason": "Re-derived FR-150 to FR-153, FR-139, FR-140, FR-148, NFR-22, NFR-42, NFR-44 and AC-99 from SPEC.md and checked every row of the answered-findings table by content, plus both approved-test edits. Recomputed the content hash myself as 728ea046 over 206 files, and no repository file changed by content during the review; both gate evidence files sit on that hash. Reran the full suite: 2883 passed, 46 deselected in 1641.90s. Live Docker: 46 passed in 318.71s. Examples 32 to 34 offline all PASS; example 35 offline 8 of 8, scripted on Docker 8 of 8, live 7 of 7, its rows removed by its own two printed run ids and their three children. Migration 0020 applied to an isolated schema actually at 0019 widens workspace_commands_killed_check to admit error and leaves the exit-code exclusivity CHECK intact, with the dev database untouched. M40 caveat 2 is closed: four provider-failure shapes on both stores each give started equals ended equals rows, killed error, no exit code, and the exception class as kill_error. Slot accounting probed on ten error paths, among them a failed create, a failed record, a failed listing, a failed reaping removal, a cancel during creation, a cancel while waiting, a double end, three refused releases and aclose racing a granted wait: held always matched what was genuinely held and never went negative. Reaping probed in the dangerous direction: host case and qualification, an unreadable start time, pid 0, a negative pid, an enormous pid, a zero-padded pid and fifty readings of a live child never judge a live owner dead. Fake versus Docker parity probed behaviour by behaviour on a live daemon over 36 behaviours; the only differences are the folder packing the SPEC already names and a write under an existing file raising NotADirectoryError on the fake and ValueError on Docker, which both reach the model as ToolExecutionError. On Docker a FIFO, a symlink, a folder and a 17 MiB file are each refused, a hard link to a host file is refused by the kernel, and a labelled container whose volume is gone is listed with its owner and removed. Eight runtime mutants of M41 were each killed by the right named test, with the unmutated gate at 57 passed. Caveats, none blocking. One: the last check of example 35, after aclose nothing the Runner created remains, is vacuous offline and live, because at the moment it runs the Runner holds nothing, measured as zero spaces and zero listed workspaces, so an aclose that removes nothing still passes; it is the only one of the eight checks with no not-exercised sentinel. The behaviour itself is pinned by three real tests including a live Docker one, and FR-153 does not ask the example to show aclose, but the README row for example 35 claims it does, so please give that check a subject or drop the claim, and do not let M42 inherit it. Two: under a shared plan workspace an artifact exported by one child names the last command that ended in that workspace, which can be a sibling command id, while source_run and source_task stay the exporting child; that is what FR-150 as amended says but the README does not, so please declare it. Three: latent, a slot wait queued for a space whose release already happened never receives a give; within one event loop ensure cannot reach that state because no await stands between its check and the slot lock, and I could not provoke it in forty attempts with two threads driving one plan. Four: the SPEC M41 amendments still await ratification. Everything I made is gone: store, Docker and processes are all back to the measured baseline.",
+            "source_hash": "728ea04604ef089148640aa51e0566a49375d23b4be42a1a04dbea5d93e04488",
+            "observed_at": "2026-10-29T13:11:21.443Z"
+          }
         }
       ],
       "next_action": "Run the task pre-flight.",
@@ -6327,12 +6398,12 @@
       "failures": [],
       "limitations": [],
       "created_at": "2026-10-24T17:00:17.957Z",
-      "updated_at": "2026-10-24T17:00:17.958Z"
+      "updated_at": "2026-10-29T14:13:12.045Z"
     },
     {
       "id": "M42-sandbox-contention",
       "outcome": "Hostile code in a plan's sandboxed children is contained, recorded and cleaned up on both stores",
-      "state": "queued",
+      "state": "active",
       "risk": "high",
       "owner": null,
       "scope": [],
@@ -7822,17 +7893,35 @@
       "human": "siva-rgb (owner)",
       "reason": "Requeued before re-approving the SPEC after M40's amendments, so that only one task goes active (DECISION-89f2b384).",
       "revision": null
+    },
+    {
+      "id": "e0b13866-019e-4886-88bd-f275f7ae912e",
+      "at": "2026-10-29T13:11:21.443Z",
+      "action": "approve",
+      "task": "M41-workspace-plans",
+      "human": "Opus 5 independent L4 reviewer",
+      "reason": "Re-derived FR-150 to FR-153, FR-139, FR-140, FR-148, NFR-22, NFR-42, NFR-44 and AC-99 from SPEC.md and checked every row of the answered-findings table by content, plus both approved-test edits. Recomputed the content hash myself as 728ea046 over 206 files, and no repository file changed by content during the review; both gate evidence files sit on that hash. Reran the full suite: 2883 passed, 46 deselected in 1641.90s. Live Docker: 46 passed in 318.71s. Examples 32 to 34 offline all PASS; example 35 offline 8 of 8, scripted on Docker 8 of 8, live 7 of 7, its rows removed by its own two printed run ids and their three children. Migration 0020 applied to an isolated schema actually at 0019 widens workspace_commands_killed_check to admit error and leaves the exit-code exclusivity CHECK intact, with the dev database untouched. M40 caveat 2 is closed: four provider-failure shapes on both stores each give started equals ended equals rows, killed error, no exit code, and the exception class as kill_error. Slot accounting probed on ten error paths, among them a failed create, a failed record, a failed listing, a failed reaping removal, a cancel during creation, a cancel while waiting, a double end, three refused releases and aclose racing a granted wait: held always matched what was genuinely held and never went negative. Reaping probed in the dangerous direction: host case and qualification, an unreadable start time, pid 0, a negative pid, an enormous pid, a zero-padded pid and fifty readings of a live child never judge a live owner dead. Fake versus Docker parity probed behaviour by behaviour on a live daemon over 36 behaviours; the only differences are the folder packing the SPEC already names and a write under an existing file raising NotADirectoryError on the fake and ValueError on Docker, which both reach the model as ToolExecutionError. On Docker a FIFO, a symlink, a folder and a 17 MiB file are each refused, a hard link to a host file is refused by the kernel, and a labelled container whose volume is gone is listed with its owner and removed. Eight runtime mutants of M41 were each killed by the right named test, with the unmutated gate at 57 passed. Caveats, none blocking. One: the last check of example 35, after aclose nothing the Runner created remains, is vacuous offline and live, because at the moment it runs the Runner holds nothing, measured as zero spaces and zero listed workspaces, so an aclose that removes nothing still passes; it is the only one of the eight checks with no not-exercised sentinel. The behaviour itself is pinned by three real tests including a live Docker one, and FR-153 does not ask the example to show aclose, but the README row for example 35 claims it does, so please give that check a subject or drop the claim, and do not let M42 inherit it. Two: under a shared plan workspace an artifact exported by one child names the last command that ended in that workspace, which can be a sibling command id, while source_run and source_task stay the exporting child; that is what FR-150 as amended says but the README does not, so please declare it. Three: latent, a slot wait queued for a space whose release already happened never receives a give; within one event loop ensure cannot reach that state because no await stands between its check and the slot lock, and I could not provoke it in forty attempts with two threads driving one plan. Four: the SPEC M41 amendments still await ratification. Everything I made is gone: store, Docker and processes are all back to the measured baseline.",
+      "revision": null
+    },
+    {
+      "id": "28d47bac-adca-40f7-b540-35a3630f9943",
+      "at": "2026-10-29T14:13:16.116Z",
+      "action": "requeue",
+      "task": "M42-sandbox-contention",
+      "human": "siva-rgb (owner)",
+      "reason": "Requeued before re-approving the SPEC after M41's amendments, so that only one task goes active (M41 close decision).",
+      "revision": null
     }
   ],
   "discovery": null,
   "checkpoint": {
-    "at": "2026-10-28T18:22:02.774Z",
+    "at": "2026-10-29T13:55:36.948Z",
     "revision": {
-      "commit": "8fdc5539e6aa1e836c864d08a67f21bd57a9f00c",
+      "commit": "04f83f65376c0cd9cfae4a5c2bb64b98491644c1",
       "dirty": true,
-      "source_hash": "5752e41b8cfef7d538aa9e9d6aced6247f6d0302fbc3e330ae894be4a009f876"
+      "source_hash": "728ea04604ef089148640aa51e0566a49375d23b4be42a1a04dbea5d93e04488"
     },
-    "active_task": "M40-workspace-tools",
+    "active_task": "M41-workspace-plans",
     "next_action": "Run the task pre-flight."
   },
   "legacy": null

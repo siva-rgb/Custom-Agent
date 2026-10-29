@@ -643,6 +643,25 @@ class DockerProvider:
         if code != 0:
             raise WorkspaceUnavailable(f"docker could not list volumes (exit {code})")
         names = out.decode().split()
+        # A labelled container whose volume is gone is listed too, by its own labels, so reaping
+        # and aclose() remove it (NFR-44; M41 pre-review, DECISION-b1498111).
+        code, out, _ = await self._cli("ps", "-aq", "--filter", "label=agentsdk.workspace", *filters)
+        if code != 0:
+            raise WorkspaceUnavailable(f"docker could not list containers (exit {code})")
+        containers = out.decode().split()
+        orphans: dict[str, dict[str, str]] = {}
+        for start in range(0, len(containers), 100):
+            # A container removed meanwhile fails the call, and the others are still printed.
+            _, out, _ = await self._cli("inspect", *containers[start:start + 100], keep=16 * 2**20)
+            try:
+                inspected = json.loads(out) if out.strip() else []
+            except ValueError:
+                continue  # found again by the next listing
+            for container in inspected:
+                found = dict((container.get("Config") or {}).get("Labels") or {})
+                workspace_id = found.get("agentsdk.workspace", "")
+                if workspace_id and volume_name(workspace_id) not in names:
+                    orphans.setdefault(workspace_id, found)
         volumes: list[dict[str, Any]] = []
         for start in range(0, len(names), 100):  # each call well inside a command line (pre-review P4)
             code, out, _ = await self._cli("volume", "inspect", *names[start:start + 100], keep=16 * 2**20)
@@ -657,6 +676,9 @@ class DockerProvider:
                 handles.append(known.handle)
                 continue
             handles.append(WorkspaceHandle(workspace_id=found["agentsdk.workspace"], spec=_recorded(found),
+                                           labels=MappingProxyType(found)))
+        for workspace_id, found in orphans.items():
+            handles.append(WorkspaceHandle(workspace_id=workspace_id, spec=_recorded(found),
                                            labels=MappingProxyType(found)))
         return sorted(handles, key=lambda h: h.workspace_id)
 

@@ -506,9 +506,15 @@ class FakeProvider:
         return found[:limit], len(found)
 
     async def export(self, handle: WorkspaceHandle, path: str) -> bytes:
-        return self._space(handle).files.tar(path)
+        # Refused as DockerProvider refuses it: past 16 MiB or 10,000 members (M41 pre-review).
+        data = self._space(handle).files.tar(path)
+        read_tar(data)
+        return data
 
     async def import_(self, handle: WorkspaceHandle, data: bytes) -> None:
+        # Checked as DockerProvider checks it, a duplicate member or a file under a file
+        # included, before anything is written (M41 pre-review).
+        read_tar(data)
         self._space(handle).files.untar(data)
 
     async def remove(self, handle: WorkspaceHandle) -> None:
@@ -525,4 +531,4 @@ class FakeProvider:
                 if all(s.handle.labels.get(k) == v for k, v in labels.items())]
 
 
-from .docker import DockerProvider  # noqa: E402 - it builds on the names above (FR-142)
+from .docker import DockerProvider, read_tar  # noqa: E402 - it builds on the names above (FR-142)

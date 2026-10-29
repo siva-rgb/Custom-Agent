@@ -533,18 +533,26 @@ class Runner:
 
     def _workspace_refusal(self, spec: WorkspaceSpec) -> str:
         """FR-138: why a run whose agent has a workspace was given none."""
-        if self._workspaces is None:
-            return "this Runner was given no workspace_provider"
-        if spec.scope != "run":
-            return f"WorkspaceSpec.scope {spec.scope!r} is not supported yet; only 'run' is"
-        return "WorkspaceSpec.keep=True is not supported yet"
+        return "this Runner was given no workspace_provider"
 
     async def _end_workspace(self, run_id: str, events: EventSink, control: RunControl) -> None:
-        """FR-140: a run's workspace is removed, and recorded so, before the run's terminal event,
-        whatever its status. Never raises."""
+        """FR-140, FR-151: a run's workspace is removed, and recorded so, before the run's
+        terminal event, whatever its status -- unless `keep` holds it -- and so are the plan
+        workspaces its children shared, when it is their top-level run. Never raises."""
+        emit = partial(self._safe_emit_kind, events, control)
         workspace = self._workspace_runs.pop(str(run_id), None)
         if workspace is not None:
-            await workspace.end("run_ended", partial(self._safe_emit_kind, events, control))
+            await workspace.end("run_ended", emit)
+        if self._workspaces is not None:
+            await self._workspaces.end_plans(str(run_id), emit, control.store)
+
+    async def release_workspace(self, tenant_id: str, project_id: str, workspace_id: str) -> bool:
+        """FR-151: removes a kept workspace (`WorkspaceSpec(keep=True)`) of this tenant and project
+        once its run, or its plan, has ended, recorded `released`. False when this Runner holds no
+        such workspace."""
+        if self._workspaces is None:
+            return False
+        return await self._workspaces.release(tenant_id, project_id, workspace_id)
 
     async def _safe_emit_kind(self, events: EventSink, control: RunControl, event_type: EventType,
                               payload: dict) -> None:
@@ -840,9 +848,15 @@ class Runner:
 
     async def aclose(self) -> None:
         """FR-124 (M33): closes this Runner's MCP connections, whichever loop their runs were on,
-        ending their servers and the servers' children; none opens after (NFR-39)."""
-        if self._mcp is not None:
-            await self._mcp.aclose()
+        ending their servers and the servers' children; none opens after (NFR-39). FR-151 (M41):
+        kills every command and removes every workspace this Runner created, kept ones included;
+        none is created after (NFR-44)."""
+        try:
+            if self._mcp is not None:
+                await self._mcp.aclose()
+        finally:
+            if self._workspaces is not None:
+                await self._workspaces.aclose()
 
     async def __aenter__(self) -> Runner:
         return self
@@ -979,6 +993,8 @@ class Runner:
             return await self._driven(spec, task, config, opened, events, control)
         finally:
             self._live.pop(scope.run_id, None)
+            if self._workspaces is not None:
+                self._workspaces.forget(scope.run_id)
 
     def _top_emitter(self, run_id: str, top_run_id: str, control: RunControl) -> Any:
         """FR-120: for a run beneath another, a way to emit an approval event on its
@@ -1239,12 +1255,16 @@ class Runner:
         registry = self._registry if policy is None else policy.visible(self._registry, spec.tool_profile)
         # FR-146 (M38): plus the workspace tools its agent names, bound to this run's workspace,
         # which is created at their first need (FR-138). None for a run without one.
-        if (spec.workspace is not None and self._workspaces is not None and spec.workspace.scope == "run"
-                and not spec.workspace.keep):
+        if spec.workspace is not None and self._workspaces is not None:
             from .workspace.tools import NAMES, workspace_tools
 
+            # FR-152 (M41): under scope "plan", shared by every run of its top-level run -- one under
+            # way here, in this tenancy; otherwise the run is its own top (DECISION-b1498111).
+            top = self._live.get(str(config.ledger_run_id)) if config.ledger_run_id is not None else None
+            in_plan = top is not None and (top[2].tenant_id, top[2].project_id) == (scope.tenant_id, scope.project_id)
             workspace = self._workspaces.for_run(spec.workspace, scope.tenant_id, scope.project_id, run_id,
-                                                 partial(control.store, events.emit), control.store)
+                                                 partial(control.store, events.emit), control.store,
+                                                 plan_run_id=config.ledger_run_id if in_plan else None)
             self._workspace_runs[run_id] = workspace
             extended = ToolRegistry()
             for name in registry.names():

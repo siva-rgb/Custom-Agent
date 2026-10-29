@@ -180,7 +180,12 @@ persisted so you can reconstruct exactly what happened afterwards.
   is killed and the model reads `killed: timeout`; when its run is cancelled the
   container is killed through the provider and the run reports cancelled only
   once it is gone, within 10 s, whatever the process inside ignores -- a kill
-  that fails is recorded by its error class.
+  that fails is recorded by its error class. A file leaves a workspace only
+  through `export_workspace_file`, as an untrusted artifact of its run that
+  names the last command (M41). A plan's children can share one workspace,
+  removed when the plan ends; a kept one lives until it is released;
+  `Runner.aclose()` removes everything the Runner created; and a Runner reaps
+  what a dead one left, by an owner label naming its host, process and start.
 - **Fetches each page once, however many agents ask** (M24's claim-lock): one
   holder per page and per statement, across the tasks of a process and the
   processes sharing the database; the others wait, then take the holder's
@@ -265,8 +270,10 @@ Stated plainly, because an SDK that overstates itself costs you a week:
 | A workspace's size counts as `du` does, on both providers: each file in whole 4 KiB blocks and each folder one block, so many small files or empty folders weigh against `max_workspace_bytes` more than their bytes. They still differ: `FakeProvider` does not count a folder's own growth with thousands of entries (up to 64 KiB measured) and counts a sparse file at its full length (DECISION-d4ede901, M40 pre-review) | Declared (M40) |
 | A `WorkspaceSpec.cpus` above the host's CPU count passes the spec and fails every Docker workspace, reported as the image being unable to measure one. Listing a folder under one that cannot be read raises `FileNotFoundError`, as a missing path does (M40 pre-review) | Declared (M40) |
 | A command's container keeps no log on the daemon (`--log-driver none`): its output is read only through the attached client, up to `max_output_bytes`, and `docker logs` shows nothing. `WorkspaceSpec.cpus` is from 0.01 to 16 in whole hundredths, a value within 1e-9 of one kept as that hundredth (DECISION-d4ede901, DECISION-f3e99c07) | Declared (M40) |
-| `WorkspaceSpec(scope="plan")` and `keep=True` are accepted by the spec and refused when a run starts, until M41; `max_concurrent_workspaces` is checked and not yet enforced (M41) | Declared (M38) |
-| A workspace is removed when its run ends, before the run's last event. `Runner.aclose()` does not yet remove the workspaces of runs still under way, and nothing yet reaps a workspace a crashed process left (M41) | Declared (M38) |
+| `WorkspaceSpec(scope="plan")` is shared by a plan's children whose specs are the same; children with different specs each get their own plan workspace, all removed when the top-level run ends. A kept workspace holds one of `max_concurrent_workspaces` until it is released, so kept workspaces that fill the bound make every later run wait, cancellably (DECISION-825b81a6) | Declared (M41) |
+| Reaping runs before a Runner's first workspace and touches only what names this host in `agentsdk.owner` (`hostname:pid:start`): a workspace left by a Runner on another machine sharing the daemon, or by the SDK before M41, whose label held the pid alone, is never reaped. One whose removal fails is left for the next Runner. A Runner dropped without `aclose()` in a process that keeps running is reaped only once that process ends | Declared (M41) |
+| Two store-layer behaviours older than M40 (DECISION-825b81a6): a cancel that lands while a run's store write is under way -- `WorkspaceCommandStarted` among them -- is absorbed there, and the run stops at its next checkpoint, so a command can run to its end or timeout before the run reports cancelled; and a cancel that lands while a command's record fails surfaces that record's `RuntimeError` rather than the cancellation | Declared (M41) |
+| A `WorkspaceProvider` must raise `CancelledError` only when it is cancelled: a provider's `run` that raises it otherwise ends its run `cancelled`, the command recorded `killed: cancelled` (M41 pre-review, DECISION-b1498111) | Declared (M41) |
 | Beside a `workspace_provider`, no registered tool may be named `run_command`, `read_workspace_file`, `write_workspace_file`, `list_workspace` or `export_workspace_file`: it would run on the host, so such a Runner is refused when it is built | Declared (M38) |
 | A `WorkspaceSpec.env` value reaches nothing the SDK records but the output of a command that prints it -- and, when a model copies it into a later command, that command's arguments, recorded as written in its event and row as every argument is in the run's messages (NFR-45 as amended, DECISION-bb81ebbe) | Declared (M38) |
 | A command cut short by its run's cancellation is recorded `killed: cancelled`, with no output: what it printed before the cancellation is not kept | Declared (M38) |
@@ -288,7 +295,6 @@ Stated plainly, because an SDK that overstates itself costs you a week:
 | A server that cannot be reached is retried once a minute per tenant and project, so N tenancies of one Runner each wait one `connect_timeout` a minute on a server that is down | Declared (M33) |
 | A server that writes something other than MCP to its stdout -- its environment, say -- has that line quoted in the `mcp` library's own parse-error log record (`mcp.client.stdio`), which the SDK does not silence | Declared (M33) |
 | A paused run resuming after its process restarts | Phase 6 |
-| Sandboxed execution: files out of a workspace as artifacts, plan workspaces, kept workspaces, reaping and `Runner.aclose()` removing what it created (M41) | Phase 5 |
 | Pause and resume; durable interruptions (cancel is built) | Phase 6 |
 | The execution manifest's `tools_sent` records the tools a run's agent is sent, written at run start with the rest of its configuration, so a run that ends before its first request records a set it never sent | Declared (M21) |
 | A fetch tool widened to a broader cache scope keeps serving the run's own version recorded at the narrower one until that version expires | Declared (M23) |
@@ -676,6 +682,7 @@ credentials -- which is also how the test suite checks them.
 | [`32_workspace.py`](scripts/32_workspace.py) | A workspace on `FakeProvider`: a command's output, a non-zero exit, `run_command` waiting for an operator's approval, a workspace past `max_workspace_bytes` refusing the next command, every result untrusted, and the workspace and its commands recorded |
 | [`33_docker_workspace.py`](scripts/33_docker_workspace.py) | Example 32's agent on `DockerProvider`, then what a command sees from inside: user 65534, no capability, no network but loopback, a read-only root, a capped `/tmp`, the cgroup limits of its spec, and a file exported as a checked tar stream. Prints `[SKIP] docker not running` without Docker; `--offline` runs on `FakeProvider` |
 | [`34_sandboxed_tools.py`](scripts/34_sandboxed_tools.py) | An agent writes a Python program, runs it and reads back what it wrote; its operator approves each command and refuses one; a command past its timeout is killed and the model told; then a run cancelled mid-command reports cancelled only once the command's container is gone, within 10 s. `--offline` runs on `FakeProvider`, `--scripted` on Docker |
+| [`35_workspace_plan.py`](scripts/35_workspace_plan.py) | An orchestrated plan: two analysts share a plan workspace -- one writes data, the other runs a program over it and exports the summary -- while a writer exports notes from a workspace of its own. Every export is an untrusted artifact of its run naming the last command, and every workspace is removed when the plan ends. Then a kept workspace outlives its run until it is released, and `Runner.aclose()` leaves nothing. `--offline` runs on `FakeProvider`, `--scripted` on Docker |
 
 ```bash
 python scripts/02_custom_tools.py --offline

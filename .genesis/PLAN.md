@@ -4,7 +4,7 @@
 
 - workflow: new-product
 - phase: build
-- plan approval: siva-rgb (owner) at 2026-10-28T18:22:17.898Z
+- plan approval: siva-rgb (owner) at 2026-10-29T14:13:16.708Z
 
 ## Tasks
 
@@ -378,15 +378,15 @@
 
 ### M41-workspace-plans — Workspace files leave only as artifacts, and workspaces end with their run, are reaped after a dead Runner and are bounded in plans
 
-- state/risk: active / high
+- state/risk: done / high
 - requirements: FR-150, FR-151, FR-152, FR-153, AC-99, NFR-22, NFR-44
 - scope: not bounded
-- gates: unit: .venv\Scripts\python.exe -m pytest tests/test_workspace_plan.py -q, regression: .venv\Scripts\python.exe -m pytest -q, independent-review: pending
+- gates: unit: .venv\Scripts\python.exe -m pytest tests/test_workspace_plan.py -q, regression: .venv\Scripts\python.exe -m pytest -q, independent-review: pass
 - next: Run the task pre-flight.
 
 ### M42-sandbox-contention — Hostile code in a plan's sandboxed children is contained, recorded and cleaned up on both stores
 
-- state/risk: queued / high
+- state/risk: active / high
 - requirements: FR-154, AC-100, NFR-40, NFR-42, NFR-43, NFR-44, NFR-45
 - scope: not bounded
 - gates: unit: .venv\Scripts\python.exe -m pytest tests/test_sandbox_contention.py -q, regression: .venv\Scripts\python.exe -m pytest -q, independent-review: pending

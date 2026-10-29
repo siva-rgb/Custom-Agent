@@ -680,14 +680,14 @@ async def test_a_failed_runs_workspace_is_removed_too():
     assert EventType.WORKSPACE_REMOVED in kinds(result) and await provider.list_owned({}) == []
 
 
-async def test_a_scope_or_keep_m41_brings_is_refused_until_then():
-    """FR-151 and FR-152 arrive in M41: until then a run asking for a plan workspace or a kept one
-    fails, rather than silently getting a run workspace that is removed."""
+async def test_a_scope_or_keep_m41_brings_is_served():
+    """FR-151 and FR-152 arrived in M41: a run asking for a plan workspace or a kept one runs; until
+    then it failed before its first model call (tests/test_workspace_plan.py holds their lifetimes)."""
     for space in (workspace(scope="plan"), workspace(keep=True)):
         model = Turns()
         result = await run(runner_for(provider=Counting(), model=model), agent(space=space), [])
-        assert result.status is RunStatus.FAILED and result.error.startswith("WorkspaceUnavailable"), result.error
-        assert model.requests == []
+        assert result.status is RunStatus.COMPLETED, result.error
+        assert model.requests != []
 
 
 # =================================================================================================
