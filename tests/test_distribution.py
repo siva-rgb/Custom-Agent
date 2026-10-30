@@ -78,6 +78,8 @@ EXPECTED_EXAMPLES = {
     # FR-149 (M40): timeouts and cancellation.
     "34_sandboxed_tools.py",
     "35_workspace_plan.py",
+    # FR-154 (M42): Phase 5's exit signal.
+    "36_sandbox_contention.py",
 }
 
 

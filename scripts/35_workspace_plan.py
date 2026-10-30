@@ -224,11 +224,20 @@ async def demonstrate(runner: Runner, orchestrator: Orchestrator, model_id: str,
                                      and await chosen.list_owned({"agentsdk.run": kept.run_id}) == [])),
     ]
 
-    # --- closing --------------------------------------------------------------------------------------
+    # --- closing: a kept workspace still standing goes with aclose() ---------------------------------
+    last = await runner.run(roles(model_id)["archivist"], ARCHIVE_TASK,
+                            RunConfig(tenant_id=tenant, project_id=project, max_turns=4))
+    standing = await chosen.list_owned({"agentsdk.run": last.run_id})
+    print(f"archive {last.run_id}: {last.status.value}; standing at aclose(): {[h.workspace_id for h in standing]}")
     await runner.aclose()
-    checks.append(("after aclose() nothing the Runner created remains",
-                   await chosen.list_owned({"agentsdk.tenant": tenant, "agentsdk.project": project}) == []))
-    return checks, [result.run_id, kept.run_id]
+    closed = await asyncio.to_thread(store.workspaces, tenant, project, last.run_id)
+    # Its subject is a workspace standing when aclose() began, so the check fails when there was
+    # none to remove (M41 review, DECISION-b7423cae).
+    checks.append(("after aclose() nothing the Runner created remains: a kept workspace standing before it went with it",
+                   None if not standing else (
+                       await chosen.list_owned({"agentsdk.tenant": tenant, "agentsdk.project": project}) == []
+                       and [w.removed_reason for w in closed] == ["aclose"])))
+    return checks, [result.run_id, kept.run_id, last.run_id]
 
 
 def report(checks, live: bool) -> list[str]:

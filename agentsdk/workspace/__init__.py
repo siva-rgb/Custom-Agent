@@ -52,6 +52,13 @@ _LIMITS: dict[str, tuple[float, float, type]] = {
     "max_output_bytes": (1 * _MiB, 16 * _MiB, int),
 }
 SCOPES = ("run", "plan")
+# FR-138, FR-148: what a workspace's setup -- reaping, the slot wait, creation -- may take before a
+# call fails WorkspaceUnavailable; every workspace tool's deadline is past it, so a command that
+# starts ends by its own timeout (DECISION-e799700b).
+SETUP_SECONDS = 120.0
+# What reading a workspace's size may take; a command's first use reads it first when it is stale,
+# so the tools' deadline is past it too (DECISION-4689af02).
+MEASURE_SECONDS = 120.0
 
 
 def _limit(name: str, value: Any) -> float:
@@ -133,8 +140,9 @@ class WorkspaceSpec:
 @dataclass(frozen=True)
 class CommandOutcome:
     """FR-138: how one command ended. `exit_code` is None when it was killed; `killed` says why:
-    None, "timeout", "cancelled" or "limit". Each stream is kept up to the spec's
-    `max_output_bytes` and marked cut past it, with the bytes it produced counted."""
+    None, "timeout", "cancelled" or "limit", and `limit` names the bound that ended it when the
+    provider can say, "memory_bytes" on Docker (DECISION-21e7f6fb). Each stream is kept up to the
+    spec's `max_output_bytes` and marked cut past it, with the bytes it produced counted."""
 
     exit_code: int | None
     stdout: bytes
@@ -145,6 +153,7 @@ class CommandOutcome:
     stderr_bytes: int
     duration: float
     killed: str | None = None
+    limit: str | None = None
 
 
 @dataclass(frozen=True)
@@ -214,12 +223,15 @@ def normal_path(path: str) -> str:
 
 
 class FakeFiles:
-    """FR-139: a fake workspace's tree, directories and regular files only. Writes from a command
-    that was killed are discarded: a kill is total (P5-D5)."""
+    """FR-139: a fake workspace's tree: directories, regular files, and symbolic links, which a
+    command can make but nothing reads through -- an export packs a link as `docker cp` does, so
+    the transfer filter refuses it on both providers (M42). Writes from a command that was killed
+    are discarded: a kill is total (P5-D5)."""
 
     def __init__(self) -> None:
         self._files: dict[str, bytes] = {}
         self._dirs: set[str] = set()
+        self._links: dict[str, str] = {}
 
     def size(self) -> int:
         """As `du` counts (DECISION-d4ede901): each file in whole 4 KiB blocks and each folder one
@@ -232,31 +244,46 @@ class FakeFiles:
             raise FileNotFoundError(path)
         return self._files[key]
 
+    def _parents(self, key: str) -> None:
+        parent = posixpath.dirname(key)
+        while parent:
+            if parent in self._files or parent in self._links:
+                raise NotADirectoryError(parent)
+            self._dirs.add(parent)
+            parent = posixpath.dirname(parent)
+
     def write(self, path: str, data: bytes | str) -> None:
         key = normal_path(path)
         if not key or key in self._dirs:
             raise IsADirectoryError(path)
-        parent = posixpath.dirname(key)
-        while parent:
-            if parent in self._files:
-                raise NotADirectoryError(parent)
-            self._dirs.add(parent)
-            parent = posixpath.dirname(parent)
+        if key in self._links:
+            # A command writing through a link: the fake has no tree outside it to write into.
+            # (An import replaces the link instead, as on Docker: see untar.)
+            raise PermissionError(f"{path} is a link")
+        self._parents(key)
         self._files[key] = data.encode("utf-8") if isinstance(data, str) else bytes(data)
+
+    def link(self, path: str, target: str) -> None:
+        """A symbolic link at `path` to `target`, which may name anything, inside or out."""
+        key = normal_path(path)
+        if not key or key in self._dirs or key in self._files or key in self._links:
+            raise FileExistsError(path)
+        self._parents(key)
+        self._links[key] = target
 
     def exists(self, path: str) -> bool:
         key = normal_path(path)
-        return key == "" or key in self._files or key in self._dirs
+        return key == "" or key in self._files or key in self._dirs or key in self._links
 
     def is_dir(self, path: str) -> bool:
         key = normal_path(path)
         return key == "" or key in self._dirs
 
     def listdir(self, path: str = "") -> list[tuple[str, str, int]]:
-        """(name, "file" or "dir", size) of each direct entry, sorted by name."""
+        """(name, "file", "dir" or "link", size) of each direct entry, sorted by name."""
         key = normal_path(path)
         if not self.is_dir(key):
-            raise (NotADirectoryError if key in self._files else FileNotFoundError)(path)
+            raise (NotADirectoryError if key in self._files or key in self._links else FileNotFoundError)(path)
         prefix = f"{key}/" if key else ""
         found: dict[str, tuple[str, int]] = {}
         for name, data in self._files.items():
@@ -265,12 +292,18 @@ class FakeFiles:
         for name in self._dirs:
             if name.startswith(prefix) and name != key and "/" not in name[len(prefix):]:
                 found[name[len(prefix):]] = ("dir", 0)
+        for name in self._links:
+            if name.startswith(prefix) and "/" not in name[len(prefix):]:
+                found[name[len(prefix):]] = ("link", 0)
         return [(name, kind, size) for name, (kind, size) in sorted(found.items())]
 
     def remove(self, path: str) -> None:
         key = normal_path(path)
         if key in self._files:
             del self._files[key]
+            return
+        if key in self._links:
+            del self._links[key]
             return
         raise FileNotFoundError(path)
 
@@ -282,6 +315,8 @@ class FakeFiles:
         with tarfile.open(fileobj=buffer, mode="w") as tar:
             if key in self._files:
                 self._add(tar, posixpath.basename(key), self._files[key])
+            elif key in self._links:
+                self._add_link(tar, posixpath.basename(key), self._links[key])
             else:
                 base = f"{key}/" if key else ""
                 directory = tarfile.TarInfo(".")
@@ -294,6 +329,9 @@ class FakeFiles:
                 for name, data in sorted(self._files.items()):
                     if name.startswith(base):
                         self._add(tar, "./" + name[len(base):], data)
+                for name, target in sorted(self._links.items()):
+                    if name.startswith(base):
+                        self._add_link(tar, "./" + name[len(base):], target)
         return buffer.getvalue()
 
     @staticmethod
@@ -301,6 +339,12 @@ class FakeFiles:
         info = tarfile.TarInfo(name)
         info.size, info.mode, info.uid, info.gid = len(data), 0o644, 65534, 65534
         tar.addfile(info, io.BytesIO(data))
+
+    @staticmethod
+    def _add_link(tar: tarfile.TarFile, name: str, target: str) -> None:
+        info = tarfile.TarInfo(name)
+        info.type, info.linkname, info.mode, info.uid, info.gid = tarfile.SYMTYPE, target, 0o777, 65534, 65534
+        tar.addfile(info)
 
     def untar(self, data: bytes) -> None:
         """Regular files and directories only (P5-D8); anything else refuses the whole stream,
@@ -319,11 +363,20 @@ class FakeFiles:
             # Nothing may turn a file into a folder or a folder into a file (pre-review D9).
             if (content is None and key in self._files) or (content is not None and key in self._dirs):
                 raise ValueError(f"{key!r} is already a {'file' if content is None else 'folder'}")
+            # Nothing lands under a link, as Docker refuses it (M42 pre-review F5).
+            parent = posixpath.dirname(key)
+            while parent:
+                if parent in self._links:
+                    raise ValueError(f"{key!r} is under {parent!r}, a link")
+                parent = posixpath.dirname(parent)
         for key, content in staged:
             if content is None:
                 if key:
+                    self._links.pop(key, None)
                     self._dirs.add(key)
             else:
+                # A link it lands on is replaced by the file, as extracting does on Docker.
+                self._links.pop(key, None)
                 self.write(key, content)
 
 
@@ -360,6 +413,10 @@ class _CommandFiles:
         if self.alive:
             self._tree.write(path, data)
 
+    def link(self, path: str, target: str) -> None:
+        if self.alive:
+            self._tree.link(path, target)
+
     def remove(self, path: str) -> None:
         if self.alive:
             self._tree.remove(path)
@@ -393,7 +450,8 @@ class FakeCommand:
         await asyncio.sleep(seconds)
 
     def limit(self, name: str) -> None:
-        """Ends the command as a container's limit would: killed, `killed="limit"`."""
+        """Ends the command as a container's limit would: killed, `killed="limit"`, and the
+        outcome's `limit` is `name`."""
         raise _Killed(name)
 
 
@@ -449,6 +507,7 @@ class FakeProvider:
         space.kills[command_id] = kill = asyncio.Event()
         killing = asyncio.ensure_future(kill.wait())
         killed: str | None = None
+        limit: str | None = None
         exit_code: int | None = None
         try:
             # A kill returns at once, even from a command that ignores its cancellation.
@@ -461,8 +520,8 @@ class FakeProvider:
             else:
                 try:
                     exit_code = int(task.result())
-                except _Killed:
-                    killed = "limit"
+                except _Killed as exc:
+                    killed, limit = "limit", exc.limit
                 except asyncio.CancelledError:
                     killed = "cancelled"
                 except Exception as exc:  # noqa: BLE001 - a command that raised exits 1, as a process would
@@ -478,15 +537,16 @@ class FakeProvider:
                 files.alive = False
                 task.cancel()
                 task.add_done_callback(lambda t: t.cancelled() or t.exception())
-        return self._outcome(command, None if killed else exit_code, started, killed)
+        return self._outcome(command, None if killed else exit_code, started, killed, limit)
 
     @staticmethod
-    def _outcome(command: FakeCommand, exit_code: int | None, started: float, killed: str | None = None):
+    def _outcome(command: FakeCommand, exit_code: int | None, started: float, killed: str | None = None,
+                 limit: str | None = None):
         return CommandOutcome(
             exit_code=exit_code, stdout=bytes(command._out), stderr=bytes(command._err),
             stdout_cut=command.out_bytes > len(command._out), stderr_cut=command.err_bytes > len(command._err),
             stdout_bytes=command.out_bytes, stderr_bytes=command.err_bytes, duration=time.monotonic() - started,
-            killed=killed)
+            killed=killed, limit=limit)
 
     async def kill(self, handle: WorkspaceHandle, command_id: str) -> None:
         space = self._spaces.get(handle.workspace_id)

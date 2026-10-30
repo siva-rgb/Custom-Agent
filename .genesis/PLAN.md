@@ -4,7 +4,7 @@
 
 - workflow: new-product
 - phase: build
-- plan approval: siva-rgb (owner) at 2026-10-29T14:13:16.708Z
+- plan approval: siva-rgb (owner) at 2026-10-30T10:56:21.037Z
 
 ## Tasks
 
@@ -386,9 +386,9 @@
 
 ### M42-sandbox-contention — Hostile code in a plan's sandboxed children is contained, recorded and cleaned up on both stores
 
-- state/risk: active / high
+- state/risk: done / high
 - requirements: FR-154, AC-100, NFR-40, NFR-42, NFR-43, NFR-44, NFR-45
 - scope: not bounded
-- gates: unit: .venv\Scripts\python.exe -m pytest tests/test_sandbox_contention.py -q, regression: .venv\Scripts\python.exe -m pytest -q, independent-review: pending
+- gates: unit: .venv\Scripts\python.exe -m pytest tests/test_sandbox_contention.py -q, regression: .venv\Scripts\python.exe -m pytest -q, independent-review: pass
 - next: Run the task pre-flight.
 

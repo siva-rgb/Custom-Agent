@@ -531,7 +531,7 @@ class Runner:
             return self._persistence.workspace_store()
         return self._memory_workspaces
 
-    def _workspace_refusal(self, spec: WorkspaceSpec) -> str:
+    def _workspace_refusal(self) -> str:
         """FR-138: why a run whose agent has a workspace was given none."""
         return "this Runner was given no workspace_provider"
 
@@ -1346,7 +1346,7 @@ class Runner:
         # FR-138 (M38): a run whose agent has a workspace and was given none fails before its first
         # model call, with no workspace tool offered.
         if spec.workspace is not None and run_id not in self._workspace_runs:
-            raise WorkspaceUnavailable(self._workspace_refusal(spec.workspace))
+            raise WorkspaceUnavailable(self._workspace_refusal())
 
         # FR-44: the calls of a parallel batch can finish together. Emitting one
         # ToolCalled of this run at a time keeps their events in the order they

@@ -1,0 +1,22 @@
+{
+  "task": "M42-sandbox-contention",
+  "gate": "unit",
+  "command": ".venv\\Scripts\\python.exe -m pytest tests/test_sandbox_contention.py -q",
+  "started_at": "2026-10-30T06:39:03.185Z",
+  "observed_at": "2026-10-30T06:42:57.097Z",
+  "exit_code": 0,
+  "signal": null,
+  "stdout": "............................                                             [100%]\r\n28 passed, 10 deselected in 230.77s (0:03:50)\r\n",
+  "stderr": "",
+  "revision": {
+    "commit": "08bdc39eb615ab1abcdc29cf3d0d8e7cb15c8ce6",
+    "dirty": true
+  },
+  "source_hash": "97078a81e0ae1a638c5fffb37b5ba36e61812044127336c585e636f61193fcc0",
+  "environment": {
+    "node": "v20.10.0",
+    "platform": "win32",
+    "arch": "x64"
+  },
+  "hash": "f46aed1518e282546ad14edc6b78d844775ba4b5b84855b05d13692bd57b136e"
+}

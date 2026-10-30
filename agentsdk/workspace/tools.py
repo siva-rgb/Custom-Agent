@@ -22,7 +22,7 @@ from typing import Any
 from ..primitives import ContentProvenance, InstructionAuthority, Origin, TaintFlag, TrustZone
 from ..scope import ToolScope
 from ..tools import ApprovalPolicy, ResultProvenance, RiskClass, Tool, ToolSpec
-from . import CommandOutcome, WorkspaceSpec
+from . import MEASURE_SECONDS, SETUP_SECONDS, CommandOutcome, WorkspaceSpec
 
 NAMES = ("run_command", "read_workspace_file", "write_workspace_file", "list_workspace", "export_workspace_file")
 # Every name a workspace tool has: none may be a registered tool's (M38 pre-flight).
@@ -64,9 +64,10 @@ def _spec(name: str, description: str, properties: dict[str, Any], required: lis
 
 
 def specs(spec: WorkspaceSpec) -> dict[str, ToolSpec]:
-    # The executor's deadline is past the command's own, so a command ends by its timeout and
-    # reports it, rather than being abandoned by the executor (FR-148).
-    deadline = spec.max_command_seconds + 30.0
+    # The executor's deadline is past the workspace's setup bound, the size read before a command and
+    # the command's own timeout, so a command that starts ends by its timeout and reports it, rather
+    # than being abandoned by the executor (FR-148; DECISION-e799700b, DECISION-4689af02).
+    deadline = SETUP_SECONDS + MEASURE_SECONDS + spec.max_command_seconds + 30.0
     return {
         "run_command": _spec(
             "run_command",
@@ -100,7 +101,7 @@ def describe(outcome: CommandOutcome) -> str:
     marked when cut."""
     lines = [f"exit code: {'none' if outcome.exit_code is None else outcome.exit_code}"]
     if outcome.killed is not None:
-        lines.append(f"killed: {outcome.killed}")
+        lines.append(f"killed: {outcome.killed}" + (f" ({outcome.limit})" if outcome.limit else ""))
     lines.append(f"duration: {outcome.duration:.2f} s")
     for label, data, cut, produced in (("stdout", outcome.stdout, outcome.stdout_cut, outcome.stdout_bytes),
                                        ("stderr", outcome.stderr, outcome.stderr_cut, outcome.stderr_bytes)):

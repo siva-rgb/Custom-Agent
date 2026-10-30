@@ -447,7 +447,10 @@ class DockerProvider:
         return CommandOutcome(
             exit_code=ended.exit_code, stdout=bytes(out.data), stderr=bytes(err.data),
             stdout_cut=out.count > len(out.data), stderr_cut=err.count > len(err.data), stdout_bytes=out.count,
-            stderr_bytes=err.count, duration=time.monotonic() - started, killed=ended.killed)
+            stderr_bytes=err.count, duration=time.monotonic() - started, killed=ended.killed,
+            # Docker ends a command at a limit only when it runs out of memory; a fork past
+            # `pids` fails inside it, and is not told (DECISION-21e7f6fb).
+            limit="memory_bytes" if ended.killed == "limit" else None)
 
     async def _contained(self, handle: WorkspaceHandle, command: _Command, argv: list[str], *, timeout: float,
                          stdin: bytes | None, env: Mapping[str, str], keep: int) -> _Ended:
@@ -496,7 +499,10 @@ class DockerProvider:
                     return _Ended(None, out, err, "cancelled")
                 raise WorkspaceUnavailable("the command's container could not be inspected")
             state = json.loads(state)
-            if state.get("OOMKilled"):
+            # OOMKilled says any process in the container was killed for memory: the command was
+            # ended at its bound only when its own process went by SIGKILL; otherwise it ended on
+            # its own, and keeps its exit code (M42 pre-review F6, DECISION-4689af02).
+            if state.get("OOMKilled") and int(state.get("ExitCode", 0)) == 137:
                 return _Ended(None, out, err, "limit")
             return _Ended(int(state["ExitCode"]), out, err, None)
         finally:

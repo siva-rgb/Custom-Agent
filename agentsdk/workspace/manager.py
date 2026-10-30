@@ -36,7 +36,7 @@ from urllib.parse import quote
 
 from ..errors import WorkspaceRefused, WorkspaceUnavailable
 from ..events import EventType
-from . import CommandOutcome, WorkspaceHandle, WorkspaceProvider, WorkspaceSpec
+from . import MEASURE_SECONDS, SETUP_SECONDS, CommandOutcome, WorkspaceHandle, WorkspaceProvider, WorkspaceSpec
 from .owner import is_dead, this_owner
 from .records import CommandRecord, WorkspaceRecord, now
 
@@ -46,7 +46,7 @@ Call = Callable[..., Awaitable[Any]]
 # the removal is still recorded (M41 reaps what a provider left).
 _REMOVE_SECONDS = 30.0
 _KILL_SECONDS = 10.0
-_MEASURE_SECONDS = 120.0
+_MEASURE_SECONDS = MEASURE_SECONDS
 
 
 async def _completed(task: asyncio.Future[Any]) -> Any:
@@ -80,12 +80,18 @@ class _Slots:
         self._lock = threading.Lock()
         self._waiters: deque[_Slots._Waiter] = deque()
 
-    async def take(self, waiting: Callable[[int], Awaitable[None]] | None, space: object = None) -> bool:
+    async def take(self, waiting: Callable[[int], Awaitable[None]] | None, space: object = None,
+                   begun: Callable[[], bool] | None = None) -> bool:
         """True with a slot; False when released because a sibling began creating `space`."""
         with self._lock:
             if self.held < self.limit:
                 self.held += 1
                 return True
+            if begun is not None and begun():
+                # A sibling on another loop began it, and released its waiters, between the
+                # caller's check and this lock: a wait queued now would never be released
+                # (M41 review caveat, DECISION-b7423cae).
+                return False
             waiter = _Slots._Waiter(asyncio.get_running_loop(), space)
             self._waiters.append(waiter)
             held = self.held
@@ -149,6 +155,10 @@ class _Space:
         self.last_command: str | None = None  # the last command that ended in it (FR-150)
 
 
+def _not_ready() -> WorkspaceUnavailable:
+    return WorkspaceUnavailable(f"the workspace was not ready within its setup bound of {SETUP_SECONDS} s")
+
+
 def _under_way(creating: asyncio.Future[Any] | None) -> bool:
     """A creation that is running or succeeded; one that failed is begun again."""
     return creating is not None and not (creating.done() and (creating.cancelled() or creating.exception() is not None))
@@ -191,28 +201,48 @@ class RunWorkspace:
             raise WorkspaceUnavailable("this run's workspace was removed")
         if self.handle is not None:
             return self.handle
-        if not _under_way(space.creating):
-            # Cancellable, both: what dead Runners left is reaped, then a slot is waited for
-            # (FR-151, FR-152). Only the creation, once begun, is waited out by a cancellation.
-            self._manager.refuse_if_closed()
-            await self._manager.reap()
-        # Asked again after the reaping: a sibling may have begun it meanwhile, and released its
-        # waiters already. No await stands between this and joining the queue (M41 pre-review).
-        if not _under_way(space.creating) and self.handle is None and not self.removed:
-            if not await self._manager.slots.take(self._waiting, space):
-                pass  # released: a sibling began creating it, which is awaited below
-            elif self.removed or self.handle is not None or _under_way(space.creating):
-                self._manager.slots.give()  # a sibling began it meanwhile
-            else:
-                space.slot = True
-                self._manager.spaces.add(space)  # aclose() finishes, then removes, a creation under way
-                space.creating = asyncio.ensure_future(self._create())
-                self._manager.slots.release(space)
+        # The setup has a bound of its own, inside the tools' deadline, so a command that starts
+        # ends by its own timeout and never by the executor's (DECISION-e799700b).
+        deadline = time.monotonic() + SETUP_SECONDS
+        try:
+            async with asyncio.timeout(SETUP_SECONDS):
+                if not _under_way(space.creating):
+                    # Cancellable, both: what dead Runners left is reaped, then a slot is waited
+                    # for (FR-151, FR-152). Only the creation, once begun, is waited out by a
+                    # cancellation.
+                    self._manager.refuse_if_closed()
+                    await self._manager.reap()
+                # Asked again after the reaping: a sibling may have begun it meanwhile, and
+                # released its waiters already. No await stands between this and joining the
+                # queue (M41 pre-review).
+                if not _under_way(space.creating) and self.handle is None and not self.removed:
+                    if not await self._manager.slots.take(self._waiting, space, lambda: _under_way(space.creating)):
+                        pass  # released: a sibling began creating it, which is awaited below
+                    elif self.removed or self.handle is not None or _under_way(space.creating):
+                        self._manager.slots.give()  # a sibling began it meanwhile
+                    else:
+                        space.slot = True
+                        self._manager.spaces.add(space)  # aclose() finishes, then removes, a creation under way
+                        space.creating = asyncio.ensure_future(self._create())
+                        self._manager.slots.release(space)
+        except TimeoutError:
+            raise _not_ready() from None
         if self.removed or self.detached or space.creating is None:
             raise WorkspaceUnavailable("this run's workspace was removed")
         if self.handle is not None:
             return self.handle
-        return await _completed(space.creating)
+        creating = space.creating
+        try:
+            await asyncio.wait({creating}, timeout=max(0.0, deadline - time.monotonic()))
+        except asyncio.CancelledError:
+            # The run was cancelled: the creation is waited out first, as ever (FR-148).
+            with contextlib.suppress(BaseException):
+                await _completed(creating)
+            raise
+        if not creating.done():
+            # Left to finish: it is the space's, which the run's end or aclose() removes.
+            raise _not_ready()
+        return await _completed(creating)
 
     async def _waiting(self, held: int) -> None:
         with contextlib.suppress(Exception):
@@ -383,13 +413,14 @@ class RunWorkspace:
                 project_id=self.project_id, run_id=self.run_id, tool_call_id=tool_call_id, argv=list(argv),
                 exit_code=outcome.exit_code, killed=outcome.killed, started_at=started_at,
                 ended_at=max(now(), started_at), stdout_bytes=outcome.stdout_bytes,
-                stderr_bytes=outcome.stderr_bytes, stdout_kept=len(outcome.stdout), stderr_kept=len(outcome.stderr)))
+                stderr_bytes=outcome.stderr_bytes, stdout_kept=len(outcome.stdout), stderr_kept=len(outcome.stderr),
+                limit=outcome.limit))
         except Exception as exc:  # noqa: BLE001
             failure = failure or exc
         self._space.last_command = command_id
         await self._emit(EventType.WORKSPACE_COMMAND_ENDED, {
             "command_id": command_id, "workspace_id": handle.workspace_id, "tool_call_id": tool_call_id,
-            "exit_code": outcome.exit_code, "killed": outcome.killed, "kill_error": kill_error,
+            "exit_code": outcome.exit_code, "killed": outcome.killed, "limit": outcome.limit, "kill_error": kill_error,
             "duration_ms": round((time.monotonic() - started) * 1000, 3),
             "stdout_bytes": outcome.stdout_bytes, "stderr_bytes": outcome.stderr_bytes,
             "stdout_cut": outcome.stdout_cut, "stderr_cut": outcome.stderr_cut})

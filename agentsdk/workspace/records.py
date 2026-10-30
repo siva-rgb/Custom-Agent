@@ -51,6 +51,7 @@ class CommandRecord:
     stderr_bytes: int
     stdout_kept: int
     stderr_kept: int
+    limit: str | None = None  # the bound that ended it, when killed == "limit" (migration 0021)
 
     def as_row(self) -> dict[str, Any]:
         return asdict(self)

@@ -9,7 +9,7 @@
     "non_goals": [],
     "trust_boundary": "local repository",
     "created_at": "2026-09-05T14:48:57.894Z",
-    "updated_at": "2026-10-29T14:13:16.708Z"
+    "updated_at": "2026-10-30T10:56:21.038Z"
   },
   "policy": {
     "ponytail": "full",
@@ -24,18 +24,18 @@
   },
   "lifecycle": {
     "phase": "build",
-    "status": "active",
-    "active_task": "M42-sandbox-contention",
+    "status": "ready",
+    "active_task": null,
     "blocker": null,
-    "next_action": "Run the task pre-flight."
+    "next_action": "Add the next approved implementation task."
   },
   "commands": {},
   "workflow": {
     "type": "new-product",
     "started_at": "2026-09-05T14:48:57.897Z",
     "spec_check": {
-      "at": "2026-10-29T14:13:16.261Z",
-      "source_hash": "13e73a2feb0451f9b97a74a212bfe56406bb1571364c092efec6520be125b0b2",
+      "at": "2026-10-30T10:56:20.525Z",
+      "source_hash": "264fd73493e7ade7283d1670cc232d8ea9237e47db5c1d4e7ef3ec93afebb5d7",
       "requirements": [
         "AC-1",
         "AC-10",
@@ -339,13 +339,13 @@
       ]
     },
     "plan_check": {
-      "at": "2026-10-29T14:13:16.566Z",
+      "at": "2026-10-30T10:56:20.872Z",
       "source_hash": "33dc413979f287ff6abbc8bcd55abc3614bb4d11e30bd581292761a38e09b634"
     },
     "plan_approval": {
       "human": "siva-rgb (owner)",
-      "reason": "Re-approved with the SPEC after M41 closed; M42 is next.",
-      "at": "2026-10-29T14:13:16.708Z",
+      "reason": "Re-approved with the SPEC after M42, Phase 5's exit signal, closed.",
+      "at": "2026-10-30T10:56:21.037Z",
       "source_hash": "33dc413979f287ff6abbc8bcd55abc3614bb4d11e30bd581292761a38e09b634"
     }
   },
@@ -656,12 +656,12 @@
         "NFR-8",
         "NFR-9"
       ],
-      "source_hash": "13e73a2feb0451f9b97a74a212bfe56406bb1571364c092efec6520be125b0b2",
+      "source_hash": "264fd73493e7ade7283d1670cc232d8ea9237e47db5c1d4e7ef3ec93afebb5d7",
       "approval": {
         "human": "siva-rgb (owner)",
-        "reason": "Re-approved after M41's amendments to FR-139, FR-140, FR-148 and FR-150 to FR-152 (DECISION-825b81a6, DECISION-b1498111), per the M41 close decision.",
-        "at": "2026-10-29T14:13:16.405Z",
-        "source_hash": "13e73a2feb0451f9b97a74a212bfe56406bb1571364c092efec6520be125b0b2"
+        "reason": "Re-approved after M42's amendments to FR-138, FR-148, FR-154 and the workspace_commands and run_command bullets (DECISION-21e7f6fb, DECISION-e799700b, DECISION-4689af02), the column named limit_name, per the M42 close decision.",
+        "at": "2026-10-30T10:56:20.677Z",
+        "source_hash": "264fd73493e7ade7283d1670cc232d8ea9237e47db5c1d4e7ef3ec93afebb5d7"
       }
     }
   ],
@@ -2100,6 +2100,38 @@
       "status": "accepted",
       "source": null,
       "recorded_at": "2026-10-29T14:13:11.865Z"
+    },
+    {
+      "id": "DECISION-21e7f6fb",
+      "title": "M42 pre-flight: bound names, capped hostile programs, live model verbatim, M41's items",
+      "text": "The owner chose, at M42's pre-flight: (1) Bound names: migration 0021 adds a nullable 'limit' column to workspace_commands, and CommandOutcome and WorkspaceCommandEnded gain 'limit': 'memory_bytes' when Docker reports OOMKilled, and the name FakeCommand.limit(name) was given; set only when killed='limit'. The disk bound stays named on WorkspaceRefused and the output bound on the cut fields. The pid limit cannot be read after a command (its cgroup is gone), so it is witnessed by the fork bomb's own output (never more than pids processes) and killed='timeout'. FR-154 and FR-138 are amended to say exactly this. (2) Safety caps: each hostile program stops on its own at a fixed cap well past its bound (fork until fork fails or 4 x pids; write max_workspace_bytes plus 4 MiB; allocate up to 4 x memory_bytes; print until the timeout), so with the bound in place it is stopped at the bound, and with the bound removed it visibly passes it and stops, never risking the Docker VM. FR-154's 'without end' is amended accordingly. (3) Live mode: each child's task gives it the exact probe, framed as a sandbox-containment test, and the gateway model writes it into run_command; a model that declines fails the check (DECISION-a7d6a1f5), never skips it. (4) M41's carried items (DECISION-b7423cae), all as listed: example 35's aclose check gets a subject (a kept workspace standing just before aclose, witnessed by a provider listing); README declares cross-child provenance under a shared plan workspace and the one fake/Docker exception-class difference; the slots let go at once a wait queued for a space already released, with a comment; _workspace_refusal drops its unused argument; the review brief quotes requirements verbatim. (1) and the slot re-check each come with a test that fails without them. Conventions taken by default: AC-100's removal tests run Docker-marked for --network none, the pid limit and the container kill; on both providers for the transfer filter, the disk bound and reaping. The killed Runner is a real child process live, and on FakeProvider a Runner stamped with the owner label of a process that has exited. On the in-memory store a dead process's rows die with it, so reaping is checked by the provider's listing there and by the row on PostgreSQL.",
+      "status": "accepted",
+      "source": null,
+      "recorded_at": "2026-10-29T17:35:12.279Z"
+    },
+    {
+      "id": "DECISION-e799700b",
+      "title": "M42: a workspace's setup is bounded on its own; run_command's deadline covers it",
+      "text": "Example 36's ten-in-a-row Docker test found that run_command's executor deadline (max_command_seconds + 30, tools.py) covers the workspace's whole setup -- reaping a dead Runner's workspaces, the slot wait, creation -- so under load a started command was cut off by the executor and recorded cancelled instead of ending at its own timeout (2 of 40 repetitions; reproduced on the fake: a 32 s create made run_command fail ToolTimeout before its command ran). M40's promise that a command ends by its own timeout did not survive M41's reaping and slots. The owner chose to bound setup on its own: a workspace's setup (reaping, the slot wait, creation) has its own bound of 120 s, past which the call fails WorkspaceUnavailable naming the bound; every workspace tool's deadline becomes max_command_seconds + 30 + 120, so a command that starts always ends by its own timeout. A test pins both; FR-138 and FR-148 are amended.",
+      "status": "accepted",
+      "source": null,
+      "recorded_at": "2026-10-30T04:26:16.327Z"
+    },
+    {
+      "id": "DECISION-4689af02",
+      "title": "M42 pre-review: child events captured in memory, OOM by main process, fake links match Docker, deadline covers the size read",
+      "text": "M42's pre-review (Sonnet 5, runtime probes) found nine items. Repaired without a decision, as example defects: F1 runs_probe raised MemoryError on a deeply nested argument (fits the argv schema) and would stop the operator -- any parse failure is now 'not the probe'; F2 the network check judged only runs that ended with done, so a CONNECTED in a killed run was unseen -- it now reads every run of the probe; F4 the fork check accepted any early OSError -- it now requires the pid limit's BlockingIOError. F9, a 135 s net command on a stalled daemon, is M39/M40's declared timeout path. The owner chose: (F3) example 36 captures each child's events in memory through a Runner subclass keeping each run's in-memory event sink (overriding the private _open), so memory checks read events as PostgreSQL does, and the README row saying memory reads rows only goes; (F6) Docker reports killed='limit', limit='memory_bytes' only when OOMKilled and the main process ended by SIGKILL (exit code 137), otherwise the command's own exit code, with a live test of a child out of memory under a parent that exits 0; (F5) the fake matches Docker for links where it can -- a write or import onto a link replaces it with a regular file, an import under a link used as a parent raises ValueError -- and reading through a link parent stays FileNotFoundError on the fake, declared beside M39's row; (F8) every workspace tool's deadline adds the size read's bound: SETUP_SECONDS + MEASURE_SECONDS (120 s) + max_command_seconds + 30 s, with a test; (F7) declared: a provider whose create never returns blocks its run's end and aclose().",
+      "status": "accepted",
+      "source": null,
+      "recorded_at": "2026-10-30T05:48:47.393Z"
+    },
+    {
+      "id": "DECISION-97b301ea",
+      "title": "M42 close: approve kept, items carried to the next phase, briefs quote verbatim, SPEC ratified",
+      "text": "The owner chose: (1) close M42, Phase 5's exit signal, on the approved hash 97078a81 without changing code, and carry every item to the next phase's pre-flight, check 7 first: compare each timed-out command with the max_command_seconds in force for its probe and fix the stale comment; example 35's live SKIP made a failure, as the no-vacuity rule is phase-wide; the memory check's event clause given the disk check's non-emptiness guard; FR-148's deadline counting both size reads of a stale workspace; and the two bundled AC-100 removals split or declared. (2) The brief mechanism stands as recorded in DECISION-b7423cae and DECISION-21e7f6fb: every review brief quotes the requirements under review verbatim from SPEC.md, and asks the reviewer to re-derive them too; M42's brief substituted 'quote nothing' without asking, which was a process error, not the owner's choice. (3) Ratify M42's SPEC amendments to FR-138, FR-148, FR-154 and the workspace_commands and run_command bullets, with the column named limit_name (limit is reserved in SQL; the Python field and event key stay limit). (4) Commit to phase-5 and publish through publish.sh.",
+      "status": "accepted",
+      "source": null,
+      "recorded_at": "2026-10-30T10:56:20.185Z"
     }
   ],
   "knowledge": [
@@ -3446,6 +3478,14 @@
       "source": null,
       "tags": [],
       "recorded_at": "2026-10-29T14:13:11.696Z"
+    },
+    {
+      "id": "KNOWLEDGE-97c269f8",
+      "title": "M42 round 1 APPROVED by Opus 5: Phase 5's exit signal holds",
+      "text": "Opus 5 approved M42 round 1 (control 163) on source hash 97078a81, matching both gates (unit 28 passed in 3:50, regression 2911 in 26:57). It built eleven SDK-level violations of its own, each failing the check that names it, and killed the other three (network, links, pids) through AC-100's live removals; example 36's report has no SKIP in any mode, so a subject that never happened fails live too. It reran the unit gate (28 passed), 20 Docker repetitions and 32 live Docker runs; probed both OOM directions (OOMKilled with exit 0 for a child out of memory under a parent exiting 0; a self-inflicted 137 without OOMKilled), link parity 8 of 8 by exception class, a secrets sweep of 283,584 characters of SDK-owned records (no env value), and seven slot paths (held back to 0). Not probed by the reviewer: the full regression suite (the gate's evidence was checked against its own recomputed hash) and the live gateway mode (model budget); the author's live run was 13 of 13. Caveats, none blocking: (1) two AC-100 removals bundle several mechanisms (kill on cancel: provider kill, command removal, the workspace sweep by id; transfer filter: read_tar and one_file), so no check localises one layer's loss; (2) the memory check's event clause lacks the disk check's non-emptiness guard; (3) FR-148's deadline counts one size read where a stale workspace takes two (390 s against a 480 s worst case, on a stalled daemon only); (4) check 7 compares every timed-out command with COMMAND_SECONDS + KILL_SLACK (23 s) while the network probe's limit is 30 s -- a miss of DECISION-a7d6a1f5's timeouts in force, failing closed only -- and the comment at line 69 is stale; (5) DECISION-21e7f6fb names a 'limit' column, the code and SPEC limit_name (limit is reserved in SQL); (6) the review brief quoted no requirement, against DECISION-b7423cae and DECISION-21e7f6fb, which say briefs quote them verbatim: the author substituted that mechanism without asking and the brief's ledger called it the fix. The owner's orchestrator also found example 35 can still SKIP live, against the now phase-wide no-vacuity rule.",
+      "source": null,
+      "tags": [],
+      "recorded_at": "2026-10-30T10:56:20.003Z"
     }
   ],
   "tasks": [
@@ -3468,9 +3508,9 @@
           "status": "pass",
           "evidence": {
             "human": "siva-rgb (owner)",
-            "reason": "Re-approved after M41's amendments to FR-139, FR-140, FR-148 and FR-150 to FR-152 (DECISION-825b81a6, DECISION-b1498111), per the M41 close decision.",
-            "source_hash": "728ea04604ef089148640aa51e0566a49375d23b4be42a1a04dbea5d93e04488",
-            "observed_at": "2026-10-29T14:13:16.405Z"
+            "reason": "Re-approved after M42's amendments to FR-138, FR-148, FR-154 and the workspace_commands and run_command bullets (DECISION-21e7f6fb, DECISION-e799700b, DECISION-4689af02), the column named limit_name, per the M42 close decision.",
+            "source_hash": "97078a81e0ae1a638c5fffb37b5ba36e61812044127336c585e636f61193fcc0",
+            "observed_at": "2026-10-30T10:56:20.677Z"
           }
         }
       ],
@@ -3480,7 +3520,7 @@
       "failures": [],
       "limitations": [],
       "created_at": "2026-09-05T14:48:57.897Z",
-      "updated_at": "2026-10-29T14:13:16.405Z"
+      "updated_at": "2026-10-30T10:56:20.677Z"
     },
     {
       "id": "M1-primitives",
@@ -6403,7 +6443,7 @@
     {
       "id": "M42-sandbox-contention",
       "outcome": "Hostile code in a plan's sandboxed children is contained, recorded and cleaned up on both stores",
-      "state": "active",
+      "state": "done",
       "risk": "high",
       "owner": null,
       "scope": [],
@@ -6424,22 +6464,37 @@
           "id": "unit",
           "command": ".venv\\Scripts\\python.exe -m pytest tests/test_sandbox_contention.py -q",
           "mandatory": true,
-          "status": "pending",
-          "evidence": null
+          "status": "pass",
+          "evidence": {
+            "path": ".genesis/evidence/M42-sandbox-contention-unit.json",
+            "source_hash": "97078a81e0ae1a638c5fffb37b5ba36e61812044127336c585e636f61193fcc0",
+            "hash": "f46aed1518e282546ad14edc6b78d844775ba4b5b84855b05d13692bd57b136e",
+            "observed_at": "2026-10-30T06:42:57.097Z"
+          }
         },
         {
           "id": "regression",
           "command": ".venv\\Scripts\\python.exe -m pytest -q",
           "mandatory": true,
-          "status": "pending",
-          "evidence": null
+          "status": "pass",
+          "evidence": {
+            "path": ".genesis/evidence/M42-sandbox-contention-regression.json",
+            "source_hash": "97078a81e0ae1a638c5fffb37b5ba36e61812044127336c585e636f61193fcc0",
+            "hash": "f327402737d5f15e5afc5efb96020accc9d33cbe9ef3f9c931da517e9341180e",
+            "observed_at": "2026-10-30T07:09:58.361Z"
+          }
         },
         {
           "id": "independent-review",
           "command": "",
           "mandatory": true,
-          "status": "pending",
-          "evidence": null
+          "status": "pass",
+          "evidence": {
+            "human": "Opus 5 independent L4 reviewer, M42 round 1",
+            "reason": "Independent L4 review of M42, Phase 5 exit signal, on source hash 97078a81e0ae1a638c5fffb37b5ba36e61812044127336c585e636f61193fcc0 which I recomputed myself and which both gate evidence files carry. I re-derived FR-154, AC-100, FR-138, FR-148, FR-152 and NFR-40 to NFR-45 from SPEC.md. Vacuity, attack item 0: all 14 checks of example 36 were made to fail by breaking the property each names. I built 11 SDK-level violations of my own, each failing the check that names it or a correct cascade: the bound unnamed, cut accounting broken, removal a no-op, started before approval, results relabelled trusted, the host value in a record, a probe skipped. The other 3 are killed on a live daemon by the six AC-100 removals, which I ran: 6 passed in 160.56 s. A child that declines passes nothing, and one skipped probe makes its own check report not exercised, which example 36 report counts as a failure in every mode, live included, with no SKIP path. I reran the unit gate command: 28 passed, 10 deselected in 235.97 s. I ran AC-100 repetitions live: ten times on each store plus the OOM test and example 36 as a program on Docker, 4 passed in 485.45 s, and the rest of Phase 5 live, 46 passed in 347.59 s. Migrations 0021 and 0022 applied in order to an isolated schema whose search path excludes public: 0021 admits a bound beside killed NULL, 0022 refuses it, and refuses killed timeout and an empty name. On live Docker rows every killed limit row carried memory_bytes, no row or event carried a bound beside another ending, and no event payload disagreed with its row. Docker OOM attribution probed in both directions: OOMKilled true with exit 0 when only a child is killed, and exit 137 with OOMKilled false when the main process exits 137 itself, so both conditions are load bearing and neither implies the other. The fake links match Docker across 8 behaviours by exception class, the only difference being the one the README declares. Slot accounting balances on all seven paths through the new setup bound, including two no test covers. NFR-45 swept live: 20 docker command lines built, none holding the env value, the host value in no command line, record, label, volume inspect or container environment, and none of 9 env values a command printed in 283584 characters of SDK own records. Store and Docker back at baseline, no repository file changed by content, no process or lock left. Caveats, none blocking. 1, two of the six AC-100 removals are bundled, and I measured on the fake and on Docker that removing any single mechanism of the transfer filter or of the container kill on cancel leaves the named check passing; the removals are a fair reading of the behaviour each names, and the redundancy is real, but no check localises the loss of one layer. 2, the memory check clause that reads the event goes silent when no event can be read, where the disk check requires its event list to be non empty: with the example reading no events, 13 of 14 checks still passed. Not reachable in M42 and pinned by a separate test. 3, FR-148 as amended budgets one size read, but one run command takes two when the workspace is stale, so the arithmetic worst case is 90 s past the deadline; reachable only on a daemon stalled on three operations, and I measured that the command row still keeps its own outcome there. 4, the no command outlived its timeout check compares every timed out row against 23 s while the network child timeout in force is 30 s: I forced the network probe to its own bound and the check reported a failure that is not a violation, a literal miss of the second clause of DECISION-a7d6a1f5, fixable by comparing each row against its own probe timeout. It can only fail closed, and it did not fire in 32 live runs of mine. 5, DECISION-21e7f6fb names the new column limit while the code and the SPEC say limit name, a sound rename since limit is reserved, and 6, M41 carried item six asked that review briefs quote requirements verbatim while this brief deliberately quotes none and asks the reviewer to re-derive; I re-derived every requirement and found the brief accurate, but both are for the owner to confirm at ratification.",
+            "source_hash": "97078a81e0ae1a638c5fffb37b5ba36e61812044127336c585e636f61193fcc0",
+            "observed_at": "2026-10-30T10:44:30.930Z"
+          }
         }
       ],
       "next_action": "Run the task pre-flight.",
@@ -6448,7 +6503,7 @@
       "failures": [],
       "limitations": [],
       "created_at": "2026-10-24T17:00:18.119Z",
-      "updated_at": "2026-10-24T17:00:18.119Z"
+      "updated_at": "2026-10-30T10:56:20.365Z"
     }
   ],
   "learning_proposals": [],
@@ -7911,17 +7966,26 @@
       "human": "siva-rgb (owner)",
       "reason": "Requeued before re-approving the SPEC after M41's amendments, so that only one task goes active (M41 close decision).",
       "revision": null
+    },
+    {
+      "id": "697ecf13-7ae6-4b1f-ab3e-7671dc23b2b6",
+      "at": "2026-10-30T10:44:30.930Z",
+      "action": "approve",
+      "task": "M42-sandbox-contention",
+      "human": "Opus 5 independent L4 reviewer, M42 round 1",
+      "reason": "Independent L4 review of M42, Phase 5 exit signal, on source hash 97078a81e0ae1a638c5fffb37b5ba36e61812044127336c585e636f61193fcc0 which I recomputed myself and which both gate evidence files carry. I re-derived FR-154, AC-100, FR-138, FR-148, FR-152 and NFR-40 to NFR-45 from SPEC.md. Vacuity, attack item 0: all 14 checks of example 36 were made to fail by breaking the property each names. I built 11 SDK-level violations of my own, each failing the check that names it or a correct cascade: the bound unnamed, cut accounting broken, removal a no-op, started before approval, results relabelled trusted, the host value in a record, a probe skipped. The other 3 are killed on a live daemon by the six AC-100 removals, which I ran: 6 passed in 160.56 s. A child that declines passes nothing, and one skipped probe makes its own check report not exercised, which example 36 report counts as a failure in every mode, live included, with no SKIP path. I reran the unit gate command: 28 passed, 10 deselected in 235.97 s. I ran AC-100 repetitions live: ten times on each store plus the OOM test and example 36 as a program on Docker, 4 passed in 485.45 s, and the rest of Phase 5 live, 46 passed in 347.59 s. Migrations 0021 and 0022 applied in order to an isolated schema whose search path excludes public: 0021 admits a bound beside killed NULL, 0022 refuses it, and refuses killed timeout and an empty name. On live Docker rows every killed limit row carried memory_bytes, no row or event carried a bound beside another ending, and no event payload disagreed with its row. Docker OOM attribution probed in both directions: OOMKilled true with exit 0 when only a child is killed, and exit 137 with OOMKilled false when the main process exits 137 itself, so both conditions are load bearing and neither implies the other. The fake links match Docker across 8 behaviours by exception class, the only difference being the one the README declares. Slot accounting balances on all seven paths through the new setup bound, including two no test covers. NFR-45 swept live: 20 docker command lines built, none holding the env value, the host value in no command line, record, label, volume inspect or container environment, and none of 9 env values a command printed in 283584 characters of SDK own records. Store and Docker back at baseline, no repository file changed by content, no process or lock left. Caveats, none blocking. 1, two of the six AC-100 removals are bundled, and I measured on the fake and on Docker that removing any single mechanism of the transfer filter or of the container kill on cancel leaves the named check passing; the removals are a fair reading of the behaviour each names, and the redundancy is real, but no check localises the loss of one layer. 2, the memory check clause that reads the event goes silent when no event can be read, where the disk check requires its event list to be non empty: with the example reading no events, 13 of 14 checks still passed. Not reachable in M42 and pinned by a separate test. 3, FR-148 as amended budgets one size read, but one run command takes two when the workspace is stale, so the arithmetic worst case is 90 s past the deadline; reachable only on a daemon stalled on three operations, and I measured that the command row still keeps its own outcome there. 4, the no command outlived its timeout check compares every timed out row against 23 s while the network child timeout in force is 30 s: I forced the network probe to its own bound and the check reported a failure that is not a violation, a literal miss of the second clause of DECISION-a7d6a1f5, fixable by comparing each row against its own probe timeout. It can only fail closed, and it did not fire in 32 live runs of mine. 5, DECISION-21e7f6fb names the new column limit while the code and the SPEC say limit name, a sound rename since limit is reserved, and 6, M41 carried item six asked that review briefs quote requirements verbatim while this brief deliberately quotes none and asks the reviewer to re-derive; I re-derived every requirement and found the brief accurate, but both are for the owner to confirm at ratification.",
+      "revision": null
     }
   ],
   "discovery": null,
   "checkpoint": {
-    "at": "2026-10-29T13:55:36.948Z",
+    "at": "2026-10-30T07:10:26.063Z",
     "revision": {
-      "commit": "04f83f65376c0cd9cfae4a5c2bb64b98491644c1",
+      "commit": "08bdc39eb615ab1abcdc29cf3d0d8e7cb15c8ce6",
       "dirty": true,
-      "source_hash": "728ea04604ef089148640aa51e0566a49375d23b4be42a1a04dbea5d93e04488"
+      "source_hash": "97078a81e0ae1a638c5fffb37b5ba36e61812044127336c585e636f61193fcc0"
     },
-    "active_task": "M41-workspace-plans",
+    "active_task": "M42-sandbox-contention",
     "next_action": "Run the task pre-flight."
   },
   "legacy": null
