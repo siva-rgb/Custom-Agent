@@ -1,0 +1,22 @@
+{
+  "task": "M43-compute",
+  "gate": "unit",
+  "command": ".venv\\Scripts\\python.exe -m pytest tests/test_compute.py -q",
+  "started_at": "2026-10-31T05:21:29.083Z",
+  "observed_at": "2026-10-31T05:21:48.977Z",
+  "exit_code": 0,
+  "signal": null,
+  "stdout": "............................................................             [100%]\r\n60 passed, 27 deselected in 19.15s\r\n",
+  "stderr": "",
+  "revision": {
+    "commit": "f4aa59f94e8acd3e3b74b3451491664a29547d47",
+    "dirty": true
+  },
+  "source_hash": "005673b76fd16174cc3087f9236ed3c04b0e850b0d08460310c847a45195713a",
+  "environment": {
+    "node": "v20.10.0",
+    "platform": "win32",
+    "arch": "x64"
+  },
+  "hash": "23ee7a31977fafdee83bb9505312093d137c181a666ba1ed64f2405ca9febd23"
+}

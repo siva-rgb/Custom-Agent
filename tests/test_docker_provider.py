@@ -143,7 +143,9 @@ def test_a_command_container_gets_exactly_the_p5_d6_limits_and_the_argv_after_th
                          env={"GREETING": SECRET})
     args = dk.container_args(_handle(spec), "agentsdk-cmd-x", ["--privileged", "-v", "/:/host"], ["GREETING"])
     image_at = args.index(FAKE_IMAGE)
-    assert args[image_at + 1:] == ["--privileged", "-v", "/:/host"], "argv must follow the image, as the command"
+    # Under the wrapper since M43 (FR-156): still the command's argv, never docker's flags.
+    assert args[image_at + 1:] == ["sh", "-c", dk.WRAPPER, "sh", "--privileged", "-v", "/:/host"], \
+        "argv must follow the image and the wrapper, as the command"
     flags = args[:image_at]
     expected = ["create", "--pull", "never", "--name", "agentsdk-cmd-x", "-i",
                 "--label", "agentsdk.tenant=t", "--label", "agentsdk.workspace=w-1",

@@ -52,6 +52,7 @@ class CommandRecord:
     stdout_kept: int
     stderr_kept: int
     limit: str | None = None  # the bound that ended it, when killed == "limit" (migration 0021)
+    cpu_usec: int | None = None  # what it is charged, in CPU-microseconds (FR-156, migration 0023)
 
     def as_row(self) -> dict[str, Any]:
         return asdict(self)

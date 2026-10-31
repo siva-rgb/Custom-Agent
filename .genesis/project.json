@@ -9,7 +9,7 @@
     "non_goals": [],
     "trust_boundary": "local repository",
     "created_at": "2026-09-05T14:48:57.894Z",
-    "updated_at": "2026-10-30T10:56:21.038Z"
+    "updated_at": "2026-10-31T07:15:52.761Z"
   },
   "policy": {
     "ponytail": "full",
@@ -24,22 +24,27 @@
   },
   "lifecycle": {
     "phase": "build",
-    "status": "ready",
-    "active_task": null,
+    "status": "active",
+    "active_task": "M44-egress",
     "blocker": null,
-    "next_action": "Add the next approved implementation task."
+    "next_action": "Run the task pre-flight."
   },
   "commands": {},
   "workflow": {
     "type": "new-product",
     "started_at": "2026-09-05T14:48:57.897Z",
     "spec_check": {
-      "at": "2026-10-30T10:56:20.525Z",
-      "source_hash": "264fd73493e7ade7283d1670cc232d8ea9237e47db5c1d4e7ef3ec93afebb5d7",
+      "at": "2026-10-31T04:19:44.519Z",
+      "source_hash": "1188a5d484cc51816083446123b9e3cf4b438403281e10bbe9a01bfcdf599fd8",
       "requirements": [
         "AC-1",
         "AC-10",
         "AC-100",
+        "AC-101",
+        "AC-102",
+        "AC-103",
+        "AC-104",
+        "AC-105",
         "AC-11",
         "AC-12",
         "AC-13",
@@ -199,8 +204,25 @@
         "FR-152",
         "FR-153",
         "FR-154",
+        "FR-155",
+        "FR-156",
+        "FR-157",
+        "FR-158",
+        "FR-159",
         "FR-16",
+        "FR-160",
+        "FR-161",
+        "FR-162",
+        "FR-163",
+        "FR-164",
+        "FR-165",
+        "FR-166",
+        "FR-167",
+        "FR-168",
+        "FR-169",
         "FR-17",
+        "FR-170",
+        "FR-171",
         "FR-18",
         "FR-19",
         "FR-2",
@@ -331,6 +353,10 @@
         "NFR-43",
         "NFR-44",
         "NFR-45",
+        "NFR-46",
+        "NFR-47",
+        "NFR-48",
+        "NFR-49",
         "NFR-5",
         "NFR-6",
         "NFR-7",
@@ -339,14 +365,14 @@
       ]
     },
     "plan_check": {
-      "at": "2026-10-30T10:56:20.872Z",
-      "source_hash": "33dc413979f287ff6abbc8bcd55abc3614bb4d11e30bd581292761a38e09b634"
+      "at": "2026-10-31T04:19:44.901Z",
+      "source_hash": "eda9156e4fedc7f9103e093a9ec7ffc54e96bdcb89740f8ab4be6ce363e8d11a"
     },
     "plan_approval": {
       "human": "siva-rgb (owner)",
-      "reason": "Re-approved with the SPEC after M42, Phase 5's exit signal, closed.",
-      "at": "2026-10-30T10:56:21.037Z",
-      "source_hash": "33dc413979f287ff6abbc8bcd55abc3614bb4d11e30bd581292761a38e09b634"
+      "reason": "Plan unchanged; re-approved after FR-156's round 2 amendment.",
+      "at": "2026-10-31T04:19:45.063Z",
+      "source_hash": "eda9156e4fedc7f9103e093a9ec7ffc54e96bdcb89740f8ab4be6ce363e8d11a"
     }
   },
   "artifacts": [
@@ -359,6 +385,11 @@
         "AC-1",
         "AC-10",
         "AC-100",
+        "AC-101",
+        "AC-102",
+        "AC-103",
+        "AC-104",
+        "AC-105",
         "AC-11",
         "AC-12",
         "AC-13",
@@ -518,8 +549,25 @@
         "FR-152",
         "FR-153",
         "FR-154",
+        "FR-155",
+        "FR-156",
+        "FR-157",
+        "FR-158",
+        "FR-159",
         "FR-16",
+        "FR-160",
+        "FR-161",
+        "FR-162",
+        "FR-163",
+        "FR-164",
+        "FR-165",
+        "FR-166",
+        "FR-167",
+        "FR-168",
+        "FR-169",
         "FR-17",
+        "FR-170",
+        "FR-171",
         "FR-18",
         "FR-19",
         "FR-2",
@@ -650,18 +698,22 @@
         "NFR-43",
         "NFR-44",
         "NFR-45",
+        "NFR-46",
+        "NFR-47",
+        "NFR-48",
+        "NFR-49",
         "NFR-5",
         "NFR-6",
         "NFR-7",
         "NFR-8",
         "NFR-9"
       ],
-      "source_hash": "264fd73493e7ade7283d1670cc232d8ea9237e47db5c1d4e7ef3ec93afebb5d7",
+      "source_hash": "1188a5d484cc51816083446123b9e3cf4b438403281e10bbe9a01bfcdf599fd8",
       "approval": {
         "human": "siva-rgb (owner)",
-        "reason": "Re-approved after M42's amendments to FR-138, FR-148, FR-154 and the workspace_commands and run_command bullets (DECISION-21e7f6fb, DECISION-e799700b, DECISION-4689af02), the column named limit_name, per the M42 close decision.",
-        "at": "2026-10-30T10:56:20.677Z",
-        "source_hash": "264fd73493e7ade7283d1670cc232d8ea9237e47db5c1d4e7ef3ec93afebb5d7"
+        "reason": "FR-156 amended for M43 round 2: argv through env, signals ignored by the wrapper, a per-command nonce on its line, no authentic line is killed error (DECISION-0883f7bd, DECISION-88395b13).",
+        "at": "2026-10-31T04:19:44.701Z",
+        "source_hash": "1188a5d484cc51816083446123b9e3cf4b438403281e10bbe9a01bfcdf599fd8"
       }
     }
   ],
@@ -2132,6 +2184,70 @@
       "status": "accepted",
       "source": null,
       "recorded_at": "2026-10-30T10:56:20.185Z"
+    },
+    {
+      "id": "DECISION-92986dbc",
+      "title": "Phase 5 increment 2: the owner's direction for the decisions to be drafted",
+      "text": "On KNOWLEDGE-f90ec78e's measurements the owner chose, for the decisions and requirements to be drafted for acceptance: (1) compute is measured, not estimated: each command runs under a PID-1 sh wrapper that kills every other process then prints the container's cpu.stat reading last, read from a tail the SDK keeps apart from max_output_bytes; the CPU seconds are recorded on the command row and charged to the run's budget at a configured price per CPU-second. (2) Egress stays off by default; WorkspaceSpec.egress names host:port pairs, and a workspace that has any gets its own internal network and a proxy sidecar allowing HTTPS CONNECT only to those pairs, refusing any non-global address, connecting to the address it checked, and checking the TLS SNI matches the host; every connection is recorded, allowed or refused; declared: only proxy-aware clients, no DNS inside. (3) A stdio MCP server may run sandboxed: McpServer(..., workspace=WorkspaceSpec(...)), configured in code (P4-D25), its command in a hardened container of its own over a workspace of its own, with files the application gives in code imported first through P5-D8's checked transfer; it lives with its Runner and is owned and reaped like a workspace, with egress only through its spec's allow list. (4) Milestones: M43 M42's five carried items then compute accounting; M44 egress by allow list; M45 stdio MCP servers in the sandbox; M46 snapshots (a copy of a workspace's volume, from which a new workspace can start); M47 the exit signal -- hostile code with one host allowed trying every other way out, a hostile MCP server in the sandbox, a snapshot holding links restored, and a plan stopped by its compute budget, ten times on both stores under DECISION-a00773b0 and DECISION-a7d6a1f5.",
+      "status": "accepted",
+      "source": null,
+      "recorded_at": "2026-10-30T12:57:03.768Z"
+    },
+    {
+      "id": "DECISION-082b52b3",
+      "title": "Phase 5 increment 2: P5-D16 to P5-D25 accepted as drafted",
+      "text": "The owner accepted P5-D16 to P5-D25 as drafted in SPEC.md on 2026-10-30, on KNOWLEDGE-f90ec78e and DECISION-92986dbc: compute measured by a PID-1 wrapper and charged at BudgetPolicy.cpu_second_usd, a command without a usable reading charged wall time times cpus (NFR-48); egress by exact host:port pairs (no IP literal, no wildcard, at most 32) through a per-workspace internal network and a proxy in the workspace's own image, which must provide python3, HTTPS CONNECT only, global addresses only, connecting to the address it checked, SNI equal to the host; sandboxed stdio MCP servers configured in code, with files given in code; snapshots taken by the application only, counted against max_workspace_bytes; migration 0023's records; the exit signal; milestones M43 (M42's carried items and compute, example 37), M44 (egress, example 38), M45 (sandboxed MCP servers, example 39), M46 (snapshots, example 40), M47 (the exit signal, example 41). Requirements FR-155 to FR-171, NFR-46 to NFR-49 and AC-101 to AC-105.",
+      "status": "accepted",
+      "source": null,
+      "recorded_at": "2026-10-30T13:00:26.877Z"
+    },
+    {
+      "id": "DECISION-91ec4213",
+      "title": "M43 pre-flight: migrations per milestone, commands checked before they start, the price omitted when None, cost on the command's event",
+      "text": "The owner chose, 2026-10-30: (1) one migration per milestone: 0023 (M43) adds workspace_commands.cpu_usec, 0024 (M44) workspace_connections, 0025 (M46) workspace_snapshots; P5-D23 amended. (2) run_command asks its run's budget lease before it starts, as the loop does before each model call, so one turn's parallel commands cannot each burn past the ceiling; FR-157 amended. (3) The manifest's budget_policy names cpu_second_usd only when a price is set, so plans without one record identical manifests (NFR-49 as written). (4) WorkspaceCommandEnded carries cpu_seconds and cost_usd (None when nothing priced it), as ModelCalled carries its cost; no new column.",
+      "status": "accepted",
+      "source": null,
+      "recorded_at": "2026-10-30T13:42:50.429Z"
+    },
+    {
+      "id": "DECISION-0883f7bd",
+      "title": "M43 pre-review: the wrapper runs argv as a program through env; F2 to F5 repaired as proposed",
+      "text": "The owner chose, 2026-10-30, on the M43 pre-review. F1 (high, confirmed first-hand: a 2 s burn through the eval builtin was charged 0.0 CPU-seconds): the wrapper runs the argv as env -- \"$@\", so argv[0] is exec'd as a program from PATH as docker did before M43; no shell builtin reaches PID 1, and the image must provide env beside sh. F2: a wrapper line already printed is taken off what the model reads on the killed paths too; the charge stays the ceiling. F3: the two timing tests assert against each command's own duration. F4: per layer, a Docker run with the other two layers removed, where the cancel check must still hold. F5: example 37's ceiling child makes two burns in one turn, so only the pre-check stops the second.",
+      "status": "accepted",
+      "source": null,
+      "recorded_at": "2026-10-30T14:52:48.876Z"
+    },
+    {
+      "id": "DECISION-630a34ff",
+      "title": "M43: the workspace sweep alone does not end a cancelled command in time; declared, its delay investigated in M44",
+      "text": "Measured on Docker, 2026-10-30 (F4's per-layer test): with the other two layers removed, the provider's kill alone and the command's own removal alone each end a cancelled command within the cancel check's bound; the workspace sweep alone does not -- the plan reported cancelled 1,158 s after the cancel (bound 40 s). It needs both other layers to fail. The owner chose: declare it in M43 (example 36's CANCEL_ALONE and a README row; the test asserts the check fails with the sweep alone), and carry the delay's cause to M44's pre-flight as an item to investigate.",
+      "status": "accepted",
+      "source": null,
+      "recorded_at": "2026-10-30T17:02:45.753Z"
+    },
+    {
+      "id": "DECISION-88395b13",
+      "title": "M43 round 1 rejected (Fable 5.1): the wrapper traps signals and its line carries a per-command nonce; no authentic line is killed error",
+      "text": "Fable 5.1 rejected M43 round 1, 2026-10-31: a command forged the wrapper's line, then sent SIGINT to PID 1; busybox ash, which keeps a SIGINT handler, exited 130 before the kill loop and the reading, so 2 s of CPU was charged 1 us and the exit code reported was PID 1's. Reproduced first-hand: SIGINT is the only signal of INT, TERM, HUP, QUIT, USR1, USR2, ALRM, PIPE, CHLD, WINCH that stops PID 1. The owner chose: (1) the wrapper traps INT QUIT TERM HUP USR1 USR2 with a no-op before running the argv (handlers reset on exec, so the command is unaffected; tested); (2) the SDK writes a per-command 128-bit nonce as stdin's first line, read by the wrapper into an unexported shell variable (/proc/1/environ and cmdline are readable by a command, /proc/1/mem is not) and printed on its line; a line without the nonce is never a reading. (3) A command the SDK did not kill that ends with no authentic line reports exit code None, killed error, charged its ceiling: no foreign exit code is reported as the command's own (FR-156). FR-156 is amended accordingly, with the image's env (DECISION-0883f7bd).",
+      "status": "accepted",
+      "source": null,
+      "recorded_at": "2026-10-31T04:19:21.808Z"
+    },
+    {
+      "id": "DECISION-d9a568e1",
+      "title": "M43: DECISION-630a34ff superseded -- each cancel layer alone ends a cancelled command in time; the 1,158 s was the laptop sleeping",
+      "text": "Re-measured 2026-10-31: with the provider's kill and the command's own removal taken away, the workspace sweep alone ended the cancelled command within the cancel check's bound in 3 of 3 runs kept awake (about 150 s each, wall and monotonic clocks equal). The 1,158 s of DECISION-630a34ff came from a background Docker run without the keep-awake wrapper; the same run logged a teardown timeout of -190 s, a clock jump. The owner chose: correct it -- each of the three layers alone is enough (example 36's CANCEL_ALONE all True, the test asserting it), the README row rewritten, nothing carried to M44.",
+      "status": "accepted",
+      "source": null,
+      "recorded_at": "2026-10-31T05:14:00.642Z"
+    },
+    {
+      "id": "DECISION-91e5d73a",
+      "title": "M43 close: round 2 approval kept; small items carried to M44; a docker gate from M44; commit and publish",
+      "text": "Fable 5.1 approved M43 round 2, 2026-10-31; verified first-hand. The owner chose: (1) close M43, carrying to M44's pre-flight, each code change with a test that fails without it: take_reading's exit code is computed and discarded (docker.py) -- use it or delete it; DECISION-630a34ff still reads accepted, its supersession only in DECISION-d9a568e1's text; the no-authentic-line test uses a wrapper that never prints rather than one stopped mid-way; the brief's tenant prefix (SYN-m43r1, the reviewer used r2) and its Docker estimate (about 24 minutes, not 75). (2) The Docker evidence is recorded now (the knowledge record of this date); from M44 each Phase 5 milestone gets a third executable gate, docker, running its own Docker tests kept awake, added to the plan at M44's pre-flight. (3) Commit M43 on phase-5 and publish the filtered copy.",
+      "status": "accepted",
+      "source": null,
+      "recorded_at": "2026-10-31T07:15:40.748Z"
     }
   ],
   "knowledge": [
@@ -3486,6 +3602,22 @@
       "source": null,
       "tags": [],
       "recorded_at": "2026-10-30T10:56:20.003Z"
+    },
+    {
+      "id": "KNOWLEDGE-f90ec78e",
+      "title": "Phase 5 increment 2 study: egress, stdio MCP, snapshots and compute, measured on this host",
+      "text": "Measured 2026-10-30 on Docker Desktop (WSL2), python:3.12-alpine by digest, everything labelled agentsdk-probe and removed (scratchpad p5i2/study.py, study2.py). EGRESS: a container on a docker network created --internal reaches nothing directly -- 1.1.1.1:443 unreachable at once, and host.docker.internal and example.com fail to resolve after 5 s; it does resolve another container on that network by name. A stdlib CONNECT proxy (about 40 lines, run in the same image, hardened, on the default bridge and joined to the internal network) holding an allow list let https://example.com through (200 in 0.31 s) and refused pypi.org (not listed), localtest.me (listed, but resolves to 127.0.0.1: refused as not global), host.docker.internal:5432 and an IP literal. The proxy's own side reaches the host, so its refusal of non-global addresses, and connecting to the address it checked, are what keep the host's ports closed. Two containers on one internal network reach each other (a listener answered its neighbour), and from --network none they do not: an allow list needs a network per workspace. An internal network's create plus remove takes 0.33 s. Only proxy-aware clients reach out; a CONNECT tunnel carries TLS unread, so its SNI could name another host on the same address unless the proxy checks it. MCP: the M33 fixture's legacy server (stdlib only) ran in a hardened container over a workspace volume through docker run -i: initialize answered in 0.47 s with the container's start, tools/list in milliseconds, 20 calls in 0.01 s. That server exits when its stdin closes, so killing the client ended its container; a server that ignores its stdin's end keeps its container running after its client is killed, so the SDK must own each server's container (label, rm, reaping), as it does a command's. SNAPSHOTS: a workspace of 60 MB in 2000 files and a symlink copied into another workspace's volume by cp -a in a hardened container in 0.64 s (a tar pipe 0.99 s); sizes match and the link is kept as a link, inside Docker only. COMPUTE: inside a container /sys/fs/cgroup/cpu.stat is the container's own cgroup (namespaced): a 3 s busy loop read usage_usec 3047901 under cpu.max 100000 100000. docker stats --no-stream takes about 2 s a call and gave one non-zero sample in 4 s; after a container exits docker inspect holds no CPU figure. A command can print a forged reading; but a wrapper that runs as PID 1 (sh -c, the command as its argument), then kill -9 -1 (which spares PID 1) and reads cpu.stat, prints last: a detached child that would have forged a trailer after its parent was killed first, and the reading, 1.10 s, counted it up to the kill.",
+      "source": null,
+      "tags": [],
+      "recorded_at": "2026-10-30T12:39:59.687Z"
+    },
+    {
+      "id": "KNOWLEDGE-67afced9",
+      "title": "M43: the Docker evidence behind the wrapper, which no gate runs",
+      "text": "pytest.ini deselects docker-marked tests, so M43's 27 Docker tests (wrapper, trap, nonce, six signals, stdin, the nonce out of reach with /proc/1/mem denied, the no-line outcome, measurement within 10 percent, forging, builtins, timeout race, the cancel layers, example 37) are outside both executable gates. Their evidence, 2026-10-31, under the round 2 wrapper: the author's kept-awake runs -- tests/test_compute.py -m docker, 26 passed and the sweep-alone case passing 3 of 3 on rerun (its declaration since corrected, DECISION-d9a568e1); Phase 5's other Docker tests (test_workspace*.py, test_docker_provider.py, test_sandbox_contention.py with M42's ten-times run), 56 passed. The reviewer's (Fable 5.1, round 2): 18 passed in 137 s and 9 in 1272 s, all passing; ptrace EPERM, process_vm_readv 0 bytes over all 40 of PID 1's regions, /proc/1/mem PermissionError. The orchestrator: all 64 signals sent to PID 1 during a 2 s burn, the wrapper held (exit 0, 2.12 CPU-seconds). The author's first-hand rerun of round 1's attack: charged 2.130 CPU-seconds, exit 0. NFR-48 now rests on the nonce staying secret: if an image, namespace or daemon setting ever makes PID 1's memory readable, undercharging returns and no executable gate would notice.",
+      "source": null,
+      "tags": [],
+      "recorded_at": "2026-10-31T07:15:40.595Z"
     }
   ],
   "tasks": [
@@ -3508,9 +3640,9 @@
           "status": "pass",
           "evidence": {
             "human": "siva-rgb (owner)",
-            "reason": "Re-approved after M42's amendments to FR-138, FR-148, FR-154 and the workspace_commands and run_command bullets (DECISION-21e7f6fb, DECISION-e799700b, DECISION-4689af02), the column named limit_name, per the M42 close decision.",
-            "source_hash": "97078a81e0ae1a638c5fffb37b5ba36e61812044127336c585e636f61193fcc0",
-            "observed_at": "2026-10-30T10:56:20.677Z"
+            "reason": "FR-156 amended for M43 round 2: argv through env, signals ignored by the wrapper, a per-command nonce on its line, no authentic line is killed error (DECISION-0883f7bd, DECISION-88395b13).",
+            "source_hash": "616aada32faad9d28755f718f5ba546fa1039568d35c00873acb70633df79542",
+            "observed_at": "2026-10-31T04:19:44.701Z"
           }
         }
       ],
@@ -3520,7 +3652,7 @@
       "failures": [],
       "limitations": [],
       "created_at": "2026-09-05T14:48:57.897Z",
-      "updated_at": "2026-10-30T10:56:20.677Z"
+      "updated_at": "2026-10-31T04:19:44.701Z"
     },
     {
       "id": "M1-primitives",
@@ -6504,6 +6636,269 @@
       "limitations": [],
       "created_at": "2026-10-24T17:00:18.119Z",
       "updated_at": "2026-10-30T10:56:20.365Z"
+    },
+    {
+      "id": "M43-compute",
+      "outcome": "M42's carried items are settled, and every command's CPU is measured, recorded and charged to its run's budget",
+      "state": "done",
+      "risk": "high",
+      "owner": null,
+      "scope": [],
+      "dependencies": [
+        "M42-sandbox-contention"
+      ],
+      "requirements": [
+        "FR-155",
+        "FR-156",
+        "FR-157",
+        "FR-158",
+        "AC-101",
+        "NFR-46",
+        "NFR-48",
+        "NFR-49"
+      ],
+      "gates": [
+        {
+          "id": "unit",
+          "command": ".venv\\Scripts\\python.exe -m pytest tests/test_compute.py -q",
+          "mandatory": true,
+          "status": "pass",
+          "evidence": {
+            "path": ".genesis/evidence/M43-compute-unit.json",
+            "source_hash": "005673b76fd16174cc3087f9236ed3c04b0e850b0d08460310c847a45195713a",
+            "hash": "23ee7a31977fafdee83bb9505312093d137c181a666ba1ed64f2405ca9febd23",
+            "observed_at": "2026-10-31T05:21:48.977Z"
+          }
+        },
+        {
+          "id": "regression",
+          "command": ".venv\\Scripts\\python.exe -m pytest -q",
+          "mandatory": true,
+          "status": "pass",
+          "evidence": {
+            "path": ".genesis/evidence/M43-compute-regression.json",
+            "source_hash": "005673b76fd16174cc3087f9236ed3c04b0e850b0d08460310c847a45195713a",
+            "hash": "6525b2e46186787b922afa79c0a57f6bfdbdc6ad724f607619430f0433065e8c",
+            "observed_at": "2026-10-31T05:53:26.663Z"
+          }
+        },
+        {
+          "id": "independent-review",
+          "command": "",
+          "mandatory": true,
+          "status": "pass",
+          "evidence": {
+            "human": "Fable 5.1 (independent L4 reviewer, round 2)",
+            "reason": "Round 2 verified first-hand on source hash 005673b7, equal to both gate evidence files and the live tree. Reproduced the unit gate (60 passed) and ran all 27 Docker-marked tests myself kept awake: the 18 measurement and security tests in 137 s and the 9 cancel-layer and example 37 tests in 1272 s, wall equal to monotonic, all passed. Independent nonce probe with a forced sentinel the command was never given: absent from /proc/1/environ, task/1/environ and cmdline, /proc/1/mem PermissionError, ptrace attach to PID 1 EPERM, process_vm_readv over all 40 mapped regions of PID 1 read 0 bytes, a forged line with a wrong nonce was ignored and the command charged its real 1.5 s burn; a probe that stalled PID 1 was charged its ceiling, 60 s times 2 cpus. The six trapped signals, the trap not reaching the command (exit 130), stdin whole after the nonce and no authentic line giving killed error at the ceiling all held on Docker. Charging: _Compute mirrors the model call path exactly (meter.record plus lease.charge) so RunResult.cost_usd, lease spend and the governor spend agree and equal the sum of ModelCalled and WorkspaceCommandEnded costs; each RunWorkspace has its own account so a plan workspace never charges another run; a spent lease refuses a command before any workspace is made; None price never becomes 0. NFR-49: agent_spec_hash depends only on id, instructions and tool_profile, and cpu_second_usd reaches only the lease, the manifest when set and the two new event fields. FR-155 five repairs match DECISION-97b301ea and each test fails without its repair. Example 37 vacuity tests pass; declared rows forbid nothing. Caveats, not blockers: take_reading returns the exit code the line names but docker.py reports docker inspect ExitCode and discards it, redundant since the wrapper exits with that same code, harmless dead data; the brief still names tenant prefix SYN-m43r1, I used SYN-m43r2; the no-authentic-line test uses a wrapper edited to never print rather than one stopped mid-way; compute is priced in USD only so a token-only ceiling is never stopped by it, declared in the README. Cleanup: 0 tenant and 0 probe labelled containers and volumes remain, the other projects 4 containers and 3 volumes untouched, workspaces 0, workspace_commands 0, SYN runs 0, 0 locks, 0 other connections, no stray python or node, no repository file changed by content (388 files SHA-256 compared).",
+            "source_hash": "005673b76fd16174cc3087f9236ed3c04b0e850b0d08460310c847a45195713a",
+            "observed_at": "2026-10-31T07:05:44.452Z"
+          }
+        }
+      ],
+      "next_action": "Run the task pre-flight.",
+      "blocker": null,
+      "notes": [],
+      "failures": [],
+      "limitations": [],
+      "created_at": "2026-10-30T13:01:01.267Z",
+      "updated_at": "2026-10-31T07:15:40.915Z"
+    },
+    {
+      "id": "M44-egress",
+      "outcome": "A workspace reaches only the host:port pairs its spec names, through a per-workspace network and proxy, every connection recorded",
+      "state": "active",
+      "risk": "high",
+      "owner": null,
+      "scope": [],
+      "dependencies": [
+        "M43-compute"
+      ],
+      "requirements": [
+        "FR-159",
+        "FR-160",
+        "FR-161",
+        "FR-162",
+        "FR-163",
+        "AC-102",
+        "NFR-46",
+        "NFR-47"
+      ],
+      "gates": [
+        {
+          "id": "unit",
+          "command": ".venv\\Scripts\\python.exe -m pytest tests/test_egress.py -q",
+          "mandatory": true,
+          "status": "pending",
+          "evidence": null
+        },
+        {
+          "id": "regression",
+          "command": ".venv\\Scripts\\python.exe -m pytest -q",
+          "mandatory": true,
+          "status": "pending",
+          "evidence": null
+        },
+        {
+          "id": "independent-review",
+          "command": "",
+          "mandatory": true,
+          "status": "pending",
+          "evidence": null
+        }
+      ],
+      "next_action": "Run the task pre-flight.",
+      "blocker": null,
+      "notes": [],
+      "failures": [],
+      "limitations": [],
+      "created_at": "2026-10-30T13:01:01.412Z",
+      "updated_at": "2026-10-30T13:01:01.412Z"
+    },
+    {
+      "id": "M45-sandboxed-mcp",
+      "outcome": "A stdio MCP server configured with a workspace runs in the sandbox, owned and reaped with its Runner",
+      "state": "queued",
+      "risk": "high",
+      "owner": null,
+      "scope": [],
+      "dependencies": [
+        "M44-egress"
+      ],
+      "requirements": [
+        "FR-164",
+        "FR-165",
+        "FR-166",
+        "FR-167",
+        "AC-103",
+        "NFR-47"
+      ],
+      "gates": [
+        {
+          "id": "unit",
+          "command": ".venv\\Scripts\\python.exe -m pytest tests/test_sandboxed_mcp.py -q",
+          "mandatory": true,
+          "status": "pending",
+          "evidence": null
+        },
+        {
+          "id": "regression",
+          "command": ".venv\\Scripts\\python.exe -m pytest -q",
+          "mandatory": true,
+          "status": "pending",
+          "evidence": null
+        },
+        {
+          "id": "independent-review",
+          "command": "",
+          "mandatory": true,
+          "status": "pending",
+          "evidence": null
+        }
+      ],
+      "next_action": "Run the task pre-flight.",
+      "blocker": null,
+      "notes": [],
+      "failures": [],
+      "limitations": [],
+      "created_at": "2026-10-30T13:01:01.553Z",
+      "updated_at": "2026-10-30T13:01:01.553Z"
+    },
+    {
+      "id": "M46-snapshots",
+      "outcome": "A workspace's state is snapshotted and a new workspace of the same tenancy starts from it, within bounds",
+      "state": "queued",
+      "risk": "high",
+      "owner": null,
+      "scope": [],
+      "dependencies": [
+        "M45-sandboxed-mcp"
+      ],
+      "requirements": [
+        "FR-168",
+        "FR-169",
+        "FR-170",
+        "AC-104",
+        "NFR-47"
+      ],
+      "gates": [
+        {
+          "id": "unit",
+          "command": ".venv\\Scripts\\python.exe -m pytest tests/test_snapshots.py -q",
+          "mandatory": true,
+          "status": "pending",
+          "evidence": null
+        },
+        {
+          "id": "regression",
+          "command": ".venv\\Scripts\\python.exe -m pytest -q",
+          "mandatory": true,
+          "status": "pending",
+          "evidence": null
+        },
+        {
+          "id": "independent-review",
+          "command": "",
+          "mandatory": true,
+          "status": "pending",
+          "evidence": null
+        }
+      ],
+      "next_action": "Run the task pre-flight.",
+      "blocker": null,
+      "notes": [],
+      "failures": [],
+      "limitations": [],
+      "created_at": "2026-10-30T13:01:01.690Z",
+      "updated_at": "2026-10-30T13:01:01.691Z"
+    },
+    {
+      "id": "M47-increment2-contention",
+      "outcome": "Hostile code with egress, a hostile sandboxed MCP server, a snapshot and a compute ceiling are contained, recorded and cleaned up on both stores",
+      "state": "queued",
+      "risk": "high",
+      "owner": null,
+      "scope": [],
+      "dependencies": [
+        "M46-snapshots"
+      ],
+      "requirements": [
+        "FR-171",
+        "AC-105",
+        "NFR-46",
+        "NFR-47",
+        "NFR-48",
+        "NFR-49"
+      ],
+      "gates": [
+        {
+          "id": "unit",
+          "command": ".venv\\Scripts\\python.exe -m pytest tests/test_increment2_contention.py -q",
+          "mandatory": true,
+          "status": "pending",
+          "evidence": null
+        },
+        {
+          "id": "regression",
+          "command": ".venv\\Scripts\\python.exe -m pytest -q",
+          "mandatory": true,
+          "status": "pending",
+          "evidence": null
+        },
+        {
+          "id": "independent-review",
+          "command": "",
+          "mandatory": true,
+          "status": "pending",
+          "evidence": null
+        }
+      ],
+      "next_action": "Run the task pre-flight.",
+      "blocker": null,
+      "notes": [],
+      "failures": [],
+      "limitations": [],
+      "created_at": "2026-10-30T13:01:01.831Z",
+      "updated_at": "2026-10-30T13:01:01.832Z"
     }
   ],
   "learning_proposals": [],
@@ -7975,17 +8370,89 @@
       "human": "Opus 5 independent L4 reviewer, M42 round 1",
       "reason": "Independent L4 review of M42, Phase 5 exit signal, on source hash 97078a81e0ae1a638c5fffb37b5ba36e61812044127336c585e636f61193fcc0 which I recomputed myself and which both gate evidence files carry. I re-derived FR-154, AC-100, FR-138, FR-148, FR-152 and NFR-40 to NFR-45 from SPEC.md. Vacuity, attack item 0: all 14 checks of example 36 were made to fail by breaking the property each names. I built 11 SDK-level violations of my own, each failing the check that names it or a correct cascade: the bound unnamed, cut accounting broken, removal a no-op, started before approval, results relabelled trusted, the host value in a record, a probe skipped. The other 3 are killed on a live daemon by the six AC-100 removals, which I ran: 6 passed in 160.56 s. A child that declines passes nothing, and one skipped probe makes its own check report not exercised, which example 36 report counts as a failure in every mode, live included, with no SKIP path. I reran the unit gate command: 28 passed, 10 deselected in 235.97 s. I ran AC-100 repetitions live: ten times on each store plus the OOM test and example 36 as a program on Docker, 4 passed in 485.45 s, and the rest of Phase 5 live, 46 passed in 347.59 s. Migrations 0021 and 0022 applied in order to an isolated schema whose search path excludes public: 0021 admits a bound beside killed NULL, 0022 refuses it, and refuses killed timeout and an empty name. On live Docker rows every killed limit row carried memory_bytes, no row or event carried a bound beside another ending, and no event payload disagreed with its row. Docker OOM attribution probed in both directions: OOMKilled true with exit 0 when only a child is killed, and exit 137 with OOMKilled false when the main process exits 137 itself, so both conditions are load bearing and neither implies the other. The fake links match Docker across 8 behaviours by exception class, the only difference being the one the README declares. Slot accounting balances on all seven paths through the new setup bound, including two no test covers. NFR-45 swept live: 20 docker command lines built, none holding the env value, the host value in no command line, record, label, volume inspect or container environment, and none of 9 env values a command printed in 283584 characters of SDK own records. Store and Docker back at baseline, no repository file changed by content, no process or lock left. Caveats, none blocking. 1, two of the six AC-100 removals are bundled, and I measured on the fake and on Docker that removing any single mechanism of the transfer filter or of the container kill on cancel leaves the named check passing; the removals are a fair reading of the behaviour each names, and the redundancy is real, but no check localises the loss of one layer. 2, the memory check clause that reads the event goes silent when no event can be read, where the disk check requires its event list to be non empty: with the example reading no events, 13 of 14 checks still passed. Not reachable in M42 and pinned by a separate test. 3, FR-148 as amended budgets one size read, but one run command takes two when the workspace is stale, so the arithmetic worst case is 90 s past the deadline; reachable only on a daemon stalled on three operations, and I measured that the command row still keeps its own outcome there. 4, the no command outlived its timeout check compares every timed out row against 23 s while the network child timeout in force is 30 s: I forced the network probe to its own bound and the check reported a failure that is not a violation, a literal miss of the second clause of DECISION-a7d6a1f5, fixable by comparing each row against its own probe timeout. It can only fail closed, and it did not fire in 32 live runs of mine. 5, DECISION-21e7f6fb names the new column limit while the code and the SPEC say limit name, a sound rename since limit is reserved, and 6, M41 carried item six asked that review briefs quote requirements verbatim while this brief deliberately quotes none and asks the reviewer to re-derive; I re-derived every requirement and found the brief accurate, but both are for the owner to confirm at ratification.",
       "revision": null
+    },
+    {
+      "id": "9d405dda-2f8f-4541-98e7-7ec583e0cbcb",
+      "at": "2026-10-30T13:42:50.585Z",
+      "action": "requeue",
+      "task": "M43-compute",
+      "human": null,
+      "reason": null,
+      "revision": null
+    },
+    {
+      "id": "4caa26c4-1a84-43d1-97cb-4e168826e8c6",
+      "at": "2026-10-30T13:43:12.746Z",
+      "action": "resume",
+      "task": "M43-compute",
+      "human": null,
+      "reason": null,
+      "revision": null
+    },
+    {
+      "id": "c8675383-9813-417a-9d39-a11bf6538156",
+      "at": "2026-10-30T13:45:38.717Z",
+      "action": "requeue",
+      "task": "M43-compute",
+      "human": null,
+      "reason": null,
+      "revision": null
+    },
+    {
+      "id": "569d4566-8caf-4ef7-9da7-4de36df41c43",
+      "at": "2026-10-30T13:45:39.750Z",
+      "action": "resume",
+      "task": "M43-compute",
+      "human": null,
+      "reason": null,
+      "revision": null
+    },
+    {
+      "id": "0f2d3d72-7f69-4fae-8642-da39c0699026",
+      "at": "2026-10-31T03:21:36.635Z",
+      "action": "reject",
+      "task": "M43-compute",
+      "human": "Fable 5.1 independent L4 reviewer, M43 round 1",
+      "reason": "Fresh session. Verified first-hand: the content hash 1785ae42cc97265b8bd65edb6db2d0c831240330ad1d505824f2988c9b7550a3 recomputed with the kit algorithm equals the regression gate and the live tree; the unit gate hash 9541b2c7 differs only because the regression run rewrote .pytest_cache, no source or test file changed between the gates; every quoted requirement in the brief is verbatim in SPEC.md; the Docker measurement subset 8 passed in 76 s and the three example 37 Docker tests passed; a charging probe on both stores under scope plan found each command on its own child lease, no double charge, governor spend equal to own plus children, and runs.cost_usd equal to the sum of ModelCalled and WorkspaceCommandEnded costs in completed and cancelled endings; the six FR-155 tests all fail against the M42 versions of examples 35 and 36 and workspace tools.py, each for the right reason. REJECT on NFR-48 and AC-101, reproduced three times on a real daemon through DockerProvider under my own tenant label: a command that burns 2 s of CPU, prints a forged wrapper line naming exit code 130, then sends SIGINT to PID 1 (permitted, same uid 65534) is charged 0.000001 CPU-seconds, with a detached child burning too. Mechanism: busybox ash as PID 1 keeps a handler for SIGINT, so the pending signal makes the wrapper shell exit 130 the moment env returns, skipping the kill loop, the cpu.stat reading and the final exit; the container exits 130 and take_reading(130) accepts the forged line as the reading. Without the forged line the same signal is charged the ceiling, but the exit code reported is 130 rather than the commands own (FR-156) and the kill loop never runs. SIGQUIT, SIGHUP and SIGTERM to PID 1 had no effect. The repair must make the wrapper immune to signals from its children, for example a trap on INT and QUIT set before env, with a Docker test of this exact command; the owner chooses the mechanism. Caveats, not grounds: the six cancel-layer Docker tests (about 70 min) were not run by me; the brief says the SPEC amendments await ratification but SPEC.md is approved at its current hash a543fb89. Every row, container and volume I made is removed; store counts equal the baseline.",
+      "revision": null
+    },
+    {
+      "id": "06651b6f-7a00-4929-940b-c2ba441bc44f",
+      "at": "2026-10-31T04:19:26.679Z",
+      "action": "requeue",
+      "task": "M43-compute",
+      "human": null,
+      "reason": null,
+      "revision": null
+    },
+    {
+      "id": "e3ff293b-0a2f-4332-bc4c-a20c8e0f7105",
+      "at": "2026-10-31T04:19:45.220Z",
+      "action": "resume",
+      "task": "M43-compute",
+      "human": null,
+      "reason": null,
+      "revision": null
+    },
+    {
+      "id": "8959b0fc-40e8-4638-9063-8d90941dce73",
+      "at": "2026-10-31T07:05:44.452Z",
+      "action": "approve",
+      "task": "M43-compute",
+      "human": "Fable 5.1 (independent L4 reviewer, round 2)",
+      "reason": "Round 2 verified first-hand on source hash 005673b7, equal to both gate evidence files and the live tree. Reproduced the unit gate (60 passed) and ran all 27 Docker-marked tests myself kept awake: the 18 measurement and security tests in 137 s and the 9 cancel-layer and example 37 tests in 1272 s, wall equal to monotonic, all passed. Independent nonce probe with a forced sentinel the command was never given: absent from /proc/1/environ, task/1/environ and cmdline, /proc/1/mem PermissionError, ptrace attach to PID 1 EPERM, process_vm_readv over all 40 mapped regions of PID 1 read 0 bytes, a forged line with a wrong nonce was ignored and the command charged its real 1.5 s burn; a probe that stalled PID 1 was charged its ceiling, 60 s times 2 cpus. The six trapped signals, the trap not reaching the command (exit 130), stdin whole after the nonce and no authentic line giving killed error at the ceiling all held on Docker. Charging: _Compute mirrors the model call path exactly (meter.record plus lease.charge) so RunResult.cost_usd, lease spend and the governor spend agree and equal the sum of ModelCalled and WorkspaceCommandEnded costs; each RunWorkspace has its own account so a plan workspace never charges another run; a spent lease refuses a command before any workspace is made; None price never becomes 0. NFR-49: agent_spec_hash depends only on id, instructions and tool_profile, and cpu_second_usd reaches only the lease, the manifest when set and the two new event fields. FR-155 five repairs match DECISION-97b301ea and each test fails without its repair. Example 37 vacuity tests pass; declared rows forbid nothing. Caveats, not blockers: take_reading returns the exit code the line names but docker.py reports docker inspect ExitCode and discards it, redundant since the wrapper exits with that same code, harmless dead data; the brief still names tenant prefix SYN-m43r1, I used SYN-m43r2; the no-authentic-line test uses a wrapper edited to never print rather than one stopped mid-way; compute is priced in USD only so a token-only ceiling is never stopped by it, declared in the README. Cleanup: 0 tenant and 0 probe labelled containers and volumes remain, the other projects 4 containers and 3 volumes untouched, workspaces 0, workspace_commands 0, SYN runs 0, 0 locks, 0 other connections, no stray python or node, no repository file changed by content (388 files SHA-256 compared).",
+      "revision": null
     }
   ],
   "discovery": null,
   "checkpoint": {
-    "at": "2026-10-30T07:10:26.063Z",
+    "at": "2026-10-31T07:15:52.692Z",
     "revision": {
-      "commit": "08bdc39eb615ab1abcdc29cf3d0d8e7cb15c8ce6",
+      "commit": "f4aa59f94e8acd3e3b74b3451491664a29547d47",
       "dirty": true,
-      "source_hash": "97078a81e0ae1a638c5fffb37b5ba36e61812044127336c585e636f61193fcc0"
+      "source_hash": "005673b76fd16174cc3087f9236ed3c04b0e850b0d08460310c847a45195713a"
     },
-    "active_task": "M42-sandbox-contention",
+    "active_task": "M44-egress",
     "next_action": "Run the task pre-flight."
   },
   "legacy": null

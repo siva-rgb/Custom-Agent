@@ -1028,6 +1028,108 @@ run uses its workspace from the first milestone (DECISION-97fb116b); P5-D15 read
     - every result is untrusted and data-only.
   - **Repetitions:** the test runs it 10 times on `DockerProvider`, with the children's start order shuffled and random delays, as a live-marked test before review; the gates run the same plan on `FakeProvider`. Live, it checks only what must hold whatever the model decides, under DECISION-a00773b0 and DECISION-a7d6a1f5. A check whose subject never happened fails in every mode, live included: a model that declines a probe fails its check (DECISION-21e7f6fb).
 
+### Phase 5, increment 2: compute, egress, sandboxed MCP servers and snapshots (M43 to M47)
+
+Increment 1 let an agent run code that reaches nothing: a command's output and an exported artifact
+were all that left a workspace. Increment 2 counts what commands cost and charges it to the budget,
+lets a workspace reach hosts the application names, runs stdio MCP servers inside the sandbox
+(P4-D25's deferral), and keeps a workspace's state to start another from.
+
+**The design rests on a measured study** (KNOWLEDGE-f90ec78e) and the owner's direction
+(DECISION-92986dbc). What the study found shapes the decisions:
+- a container on an `--internal` network reaches nothing directly, and resolves no outside name,
+  but does reach every other container on that network;
+- a small CONNECT proxy holding an allow list, joined to that network and the default bridge,
+  lets a listed host through and can refuse a name that resolves to a private address -- its own
+  side reaches the host, so that refusal is what keeps the host's ports closed;
+- a stdio MCP server runs in a hardened container through `docker run -i`, answering `initialize`
+  in about half a second with the container's start; a server that ignores its stdin's end
+  outlives a killed client;
+- a workspace's volume copies into another in under a second for 60 MB in 2000 files, links kept as
+  links, inside Docker only;
+- a container's `cpu.stat` is exact from inside it, and a PID-1 wrapper that kills every other
+  process before reading it prints last; `docker stats` and `docker inspect` give nothing usable.
+
+The attacks to design against are:
+- code allowed one host reaching another: by an IP literal, a name resolving to a private
+  address, a name that changes its answer between the check and the connection, another site on
+  the same address named in TLS, plain HTTP, DNS, or another workspace on its network;
+- a sandboxed MCP server reaching the host, the network or another workspace, or outliving its
+  `Runner`;
+- a snapshot carrying more than its bound, or restored into another tenancy;
+- a command hiding or forging what it cost, and a plan spending compute past its budget.
+
+**The decisions.** The owner accepted P5-D16 to P5-D25 as drafted on 2026-10-30 (DECISION-082b52b3).
+
+| Decision | P5-D16 to P5-D25, 2026-10-30 |
+|---|---|
+| P5-D16 Split | Increment 2 is compute in budgets, egress by allow list, stdio MCP servers in the sandbox and snapshots. Browser and computer-use tools come after it, specified once it exists (P5-D1) |
+| P5-D17 Compute | Every command runs under a PID-1 `sh` wrapper that runs it, kills every other process, then prints the container's `cpu.stat` reading as its last line. The SDK reads that line from a tail it keeps apart from `max_output_bytes`, and nothing the command prints can follow it. `CommandOutcome.cpu_seconds`, the command's row and its `WorkspaceCommandEnded` carry it. A command killed before the wrapper reads is charged its wall time times its `cpus` limit, the most it could have used |
+| P5-D18 Charging | `BudgetPolicy.cpu_second_usd` (default None: compute counted, not charged) prices a CPU-second. Each command's cost is drawn from its run's budget lease like a model call's, so a plan stops when compute exhausts its ceiling as it stops for tokens, and a run's `cost_usd` includes it |
+| P5-D19 Egress | Off by default: `--network none` is unchanged. `WorkspaceSpec.egress` names `host:port` pairs, exact host names only, no IP literal, no wildcard. A workspace that has any gets its own `--internal` network, and a proxy container on it and the default bridge, hardened as a command is, in the workspace's own image, which must provide `python3` |
+| P5-D20 The proxy | HTTPS `CONNECT` only, to a listed pair; it resolves the name, refuses the connection if any address is not global, connects to an address it checked, and requires the TLS ClientHello's SNI to equal the host. Commands get `HTTPS_PROXY`; nothing else leaves. Declared: only proxy-aware clients reach out, and no name resolves inside |
+| P5-D21 Sandboxed MCP | `McpServer(..., workspace=WorkspaceSpec(...))`, configured in code (P4-D25): the server's command runs in a hardened container of its own, over a workspace of its own, with files the application gives in code imported first through P5-D8's checked transfer. It lives with its `Runner`, owned, recorded and reaped like a workspace, reaches out only through its spec's `egress`, and its results stay untrusted MCP content |
+| P5-D22 Snapshots | `Runner.snapshot_workspace(...)` copies a workspace's volume into a snapshot volume inside Docker; `WorkspaceSpec(from_snapshot=...)` starts a workspace from one of the same tenancy. A snapshot counts against `max_workspace_bytes`, is recorded, released by `Runner.release_snapshot` and reaped with its owner. The application takes snapshots; no model tool does in this increment |
+| P5-D23 Records | One migration per milestone (DECISION-91ec4213): `0023` (M43) `workspace_commands.cpu_usec`; `0024` (M44) `workspace_connections` (each egress connection, allowed or refused, with its reason); `0025` (M46) `workspace_snapshots`. A sandboxed server's workspace is a `workspaces` row of scope `server`. The manifest records each workspace's `egress` and each sandboxed server's spec |
+| P5-D24 Exit signal | Hostile code with one host allowed tries every other way out; a hostile MCP server in the sandbox tries the host, the network and its neighbours and is killed with its `Runner`; a snapshot of a workspace holding links is restored; a plan is stopped by its compute budget. Each is contained, recorded and cleaned up, on both stores, ten times, under DECISION-a00773b0 and DECISION-a7d6a1f5 |
+| P5-D25 Milestones | M43 M42's carried items and compute (example 37); M44 egress (example 38); M45 sandboxed MCP servers (example 39); M46 snapshots (example 40); M47 the exit signal (example 41) |
+
+#### M43: the carried items, and compute in budgets
+
+- FR-155: The items carried from M42's review are settled first (DECISION-97b301ea). Each repair comes with a test that fails without it.
+  - **Example 36's timeout check** compares each command killed at its timeout with the `max_command_seconds` in force for its own probe, and the stale comment beside `COMMAND_SECONDS` is corrected.
+  - **Example 35 has no SKIP:** a check whose subject never happened fails in every mode, live included, as example 36's do.
+  - **Example 36's memory check** requires at least one `WorkspaceCommandEnded` to judge, as its disk check requires a refusal.
+  - **FR-148's deadline** counts both size reads a stale workspace takes: `SETUP_SECONDS + 2 x MEASURE_SECONDS + max_command_seconds + 30`.
+  - **AC-100's bundled removals** each name the layer they take away: the kill on cancel is tested without the provider's kill, without the command's removal and without the workspace's sweep, one at a time, each failing a check or declared as covered by another layer.
+- FR-156: Compute is measured (P5-D17).
+  - **The wrapper:** `DockerProvider` runs each command as `sh -c '<wrapper>' sh <argv...>`: it runs the argv, keeps its exit code, kills every other process with `kill -9 -1` until none is left, and prints a last line naming the container's `cpu.stat` `usage_usec` and the exit code, in a form the SDK alone writes after everything else. The exit code reported is the command's own. The image must provide `sh`, as it must for `list` (DECISION-0004d2dc), and `env`.
+  - **Nothing the command does stops it or speaks for it** (DECISION-0883f7bd, DECISION-88395b13): the argv runs as `env -- <argv...>`, a program from PATH, so no shell builtin runs inside the wrapper; the wrapper ignores the signals a command could send it (INT, QUIT, TERM, HUP, USR1, USR2), its own shell's exports never reach the command, and its line carries a 128-bit nonce the SDK generates for that command and gives the wrapper alone, as stdin's first line. A line without the command's nonce is never a reading. A command the SDK did not kill that ends with no line carrying its nonce reports no exit code and is recorded `killed: error`, charged its ceiling.
+  - **The tail:** the SDK keeps the last 4 KiB of stdout apart from what `max_output_bytes` keeps, reads the wrapper's line from it, and strips that line from what the model reads. A command that prints its own copy of the line before the wrapper's is read by the last line only.
+  - **The outcome:** `CommandOutcome.cpu_seconds` is the reading. A command killed at its timeout, by cancellation or at a limit is charged its wall time times its `cpus` limit; a reading that is absent, malformed or above that ceiling is replaced by the ceiling, so no command is charged less than it could have used.
+  - **`FakeProvider`:** a fake command declares its CPU with `FakeCommand.cpu(seconds)`; a killed one is charged the same ceiling as on Docker.
+- FR-157: Compute is charged (P5-D18).
+  - `BudgetPolicy.cpu_second_usd`, a `Decimal` or None, prices a CPU-second; None counts compute and charges nothing.
+  - Each command's cost is drawn from its run's budget lease when it ends, before its result reaches the model. A lease that cannot cover it fails the run as a model call's would (`budget_exceeded`), after the command's record.
+  - **Checked before it starts** (DECISION-91ec4213): `run_command` asks its lease first, as the loop does before each model call; a command whose lease is spent does not start, and the run ends `budget_exceeded`.
+  - `WorkspaceCommandEnded` carries `cpu_seconds` and `cost_usd`, None when nothing priced it, as `ModelCalled` carries its cost (DECISION-91ec4213).
+  - `RunResult.cost_usd` includes compute; the manifest's `budget_policy` records the price in force, and names `cpu_second_usd` only when one is set, so a plan without one records the manifest it did before (NFR-49, DECISION-91ec4213).
+- FR-158: Example 37 (`scripts/37_compute.py`) runs a plan whose children burn CPU: their costs on the rows, in the results and in the plan's cost, and a second plan stopped by its compute ceiling, offline and on Docker.
+
+#### M44: egress by allow list
+
+- FR-159: `WorkspaceSpec.egress` (P5-D19) is a tuple of `"host:port"`, each host an exact DNS name, lower-case, without a trailing dot; an IP literal, a wildcard, a port outside 1 to 65535 or more than 32 entries raises `ValueError`. It is part of the spec's record and the manifest, and part of the key that shares a plan workspace (FR-152).
+- FR-160: The network and the proxy.
+  - **Created with the workspace:** an `--internal` network and the proxy container, both labelled as the workspace is, before its first command; each command container joins that network instead of `--network none`, and gets `HTTPS_PROXY` and `https_proxy` naming the proxy. No other hardening changes.
+  - **Removed with it:** the proxy and the network go with the workspace, at its run's end, at `release_workspace`, at `aclose()` and when reaped; `list_owned` lists a workspace whose network or proxy remains.
+  - **The proxy program** ships with the SDK as source and runs in the workspace's image under `python3`; an image without it fails the workspace `WorkspaceUnavailable` at creation.
+- FR-161: The proxy's rules (P5-D20). It accepts only `CONNECT host:port` naming a listed pair. It resolves the host and refuses the connection if the answer is empty or any address is not global; it connects to one address it checked, never resolving again. It reads the ClientHello from the client and refuses the tunnel unless its SNI equals the host. It refuses anything else -- another method, a malformed request, a second request on one connection -- with `403`, and closes. It keeps no data.
+- FR-162: Every connection is recorded: a `workspace_connections` row (workspace, run, command where known, host, port, the address used, allowed or refused, the reason by name, the time) and a `WorkspaceConnection` event, written by the manager from the proxy's own report on its attached output, never from a command's.
+- FR-163: Example 38 (`scripts/38_egress.py`): a child allowed `example.com:443` fetches it through the proxy and fails every other way out, each refusal on its row; offline on `FakeProvider` (a fake command's `connect(host, port)` meets the same rules) and live on Docker.
+
+#### M45: stdio MCP servers in the sandbox
+
+- FR-164: `McpServer` gains `workspace: WorkspaceSpec | None` (P5-D21) and `files: Mapping[str, bytes]`, for stdio servers only. With a workspace, the server's `command` and `args` run in a hardened container of its own over a workspace of its own, created when its `Runner` connects to it, with `files` imported first through the checked transfer. The manifest records the spec; a server without one runs as before (FR-123).
+- FR-165: Its lifetime. The container is attached (`docker run -i`), labelled as a workspace is with scope `server`, and recorded in `workspaces`. It is removed when its `Runner` closes the server, at `aclose()`, and when reaped after a dead `Runner`; a server that ignores its stdin's end is removed by the container's removal. A server's crash is FR-125's, unchanged. Its workspace counts against `max_concurrent_workspaces`.
+- FR-166: Its trust. Results stay MCP content (FR-125's labels); a server reaches out only through its spec's `egress`; its environment is its spec's `env` alone; its files are those the application gave and what it writes itself.
+- FR-167: Example 39 (`scripts/39_sandboxed_mcp.py`): the M33 fixture server, run sandboxed, serves a plan; it cannot reach the network, the host or a neighbour, and nothing of it remains after `aclose()`.
+
+#### M46: snapshots
+
+- FR-168: `Runner.snapshot_workspace(tenant_id, project_id, workspace_id) -> SnapshotRef` copies the workspace's volume, between commands, into a snapshot volume by a hardened container over both (P5-D22). The snapshot is measured, recorded in `workspace_snapshots`, labelled as its workspace is, and refused with `WorkspaceRefused` past `max_workspace_bytes`. `Runner.release_snapshot` removes one; `aclose()` keeps it unless its workspace was not kept; reaping removes a dead owner's.
+- FR-169: `WorkspaceSpec.from_snapshot` names a snapshot of the same tenant and project: the new workspace starts as its copy. Another tenancy's, a released one, or one whose size passes the new spec's bound fails the workspace `WorkspaceUnavailable`. The manifest records the snapshot's id.
+- FR-170: Example 40 (`scripts/40_snapshots.py`): a workspace built up, snapshotted, changed, and a second workspace started from the snapshot reads the state at the snapshot; offline and on Docker.
+
+#### M47: the exit signal
+
+- FR-171: The exit signal (P5-D24) is a test and an example. `scripts/41_increment2_contention.py` runs an orchestrated plan whose children:
+  - allowed one host, try an IP literal, a name resolving privately, a rebinding name, an unlisted host, another site behind the allowed one's address by SNI, plain HTTP, DNS and a neighbour's network;
+  - use a sandboxed MCP server that tries the host's database port, the network and a neighbouring workspace, and is killed with its `Runner`;
+  - snapshot a workspace holding links and a file past a later spec's bound, and restore it;
+  - burn CPU until the plan's compute ceiling stops it.
+  - **Checked against the store, the provider and the commands' and servers' own output, on both stores,** each check naming its subject with a witness independent of the property (KNOWLEDGE-1afcf6b2): no connection but to the allowed pair succeeded, each refusal recorded with its reason; the server reached nothing and nothing of it remained; the snapshot restored only in its tenancy and within bounds; the plan stopped within one command's cost of its ceiling, every command charged at least its reading.
+  - **Repetitions:** ten times on `DockerProvider` with the children's start order shuffled and random delays, as a live-marked test before review; the gates run the same plan on `FakeProvider`. A check whose subject never happened fails in every mode (DECISION-a7d6a1f5).
+
 ## Non-functional requirements
 
 - NFR-1: Provider-agnostic. Switching between `openai.*`, `bedrock.*`, `azure.*`, and `vertex_ai.*` models is a configuration change only — no SDK source file changes, no new adapter.
@@ -1053,7 +1155,7 @@ run uses its workspace from the first milestone (DECISION-97fb116b); P5-D15 read
 - NFR-20: The comparison is never an SDK dependency: `claude-agent-sdk` appears only in the `eval` extra and in `evals/adr12/requirements.txt`, no module under `agentsdk/` imports it, and nothing the harness writes contains a credential (AC-19).
 - NFR-21: Phase 2's second increment adds no runtime dependency (NFR-6, NFR-13, NFR-18). The plan schema, the price table and the compaction summary all use what the SDK already carries.
 - NFR-22: Orchestration never corrupts the record. Under parallel subagents, replanning and cancellation, every run's `sequence_no` values stay unique and contiguous on both stores, no child is left `running` once its parent has returned or raised, every child's `parent_run_id` resolves to a run that exists, and a plan version is never mutated after it is stored (NFR-17).
-- NFR-23: Budgets and prices are honest. A run's recorded spend equals the sum of its `ModelCalled` costs plus its children's, an unknown cost stays None rather than 0 (NFR-11), the shipped price table reports its own date wherever it is used, and the overshoot soft enforcement permits is bounded by `max_concurrent_subagents` and charged to the run rather than hidden.
+- NFR-23: Budgets and prices are honest. A run's recorded spend equals the sum of its `ModelCalled` costs and, since M43, its `WorkspaceCommandEnded` costs (FR-157), plus its children's, an unknown cost stays None rather than 0 (NFR-11), the shipped price table reports its own date wherever it is used, and the overshoot soft enforcement permits is bounded by `max_concurrent_subagents` and charged to the run rather than hidden.
 - NFR-24: Phase 3's first increment adds no runtime dependency (NFR-6, NFR-21). Canonical URIs, statement normalisation and hashing use the standard library and what the SDK already carries.
 - NFR-25: Evidence never crosses tenancy. No source version, cached content, claim or contribution is readable by another tenant or project, and nothing that names another tenant, project, run or artifact reaches a reader. The one exception is a cache hit on a `PUBLIC_GLOBAL` version, or a same-tenant `TENANT` version from another project, which is served by copying its content into the reader's own tenant and project (FR-90). No claim-lock wait or result crosses a tenant (FR-95). A ledger is readable only within its own tenant and project.
 - NFR-26: The evidence record is append-only and verifiable. A stored source version, claim or contribution is never updated or deleted; a supersession and a cache refresh are new records pointing at the old ones; every source's content reads back against its `content_hash`; and every claim's provenance carries at least the taint flags, and at most the trust zone, of every source version it cites.
@@ -1081,6 +1183,10 @@ run uses its workspace from the first milestone (DECISION-97fb116b); P5-D15 read
 - NFR-43: Nothing leaves a workspace except as a tool result or an exported artifact. No command reaches a network, the host or another workspace; no link, hard link, FIFO or device crosses to the host; and the host never opens a path inside a workspace (P5-D4, P5-D6, P5-D8).
 - NFR-44: No command outlives its bound. Once a command's timeout has passed, its run was cancelled or ended, or its `Runner` was closed, its container is gone, measured by listing containers by the SDK's labels; after `aclose()` no container or volume the `Runner` created remains, and after reaping none of a dead `Runner`'s remains.
 - NFR-45: No secret enters a workspace unless `WorkspaceSpec.env` names it. A command's environment holds those values only, never the host's; and those values, like MCP's (NFR-37), reach no row, event, manifest, span, log line, exception text or `docker` command line -- only the output of a command that prints them, and the arguments a model itself writes into a call, recorded as written, as every argument is (owner, M38 pre-review D7, DECISION-bb81ebbe).
+- NFR-46: Increment 2 adds no runtime dependency (NFR-40): the proxy program ships as SDK source run in the workspace's image, and every Docker operation stays the `docker` CLI.
+- NFR-47: Nothing leaves a workspace except a tool result, an exported artifact, a snapshot inside Docker, or a connection the proxy allowed to a pair its spec names (amends NFR-43). No connection reaches a non-global address, another workspace or the host, from a command or a sandboxed server.
+- NFR-48: No command is charged less than it could have used: its `cpu_seconds` is its own reading, or else its wall time times its `cpus` limit, and nothing a command prints changes it.
+- NFR-49: Runs whose workspaces have no `egress`, no snapshot and no sandboxed server send the same requests and record the same events and rows as before M43, apart from the new columns, recorded empty, and `cpu_seconds`; their `agent_spec_hash` is unchanged.
 
 ## Constraints
 
@@ -1105,6 +1211,7 @@ run uses its workspace from the first milestone (DECISION-97fb116b); P5-D15 read
 - A paused run resumes only in the `Runner` that paused it; restart-surviving resume and recovering a run paused at a crash are Phase 6 (P4-D2, P4-D14, ADR-29).
 - Phase 4's first increment ships no delete, move or patch tool, and its write tools create no directories (P4-D10).
 - Phase 5's first increment has no stdio MCP server inside the sandbox, no snapshot, no compute cost in budgets and no network for a workspace, not even by allow list (increment 2, P5-D1); no browser or computer-use tool (after increment 2); no microVM provider (ADR-09 amended, P5-D2). It never pulls or builds an image, runs no Windows container and offers no GPU. A workspace does not survive its `Runner`, except as debris reaping removes; resuming one is Phase 6.
+- Phase 5's second increment has no browser or computer-use tool (specified once it exists, P5-D16), no model tool for snapshots, no egress but HTTPS through the proxy to exact names, and no microVM provider.
 - No sandbox or workspace (Phase 5).
 - No durable interruptions, replay, or idempotency (Phase 6).
 - No context compaction in the first increment. The owner moved it from Phase 7 to Phase 2's second increment on 2026-09-14.
@@ -1431,6 +1538,20 @@ found the defects, turned into assertions.
   - **Example 36** holds every check of FR-154 ten times on `DockerProvider`, with the children's start order shuffled and random delays, and the gates hold its plan on `FakeProvider`.
   - **Each check fails without its subject:** a test removes, in turn, `--network none`, the transfer filter, the pid limit, the disk bound, the container kill on cancel, and reaping. Each removal fails the check that names it.
   - **NFR-40:** the package's runtime dependencies are unchanged.
+
+### Phase 5, increment 2
+
+- AC-101: FR-155 to FR-158, on both stores:
+  - **The carried items:** each repair's test fails without it.
+  - **Compute:** a 2 s busy loop reads within 10 % of 2 CPU-seconds on Docker; a command that prints a forged reading, or whose detached child does, is charged its own; a command killed at its timeout is charged its ceiling; the model never reads the wrapper's line.
+  - **Charging:** a plan with `cpu_second_usd` set stops `budget_exceeded` when compute exhausts its ceiling, the command that crossed it recorded; with None, compute is counted and nothing is charged.
+- AC-102: FR-159 to FR-163, on both stores:
+  - **The spec:** each refused `egress` value raises `ValueError`.
+  - **The proxy:** the allowed pair connects; an IP literal, an unlisted host, a listed name resolving to a private address, a ClientHello whose SNI differs, plain HTTP and a second request are each refused and recorded by reason; a direct connection and a DNS lookup from a command fail; a neighbour's network is unreachable.
+  - **Lifetime:** no network or proxy remains after the run's end, `release_workspace`, `aclose()` or reaping.
+- AC-103: FR-164 to FR-167: a sandboxed server answers a plan's calls; it reaches no network, no host port and no neighbour; a server that ignores its stdin's end is gone after `aclose()`, and a dead `Runner`'s after reaping.
+- AC-104: FR-168 to FR-170, on both stores: a snapshot restores the state at its taking, links kept inside Docker; another tenancy's, a released one and one past the bound are refused; nothing of a snapshot remains after its release or reaping.
+- AC-105: FR-171, the exit signal: example 41 holds every check ten times on `DockerProvider`, shuffled with random delays, and the gates hold its plan on `FakeProvider`; each check fails without its subject -- a test removes, in turn, the internal network, the proxy's address check, its SNI check, the server's container removal, the snapshot's tenancy check and the compute charge, and each removal fails the check that names it.
 
 ## Risks
 

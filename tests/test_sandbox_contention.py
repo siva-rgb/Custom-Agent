@@ -488,7 +488,7 @@ def test_every_workspace_tools_deadline_is_past_the_setup_bound_and_the_commands
     size read before a command is inside it too (pre-review F8, DECISION-4689af02)."""
     spec = WorkspaceSpec(image=FAKE_IMAGE, max_command_seconds=7)
     assert {name: s.timeout_seconds for name, s in wt.specs(spec).items()} == {
-        name: mgr.SETUP_SECONDS + mgr.MEASURE_SECONDS + 7 + 30.0 for name in wt.NAMES}
+        name: mgr.SETUP_SECONDS + 2 * mgr.MEASURE_SECONDS + 7 + 30.0 for name in wt.NAMES}  # FR-155 (M43)
     assert mgr.MEASURE_SECONDS == mgr._MEASURE_SECONDS == 120.0
     assert mgr.SETUP_SECONDS == wt.SETUP_SECONDS == 120.0
 

@@ -36,6 +36,7 @@ __all__ = [
     "WorkspaceHandle",
     "WorkspaceProvider",
     "WorkspaceSpec",
+    "charged",
 ]
 
 _MiB, _GiB = 2**20, 2**30
@@ -154,6 +155,18 @@ class CommandOutcome:
     duration: float
     killed: str | None = None
     limit: str | None = None
+    # FR-156 (M43): the CPU-seconds it is charged, as `charged` decides.
+    cpu_seconds: float = 0.0
+
+
+def charged(reading: float | None, killed: str | None, duration: float, cpus: float) -> float:
+    """FR-156, NFR-48: what a command is charged. Its ceiling is the most it could have used, its
+    wall time times its `cpus` limit: a command killed, by any cause, is charged that, as is one
+    whose reading is absent, not a finite number, negative or past it. Otherwise its reading."""
+    ceiling = max(0.0, duration) * cpus
+    if killed is not None or reading is None or not math.isfinite(reading) or not 0 <= reading <= ceiling:
+        return ceiling
+    return reading
 
 
 @dataclass(frozen=True)
@@ -432,6 +445,7 @@ class FakeCommand:
         self._keep = keep
         self._out, self._err = bytearray(), bytearray()
         self.out_bytes = self.err_bytes = 0
+        self._cpu = 0.0
 
     def _write(self, buffer: bytearray, data: bytes | str) -> int:
         data = data.encode("utf-8") if isinstance(data, str) else bytes(data)
@@ -448,6 +462,11 @@ class FakeCommand:
 
     async def sleep(self, seconds: float) -> None:
         await asyncio.sleep(seconds)
+
+    def cpu(self, seconds: float) -> None:
+        """FR-156: the CPU-seconds this command reads as having used, 0 unless declared. A killed
+        command is charged its ceiling whatever it declared, as on Docker."""
+        self._cpu = seconds
 
     def limit(self, name: str) -> None:
         """Ends the command as a container's limit would: killed, `killed="limit"`, and the
@@ -501,7 +520,7 @@ class FakeProvider:
         started = time.monotonic()
         if fn is None:
             command.err(f"{argv[0] if argv else ''}: command not found\n")
-            return self._outcome(command, 127, started)
+            return self._outcome(command, 127, started, cpus=handle.spec.cpus)
         task = asyncio.ensure_future(fn(command))
         space.running[command_id] = task
         space.kills[command_id] = kill = asyncio.Event()
@@ -537,16 +556,19 @@ class FakeProvider:
                 files.alive = False
                 task.cancel()
                 task.add_done_callback(lambda t: t.cancelled() or t.exception())
-        return self._outcome(command, None if killed else exit_code, started, killed, limit)
+        return self._outcome(command, None if killed else exit_code, started, killed, limit, cpus=handle.spec.cpus)
 
     @staticmethod
     def _outcome(command: FakeCommand, exit_code: int | None, started: float, killed: str | None = None,
-                 limit: str | None = None):
+                 limit: str | None = None, *, cpus: float):
+        duration = time.monotonic() - started
         return CommandOutcome(
             exit_code=exit_code, stdout=bytes(command._out), stderr=bytes(command._err),
             stdout_cut=command.out_bytes > len(command._out), stderr_cut=command.err_bytes > len(command._err),
-            stdout_bytes=command.out_bytes, stderr_bytes=command.err_bytes, duration=time.monotonic() - started,
-            killed=killed, limit=limit)
+            stdout_bytes=command.out_bytes, stderr_bytes=command.err_bytes, duration=duration,
+            # What it declared, which no wall time bounds since nothing ran; killed, the ceiling.
+            killed=killed, limit=limit,
+            cpu_seconds=command._cpu if killed is None else charged(None, killed, duration, cpus))
 
     async def kill(self, handle: WorkspaceHandle, command_id: str) -> None:
         space = self._spaces.get(handle.workspace_id)

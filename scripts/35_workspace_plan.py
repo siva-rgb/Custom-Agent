@@ -240,13 +240,13 @@ async def demonstrate(runner: Runner, orchestrator: Orchestrator, model_id: str,
     return checks, [result.run_id, kept.run_id, last.run_id]
 
 
-def report(checks, live: bool) -> list[str]:
+def report(checks) -> list[str]:
+    """A check whose subject never happened fails, in every mode, live included (FR-155)."""
     failed = []
     for label, passed in checks:
         if passed is None:
-            print(f"[{'SKIP' if live else 'FAIL'}] not exercised: {label}")
-            if not live:
-                failed.append(label)
+            print(f"[FAIL] not exercised: {label}")
+            failed.append(label)
             continue
         print(f"[{'PASS' if passed else 'FAIL'}] {label}")
         if not passed:
@@ -333,6 +333,6 @@ if __name__ == "__main__":
         checks = asyncio.run(offline(provider_name="fake" if args.offline else "docker"))
     else:
         checks = live()
-    failed = report(checks, live=not (args.offline or args.scripted))
+    failed = report(checks)
     if failed:
         raise SystemExit(f"failed: {failed}")

@@ -120,9 +120,13 @@ class BudgetPolicy:
     reservation_cap_fraction: Decimal = Decimal("0.40")
     # FR-75's limit on how many times one run may replan. M19 enforces it.
     max_replans: int = 3
+    # FR-157 (M43): the price of a CPU-second a workspace command uses. None counts compute and
+    # charges nothing.
+    cpu_second_usd: Decimal | None = None
 
     def __post_init__(self) -> None:
         _money("run_ceiling_usd", self.run_ceiling_usd)
+        _money("cpu_second_usd", self.cpu_second_usd, allow_zero=True)
         _tokens("run_ceiling_tokens", self.run_ceiling_tokens)
         if self.run_ceiling_usd is None and self.run_ceiling_tokens is None:
             raise ValueError("a policy must set run_ceiling_usd, run_ceiling_tokens or both")

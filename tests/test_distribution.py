@@ -80,6 +80,8 @@ EXPECTED_EXAMPLES = {
     "35_workspace_plan.py",
     # FR-154 (M42): Phase 5's exit signal.
     "36_sandbox_contention.py",
+    # FR-158 (M43): compute in budgets.
+    "37_compute.py",
 }
 
 

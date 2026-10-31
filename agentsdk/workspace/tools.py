@@ -64,10 +64,11 @@ def _spec(name: str, description: str, properties: dict[str, Any], required: lis
 
 
 def specs(spec: WorkspaceSpec) -> dict[str, ToolSpec]:
-    # The executor's deadline is past the workspace's setup bound, the size read before a command and
-    # the command's own timeout, so a command that starts ends by its timeout and reports it, rather
-    # than being abandoned by the executor (FR-148; DECISION-e799700b, DECISION-4689af02).
-    deadline = SETUP_SECONDS + MEASURE_SECONDS + spec.max_command_seconds + 30.0
+    # The executor's deadline is past the workspace's setup bound, both size reads a stale workspace
+    # takes -- the one before a command and the one after it -- and the command's own timeout, so a
+    # command that starts ends by its timeout and reports it, rather than being abandoned by the
+    # executor (FR-148, FR-155; DECISION-e799700b, DECISION-4689af02, DECISION-97b301ea).
+    deadline = SETUP_SECONDS + 2 * MEASURE_SECONDS + spec.max_command_seconds + 30.0
     return {
         "run_command": _spec(
             "run_command",

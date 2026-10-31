@@ -66,9 +66,18 @@ TENANT, PROJECT = "example-tenant", "examples"
 IMAGE = "python@sha256:6d43704baacd1bfbe7c295d7f13079d5d8104ed33568873133f8fc69980419df"
 OPERATOR = PrincipalContext(agent_principal="example-36", user_principal="operator")
 MiB = 2**20
-COMMAND_SECONDS = 8.0  # every probe's timeout
+COMMAND_SECONDS = 8.0  # every probe's timeout but the network probe's, which LIMITS gives its own
 KILL_SLACK = 15.0  # a timed-out command's container is removed within this, past its timeout
 CANCEL_BOUND = 10.0  # FR-148: a cancelled command is killed and recorded within this
+# FR-155: the layers that end a cancelled command's container -- the provider's kill, the command's
+# own removal by name, and the workspace's sweep by label -- and, for each, the layers that still
+# end it when that one alone is taken away. The check fails only once all of them are gone.
+CANCEL_LAYERS = {"provider kill": ("command removal", "workspace sweep"),
+                 "command removal": ("provider kill", "workspace sweep"),
+                 "workspace sweep": ("provider kill", "command removal")}
+# And whether each, with the other two taken away, still ends it within the check's bound (M43
+# pre-review F4, measured on Docker kept awake): each does (DECISION-d9a568e1).
+CANCEL_ALONE = {"provider kill": True, "command removal": True, "workspace sweep": True}
 PIDS = 32
 MEMORY_BYTES = 64 * MiB
 DISK_BYTES = 8 * MiB
@@ -197,6 +206,17 @@ CALLS = {
 # name takes 5 s to fail to resolve, so the network probe is given longer than the rest.
 LIMITS = {"fork": {"pids": PIDS}, "memory": {"memory_bytes": MEMORY_BYTES}, "disk": {"max_workspace_bytes": DISK_BYTES},
           "output": {"max_output_bytes": OUTPUT_BYTES}, "net": {"max_command_seconds": 30.0}}
+
+
+def command_seconds(name: str | None) -> float:
+    """The max_command_seconds a probe's command runs with: its role's own, else COMMAND_SECONDS."""
+    return LIMITS.get(name, {}).get("max_command_seconds", COMMAND_SECONDS)
+
+
+def overran(seconds: float, name: str | None) -> bool:
+    """A command killed at its timeout took longer than its own probe's bound and the kill's
+    slack (FR-155)."""
+    return seconds > command_seconds(name) + KILL_SLACK
 
 
 def objective(name: str) -> str:
@@ -655,7 +675,9 @@ async def demonstrate(runner: Runner, orchestrator: Orchestrator, chosen, *, mod
                    if lines(out, "allocated")[-1][1] == "all"
                    or int(lines(out, "allocated")[-1][-1]) > MEMORY_BYTES), None)
           or next((f"its event names {e[2].get('limit')}" for e in memory_events if e[2].get("limit") != "memory_bytes"),
-                  None))
+                  None)
+          # As the disk check requires a refusal: an event to judge the bound's name by (FR-155).
+          or (None if memory_events else "no WorkspaceCommandEnded of the allocation came to judge"))
 
     # Disk: it wrote past the bound and asked again; the next command was refused and never ran.
     filled = [p for p in probe("disk") if p[2] is not None and p[2].exit_code == 0 and lines(p[3], "wrote")
@@ -682,12 +704,17 @@ async def demonstrate(runner: Runner, orchestrator: Orchestrator, chosen, *, mod
                         if not (row.stdout_bytes > OUTPUT_BYTES and row.stdout_kept == OUTPUT_BYTES
                                 and row.killed == "timeout")), None))
 
-    # Timeouts: each command killed at its timeout ended within its kill bound; nothing of its run stays.
+    # Timeouts: each command killed at its timeout ended within its own probe's bound and the kill's
+    # slack; nothing of its run stays (FR-155).
     timed_out = [row for row in commands if row.killed == "timeout"]
+
+    def probe_of(argv) -> str | None:
+        return next((name for name in ARGV if runs_probe(argv, name)), None)
+
     check("no command outlived its timeout", timed_out and after_plan is not None, "no command reached its timeout",
           lambda: next((f"{row.command_id} took {(row.ended_at - row.started_at).total_seconds():.1f} s"
                         for row in timed_out
-                        if (row.ended_at - row.started_at).total_seconds() > COMMAND_SECONDS + KILL_SLACK), None)
+                        if overran((row.ended_at - row.started_at).total_seconds(), probe_of(row.argv))), None)
           or (f"{len(after_plan)} container(s) or volume(s) remained after the plan" if after_plan else None))
 
     # Cancel: the probe ran (on Docker, its detached process seen) when the plan was cancelled; when

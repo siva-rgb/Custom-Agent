@@ -1264,7 +1264,8 @@ class Runner:
             in_plan = top is not None and (top[2].tenant_id, top[2].project_id) == (scope.tenant_id, scope.project_id)
             workspace = self._workspaces.for_run(spec.workspace, scope.tenant_id, scope.project_id, run_id,
                                                  partial(control.store, events.emit), control.store,
-                                                 plan_run_id=config.ledger_run_id if in_plan else None)
+                                                 plan_run_id=config.ledger_run_id if in_plan else None,
+                                                 account=_Compute(config.budget_lease, meter))
             self._workspace_runs[run_id] = workspace
             extended = ToolRegistry()
             for name in registry.names():
@@ -1607,6 +1608,9 @@ class Runner:
                 "unallocated_reserve_fraction": _decimal_text(policy.unallocated_reserve_fraction),
                 "reservation_cap_fraction": _decimal_text(policy.reservation_cap_fraction),
                 "max_replans": policy.max_replans,
+                # FR-157: named only when set, so a plan without one records the manifest it did
+                # before (NFR-49, DECISION-91ec4213).
+                **({} if policy.cpu_second_usd is None else {"cpu_second_usd": _decimal_text(policy.cpu_second_usd)}),
             },
             "budget_reservations": {
                 lease.node_id: {"usd": _decimal_text(reservation.usd), "tokens": reservation.tokens}
@@ -1695,3 +1699,25 @@ class Runner:
                 f"unknown model client {key!r}; registered: {sorted(self._clients)}"
             )
         return key, model_id
+
+
+class _Compute:
+    """FR-157 (M43): a run's account for its workspace commands' compute. Its lease is asked before
+    each command, as before each model call; each command's cost, at the policy's
+    `cpu_second_usd`, is drawn from the lease and counted in the run's cost. A run with no lease,
+    or a policy with no price, is charged nothing: its compute is counted on the records only."""
+
+    def __init__(self, lease: BudgetLease | None, meter: RunMeter) -> None:
+        self._lease, self._meter = lease, meter
+
+    def may_run(self) -> bool:
+        return self._lease is None or self._lease.may_call()
+
+    def charge(self, cpu_usec: int) -> Decimal | None:
+        price = None if self._lease is None else self._lease.governor.policy.cpu_second_usd
+        if price is None:
+            return None
+        cost = Decimal(cpu_usec) / 1_000_000 * price
+        self._meter.record(Usage(), cost)
+        self._lease.charge(None, cost)
+        return cost

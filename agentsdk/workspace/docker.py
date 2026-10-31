@@ -19,6 +19,8 @@ import io
 import json
 import os
 import posixpath
+import re
+import secrets
 import shutil
 import subprocess
 import sys
@@ -31,7 +33,7 @@ from types import MappingProxyType
 from typing import Any
 
 from ..errors import WorkspaceUnavailable
-from . import CommandOutcome, WorkspaceHandle, WorkspaceSpec, normal_path
+from . import CommandOutcome, WorkspaceHandle, WorkspaceSpec, charged, normal_path
 
 MOUNT = "/workspace"
 UID = 65534
@@ -41,6 +43,33 @@ _CLI_SECONDS = 60.0  # any docker call that is not a command
 _MEASURE_SECONDS = 60.0
 _REMOVE_ATTEMPTS = 4
 _READ = 64 * 1024
+# FR-156, P5-D17: every container's PID 1. It runs the argv and keeps its exit code, kills every
+# other process until none is left -- PID 1 is the one kill -1 never reaches -- then prints the
+# container's CPU reading as its last line and exits with the command's own code. The argv runs
+# through `env`, as a program looked up on PATH, as docker ran it before: a shell builtin such as
+# eval, exec or exit would run inside PID 1 and could print a reading and leave before the wrapper's
+# (M43 pre-review F1, DECISION-0883f7bd). The shell's own exports, SHLVL and PWD, are unset first,
+# so a command sees the environment it saw before M43: only what WorkspaceSpec names (P5-D6).
+# Nothing the command does stops the wrapper or speaks for it (M43 round 1, DECISION-88395b13): it
+# ignores every signal a command could send it -- ash keeps a SIGINT handler, so an untrapped SIGINT
+# ended PID 1 before its line -- and handlers reset on exec, so the command keeps its own. Its line
+# carries the command's nonce, read from stdin's first line into a variable no command can read
+# (/proc/1/environ and cmdline are readable, /proc/1/mem is not). After the argv, builtins only: a
+# fork bomb at `pids` leaves nothing to start a process with.
+MARK = b"@@agentsdk-cpu"
+WRAPPER = (
+    "trap : INT QUIT TERM HUP USR1 USR2; unset SHLVL PWD; read -r n; "
+    'env -- "$@"; c=$?; '
+    "while kill -9 -1 2>/dev/null; do :; done; "
+    'u=; while read -r k v; do [ "$k" = usage_usec ] && u=$v; done < /sys/fs/cgroup/cpu.stat; '
+    "printf '\\n%s %s %s %s\\n' " + MARK.decode() + ' "$n" "$u" "$c"; exit $c'
+)
+TAIL_BYTES = 4096  # what is kept of stdout's end, apart from max_output_bytes, to read the line from
+
+
+def _nonce() -> str:
+    """A command's own 128-bit nonce, which only its wrapper is given (DECISION-88395b13)."""
+    return secrets.token_hex(16)
 # What `tarfile.data_filter` resolves member names against: a host path that is never created,
 # opened or written; the filter only computes where a member would land (P5-D8).
 _NOWHERE = os.path.abspath(os.path.join(os.sep, "agentsdk-workspace-filter-nowhere"))
@@ -123,13 +152,25 @@ def _mount(handle: WorkspaceHandle) -> list[str]:
 
 def container_args(handle: WorkspaceHandle, name: str, argv: list[str], env_names: list[str]) -> list[str]:
     """FR-142: `docker create` for one command. The image is by digest and never pulled; the
-    entrypoint is cleared so `argv` runs as given, without a shell; each env value is named only
-    (`-e NAME`) and given in the CLI's own environment, so none is on a command line."""
+    entrypoint is cleared so `argv` runs as given, under the wrapper and no other shell (FR-156);
+    each env value is named only (`-e NAME`) and given in the CLI's own environment, so none is on
+    a command line."""
     return [
         "create", "--pull", "never", "--name", name, "-i", *_labels(handle.labels), *hardening(handle.spec),
         "-w", MOUNT, *_mount(handle), *[arg for env in env_names for arg in ("-e", env)],
-        "--entrypoint=", handle.spec.image, *argv,
+        "--entrypoint=", handle.spec.image, "sh", "-c", WRAPPER, "sh", *argv,
     ]
+
+
+def reading(tail: bytes, nonce: bytes) -> tuple[int | None, int, int] | None:
+    """FR-156: the wrapper's line, when `tail` ends with one carrying the command's `nonce`: its
+    `usage_usec` (None when the container gave none), the exit code it names, and its length. Only
+    the last line counts, and only with the nonce, so any copy the command printed is its own output."""
+    line = re.compile(rb"\n" + re.escape(MARK) + rb" " + re.escape(nonce) + rb" ([0-9]*) ([0-9]{1,3})\n\Z")
+    found = line.search(tail)
+    if found is None:
+        return None
+    return (int(found[1]) if found[1] else None), int(found[2]), len(found[0])
 
 
 def _kind(member: tarfile.TarInfo) -> str:
@@ -255,6 +296,7 @@ class _Kept:
 
     def __init__(self, keep: int) -> None:
         self.keep, self.data, self.count = keep, bytearray(), 0
+        self.tail = b""  # the stream's last TAIL_BYTES, whatever `keep` is (FR-156)
 
     async def drain(self, stream: asyncio.StreamReader) -> None:
         while chunk := await stream.read(_READ):
@@ -262,6 +304,18 @@ class _Kept:
             room = self.keep - len(self.data)
             if room > 0:
                 self.data += chunk[:room]
+            self.tail = (self.tail + chunk)[-TAIL_BYTES:]
+
+    def take_reading(self, nonce: bytes) -> tuple[int | None, int] | None:
+        """The wrapper's line, taken off what the command printed: its reading and the exit code it
+        names, or None when no line carries the command's nonce."""
+        found = reading(self.tail, nonce)
+        if found is None:
+            return None
+        usec, code, length = found
+        self.count -= length
+        del self.data[self.count:]
+        return usec, code
 
 
 @dataclass
@@ -283,6 +337,7 @@ class _Ended:
     stdout: _Kept
     stderr: _Kept
     killed: str | None
+    cpu_usec: int | None = None  # the wrapper's reading, when it gave one (FR-156)
 
 
 class DockerProvider:
@@ -444,13 +499,16 @@ class DockerProvider:
         finally:
             space.running.pop(command_id, None)
         out, err = ended.stdout, ended.stderr
+        duration = time.monotonic() - started
         return CommandOutcome(
             exit_code=ended.exit_code, stdout=bytes(out.data), stderr=bytes(err.data),
             stdout_cut=out.count > len(out.data), stderr_cut=err.count > len(err.data), stdout_bytes=out.count,
-            stderr_bytes=err.count, duration=time.monotonic() - started, killed=ended.killed,
+            stderr_bytes=err.count, duration=duration, killed=ended.killed,
             # Docker ends a command at a limit only when it runs out of memory; a fork past
             # `pids` fails inside it, and is not told (DECISION-21e7f6fb).
-            limit="memory_bytes" if ended.killed == "limit" else None)
+            limit="memory_bytes" if ended.killed == "limit" else None,
+            cpu_seconds=charged(None if ended.cpu_usec is None else ended.cpu_usec / 1_000_000, ended.killed,
+                                duration, handle.spec.cpus))
 
     async def _contained(self, handle: WorkspaceHandle, command: _Command, argv: list[str], *, timeout: float,
                          stdin: bytes | None, env: Mapping[str, str], keep: int) -> _Ended:
@@ -459,6 +517,7 @@ class DockerProvider:
         started = time.monotonic()
         out, err = _Kept(keep), _Kept(keep)
         process: asyncio.subprocess.Process | None = None
+        nonce = _nonce().encode()
         try:
             code, _, _ = await self._cli(*container_args(handle, command.name, argv, sorted(env)),
                                          env=self._env(env))
@@ -469,10 +528,12 @@ class DockerProvider:
             process = await self._spawn(["start", "-a", "-i", command.name])
 
             async def feed() -> None:
+                # The nonce is stdin's first line, which the wrapper reads; the command gets the rest.
                 with contextlib.suppress(OSError):
+                    process.stdin.write(nonce + b"\n")
                     if stdin:
                         process.stdin.write(stdin)
-                        await process.stdin.drain()
+                    await process.stdin.drain()
                     process.stdin.close()
 
             talking = asyncio.ensure_future(asyncio.gather(
@@ -492,6 +553,9 @@ class DockerProvider:
             with contextlib.suppress(asyncio.TimeoutError, Exception):
                 await asyncio.wait_for(talking, _CLI_SECONDS)
             if killed is not None:
+                # The wrapper may have printed its line just before the kill: the model never
+                # reads it, and the command is charged its ceiling all the same (F2).
+                out.take_reading(nonce)
                 return _Ended(None, out, err, killed)
             code, state, _ = await self._cli("inspect", "--format", "{{json .State}}", command.name)
             if code != 0:
@@ -499,12 +563,18 @@ class DockerProvider:
                     return _Ended(None, out, err, "cancelled")
                 raise WorkspaceUnavailable("the command's container could not be inspected")
             state = json.loads(state)
+            exit_code = int(state["ExitCode"])
+            found = out.take_reading(nonce)
             # OOMKilled says any process in the container was killed for memory: the command was
             # ended at its bound only when its own process went by SIGKILL; otherwise it ended on
             # its own, and keeps its exit code (M42 pre-review F6, DECISION-4689af02).
-            if state.get("OOMKilled") and int(state.get("ExitCode", 0)) == 137:
+            if state.get("OOMKilled") and exit_code == 137:
                 return _Ended(None, out, err, "limit")
-            return _Ended(int(state["ExitCode"]), out, err, None)
+            if found is None:
+                # No line carrying its nonce, so the wrapper did not finish: the container's exit code
+                # may be PID 1's, not the command's, so none is reported (DECISION-88395b13).
+                return _Ended(None, out, err, "error")
+            return _Ended(exit_code, out, err, None, found[0])
         finally:
             await _through(self._rm(command.name))
             if process is not None and process.returncode is None:

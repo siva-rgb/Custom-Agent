@@ -87,6 +87,7 @@ CALL_TOKENS = 11
 POLICY_FIELDS = [
     "run_ceiling_usd", "run_ceiling_tokens", "orchestrator_reserve_fraction",
     "unallocated_reserve_fraction", "reservation_cap_fraction", "max_replans",
+    "cpu_second_usd",  # FR-157 (M43)
 ]
 
 

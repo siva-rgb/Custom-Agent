@@ -2169,7 +2169,7 @@ class PostgresWorkspaceStore:
     _SPACE = ("workspace_id, tenant_id, project_id, run_id, scope, provider, image, limits, created_at,"
               " removed_at, removed_reason")
     _COMMAND = ("command_id, workspace_id, tenant_id, project_id, run_id, tool_call_id, argv, exit_code, killed,"
-                " started_at, ended_at, stdout_bytes, stderr_bytes, stdout_kept, stderr_kept, limit_name")
+                " started_at, ended_at, stdout_bytes, stderr_bytes, stdout_kept, stderr_kept, limit_name, cpu_usec")
 
     @staticmethod
     def _space(row: Any) -> Any:
@@ -2183,7 +2183,7 @@ class PostgresWorkspaceStore:
         from .workspace.records import CommandRecord
 
         return CommandRecord(str(row[0]), str(row[1]), row[2], row[3], str(row[4]), row[5], row[6], row[7], row[8],
-                             row[9], row[10], row[11], row[12], row[13], row[14], row[15])
+                             row[9], row[10], row[11], row[12], row[13], row[14], row[15], row[16])
 
     def record_workspace(self, record: Any) -> None:
         with _checkout(self._dsn) as conn, conn.transaction():
@@ -2218,11 +2218,12 @@ class PostgresWorkspaceStore:
             # tenancy's workspace.
             done = conn.execute(
                 f"INSERT INTO workspace_commands ({self._COMMAND}) SELECT %s, w.workspace_id, w.tenant_id,"
-                " w.project_id, %s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s FROM workspaces w WHERE w.workspace_id = %s"
+                " w.project_id, %s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s FROM workspaces w WHERE w.workspace_id = %s"
                 " AND w.tenant_id = %s AND w.project_id = %s",
                 (record.command_id, record.run_id, record.tool_call_id, Jsonb(list(record.argv)), record.exit_code,
                  record.killed, record.started_at, record.ended_at, record.stdout_bytes, record.stderr_bytes,
-                 record.stdout_kept, record.stderr_kept, record.limit, record.workspace_id, record.tenant_id,
+                 record.stdout_kept, record.stderr_kept, record.limit, record.cpu_usec, record.workspace_id,
+                 record.tenant_id,
                  record.project_id))
             if done.rowcount != 1:
                 raise ValueError(f"no workspace {record.workspace_id} in this tenant and project")

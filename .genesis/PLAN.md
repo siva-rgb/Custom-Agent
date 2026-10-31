@@ -4,7 +4,7 @@
 
 - workflow: new-product
 - phase: build
-- plan approval: siva-rgb (owner) at 2026-10-30T10:56:21.037Z
+- plan approval: siva-rgb (owner) at 2026-10-31T04:19:45.063Z
 
 ## Tasks
 
@@ -390,5 +390,45 @@
 - requirements: FR-154, AC-100, NFR-40, NFR-42, NFR-43, NFR-44, NFR-45
 - scope: not bounded
 - gates: unit: .venv\Scripts\python.exe -m pytest tests/test_sandbox_contention.py -q, regression: .venv\Scripts\python.exe -m pytest -q, independent-review: pass
+- next: Run the task pre-flight.
+
+### M43-compute — M42's carried items are settled, and every command's CPU is measured, recorded and charged to its run's budget
+
+- state/risk: done / high
+- requirements: FR-155, FR-156, FR-157, FR-158, AC-101, NFR-46, NFR-48, NFR-49
+- scope: not bounded
+- gates: unit: .venv\Scripts\python.exe -m pytest tests/test_compute.py -q, regression: .venv\Scripts\python.exe -m pytest -q, independent-review: pass
+- next: Run the task pre-flight.
+
+### M44-egress — A workspace reaches only the host:port pairs its spec names, through a per-workspace network and proxy, every connection recorded
+
+- state/risk: active / high
+- requirements: FR-159, FR-160, FR-161, FR-162, FR-163, AC-102, NFR-46, NFR-47
+- scope: not bounded
+- gates: unit: .venv\Scripts\python.exe -m pytest tests/test_egress.py -q, regression: .venv\Scripts\python.exe -m pytest -q, independent-review: pending
+- next: Run the task pre-flight.
+
+### M45-sandboxed-mcp — A stdio MCP server configured with a workspace runs in the sandbox, owned and reaped with its Runner
+
+- state/risk: queued / high
+- requirements: FR-164, FR-165, FR-166, FR-167, AC-103, NFR-47
+- scope: not bounded
+- gates: unit: .venv\Scripts\python.exe -m pytest tests/test_sandboxed_mcp.py -q, regression: .venv\Scripts\python.exe -m pytest -q, independent-review: pending
+- next: Run the task pre-flight.
+
+### M46-snapshots — A workspace's state is snapshotted and a new workspace of the same tenancy starts from it, within bounds
+
+- state/risk: queued / high
+- requirements: FR-168, FR-169, FR-170, AC-104, NFR-47
+- scope: not bounded
+- gates: unit: .venv\Scripts\python.exe -m pytest tests/test_snapshots.py -q, regression: .venv\Scripts\python.exe -m pytest -q, independent-review: pending
+- next: Run the task pre-flight.
+
+### M47-increment2-contention — Hostile code with egress, a hostile sandboxed MCP server, a snapshot and a compute ceiling are contained, recorded and cleaned up on both stores
+
+- state/risk: queued / high
+- requirements: FR-171, AC-105, NFR-46, NFR-47, NFR-48, NFR-49
+- scope: not bounded
+- gates: unit: .venv\Scripts\python.exe -m pytest tests/test_increment2_contention.py -q, regression: .venv\Scripts\python.exe -m pytest -q, independent-review: pending
 - next: Run the task pre-flight.
 

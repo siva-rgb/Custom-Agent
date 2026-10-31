@@ -34,9 +34,10 @@ from collections.abc import Awaitable, Callable
 from typing import Any
 from urllib.parse import quote
 
-from ..errors import WorkspaceRefused, WorkspaceUnavailable
+from ..errors import BudgetExceeded, WorkspaceRefused, WorkspaceUnavailable
 from ..events import EventType
-from . import MEASURE_SECONDS, SETUP_SECONDS, CommandOutcome, WorkspaceHandle, WorkspaceProvider, WorkspaceSpec
+from . import (MEASURE_SECONDS, SETUP_SECONDS, CommandOutcome, WorkspaceHandle, WorkspaceProvider, WorkspaceSpec,
+               charged)
 from .owner import is_dead, this_owner
 from .records import CommandRecord, WorkspaceRecord, now
 
@@ -181,8 +182,11 @@ class RunWorkspace:
     _stale = _shared("stale")
 
     def __init__(self, manager: WorkspaceManager, spec: WorkspaceSpec, tenant_id: str, project_id: str,
-                 run_id: str, emit: Emit, call: Call, space: _Space | None = None) -> None:
+                 run_id: str, emit: Emit, call: Call, space: _Space | None = None, account: Any = None) -> None:
         self._manager, self.spec = manager, spec
+        # FR-157: the run's own account for its commands' compute, asked before each command and
+        # charged after it; None charges nothing. Never shared with another run of a plan workspace.
+        self._account = account
         self.tenant_id, self.project_id, self.run_id = tenant_id, project_id, run_id
         self._emit, self._call = emit, call
         self._space = space if space is not None else _Space(spec, tenant_id, project_id, run_id)
@@ -325,6 +329,10 @@ class RunWorkspace:
 
     async def run(self, argv: list[str], *, stdin: bytes | None, timeout: float,
                   tool_call_id: str | None) -> CommandOutcome:
+        # Asked first, as the loop asks before each model call: a run whose budget is spent starts
+        # no command, and creates no workspace for one (DECISION-91ec4213).
+        if self._account is not None and not self._account.may_run():
+            raise BudgetExceeded("this run's budget is spent: the command did not start")
         handle = await self.ensure()
         await self._refuse_if_full(handle, "run_command")
         command_id = str(uuid.uuid4())
@@ -349,9 +357,10 @@ class RunWorkspace:
             # class, and what it may have written is read before the next use (M40 caveat 2,
             # DECISION-825b81a6). The provider's own error still reaches the tool.
             self._stale = True
+            duration = time.monotonic() - started
             failed = CommandOutcome(exit_code=None, stdout=b"", stderr=b"", stdout_cut=False, stderr_cut=False,
-                                    stdout_bytes=0, stderr_bytes=0, duration=time.monotonic() - started,
-                                    killed="error")
+                                    stdout_bytes=0, stderr_bytes=0, duration=duration, killed="error",
+                                    cpu_seconds=charged(None, "error", duration, handle.spec.cpus))
             with contextlib.suppress(Exception):  # the provider's failure, not its record, is reported
                 await _completed(asyncio.ensure_future(self._finished(
                     handle, command_id, argv, tool_call_id, started_at, started, failed,
@@ -391,9 +400,10 @@ class RunWorkspace:
         if not running.done():
             running.cancel()
             running.add_done_callback(lambda task: task.cancelled() or task.exception())
+        duration = time.monotonic() - started
         outcome = CommandOutcome(exit_code=None, stdout=b"", stderr=b"", stdout_cut=False, stderr_cut=False,
-                                 stdout_bytes=0, stderr_bytes=0, duration=time.monotonic() - started,
-                                 killed="cancelled")
+                                 stdout_bytes=0, stderr_bytes=0, duration=duration, killed="cancelled",
+                                 cpu_seconds=charged(None, "cancelled", duration, handle.spec.cpus))
         self._stale = True
         try:
             await self._finished(handle, command_id, argv, tool_call_id, started_at, started, outcome,
@@ -404,9 +414,11 @@ class RunWorkspace:
     async def _finished(self, handle: WorkspaceHandle, command_id: str, argv: list[str], tool_call_id: str | None,
                         started_at: Any, started: float, outcome: CommandOutcome, *,
                         kill_error: str | None = None) -> None:
-        """Records the command and tells the run, whatever fails first: a failed record still
-        leaves the end told (pre-review D4). The size is read before this, by the caller."""
+        """Records the command, charges it and tells the run, whatever fails first: a failed record
+        still leaves the end told (pre-review D4), and the charge is drawn after the record and
+        before the result reaches the model (FR-157). The size is read before this, by the caller."""
         failure: Exception | None = None
+        cpu_usec = round(outcome.cpu_seconds * 1_000_000)
         try:
             await self._record("record_command", CommandRecord(
                 command_id=command_id, workspace_id=handle.workspace_id, tenant_id=self.tenant_id,
@@ -414,16 +426,21 @@ class RunWorkspace:
                 exit_code=outcome.exit_code, killed=outcome.killed, started_at=started_at,
                 ended_at=max(now(), started_at), stdout_bytes=outcome.stdout_bytes,
                 stderr_bytes=outcome.stderr_bytes, stdout_kept=len(outcome.stdout), stderr_kept=len(outcome.stderr),
-                limit=outcome.limit))
+                limit=outcome.limit, cpu_usec=cpu_usec))
         except Exception as exc:  # noqa: BLE001
             failure = failure or exc
+        cost = None
+        if self._account is not None:
+            with contextlib.suppress(Exception):  # accounting never fails a run (NFR-11)
+                cost = self._account.charge(cpu_usec)
         self._space.last_command = command_id
         await self._emit(EventType.WORKSPACE_COMMAND_ENDED, {
             "command_id": command_id, "workspace_id": handle.workspace_id, "tool_call_id": tool_call_id,
             "exit_code": outcome.exit_code, "killed": outcome.killed, "limit": outcome.limit, "kill_error": kill_error,
             "duration_ms": round((time.monotonic() - started) * 1000, 3),
             "stdout_bytes": outcome.stdout_bytes, "stderr_bytes": outcome.stderr_bytes,
-            "stdout_cut": outcome.stdout_cut, "stderr_cut": outcome.stderr_cut})
+            "stdout_cut": outcome.stdout_cut, "stderr_cut": outcome.stderr_cut,
+            "cpu_seconds": cpu_usec / 1_000_000, "cost_usd": None if cost is None else str(cost)})
         if failure is not None:
             # The model is told the command ran, so it does not run it again thinking it did not.
             raise RuntimeError(f"the command ran (exit code {outcome.exit_code}, killed {outcome.killed}), but "
@@ -492,7 +509,7 @@ class WorkspaceManager:
         self._reaping: asyncio.Future[None] | None = None
 
     def for_run(self, spec: WorkspaceSpec, tenant_id: str, project_id: str, run_id: str, emit: Emit,
-                call: Call, *, plan_run_id: str | None = None) -> RunWorkspace:
+                call: Call, *, plan_run_id: str | None = None, account: Any = None) -> RunWorkspace:
         """A run's binding. Under `scope="plan"` every run of one top-level run (`plan_run_id`,
         or the run itself) and one spec shares a workspace, recorded under that top-level run; no
         other plan's run reaches it (FR-152)."""
@@ -505,7 +522,7 @@ class WorkspaceManager:
             space = self._plans.get(key)
             if space is None:
                 space = self._plans[key] = _Space(spec, tenant_id, project_id, top)
-        return RunWorkspace(self, spec, tenant_id, project_id, run_id, emit, call, space)
+        return RunWorkspace(self, spec, tenant_id, project_id, run_id, emit, call, space, account)
 
     def refuse_if_closed(self) -> None:
         if self._closed:
