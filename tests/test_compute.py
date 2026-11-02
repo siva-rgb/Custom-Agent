@@ -278,12 +278,17 @@ def test_the_wrapper_line_is_taken_off_only_when_it_carries_the_nonce():
     stream = b"out\n" + _line(5, 3)
     kept.data += stream
     kept.count, kept.tail = len(stream), stream
-    assert kept.take_reading(NONCE) == (5, 3)
+    # The line names exit code 3; the reading alone is taken (M43 review: the code was discarded).
+    assert kept.take_reading(NONCE) == (True, 5)
     assert (bytes(kept.data), kept.count) == (b"out\n", 4)
     forged = b"out\n" + _line(5, 3, OTHER)
     kept.data, kept.count, kept.tail = bytearray(forged), len(forged), forged
-    assert kept.take_reading(NONCE) is None
+    assert kept.take_reading(NONCE) == (False, None)
     assert bytes(kept.data) == forged, "a forged line is the command's own output, and stays"
+    # An authentic line whose container gave no CPU figure: found, with no reading.
+    empty = b"out\n\n" + dk.MARK + b" " + NONCE + b"  0\n"
+    kept.data, kept.count, kept.tail = bytearray(empty), len(empty), empty
+    assert kept.take_reading(NONCE) == (True, None) and bytes(kept.data) == b"out\n"
 
 
 def test_each_command_gets_a_nonce_of_its_own_of_128_bits():
@@ -867,17 +872,23 @@ async def test_on_docker_a_line_printed_just_before_a_timeout_is_never_read():
 @pytest.mark.parametrize("layer", ["provider kill", "command removal", "workspace sweep"])
 async def test_on_docker_the_cancel_check_without_one_layer_fails_or_is_covered(monkeypatch, layer):
     """FR-155: each layer alone. A removal the check survives is declared covered by the layers
-    EX36.CANCEL_LAYERS names, and the check fails once those are taken away too."""
+    EX36.CANCEL_LAYERS names. One example run per test: two in one passed faulthandler's 300 s
+    (M44, DECISION-f7114b8b)."""
     without_layer(monkeypatch, layer)
     checks, _ = await EX36.offline("memory", "docker", tenant=tenancy(), quiet=True, seed=5)
-    passed = {label: p for label, p, _ in checks}[CANCEL]
+    assert {label: p for label, p, _ in checks}[CANCEL] is bool(EX36.CANCEL_LAYERS[layer])
+
+
+@pytest.mark.docker
+@pytest.mark.parametrize("layer", ["provider kill", "command removal", "workspace sweep"])
+async def test_on_docker_the_cancel_check_without_a_layer_and_its_cover_fails(monkeypatch, layer):
+    """FR-155: the check fails once the layers EX36.CANCEL_LAYERS names as a layer's cover are taken
+    away too."""
     covered_by = EX36.CANCEL_LAYERS[layer]
     if not covered_by:
-        assert passed is False
-        return
-    assert passed is True
-    for other in covered_by:
-        without_layer(monkeypatch, other)
+        pytest.skip("no cover declared: the check without the layer alone already fails")
+    for each in (layer, *covered_by):
+        without_layer(monkeypatch, each)
     checks, _ = await EX36.offline("memory", "docker", tenant=tenancy(), quiet=True, seed=5)
     assert {label: p for label, p, _ in checks}[CANCEL] is False
 
@@ -958,12 +969,16 @@ async def test_on_docker_the_nonce_is_beyond_the_commands_reach(monkeypatch):
 
 
 @pytest.mark.docker
+@pytest.mark.parametrize("stopped", ["before its line", "mid-line"])
 async def test_on_docker_a_command_with_no_authentic_line_reports_no_exit_code_and_is_charged_its_ceiling(
-        monkeypatch):
-    """A wrapper stopped before its line, however: here one that never prints it."""
+        monkeypatch, stopped):
+    """A wrapper stopped before its line, however: one that never prints it, and one stopped part way
+    through it, its nonce cut in half and no newline after (M43 review, DECISION-88dea779)."""
     docker, handle = await _docker_handle(cpus=1.5)
     # Only this command's wrapper: the workspace's own helpers ran under the real one.
-    monkeypatch.setattr(dk, "WRAPPER", dk.WRAPPER.split("while kill")[0] + "exit $c")
+    head = dk.WRAPPER.split("while kill")[0]
+    cut = "printf '\\n%s %.16s' " + dk.MARK.decode() + ' "$n"; ' if stopped == "mid-line" else ""
+    monkeypatch.setattr(dk, "WRAPPER", head + cut + "exit $c")
     try:
         outcome = await docker.run(handle, ["python", "-c", BURN_2], timeout=60)
     finally:

@@ -115,7 +115,7 @@ ends, and a record made meanwhile is lost.
   that no other python or node process is running first. Run probes with `-p no:cacheprovider`.
   **Do not kill a gate mid-run.**
 - **The gates run `FakeProvider` only:** `pytest.ini` deselects tests marked `docker`. M43's own
-  Docker tests: `pytest tests/test_compute.py -m docker -p no:cacheprovider`, **about 75 minutes**
+  Docker tests: `pytest tests/test_compute.py -m docker -p no:cacheprovider`, **about 25 minutes**
   (the six cancel-layer tests run example 36 on Docker nine times). The measurement tests alone:
   `-m docker -k "not layer and not example_37"`, about 2 minutes.
 - **Prefer runtime mutation,** leaving no repository file changed. Restore any edited file byte for
@@ -132,7 +132,7 @@ can record different hashes and one reads stale.
 **Cleanup order:** `workspace_commands`, then `workspaces`, then `interruption_decisions`,
 `interruptions` and `standing_decisions`, then `artifacts` by `source_run`, `plan_node_states`,
 `plan_versions`, `run_events`, `messages`, `execution_manifests`, then the runs, children first, by
-run id. Use tenant ids starting `SYN-m43r1`, and remove only rows of runs your probes recorded.
+run id. Use tenant ids starting `SYN-m43r2` (corrected after the round; the round 2 reviewer used it), and remove only rows of runs your probes recorded.
 
 ## Task under review
 

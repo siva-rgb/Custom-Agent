@@ -31,15 +31,17 @@ import time
 import uuid
 from collections import deque
 from collections.abc import Awaitable, Callable
+from functools import partial
 from typing import Any
 from urllib.parse import quote
 
 from ..errors import BudgetExceeded, WorkspaceRefused, WorkspaceUnavailable
 from ..events import EventType
+from ..handle import StoredEmit, settle, through
 from . import (MEASURE_SECONDS, SETUP_SECONDS, CommandOutcome, WorkspaceHandle, WorkspaceProvider, WorkspaceSpec,
                charged)
 from .owner import is_dead, this_owner
-from .records import CommandRecord, WorkspaceRecord, now
+from .records import CommandRecord, ConnectionRecord, WorkspaceRecord, now
 
 Emit = Callable[[EventType, dict[str, Any]], Awaitable[Any]]
 Call = Callable[..., Awaitable[Any]]
@@ -48,22 +50,6 @@ Call = Callable[..., Awaitable[Any]]
 _REMOVE_SECONDS = 30.0
 _KILL_SECONDS = 10.0
 _MEASURE_SECONDS = MEASURE_SECONDS
-
-
-async def _completed(task: asyncio.Future[Any]) -> Any:
-    """Waits for `task` to finish even when the caller is cancelled meanwhile, then re-raises
-    that cancellation: work begun is never abandoned half done."""
-    cancelled = False
-    while not task.done():
-        try:
-            await asyncio.shield(task)
-        except asyncio.CancelledError:
-            if task.cancelled():
-                raise
-            cancelled = True
-    if cancelled:
-        raise asyncio.CancelledError()
-    return task.result()
 
 
 class _Slots:
@@ -102,7 +88,7 @@ class _Slots:
         try:
             await waiter.future
             if told is not None:
-                await _completed(told)  # the wait is told before anything is created
+                await through(told)  # the wait is told before anything is created
         except asyncio.CancelledError:
             # Cancelled waiting, or after its grant while the wait was told (M41 pre-review).
             with self._lock:
@@ -112,7 +98,7 @@ class _Slots:
             if granted:
                 self.give()
             if told is not None:
-                await _completed(told)  # the wait is told before the run's ending is
+                await through(told)  # the wait is told before the run's ending is
             raise
         return waiter.granted
 
@@ -154,6 +140,106 @@ class _Space:
         self.unread: str | None = None  # why the size could not be read, once it could not
         self.stale = False  # a command or write left the size unread; the next use reads it first
         self.last_command: str | None = None  # the last command that ended in it (FR-150)
+        # FR-162 (M44): with egress, its proxy's reports, recorded in order by one task; each command
+        # with the run that ran it, and the binding that created it for a connection of no command.
+        self.reports: asyncio.Queue[Any] | None = None
+        self.recorder: asyncio.Task[None] | None = None
+        self.commands: dict[str, _Binding] = {}
+        self.owner: _Binding | None = None
+        self.limit_row: str | None = None
+        self.proxy_ended = False  # its proxy died: no later command starts (F2, DECISION-26009e04)
+        # Round 1 (DECISION-a7a1b37b): F1, the recorder told to end after its current write; F3, an
+        # event being written, which a run's end waits for.
+        self.stop_booking = False
+        self.booking = asyncio.Lock()
+        self.limit_counted = 0  # what its limit row counts so far (DECISION-e510a5e3)
+        # Rounds 3 and 4 (DECISION-f7114b8b): the connections its recorder could not record, and the
+        # refusals at the limit reported so far, counted on its one `unrecorded` row; and whether its
+        # recorder has ended, after which a report is counted by a pass of its own.
+        self.unbooked = 0
+        self.limit_seen = 0
+        # Round 5 N6 (DECISION-7a3a2ae2): its id fixed before its first write; each write tries an
+        # update on it before an insert.
+        self.unrecorded_row = str(uuid.uuid4())
+        self.unrecorded_counted = 0
+        self.counting = asyncio.Lock()
+        self.booked = False
+        self.late: asyncio.Task[None] | None = None
+
+
+class _Binding:
+    """FR-162: the run a connection is recorded under, and its gate, shut once it has ended (F3)."""
+
+    def __init__(self, run_id: str, emit: Emit, call: Call) -> None:
+        self.run_id, self.emit, self.call = run_id, emit, call
+        self.gate = _Gate()
+
+
+class _Gate:
+    """F3 at the store (round 5 B1 and N1, DECISION-5c68ddfb): a run's connection events and its end,
+    decided under one thread lock. A write enters on its worker thread just before it begins; once
+    the gate is shut none does, and the run's end waits only for one already inside."""
+
+    def __init__(self) -> None:
+        self._lock = threading.Lock()
+        self._shut = False
+        self._inside = 0
+
+    def enter(self) -> bool:
+        with self._lock:
+            if self._shut:
+                return False
+            self._inside += 1
+            return True
+
+    def leave(self) -> None:
+        with self._lock:
+            self._inside -= 1
+
+    def busy(self) -> bool:
+        """A write is inside."""
+        with self._lock:
+            return self._inside > 0
+
+    def shut(self) -> None:
+        """Lets no write in from now on; one inside finishes."""
+        with self._lock:
+            self._shut = True
+
+
+async def _gated(binding: _Binding, kind: EventType, payload: dict[str, Any]) -> None:
+    """A connection's event, written only while its run's gate is open: on the worker thread, just
+    before the write, when the Runner's emitter writes there; else here, just before it is called."""
+    if isinstance(binding.emit, StoredEmit):
+        await binding.emit(kind, payload, binding.gate)
+        return
+    if not binding.gate.enter():
+        return
+    try:
+        await binding.emit(kind, payload)
+    finally:
+        binding.gate.leave()
+
+
+# Queued behind a proxy's reports (DECISION-a7a1b37b): its recorder's end (F1), and a finished
+# command, forgotten once every report naming it is booked (F7).
+_STOP = object()
+
+
+async def _no_event(kind: EventType, payload: dict[str, Any]) -> None:
+    return None
+
+
+class _Forget:
+    def __init__(self, command_id: str) -> None:
+        self.command_id = command_id
+
+
+class _Barrier:
+    """Reached once every report queued before it is booked: a run's end waits for it (F3)."""
+
+    def __init__(self) -> None:
+        self.reached = asyncio.get_running_loop().create_future()
 
 
 def _not_ready() -> WorkspaceUnavailable:
@@ -189,6 +275,7 @@ class RunWorkspace:
         self._account = account
         self.tenant_id, self.project_id, self.run_id = tenant_id, project_id, run_id
         self._emit, self._call = emit, call
+        self._binding = _Binding(run_id, emit, call)
         self._space = space if space is not None else _Space(spec, tenant_id, project_id, run_id)
         self.detached = False  # its run ended; a plan's workspace lives on without it
 
@@ -241,12 +328,12 @@ class RunWorkspace:
         except asyncio.CancelledError:
             # The run was cancelled: the creation is waited out first, as ever (FR-148).
             with contextlib.suppress(BaseException):
-                await _completed(creating)
+                await through(creating)
             raise
         if not creating.done():
             # Left to finish: it is the space's, which the run's end or aclose() removes.
             raise _not_ready()
-        return await _completed(creating)
+        return await through(creating)
 
     async def _waiting(self, held: int) -> None:
         with contextlib.suppress(Exception):
@@ -290,6 +377,14 @@ class RunWorkspace:
                 pass
             raise WorkspaceUnavailable(f"the workspace could not be recorded: {type(exc).__name__}") from None
         self.handle = handle
+        watch = getattr(provider, "watch_egress", None)
+        if self.spec.egress and watch is not None:
+            # FR-162: the proxy's reports, from its own output, recorded by the manager in order.
+            if space.owner is None:  # a plan's is its top-level run's, set with the space
+                space.owner = self._binding
+            space.reports = asyncio.Queue()
+            space.recorder = asyncio.ensure_future(self._manager.book(space, handle))
+            watch(handle, partial(self._manager.arrived, space, handle))
         await self._emit(EventType.WORKSPACE_CREATED, {
             "workspace_id": handle.workspace_id, "provider": provider.name, "image": self.spec.image,
             "scope": self.spec.scope})
@@ -333,9 +428,14 @@ class RunWorkspace:
         # no command, and creates no workspace for one (DECISION-91ec4213).
         if self._account is not None and not self._account.may_run():
             raise BudgetExceeded("this run's budget is spent: the command did not start")
+        if self._space.proxy_ended:
+            # F2: egress never stops silently; the workspace fails closed (DECISION-26009e04).
+            raise WorkspaceUnavailable("this workspace's egress proxy ended: it runs no further command")
         handle = await self.ensure()
         await self._refuse_if_full(handle, "run_command")
         command_id = str(uuid.uuid4())
+        # FR-162: a connection naming this command is this run's (DECISION-88dea779).
+        self._space.commands[command_id] = self._binding
         await self._emit(EventType.WORKSPACE_COMMAND_STARTED, {
             "command_id": command_id, "workspace_id": handle.workspace_id, "tool_call_id": tool_call_id,
             "argv": list(argv)})
@@ -344,12 +444,17 @@ class RunWorkspace:
         # first, and not the command's own ending half way (FR-148).
         running = asyncio.ensure_future(self._manager.provider.run(handle, list(argv), timeout=timeout,
                                                                    stdin=stdin, command_id=command_id))
+        reports = self._space.reports
+        if reports is not None:
+            # F7: forgotten behind every report its provider mapped to it, its token retired by
+            # the time its provider's call ends (DECISION-a7a1b37b).
+            running.add_done_callback(lambda _: reports.put_nowait(_Forget(command_id)))
         try:
             outcome = await asyncio.shield(running)
         except asyncio.CancelledError:
             # Its run was cancelled: the command is killed and recorded so before the cancellation
             # goes on (FR-140, FR-148; pre-review D3).
-            await _completed(asyncio.ensure_future(
+            await through(asyncio.ensure_future(
                 self._cancelled(handle, command_id, running, argv, tool_call_id, started_at, started)))
             raise
         except Exception as exc:
@@ -362,7 +467,7 @@ class RunWorkspace:
                                     stdout_bytes=0, stderr_bytes=0, duration=duration, killed="error",
                                     cpu_seconds=charged(None, "error", duration, handle.spec.cpus))
             with contextlib.suppress(Exception):  # the provider's failure, not its record, is reported
-                await _completed(asyncio.ensure_future(self._finished(
+                await through(asyncio.ensure_future(self._finished(
                     handle, command_id, argv, tool_call_id, started_at, started, failed,
                     kill_error=type(exc).__name__)))
             raise
@@ -373,10 +478,10 @@ class RunWorkspace:
             # abandoned and left to the next use, never the record (M40 round 1, DECISION-f3e99c07).
             self._stale = True
             with contextlib.suppress(Exception):  # the cancellation decides how the run ends
-                await _completed(asyncio.ensure_future(
+                await through(asyncio.ensure_future(
                     self._finished(handle, command_id, argv, tool_call_id, started_at, started, outcome)))
             raise
-        await _completed(asyncio.ensure_future(
+        await through(asyncio.ensure_future(
             self._finished(handle, command_id, argv, tool_call_id, started_at, started, outcome)))
         return outcome
 
@@ -472,7 +577,7 @@ class RunWorkspace:
         source = f"workspace://{handle.workspace_id}/{quote(posixpath.normpath(path), safe='/')}"
         if command_id is not None:
             source += f"?command={command_id}"
-        return await _completed(asyncio.ensure_future(put(data, source)))
+        return await through(asyncio.ensure_future(put(data, source)))
 
     async def list(self, path: str, limit: int) -> tuple[list[tuple[str, str, int]], int]:
         handle = await self.ensure()
@@ -482,11 +587,15 @@ class RunWorkspace:
         """The run is over: its own workspace is removed and recorded, unless `keep` holds it; a
         plan's workspace lives on until its top-level run ends (FR-151). Never raises but for its
         caller's own cancellation, and only once the removal is done: it runs on every path to a
-        run's terminal event, before that event (pre-review D2)."""
+        run's terminal event, before that event (pre-review D2). Cancelled too, what its proxy
+        reported is booked first and an event being written lands before that terminal event
+        (DECISION-f7114b8b)."""
         self.detached = True
-        if self.spec.scope == "plan":
-            return
-        await self._manager.hold_or_remove(self._space, reason, emit, self._call)
+        try:
+            if self.spec.scope != "plan":
+                await self._manager.hold_or_remove(self._space, reason, emit, self._call)
+        finally:
+            await self._manager.settled(self._space, self._binding)
 
 
 class WorkspaceManager:
@@ -507,22 +616,184 @@ class WorkspaceManager:
         self._closed = False
         self._reaped = False
         self._reaping: asyncio.Future[None] | None = None
+        self._late: set[asyncio.Task[None]] = set()  # passes counting reports after a recorder ended
+        self._stop_late = False  # set by aclose past its bound (round 5 N2)
 
     def for_run(self, spec: WorkspaceSpec, tenant_id: str, project_id: str, run_id: str, emit: Emit,
-                call: Call, *, plan_run_id: str | None = None, account: Any = None) -> RunWorkspace:
+                call: Call, *, plan_run_id: str | None = None, account: Any = None,
+                top: tuple[Emit, Call] | None = None) -> RunWorkspace:
         """A run's binding. Under `scope="plan"` every run of one top-level run (`plan_run_id`,
         or the run itself) and one spec shares a workspace, recorded under that top-level run; no
-        other plan's run reaches it (FR-152)."""
+        other plan's run reaches it (FR-152). `top` is that run's emitter and store call: a
+        connection of no command is its (FR-162, DECISION-e510a5e3)."""
         space = None
         if spec.scope == "plan":
             # A plan whose top-level run already ended its workspaces is over: the run is its own
             # top, so nothing it creates outlives it (M41 pre-review, DECISION-b1498111).
-            top = str(run_id if plan_run_id is None or str(plan_run_id) in self._ended else plan_run_id)
-            key = (tenant_id, project_id, top, _spec_key(spec))
+            top_id = str(run_id if plan_run_id is None or str(plan_run_id) in self._ended else plan_run_id)
+            key = (tenant_id, project_id, top_id, _spec_key(spec))
             space = self._plans.get(key)
             if space is None:
-                space = self._plans[key] = _Space(spec, tenant_id, project_id, top)
+                space = self._plans[key] = _Space(spec, tenant_id, project_id, top_id)
+                if top_id == str(run_id):
+                    space.owner = _Binding(top_id, emit, call)
+                elif top is not None:
+                    space.owner = _Binding(top_id, *top)
+                else:  # no emitter of its own given: its rows, under it, with no event
+                    space.owner = _Binding(top_id, _no_event, call)
         return RunWorkspace(self, spec, tenant_id, project_id, run_id, emit, call, space, account)
+
+    async def book(self, space: _Space, handle: WorkspaceHandle) -> None:
+        """FR-162: records each report of a workspace's proxy, in order, for as long as it lives. A
+        report that cannot be recorded never fails the run: a connection whose row the store refused
+        is counted on the workspace's `unrecorded` row (DECISION-f7114b8b)."""
+        try:
+            while True:
+                report = await space.reports.get()
+                if report is _STOP or space.stop_booking:
+                    # F1: ended by its marker, or told to; never by cancel (DECISION-a7a1b37b). Told
+                    # to, what is left is counted in one row (DECISION-e510a5e3).
+                    if space.stop_booking:
+                        await self._unrecorded(space, handle, report)
+                    return
+                if isinstance(report, _Forget):
+                    space.commands.pop(report.command_id, None)
+                    continue
+                if isinstance(report, _Barrier):
+                    if not report.reached.done():
+                        report.reached.set_result(None)
+                    continue
+                await self._try_book(space, handle, report)
+        finally:
+            # Round 3 B: what is queued behind its marker is counted, as is what the store refused;
+            # what arrives from now on is counted by a pass of its own (DECISION-f7114b8b).
+            space.booked = True
+            await self._unrecorded(space, handle)
+
+    def arrived(self, space: _Space, handle: WorkspaceHandle, report: Any) -> None:
+        """FR-162: a report of a workspace's proxy, queued for its recorder; once that has ended, a
+        pass of its own counts it on the `unrecorded` row (DECISION-f7114b8b)."""
+        space.reports.put_nowait(report)
+        if space.booked and (space.late is None or space.late.done()):
+            space.late = asyncio.ensure_future(self._unrecorded(space, handle))
+            self._late.add(space.late)
+            space.late.add_done_callback(self._late.discard)
+
+    async def _try_book(self, space: _Space, handle: WorkspaceHandle, report: dict) -> None:
+        if report.get("kind") == "limit":
+            space.limit_seen = max(space.limit_seen, report.get("count") or 0)
+        try:
+            await self._book(space, handle, report)
+        except Exception:  # noqa: BLE001 - counted, never the run's failure (NFR-11, DECISION-f7114b8b)
+            if report.get("kind") == "connection":
+                space.unbooked += 1
+
+    async def _unrecorded(self, space: _Space, handle: WorkspaceHandle, first: Any = None) -> None:
+        """Past its removal's bound, or once its recorder has ended: every connection left in the
+        queue, and every refusal at the limit its row does not count, counted on the one `unrecorded`
+        row (DECISION-e510a5e3); then a tunnel's end still writes its bytes, and a proxy's death its
+        row (DECISION-f7114b8b). Ends once the queue is empty."""
+        left = [] if first is None else [first]
+        while True:
+            while not space.reports.empty():
+                left.append(space.reports.get_nowait())
+            reports = [r for r in left if isinstance(r, dict)]
+            for barrier in (r for r in left if isinstance(r, _Barrier) and not r.reached.done()):
+                barrier.reached.set_result(None)
+            for report in reports:
+                if report.get("kind") == "connection":
+                    space.unbooked += 1
+                elif report.get("kind") == "limit":
+                    space.limit_seen = max(space.limit_seen, report.get("count") or 0)
+                elif report.get("kind") == "ended":
+                    space.proxy_ended = True
+            # The count first: a tunnel's bytes wait on the store that failed to keep up.
+            await self._count_unrecorded(space, handle)
+            for report in reports:
+                if self._stop_late:  # N2: told to by aclose past its bound, after its current write
+                    return
+                if report.get("kind") in ("end", "ended"):
+                    await self._try_book(space, handle, report)
+            if space.reports.empty() or self._stop_late:
+                return
+            left = []
+
+    async def _count_unrecorded(self, space: _Space, handle: WorkspaceHandle) -> None:
+        """A workspace's one `unrecorded` row: written once there is anything to count, its count
+        updated as more is (DECISION-f7114b8b). Its id is fixed before its first write and each write
+        tries an update on it first, so an insert that committed and then raised is updated, never
+        written twice (round 5 N6, DECISION-7a3a2ae2)."""
+        async with space.counting:
+            count = space.unbooked + max(0, space.limit_seen - space.limit_counted)
+            if count <= space.unrecorded_counted:
+                return
+            binding, store = space.owner, self.store()
+            with contextlib.suppress(Exception):  # the store is what failed to keep up
+                if not await binding.call(store.update_connection, space.tenant_id, space.project_id,
+                                          space.unrecorded_row, count=count):
+                    await binding.call(store.record_connection, ConnectionRecord(
+                        connection_id=space.unrecorded_row, workspace_id=handle.workspace_id,
+                        tenant_id=space.tenant_id, project_id=space.project_id, run_id=binding.run_id,
+                        command_id=None, host=None, port=None, address=None, allowed=False, reason="unrecorded",
+                        at=now(), count=count))
+                space.unrecorded_counted = count
+
+    async def _book(self, space: _Space, handle: WorkspaceHandle, report: dict) -> None:
+        store, kind = self.store(), report.get("kind")
+        command_id = report.get("command_id")
+        # A token naming no command was mapped to none by its provider: the workspace's own run.
+        binding = space.commands.get(command_id) or space.owner
+        run_id, call = binding.run_id, binding.call
+        if kind == "end":
+            await call(store.update_connection, space.tenant_id, space.project_id, report["id"],
+                       bytes_out=report.get("bytes_out"), bytes_in=report.get("bytes_in"))
+            return
+        if kind == "ended":
+            space.proxy_ended = True
+        if kind == "limit" and space.limit_row is not None:
+            await call(store.update_connection, space.tenant_id, space.project_id, space.limit_row,
+                       count=report["count"])
+            space.limit_counted = report["count"]
+            return
+        if kind not in ("connection", "limit", "ended"):
+            return
+        limit, ended = kind == "limit", kind == "ended"
+        record = ConnectionRecord(
+            connection_id=report["id"] if kind == "connection" else str(uuid.uuid4()),
+            workspace_id=handle.workspace_id,
+            tenant_id=space.tenant_id, project_id=space.project_id, run_id=run_id, command_id=command_id,
+            host=report.get("host"), port=report.get("port"), address=report.get("address"),
+            allowed=bool(kind == "connection" and report.get("allowed")),
+            reason="connection_limit" if limit else "proxy_ended" if ended else report["reason"],
+            at=_when(report.get("at")),
+            count=report["count"] if limit else None)
+        try:
+            await call(store.record_connection, record)
+        except Exception:
+            if not ended:
+                raise
+            # Round 5 N3: a proxy's death is never silent -- its row refused, it is counted on the
+            # `unrecorded` row and its event still written (DECISION-0d5473ef).
+            space.unbooked += 1
+        if limit:
+            space.limit_row, space.limit_counted = record.connection_id, record.count
+        async with space.booking:
+            # F3: once its run has ended, the row alone (DECISION-a7a1b37b): its gate, shut, lets
+            # no event in (DECISION-5c68ddfb).
+            with contextlib.suppress(Exception):  # the row is the record
+                # F4: the limit's one event marks it reached; the row carries the count.
+                await _gated(binding, EventType.WORKSPACE_CONNECTION, {
+                    "connection_id": record.connection_id, "workspace_id": record.workspace_id,
+                    "command_id": record.command_id, "host": record.host, "port": record.port,
+                    "address": record.address, "allowed": record.allowed, "reason": record.reason})
+
+    async def _booked(self, space: _Space) -> None:
+        """The proxy's last reports recorded before its workspace's removal is, within a bound: its
+        recorder ends at a marker queued behind them, or is told to past the bound (F1)."""
+        if space.recorder is None:
+            return
+        space.reports.put_nowait(_STOP)
+        await settle(space.recorder, _REMOVE_SECONDS, lambda: setattr(space, "stop_booking", True))
 
     def refuse_if_closed(self) -> None:
         if self._closed:
@@ -532,7 +803,41 @@ class WorkspaceManager:
         """FR-151: a top-level run ended, and with it the workspaces its plan's children shared."""
         self._ended.add(str(run_id))
         for key in [key for key in self._plans if key[2] == str(run_id)]:
-            await self.hold_or_remove(self._plans.pop(key), "run_ended", emit, call)
+            space = self._plans.pop(key)
+            await self.hold_or_remove(space, "run_ended", emit, call)
+            if space.owner is not None and space.owner.run_id == str(run_id):
+                await self.settled(space, space.owner)
+
+    async def settled(self, space: _Space, binding: _Binding) -> None:
+        """F3: a run is ending. What its workspace's proxy reported so far is booked with its events
+        first, within the bound -- one that lives on was not drained -- then its connections are
+        rows alone, and an event already being written lands before its terminal event
+        (DECISION-a7a1b37b). Cancelled meanwhile, it still does all of that, then raises the cancel
+        (round 5 B1, DECISION-0d5473ef)."""
+        await through(self._settle(space, binding))
+
+    async def _settle(self, space: _Space, binding: _Binding) -> None:
+        loop = asyncio.get_running_loop()
+        until = loop.time() + _REMOVE_SECONDS
+        try:
+            if space.recorder is not None and not space.recorder.done():
+                barrier = _Barrier()
+                space.reports.put_nowait(barrier)
+                await asyncio.wait({barrier.reached}, timeout=_REMOVE_SECONDS)
+        finally:
+            # From here its connections are rows alone: an event not yet begun is shut out
+            # (DECISION-5c68ddfb).
+            binding.gate.shut()
+        try:
+            await asyncio.wait_for(space.booking.acquire(), max(0.0, until - loop.time()))
+        except TimeoutError:
+            # Round 5 N1: past the bound, only an event already inside its write is waited for; it
+            # lands first, bounded as every store write is (DECISION-5c68ddfb).
+            if binding.gate.busy():
+                async with space.booking:
+                    pass
+            return
+        space.booking.release()
 
     def forget(self, run_id: str) -> None:
         """The run is no longer under way: the Runner's own check now names it ended."""
@@ -540,19 +845,25 @@ class WorkspaceManager:
 
     async def hold_or_remove(self, space: _Space, reason: str, emit: Emit | None, call: Call | None) -> None:
         if space.spec.keep and reason == "run_ended":
-            if _under_way(space.creating):
-                with contextlib.suppress(Exception):
-                    await _completed(space.creating)
-            space.kept = space.handle is not None and not space.removed
+            await through(self._kept(space))
             return
         await self.finish(space, reason, emit, call)
+
+    @staticmethod
+    async def _kept(space: _Space) -> None:
+        """A kept workspace's creation waited out, then marked kept: one step under `through`, so a
+        cancel held during the wait never skips the mark (DECISION-1e35a472)."""
+        if _under_way(space.creating):
+            with contextlib.suppress(Exception):
+                await space.creating
+        space.kept = space.handle is not None and not space.removed
 
     async def finish(self, space: _Space, reason: str, emit: Emit | None, call: Call | None) -> None:
         """Removes a workspace, once, and records it; `emit` is None when no run is left to tell."""
         space.removed = True
         if space.ending is None:
             space.ending = asyncio.ensure_future(self._remove(space, reason, emit, call))
-        await _completed(space.ending)
+        await through(space.ending)
 
     async def _remove(self, space: _Space, reason: str, emit: Emit | None, call: Call | None) -> None:
         try:
@@ -568,6 +879,7 @@ class WorkspaceManager:
                 await asyncio.wait_for(self.provider.remove(handle), _REMOVE_SECONDS)
             except Exception:  # noqa: BLE001 - recorded as removed; what a provider left is reaped
                 pass
+            await self._booked(space)
             await self._record_removal(space.tenant_id, space.project_id, handle.workspace_id, reason, call)
             if emit is not None:
                 try:
@@ -612,6 +924,15 @@ class WorkspaceManager:
         for space in list(self.spaces):
             with contextlib.suppress(Exception):
                 await self.finish(space, "aclose", None, None)
+        if self._late:  # a report after its recorder ended, still being counted (DECISION-f7114b8b)
+            _, left = await asyncio.wait(set(self._late), timeout=_REMOVE_SECONDS)
+            if left:
+                # Round 5 N2: past its bound, told to stop after its current write, and cancelled; it
+                # ends unless inside a store write that never returns (DECISION-7a3a2ae2).
+                self._stop_late = True
+                for late in left:
+                    late.cancel()
+                await asyncio.wait(left, timeout=_REMOVE_SECONDS)
         try:
             left = await self.provider.list_owned({"agentsdk.runner": self.runner_id})
         except Exception:  # noqa: BLE001 - what the provider cannot list is reaped once this process is gone
@@ -654,6 +975,16 @@ class WorkspaceManager:
             await self._record_removal(handle.labels.get("agentsdk.tenant"), handle.labels.get("agentsdk.project"),
                                        handle.workspace_id, "reaped", None)
         self._reaped = True
+
+
+def _when(at: Any) -> Any:
+    """A report's time, or now when it gave none that reads."""
+    from datetime import datetime
+
+    try:
+        return datetime.fromisoformat(at)
+    except (TypeError, ValueError):
+        return now()
 
 
 def _spec_key(spec: WorkspaceSpec) -> str:

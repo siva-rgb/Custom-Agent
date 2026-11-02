@@ -30,7 +30,7 @@ from .context_policy import ContextPolicy
 from .errors import UnknownMcpServer, UnpricedModel, WorkspaceUnavailable, describe_exception
 from .events import EventSink, EventType, InMemoryEventSink, RunEvent
 from .executor import ToolExecutor
-from .handle import PublishingSink, RunControl, RunHandle, RunState
+from .handle import PublishingSink, RunControl, RunHandle, RunState, StoredEmit, through
 from .hooks import RuntimeHook
 from .identity import PrincipalContext
 from .loop import AgentLoop, RunMeter, sent_model
@@ -538,13 +538,21 @@ class Runner:
     async def _end_workspace(self, run_id: str, events: EventSink, control: RunControl) -> None:
         """FR-140, FR-151: a run's workspace is removed, and recorded so, before the run's
         terminal event, whatever its status -- unless `keep` holds it -- and so are the plan
-        workspaces its children shared, when it is their top-level run. Never raises."""
+        workspaces its children shared, when it is their top-level run. Never raises but for its
+        caller's own cancellation, and that only once both are done: a cancel landing meanwhile is
+        held until then, and a cancel out of its own workspace's end still ends its plans' (round 5
+        B2, DECISION-0d5473ef)."""
+        await through(self._end_workspaces(run_id, events, control))
+
+    async def _end_workspaces(self, run_id: str, events: EventSink, control: RunControl) -> None:
         emit = partial(self._safe_emit_kind, events, control)
         workspace = self._workspace_runs.pop(str(run_id), None)
-        if workspace is not None:
-            await workspace.end("run_ended", emit)
-        if self._workspaces is not None:
-            await self._workspaces.end_plans(str(run_id), emit, control.store)
+        try:
+            if workspace is not None:
+                await workspace.end("run_ended", emit)
+        finally:
+            if self._workspaces is not None:
+                await self._workspaces.end_plans(str(run_id), emit, control.store)
 
     async def release_workspace(self, tenant_id: str, project_id: str, workspace_id: str) -> bool:
         """FR-151: removes a kept workspace (`WorkspaceSpec(keep=True)`) of this tenant and project
@@ -1050,7 +1058,10 @@ class Runner:
                 return await self._cancelled(scope, events, meter, control, config.budget_lease)
             reason = describe_exception(exc)
             if not control.terminal_written:
-                await self._end_workspace(scope.run_id, events, control)
+                try:
+                    await self._end_workspace(scope.run_id, events, control)
+                except asyncio.CancelledError:
+                    pass  # cancelled as its workspace ended: its failure came first (DECISION-0d5473ef)
             already_terminal = control.terminal_written
             control.terminal = True
             if not already_terminal:
@@ -1100,7 +1111,10 @@ class Runner:
         in flight, that call may be billed and reports no usage, so the cost is
         unknown rather than understated (P2-D7, NFR-11).
         """
-        await self._end_workspace(scope.run_id, events, control)
+        try:
+            await self._end_workspace(scope.run_id, events, control)
+        except asyncio.CancelledError:
+            pass  # cancelled again as its workspace ended: it ends cancelled all the same (DECISION-f7114b8b)
         control.terminal = True
         reason = _cancellation_reason(control.reason)
         cost = None if control.cancelled_in_flight else meter.cost_usd
@@ -1262,10 +1276,14 @@ class Runner:
             # way here, in this tenancy; otherwise the run is its own top (DECISION-b1498111).
             top = self._live.get(str(config.ledger_run_id)) if config.ledger_run_id is not None else None
             in_plan = top is not None and (top[2].tenant_id, top[2].project_id) == (scope.tenant_id, scope.project_id)
+            # Its connections' events written as StoredEmit, which a run's end can gate on the worker
+            # thread (round 5 B1, DECISION-5c68ddfb).
             workspace = self._workspaces.for_run(spec.workspace, scope.tenant_id, scope.project_id, run_id,
-                                                 partial(control.store, events.emit), control.store,
+                                                 StoredEmit(control.store, events.emit), control.store,
                                                  plan_run_id=config.ledger_run_id if in_plan else None,
-                                                 account=_Compute(config.budget_lease, meter))
+                                                 account=_Compute(config.budget_lease, meter),
+                                                 top=(StoredEmit(top[1].store, top[0].emit), top[1].store)
+                                                 if in_plan else None)
             self._workspace_runs[run_id] = workspace
             extended = ToolRegistry()
             for name in registry.names():

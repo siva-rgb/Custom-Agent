@@ -58,6 +58,33 @@ class CommandRecord:
         return asdict(self)
 
 
+@dataclass(frozen=True)
+class ConnectionRecord:
+    """FR-162 (M44, migration 0024): one connection through a workspace's proxy, allowed or refused,
+    from the proxy's own report. `command_id` is None when its token named no command; a
+    `connection_limit` row stands for every connection refused at the limit, `count` of them, and an
+    `unrecorded` row for every report not recorded within the removal's bound (DECISION-e510a5e3)."""
+
+    connection_id: str
+    workspace_id: str
+    tenant_id: str
+    project_id: str
+    run_id: str
+    command_id: str | None
+    host: str | None
+    port: int | None
+    address: str | None
+    allowed: bool
+    reason: str
+    at: datetime
+    bytes_out: int | None = None
+    bytes_in: int | None = None
+    count: int | None = None
+
+    def as_row(self) -> dict[str, Any]:
+        return asdict(self)
+
+
 def now() -> datetime:
     return datetime.now(timezone.utc)
 
@@ -69,6 +96,7 @@ class InMemoryWorkspaceStore:
         self._lock = threading.Lock()
         self._spaces: dict[str, WorkspaceRecord] = {}
         self._commands: list[CommandRecord] = []
+        self._connections: dict[str, ConnectionRecord] = {}
 
     def record_workspace(self, record: WorkspaceRecord) -> None:
         with self._lock:
@@ -97,6 +125,38 @@ class InMemoryWorkspaceStore:
             if space is None or (space.tenant_id, space.project_id) != (record.tenant_id, record.project_id):
                 raise ValueError(f"no workspace {record.workspace_id} in this tenant and project")
             self._commands.append(record)
+
+    def record_connection(self, record: ConnectionRecord) -> None:
+        with self._lock:
+            space = self._spaces.get(record.workspace_id)
+            if space is None or (space.tenant_id, space.project_id) != (record.tenant_id, record.project_id):
+                raise ValueError(f"no workspace {record.workspace_id} in this tenant and project")
+            if record.connection_id in self._connections:
+                raise ValueError(f"connection {record.connection_id} is already recorded")
+            if record.reason == "unrecorded" and any(  # migration 0025's index (DECISION-7a3a2ae2)
+                    c.reason == "unrecorded" and c.workspace_id == record.workspace_id
+                    for c in self._connections.values()):
+                raise ValueError(f"workspace {record.workspace_id} already has its unrecorded row")
+            self._connections[record.connection_id] = record
+
+    def update_connection(self, tenant_id: str, project_id: str, connection_id: str, *,
+                          bytes_out: int | None = None, bytes_in: int | None = None,
+                          count: int | None = None) -> bool:
+        """A tunnel's bytes when it ends, or a limit row's count: the only later writes a row takes."""
+        with self._lock:
+            record = self._connections.get(connection_id)
+            if record is None or (record.tenant_id, record.project_id) != (tenant_id, project_id):
+                return False
+            changes = {k: v for k, v in (("bytes_out", bytes_out), ("bytes_in", bytes_in), ("count", count))
+                       if v is not None}
+            self._connections[connection_id] = replace(record, **changes)
+            return True
+
+    def connections(self, tenant_id: str, project_id: str, run_id: str | None = None) -> list[ConnectionRecord]:
+        with self._lock:
+            return sorted((c for c in self._connections.values()
+                           if (c.tenant_id, c.project_id) == (tenant_id, project_id)
+                           and (run_id is None or c.run_id == run_id)), key=lambda c: c.at)
 
     def workspaces(self, tenant_id: str, project_id: str, run_id: str | None = None) -> list[WorkspaceRecord]:
         with self._lock:

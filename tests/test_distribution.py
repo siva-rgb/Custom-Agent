@@ -82,6 +82,8 @@ EXPECTED_EXAMPLES = {
     "36_sandbox_contention.py",
     # FR-158 (M43): compute in budgets.
     "37_compute.py",
+    # FR-163 (M44): egress by allow list.
+    "38_egress.py",
 }
 
 

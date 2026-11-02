@@ -2228,6 +2228,44 @@ class PostgresWorkspaceStore:
             if done.rowcount != 1:
                 raise ValueError(f"no workspace {record.workspace_id} in this tenant and project")
 
+    _CONNECTION = ("connection_id, workspace_id, tenant_id, project_id, run_id, command_id, host, port, address,"
+                   " allowed, reason, at, bytes_out, bytes_in, count")
+
+    def record_connection(self, record: Any) -> None:
+        """FR-162: tenancy from the workspace row, as a command's (migration 0024)."""
+        with _checkout(self._dsn) as conn, conn.transaction():
+            done = conn.execute(
+                f"INSERT INTO workspace_connections ({self._CONNECTION}) SELECT %s, w.workspace_id, w.tenant_id,"
+                " w.project_id, %s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s FROM workspaces w WHERE w.workspace_id = %s"
+                " AND w.tenant_id = %s AND w.project_id = %s",
+                (record.connection_id, record.run_id, record.command_id, record.host, record.port, record.address,
+                 record.allowed, record.reason, record.at, record.bytes_out, record.bytes_in, record.count,
+                 record.workspace_id, record.tenant_id, record.project_id))
+            if done.rowcount != 1:
+                raise ValueError(f"no workspace {record.workspace_id} in this tenant and project")
+
+    def update_connection(self, tenant_id: str, project_id: str, connection_id: str, *,
+                          bytes_out: int | None = None, bytes_in: int | None = None,
+                          count: int | None = None) -> bool:
+        with _checkout(self._dsn) as conn, conn.transaction():
+            done = conn.execute(
+                "UPDATE workspace_connections SET bytes_out = COALESCE(%s, bytes_out),"
+                " bytes_in = COALESCE(%s, bytes_in), count = COALESCE(%s, count)"
+                " WHERE connection_id = %s AND tenant_id = %s AND project_id = %s",
+                (bytes_out, bytes_in, count, connection_id, tenant_id, project_id))
+            return done.rowcount == 1
+
+    def connections(self, tenant_id: str, project_id: str, run_id: str | None = None) -> list[Any]:
+        from .workspace.records import ConnectionRecord
+
+        with _checkout(self._dsn) as conn:
+            rows = conn.execute(
+                f"SELECT {self._CONNECTION} FROM workspace_connections WHERE tenant_id = %s AND project_id = %s"
+                " AND (%s::uuid IS NULL OR run_id = %s::uuid) ORDER BY at",
+                (tenant_id, project_id, run_id, run_id)).fetchall()
+        return [ConnectionRecord(str(r[0]), str(r[1]), r[2], r[3], str(r[4]), None if r[5] is None else str(r[5]),
+                                 *r[6:]) for r in rows]
+
     def workspaces(self, tenant_id: str, project_id: str, run_id: str | None = None) -> list[Any]:
         with _checkout(self._dsn) as conn:
             rows = conn.execute(

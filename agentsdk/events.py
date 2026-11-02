@@ -76,6 +76,8 @@ class EventType(str, Enum):
     WORKSPACE_REFUSED = "WorkspaceRefused"
     WORKSPACE_WAITING = "WorkspaceWaiting"
     WORKSPACE_REMOVED = "WorkspaceRemoved"
+    # FR-162 (M44): a connection through a workspace's egress proxy, allowed or refused.
+    WORKSPACE_CONNECTION = "WorkspaceConnection"
 
 
 @dataclass(frozen=True)

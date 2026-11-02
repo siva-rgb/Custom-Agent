@@ -383,8 +383,8 @@ def without(monkeypatch, subject: str) -> None:
     if subject == "network":
         real = dk.hardening
 
-        def open_network(spec):
-            args = real(spec)
+        def open_network(spec, network="none"):
+            args = real(spec, network)
             at = args.index("--network")
             return args[:at] + args[at + 2:]
 
@@ -396,8 +396,8 @@ def without(monkeypatch, subject: str) -> None:
     elif subject == "pid limit":
         real = dk.hardening
 
-        def unlimited(spec):
-            args = real(spec)
+        def unlimited(spec, network="none"):
+            args = real(spec, network)
             at = args.index("--pids-limit")
             return args[:at] + args[at + 2:]
 

@@ -17,7 +17,7 @@ as it runs.
 from __future__ import annotations
 
 import asyncio
-from collections.abc import AsyncIterator, Callable
+from collections.abc import AsyncIterator, Awaitable, Callable
 from dataclasses import dataclass
 from decimal import Decimal
 from typing import TYPE_CHECKING, Any
@@ -134,6 +134,65 @@ class RunControl:
             while absorbed and task is not None and task.cancelling():
                 task.uncancel()
                 absorbed -= 1
+
+
+class StoredEmit:
+    """An event written as `RunControl.store(write, kind, payload)`, whose write a caller can gate on
+    its worker thread: given a `gate`, the write asks `gate.enter()` there, just before it begins, and
+    is not made when it answers False (M44 round 5 B1, DECISION-5c68ddfb). A write already begun
+    cannot be recalled, so this is the one place a run's end can still stop it."""
+
+    def __init__(self, store: Callable[..., Awaitable[Any]], write: Callable[..., Any]) -> None:
+        self.store, self.write = store, write
+
+    async def __call__(self, event_type: Any, payload: dict[str, Any], gate: Any = None) -> Any:
+        return await self.store(self._gated, gate, event_type, payload)
+
+    def _gated(self, gate: Any, event_type: Any, payload: dict[str, Any]) -> Any:
+        if gate is None:
+            return self.write(event_type, payload)
+        if not gate.enter():
+            return None
+        try:
+            return self.write(event_type, payload)
+        finally:
+            gate.leave()
+
+
+async def through(awaitable: Awaitable[Any]) -> Any:
+    """Runs `awaitable` to its end even when its caller is cancelled meanwhile; that cancel is then
+    raised (M44 round 5, DECISION-0d5473ef). Only a cancel of the work itself ends it early. A held
+    cancel wins over the work's own failure, raised chained from it, so neither is lost (round 6,
+    DECISION-5445c8d0)."""
+    work = asyncio.ensure_future(awaitable)
+    cancelled = False
+    while not work.done():
+        try:
+            await asyncio.shield(work)
+        except asyncio.CancelledError:
+            if work.cancelled():
+                raise
+            cancelled = True
+        except Exception:  # noqa: BLE001 - the work's own failure, now done: raised below
+            pass
+    if cancelled:
+        raise asyncio.CancelledError() from (None if work.cancelled() else work.exception())
+    return work.result()
+
+
+async def settle(task: asyncio.Future[Any], seconds: float, stop: Callable[[], None]) -> bool:
+    """Waits for a task that writes through `RunControl.store`, which is never cancelled to end it:
+    the store absorbs a cancel so its write lands, and the task carries on, so `cancel(); await
+    task` can wait forever (M44 round 1 F1, DECISION-a7a1b37b). It ends by itself within `seconds`;
+    past them `stop()` tells it to end after its current write, and it is waited for once more
+    within `seconds`, then left to finish alone. True when it ended. Never raises but for its
+    caller's own cancellation, which leaves the task running."""
+    done, _ = await asyncio.wait({task}, timeout=seconds)
+    if not done:
+        stop()
+        done, _ = await asyncio.wait({task}, timeout=seconds)
+    task.add_done_callback(lambda ended: ended.cancelled() or ended.exception())
+    return bool(done)
 
 
 @dataclass(frozen=True)

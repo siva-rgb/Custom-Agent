@@ -11,21 +11,25 @@ Imports nothing outside the standard library and the SDK (FR-137, NFR-40).
 from __future__ import annotations
 
 import asyncio
+import base64
 import io
 import math
 import posixpath
 import re
+import secrets
 import tarfile
 import time
 import uuid
 from collections.abc import Awaitable, Callable, Mapping
 from dataclasses import dataclass, field
+from datetime import datetime, timezone
 from types import MappingProxyType
 from typing import Any, Protocol, runtime_checkable
 
 from ..errors import WorkspaceUnavailable
 from ..primitives import unstorable_reason
 from ..tools import ApprovalPolicy
+from .egress import MAX_CONNECTIONS, USER, Proxy, client_hello, parse_egress
 
 __all__ = [
     "CommandOutcome",
@@ -94,6 +98,8 @@ class WorkspaceSpec:
     scope: str = "run"
     keep: bool = False
     run_command_approval: ApprovalPolicy = ApprovalPolicy.REQUIRE_APPROVAL
+    # FR-159 (M44): the `host:port` pairs it may reach, through a proxy of its own; none by default.
+    egress: tuple[str, ...] = ()
 
     def __post_init__(self) -> None:
         # P5-D6: by digest, never a tag, so what runs is what was recorded; the provider never
@@ -124,6 +130,7 @@ class WorkspaceSpec:
             raise ValueError(f"WorkspaceSpec.keep must be a bool, got {type(self.keep).__name__}")
         if not isinstance(self.run_command_approval, ApprovalPolicy):
             raise ValueError("WorkspaceSpec.run_command_approval must be an ApprovalPolicy")
+        parse_egress(self.egress)
 
     def record(self) -> dict[str, Any]:
         """What the manifest and the `workspaces` row record: the image, the limits in force, the
@@ -135,6 +142,8 @@ class WorkspaceSpec:
             "scope": self.scope,
             "keep": self.keep,
             "run_command_approval": self.run_command_approval.value,
+            # Named only when set, so a spec without it records what it did before (NFR-49).
+            **({"egress": list(self.egress)} if self.egress else {}),
         }
 
 
@@ -440,9 +449,10 @@ class FakeCommand:
     two output streams, each kept up to the spec's `max_output_bytes` and counted past it."""
 
     def __init__(self, argv: list[str], stdin: bytes | None, env: Mapping[str, str], files: _CommandFiles,
-                 keep: int) -> None:
+                 keep: int, egress: _FakeEgress | None = None) -> None:
         self.argv, self.stdin, self.env, self.files = list(argv), stdin, dict(env), files
         self._keep = keep
+        self._egress = egress
         self._out, self._err = bytearray(), bytearray()
         self.out_bytes = self.err_bytes = 0
         self._cpu = 0.0
@@ -463,6 +473,35 @@ class FakeCommand:
     async def sleep(self, seconds: float) -> None:
         await asyncio.sleep(seconds)
 
+    async def connect(self, host: str, port: int, *, sni: str | None = None, token: str | None = None) -> bytes:
+        """FR-163: an HTTPS connection through the workspace's proxy, under the very rules of the
+        Docker proxy (`egress.Proxy`): what the allowed site sent back, or OSError when refused. `sni`
+        defaults to `host`, `token` to this command's own. With no `egress` there is no network."""
+        if self._egress is None:
+            raise OSError("the workspace has no egress: no network")
+        return await self._egress.connect(host, port, host if sni is None else sni,
+                                          self._egress.token if token is None else token)
+
+    @property
+    def egress_token(self) -> str | None:
+        """This command's token, as its HTTPS_PROXY carries it on Docker; None with no egress."""
+        return None if self._egress is None else self._egress.token
+
+    async def proxy(self, data: bytes) -> bytes:
+        """FR-163: `data` sent as-is to the workspace's proxy, as a command on Docker can write any bytes
+        to its socket; what the proxy answered. With no `egress` there is no network."""
+        if self._egress is None:
+            raise OSError("the workspace has no egress: no network")
+        return await self._egress.send(data)
+
+    async def resolve_name(self, name: str) -> list[str]:
+        """No name resolves inside a workspace (P5-D20)."""
+        raise OSError(f"no name resolves inside a workspace: {name}")
+
+    async def connect_address(self, address: str, port: int) -> bytes:
+        """No direct connection leaves a workspace: only the proxy does (P5-D19)."""
+        raise OSError(f"no direct connection leaves a workspace: {address}:{port}")
+
     def cpu(self, seconds: float) -> None:
         """FR-156: the CPU-seconds this command reads as having used, 0 unless declared. A killed
         command is charged its ceiling whatever it declared, as on Docker."""
@@ -477,12 +516,57 @@ class FakeCommand:
 FakeCommandFn = Callable[[FakeCommand], Awaitable[int]]
 
 
+class _Sink:
+    """A stream writer that keeps what it is given: the fake proxy's client and upstream ends."""
+
+    def __init__(self) -> None:
+        self.data = bytearray()
+
+    def write(self, data: bytes) -> None:
+        self.data += data
+
+    async def drain(self) -> None:
+        return None
+
+    def close(self) -> None:
+        return None
+
+
+class _FakeEgress:
+    """One command's way out on the fake: its token, and its workspace's `Proxy`."""
+
+    def __init__(self, proxy: Proxy, token: str) -> None:
+        self.proxy, self.token = proxy, token
+
+    async def send(self, data: bytes) -> bytes:
+        """`data` as a client's first bytes to the proxy; what it wrote back before it closed."""
+        reader = asyncio.StreamReader()
+        reader.feed_data(data)
+        sink = _Sink()
+        await self.proxy.handle(reader, sink)
+        return bytes(sink.data)
+
+    async def connect(self, host: str, port: int, sni: str, token: str) -> bytes:
+        auth = base64.b64encode(f"{USER}:{token}".encode()).decode()
+        head = f"CONNECT {host}:{port} HTTP/1.1\r\nHost: {host}:{port}\r\nProxy-Authorization: Basic {auth}\r\n\r\n"
+        answer = await self.send(head.encode() + client_hello(sni))
+        if not answer.startswith(b"HTTP/1.1 200"):
+            raise ConnectionRefusedError(f"the egress proxy refused {host}:{port}")
+        body = answer.partition(b"\r\n\r\n")[2]
+        if not body:
+            raise ConnectionResetError(f"the egress proxy closed the tunnel to {host}:{port}")
+        return body
+
+
 class _FakeWorkspace:
     def __init__(self, handle: WorkspaceHandle) -> None:
         self.handle = handle
         self.files = FakeFiles()
         self.running: dict[str, asyncio.Task[Any]] = {}
         self.kills: dict[str, asyncio.Event] = {}
+        self.proxy: Proxy | None = None  # FR-160: only with egress
+        self.tokens: dict[str, str] = {}  # each command's token, to its command id
+        self.watcher: Callable[[dict], None] | None = None
 
 
 class FakeProvider:
@@ -494,9 +578,53 @@ class FakeProvider:
 
     name = "fake"
 
-    def __init__(self, commands: Mapping[str, FakeCommandFn] | None = None) -> None:
+    def __init__(self, commands: Mapping[str, FakeCommandFn] | None = None, *,
+                 resolve: Mapping[str, list[str]] | None = None, sites: Mapping[tuple[str, int], bytes] | None = None,
+                 max_connections: int = MAX_CONNECTIONS) -> None:
         self._commands = dict(commands or {})
         self._spaces: dict[str, _FakeWorkspace] = {}
+        # FR-163: the names the fake's proxy resolves, and what each allowed site sends back.
+        self._resolve = {name: list(addresses) for name, addresses in (resolve or {}).items()}
+        self._sites = dict(sites or {})
+        self._max_connections = max_connections
+
+    def _proxy(self, space: _FakeWorkspace) -> Proxy:
+        async def resolve(host: str, port: int) -> list[str]:
+            return list(self._resolve.get(host, []))
+
+        async def connect(address: str, port: int):
+            host = next((name for name, found in self._resolve.items() if address in found), None)
+            site = self._sites.get((host, port))
+            if site is None:
+                raise ConnectionRefusedError(f"nothing answers at {address}:{port}")
+            reader = asyncio.StreamReader()
+            reader.feed_data(site)
+            reader.feed_eof()
+            return reader, _Sink()
+
+        def reported(report: dict) -> None:
+            report = dict(report)
+            token = report.pop("token", None)
+            if report["kind"] == "connection":
+                # The token names its command; none, or another's, names no command (DECISION-88dea779).
+                report["command_id"] = space.tokens.get(token) if token else None
+            if space.watcher is not None:
+                space.watcher(report)
+
+        return Proxy(space.handle.spec.egress, report=reported, resolve=resolve, connect=connect,
+                     max_connections=self._max_connections)
+
+    def watch_egress(self, handle: WorkspaceHandle, callback: Callable[[dict], None]) -> None:
+        """FR-162: `callback` gets each report of the workspace's proxy, its token made a command id."""
+        self._space(handle).watcher = callback
+
+    def kill_proxy(self, handle: WorkspaceHandle) -> None:
+        """Ends the workspace's proxy as a dead one ends on Docker: it is gone, and reported `ended`
+        (F2, DECISION-26009e04)."""
+        space = self._space(handle)
+        space.proxy = None
+        if space.watcher is not None:
+            space.watcher({"kind": "ended", "at": datetime.now(timezone.utc).isoformat()})
 
     def _space(self, handle: WorkspaceHandle) -> _FakeWorkspace:
         space = self._spaces.get(handle.workspace_id)
@@ -507,7 +635,9 @@ class FakeProvider:
     async def create(self, spec: WorkspaceSpec, labels: Mapping[str, str]) -> WorkspaceHandle:
         workspace_id = labels.get("agentsdk.workspace") or str(uuid.uuid4())
         handle = WorkspaceHandle(workspace_id=workspace_id, spec=spec, labels=MappingProxyType(dict(labels)))
-        self._spaces[workspace_id] = _FakeWorkspace(handle)
+        space = self._spaces[workspace_id] = _FakeWorkspace(handle)
+        if spec.egress:
+            space.proxy = self._proxy(space)
         return handle
 
     async def run(self, handle: WorkspaceHandle, argv: list[str], *, timeout: float, stdin: bytes | None = None,
@@ -516,7 +646,12 @@ class FakeProvider:
         command_id = command_id or str(uuid.uuid4())
         fn = self._commands.get(argv[0]) if argv else None
         files = _CommandFiles(space.files)
-        command = FakeCommand(argv, stdin, handle.spec.env, files, handle.spec.max_output_bytes)
+        egress, token = None, None
+        if space.proxy is not None:
+            token = secrets.token_hex(16)
+            space.tokens[token] = command_id
+            egress = _FakeEgress(space.proxy, token)
+        command = FakeCommand(argv, stdin, handle.spec.env, files, handle.spec.max_output_bytes, egress)
         started = time.monotonic()
         if fn is None:
             command.err(f"{argv[0] if argv else ''}: command not found\n")
@@ -550,6 +685,7 @@ class FakeProvider:
             killing.cancel()
             space.running.pop(command_id, None)
             space.kills.pop(command_id, None)
+            space.tokens.pop(token, None)  # F4: it names its command only while it runs
             if not task.done():
                 # Total: the command is cancelled and abandoned, and whatever it does afterwards
                 # reaches no workspace.
@@ -606,6 +742,9 @@ class FakeProvider:
         # Killed while the workspace can still be found, so removal ends what runs in it (M38 review).
         for command_id in list(space.running):
             await self.kill(handle, command_id)
+        if space.proxy is not None:
+            # Stopped as Docker's is, so its last reports come first (DECISION-e510a5e3).
+            await space.proxy.close()
         self._spaces.pop(handle.workspace_id, None)
 
     async def list_owned(self, labels: Mapping[str, str]) -> list[WorkspaceHandle]:

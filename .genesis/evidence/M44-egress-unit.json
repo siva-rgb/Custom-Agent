@@ -1,0 +1,22 @@
+{
+  "task": "M44-egress",
+  "gate": "unit",
+  "command": ".venv\\Scripts\\python.exe -m pytest tests/test_egress.py -q -p no:cacheprovider",
+  "started_at": "2026-11-02T06:47:34.983Z",
+  "observed_at": "2026-11-02T06:48:19.301Z",
+  "exit_code": 0,
+  "signal": null,
+  "stdout": "........................................................................ [ 41%]\r\n........................................................................ [ 83%]\r\n............................                                             [100%]\r\n172 passed, 28 deselected in 43.38s\r\n",
+  "stderr": "",
+  "revision": {
+    "commit": "d4b5f0c4538a17d8c6eacccd1b5014ddcc84c5c3",
+    "dirty": true
+  },
+  "source_hash": "210ad398f0ff72b37f1980718c22117e29431ed6d6797518c8d2679abd5babb0",
+  "environment": {
+    "node": "v20.10.0",
+    "platform": "win32",
+    "arch": "x64"
+  },
+  "hash": "4ccd074f640c5dc15d4d36491a410ca5d4341812630544a9a6cb6f5d81afcb2a"
+}

@@ -9,7 +9,7 @@
     "non_goals": [],
     "trust_boundary": "local repository",
     "created_at": "2026-09-05T14:48:57.894Z",
-    "updated_at": "2026-10-31T07:15:52.761Z"
+    "updated_at": "2026-11-02T08:11:10.271Z"
   },
   "policy": {
     "ponytail": "full",
@@ -25,7 +25,7 @@
   "lifecycle": {
     "phase": "build",
     "status": "active",
-    "active_task": "M44-egress",
+    "active_task": "M45-sandboxed-mcp",
     "blocker": null,
     "next_action": "Run the task pre-flight."
   },
@@ -34,8 +34,8 @@
     "type": "new-product",
     "started_at": "2026-09-05T14:48:57.897Z",
     "spec_check": {
-      "at": "2026-10-31T04:19:44.519Z",
-      "source_hash": "1188a5d484cc51816083446123b9e3cf4b438403281e10bbe9a01bfcdf599fd8",
+      "at": "2026-11-01T10:50:42.778Z",
+      "source_hash": "f88e982417b4e4715dd7e7326394d8be17c8daf73a7e3a775433e275eb94bc34",
       "requirements": [
         "AC-1",
         "AC-10",
@@ -365,14 +365,14 @@
       ]
     },
     "plan_check": {
-      "at": "2026-10-31T04:19:44.901Z",
-      "source_hash": "eda9156e4fedc7f9103e093a9ec7ffc54e96bdcb89740f8ab4be6ce363e8d11a"
+      "at": "2026-11-01T10:50:43.219Z",
+      "source_hash": "10d81a26ab329feff7334c8877343e320fcc2df25ebe18382a3a468245037493"
     },
     "plan_approval": {
       "human": "siva-rgb (owner)",
-      "reason": "Plan unchanged; re-approved after FR-156's round 2 amendment.",
-      "at": "2026-10-31T04:19:45.063Z",
-      "source_hash": "eda9156e4fedc7f9103e093a9ec7ffc54e96bdcb89740f8ab4be6ce363e8d11a"
+      "reason": "M44 round 5: plan re-approved after FR-161, FR-162 and P5-D23 corrected (DECISION-7a3a2ae2)",
+      "at": "2026-11-01T10:50:43.398Z",
+      "source_hash": "10d81a26ab329feff7334c8877343e320fcc2df25ebe18382a3a468245037493"
     }
   },
   "artifacts": [
@@ -708,12 +708,12 @@
         "NFR-8",
         "NFR-9"
       ],
-      "source_hash": "1188a5d484cc51816083446123b9e3cf4b438403281e10bbe9a01bfcdf599fd8",
+      "source_hash": "f88e982417b4e4715dd7e7326394d8be17c8daf73a7e3a775433e275eb94bc34",
       "approval": {
         "human": "siva-rgb (owner)",
-        "reason": "FR-156 amended for M43 round 2: argv through env, signals ignored by the wrapper, a per-command nonce on its line, no authentic line is killed error (DECISION-0883f7bd, DECISION-88395b13).",
-        "at": "2026-10-31T04:19:44.701Z",
-        "source_hash": "1188a5d484cc51816083446123b9e3cf4b438403281e10bbe9a01bfcdf599fd8"
+        "reason": "M44 round 5: FR-161, FR-162 and P5-D23 corrected for N8, N6 and N2 (DECISION-7a3a2ae2)",
+        "at": "2026-11-01T10:50:42.988Z",
+        "source_hash": "f88e982417b4e4715dd7e7326394d8be17c8daf73a7e3a775433e275eb94bc34"
       }
     }
   ],
@@ -2221,9 +2221,10 @@
       "id": "DECISION-630a34ff",
       "title": "M43: the workspace sweep alone does not end a cancelled command in time; declared, its delay investigated in M44",
       "text": "Measured on Docker, 2026-10-30 (F4's per-layer test): with the other two layers removed, the provider's kill alone and the command's own removal alone each end a cancelled command within the cancel check's bound; the workspace sweep alone does not -- the plan reported cancelled 1,158 s after the cancel (bound 40 s). It needs both other layers to fail. The owner chose: declare it in M43 (example 36's CANCEL_ALONE and a README row; the test asserts the check fails with the sweep alone), and carry the delay's cause to M44's pre-flight as an item to investigate.",
-      "status": "accepted",
+      "status": "superseded",
       "source": null,
-      "recorded_at": "2026-10-30T17:02:45.753Z"
+      "recorded_at": "2026-10-30T17:02:45.753Z",
+      "superseded_by": "DECISION-d9a568e1"
     },
     {
       "id": "DECISION-88395b13",
@@ -2248,6 +2249,102 @@
       "status": "accepted",
       "source": null,
       "recorded_at": "2026-10-31T07:15:40.748Z"
+    },
+    {
+      "id": "DECISION-88dea779",
+      "title": "M44 pre-flight: M43's items closed in M44, a docker gate on Phase 5, proxy tokens, a connection cap, fixed proxy limits, bounded tunnels",
+      "text": "The owner chose, 2026-10-31, and set a standing rule: every issue is fixed in the milestone that found it, nothing carried on. M43's items, done first in M44: take_reading returns the reading only (the line still names the exit code; the container's is reported); the no-authentic-line test gains a wrapper stopped mid-line; M43's brief corrected (tenant prefix, Docker time). Two manual edits of .genesis/project.json, as DECISION-11af2ee2 did: a third executable gate, docker, on M44 to M47, running every Phase 5 Docker-marked test file present plus the milestone's own, kept awake, with -p no:cacheprovider on every gate of M44 to M47 so .pytest_cache stops moving the content hash; and DECISION-630a34ff marked superseded by DECISION-d9a568e1. Egress: (1) each command's HTTPS_PROXY names a random per-command token as its user; the proxy reports it and the manager maps it to the command; no or an unknown token records no command, every rule still applied. (2) A workspace's proxy accepts at most 10,000 connections in its life; past that each is refused at once and one connection_limit row and event, with the count, stands for them. (3) The proxy is hardened as a command is (P5-D6) with fixed limits: 64 MiB memory, 32 pids, 0.50 cpus; its CPU is not charged (declared). (4) At most 32 tunnels open at once (past that refused, busy); each closes after 60 s idle; bytes each way counted on its row when it ends. FR-160 and FR-162 are amended accordingly; migration 0024 adds workspace_connections.",
+      "status": "accepted",
+      "source": null,
+      "recorded_at": "2026-10-31T08:03:03.573Z"
+    },
+    {
+      "id": "DECISION-26009e04",
+      "title": "M44 pre-review: an isolated gateway (Engine 28+), a dead proxy recorded and failing closed, Docker-only checks in example 38; F3 to F7 repaired",
+      "text": "The pre-review (2026-10-31) found eight. F1 (high, reproduced first-hand): on an --internal network a command reached the Docker host through the network's gateway (rpcbind 172.19.0.1:111 open). The owner chose: every egress network is created with com.docker.network.bridge.gateway_mode_ipv4=isolated (port 111 then refused like every port); a daemon older than Engine 28 fails an egress workspace WorkspaceUnavailable naming its version; tests and example 38 scan the network's .1. F2: at most 64 connections may wait on their request head at once (past that refused busy, counted), each at most 10 s; if the proxy dies anyway, one proxy_ended row and event, and the workspace refuses every later command WorkspaceUnavailable naming it. F8: example 38's checks of a direct connection, the host, a name lookup, a neighbour and the gateway run on Docker only; offline the example lists fewer checks, none vacuous, no SKIP. Repaired without a choice: F3 a connection the client resets is reported client_reset, and any failure of the proxy's own proxy_error; F4 a command's token is retired when it ends; F5 the proxy listens on its internal-network address only, so nothing on the bridge reaches it; F6 the proxy needs nothing past Python 3.8 and the workspace checks the image's python3 is at least 3.8; F7 a host that inet_aton reads as an address (hex, octal, short forms) is refused.",
+      "status": "accepted",
+      "source": null,
+      "recorded_at": "2026-10-31T10:33:51.763Z"
+    },
+    {
+      "id": "DECISION-a7a1b37b",
+      "title": "M44 round 1: every finding repaired in M44 (owner)",
+      "text": "Owner decision 2026-10-31 on the M44 round 1 rejection (Sonnet 5.5), each finding reproduced first-hand by the implementing session. F1 (blocking): a recorder that writes through RunControl.store absorbs cancel, so _booked hung forever on a backlog past 30 s; repaired as a pattern: a recorder stops at a stop marker queued behind its reports, never by cancel, and every wait on it is bounded with asyncio.wait; every other cancel-then-await on a task that writes through the store gets the same treatment. F2: example 38 and the Docker probe dialled 93.184.215.14, dead even from an unisolated container; the direct check now dials the address the allowed connection reached through the proxy, as its row records, and fails when none was recorded; the Docker test adds a control in which an unisolated container reaches that address. F3: once the owning run has ended, a connection is recorded as a row with no event, so nothing follows a run terminal event; FR-162 amended. F4: the one connection_limit event marks the limit reached, and the row carries the final count; FR-162 amended. F5: the proxy create line no longer carries the spec label, and a line past the Windows bound raises WorkspaceUnavailable, never a raw ValueError. F6: a port of more than five digits is malformed, checked before int(). F7: a command is forgotten by the recorder once its reports are booked, by a marker in the same queue; the proxy stderr is drained. The brief declares the tests/test_compute.py edit (M43 carried items).",
+      "status": "accepted",
+      "source": null,
+      "recorded_at": "2026-10-31T15:08:07.957Z"
+    },
+    {
+      "id": "DECISION-e510a5e3",
+      "title": "M44 round 2: five low findings repaired in M44 before close (owner)",
+      "text": "Owner decision 2026-11-01 on M44 round 2, approved by Fable 5.1 with four non-blocking observations, plus one the orchestrating session added; each read first-hand in the code by the implementing session. Under the standing rule all five are repaired in M44, so the approved source changes and the gates and a focused round 3 review run again. (1) Dropped backlog: past the removal bound the recorder dropped every report still queued, against FR-162; now it writes one unrecorded row carrying how many reports it could not record, one bounded write, and FR-162 is amended: each connection recorded individually or counted in that row. (2) Limit writes: past the 10,000 cap each refusal cost one store update; the proxy now reports the limit at the first refusal, then the count at most once a second, and the final count when it stops, bounding lines, queue and writes. (3) A connection still undecided when the proxy is stopped is reported with a new reason, stopped; FR-161 amended. (4) A connection of no known command on a plan workspace is recorded under the plan top-level run, where its workspace is recorded, not the creating child. (5) Example 38 direct check may fail safely but falsely if the CDN rotates the address between the proxy lookup and the host lookup; declared in the README, its failure message names the cause.",
+      "status": "accepted",
+      "source": null,
+      "recorded_at": "2026-10-31T18:50:31.089Z"
+    },
+    {
+      "id": "DECISION-f7114b8b",
+      "title": "M44 rounds 3 and 4 repairs: cancelled end, unrecorded accounting, Docker connection cap, slow removal",
+      "text": "Owner (siva-rgb), 2026-11-01, after round 3 (Opus 5, approved with two findings) and an advisory round 4 (Haiku 5.5, one finding, reproduced). Every item is repaired in M44, none declared or carried forward. (1) RunWorkspace.end settles its run even when its removal is cancelled: the barrier and the booking lock are taken on every path, so an event being written lands before the terminal event. (2) Runner._end_workspace is guarded in _cancelled so a second cancel during the workspace end never skips RunCancelled; its docstring states what it raises. (3) Past the removal bound, all three degradations repaired: a queued tunnel end still writes its bytes, a queued proxy death still writes its proxy_ended row, and reports arriving after the recorder ended are counted, not lost. (4) DockerProvider takes max_connections as FakeProvider does, passed in the proxy config. (5) A report whose row the store refused is counted on the unrecorded row; one unrecorded row per workspace, its count updated as more is counted, so FR-162 holds: each connection recorded individually or counted there. Also: the test_compute cancel-layer [command removal] run that passed faulthandler 300 s in the docker gate is measured and its cause fixed in M44. FR-161 and FR-162 amended first.",
+      "status": "accepted",
+      "source": null,
+      "recorded_at": "2026-11-01T06:53:08.858Z"
+    },
+    {
+      "id": "DECISION-0d5473ef",
+      "title": "M44 round 5 repairs: cancelled end through a second cancel, removal guard on every caller, store gaps, SNI, example controls, port spelling",
+      "text": "Owner (siva-rgb), 2026-11-01, after round 5 (Sonnet 5.5, rejected: two blocking, eight non-blocking, all verified first-hand). Every item is repaired in M44, none declared or carried forward. (B1, N1) settled() waits for an event already being written even through a second cancel, re-raised once done, within the removal bound; past the bound the in-flight emit is cancelled and its connection counted on the unrecorded row, so nothing follows a terminal event and a run end is never unbounded. The test drives a real slow emit and a real second cancel. (B2) Runner._end_workspace guards itself: end_plans always runs, a second cancel is held until both steps finish and then re-raised; the failed path catches it and still ends failed with RunFailed and its row, the failure having come first; one guard covers all three callers. (N3) A refused proxy_ended row still gets its event and is counted on the unrecorded row. (N2) aclose cancels and awaits the late pass past its bound. (N6) Migration 0024, unreleased, gains a unique partial index: one unrecorded row per workspace. (N4) A ClientHello with more than one server name, or a second server_name extension, is refused. (N5) Example 38 host_direct check gets a listener control; neighbour counts only a timeout or unreachable as failed. (N8) A port written with leading zeros is refused. (N7) Tests for overlapping late passes; the brief gains a test-quality item: each repair test must reach the state it names, shown by a mutant. FR-159, FR-160 and FR-162 amended first.",
+      "status": "accepted",
+      "source": null,
+      "recorded_at": "2026-11-01T10:39:38.027Z"
+    },
+    {
+      "id": "DECISION-5c68ddfb",
+      "title": "M44 round 5 B1/N1 mechanism corrected: gate the event write before its transaction",
+      "text": "Owner (siva-rgb), 2026-11-01. Corrects DECISION-0d5473ef items B1 and N1, whose mechanism (past the bound, cancel the in-flight emit and count its connection on the unrecorded row) cannot be built: every event write is one transaction on a worker thread through RunControl.store, which absorbs cancels so the write lands (FR-50), so a cancelled write already begun still lands after the terminal event; and its connection row is already written, so counting it would count it twice. Instead: the event write asks its run gate on its worker thread, just before opening its transaction, whether its run has ended. settled() waits through a second cancel, re-raised once done, within the removal bound; past the bound it shuts the gate: a write not yet begun is shut out, its row standing alone as any connection after its run ended, and one already inside its transaction is waited for, bounded by the store as the terminal event own write is. Nothing follows a terminal event; a run end is unbounded only when the store itself hangs, when its terminal write would hang too. The rest of DECISION-0d5473ef stands.",
+      "status": "accepted",
+      "source": null,
+      "recorded_at": "2026-11-01T10:44:00.813Z"
+    },
+    {
+      "id": "DECISION-7a3a2ae2",
+      "title": "M44 round 5 N6 and N2 mechanisms corrected: migration 0025, late pass cancelled past its bound",
+      "text": "Owner (siva-rgb), 2026-11-01. Corrects DECISION-0d5473ef items N6 and N2. N6: the dev database already has 0024 applied with its checksum recorded, and migrate.py verifies checksums before applying anything, so editing 0024 would fail every gate and never reach that database; instead migration 0025 adds the unique partial index, one unrecorded row per workspace, and 0024 stays as applied. The manager fixes the unrecorded row id before its first write and tries an update on that id before an insert, so an insert that committed and then raised is updated, never written twice; the in-memory store refuses a second unrecorded row as the index does. N2: RunControl.store absorbs cancels so a started write lands (FR-50), so a late pass inside a store write that never returns cannot be ended; instead aclose, past its bound, tells each late pass to stop after its current write and cancels it, then waits once more within the bound: it ends unless inside a store write that never returns, the limit every store write has. The proxy CONNECT parser also refuses a port written with a leading zero (N8 is FR-161, the WorkspaceSpec check already refused it). The rest of DECISION-0d5473ef and DECISION-5c68ddfb stand.",
+      "status": "accepted",
+      "source": null,
+      "recorded_at": "2026-11-01T10:49:58.624Z"
+    },
+    {
+      "id": "DECISION-5445c8d0",
+      "title": "M44 round 6 observations closed in M44: through() keeps a held cancel, wording corrected, split ClientHello declared",
+      "text": "Owner (siva-rgb), 2026-11-01, after round 6 (Fable 5.1, approved, six non-blocking observations, verified first-hand). (1) through() lost a held cancel when its work then raised an exception: fixed, a held cancel always wins, raised chained from the work exception; a test reaches it and a mutant is killed. (2) Corrects DECISION-5c68ddfb: a run end is unbounded only when the store hangs because both real stores serialise a run writes (the Postgres advisory lock per run, the memory sink lock), so a hung connection-event write holds the terminal write too; a store that does not serialise per run would not give that. (3) Corrects DECISION-5c68ddfb: settled() shuts the gate after the barrier, before waiting on the lock, not past the bound; past the bound only a write already inside is waited for, as FR-162 says. (4) Corrects DECISION-7a3a2ae2: the stop flag aclose sets past its bound also ends a recorder last counting pass still running then, not only late passes. (5) Declared: inside a workspace the proxy own container name resolves through 127.0.0.11 to the proxy address, already in HTTPS_PROXY; a nuance to P5-D20. (6) Declared: a ClientHello spanning more than one TLS record is refused no_sni; it fails closed. README rows for 2, 4, 5 and 6; no spec change.",
+      "status": "accepted",
+      "source": null,
+      "recorded_at": "2026-11-01T17:46:45.274Z"
+    },
+    {
+      "id": "DECISION-ed9b1bba",
+      "title": "M44 round 7 findings closed in M44: one through() helper, two README rows corrected",
+      "text": "Owner (siva-rgb), 2026-11-02, after round 7 (Opus 5, approved, three non-blocking findings, verified first-hand). F-R7-1: docker._through, and a third copy the author found, manager._completed, had the shape through() had before the round 6 fix: a held cancel was lost when the work then raised (reproduced at docker.py call site 775, where a wait_for timeout is suppressed). Both predate M44. Both are deleted and every call site uses agentsdk.handle.through, so one helper with the fix is what M45 to M47 inherit; tests reach each module case. F-R7-2: corrects DECISION-5445c8d0 and the README: a recorder last counting pass is never cancelled; it stops after its current write once aclose sets the stop flag, which aclose sets only when a late pass is still outstanding past its bound. F-R7-3: corrects DECISION-5445c8d0 and the README: Docker embedded resolver answers every container name on the workspace network, the proxy and the command own, giving no new reach since the network is already reachable by address. A short round 8 review follows the gates.",
+      "status": "accepted",
+      "source": null,
+      "recorded_at": "2026-11-02T03:55:08.853Z"
+    },
+    {
+      "id": "DECISION-c697f36c",
+      "title": "Review stopping rule from M44 round 8: a round that approves with nothing blocking is the last",
+      "text": "Owner (siva-rgb), 2026-11-02. M44 took eight review rounds because every fix moved the source hash and a fresh review of the new hash found something smaller, with no natural end; and the author fixed instances, not patterns (round 6 fixed through() but not its copies docker._through and manager._completed, found in round 7). From round 8: once a review round approves with no blocking findings, its findings are fixed in the same milestone without another review round. Each such fix needs a test shown to fail when the fix is undone, a sweep of the codebase for every copy of the pattern, an owner decision, and all three gates passing at the final hash. A new review round is still required for any blocking finding, or for a fix that adds new machinery rather than correcting existing code. Nothing carries to the next milestone. Round 8 runs as a fresh Sonnet 5.5 subagent launched by the authoring session, with only the brief file.",
+      "status": "accepted",
+      "source": null,
+      "recorded_at": "2026-11-02T06:38:21.974Z"
+    },
+    {
+      "id": "DECISION-1e35a472",
+      "title": "M44 round 8 close: cleanup sequences held whole, a behavioural manager guard, record corrections",
+      "text": "Owner (siva-rgb), 2026-11-02, after round 8 (Sonnet 5.5, approved, nothing blocking), under the stopping rule DECISION-c697f36c: no round 9. The author swept every through() site for a second pattern the reviewer pointed at: a cleanup whose first step is through() re-raises a held cancel when that step ends, skipping the steps after it. Four sites: docker._contained finally (the docker start -a client kill skipped, likely the docker gate unclosed-transport warning; since M39), DockerProvider.create failure path and DockerProvider.remove (the workspace _remove skipped, leaving volume, network and proxy until reaped; M44), and WorkspaceManager.hold_or_remove (a kept workspace kept flag skipped; M41). Each whole sequence now runs inside one through(), so a cancel is held until every step has run; each site has a test shown to fail when unwrapped. NB-1: a behavioural test drives manager call site 457 (_cancelled failing after a held cancel) and requires the run to end cancelled. NB-2: corrects DECISION-ed9b1bba: only the docker side had a behavioural test, and the reproduced call site is docker.py line 761, not 775. NB-3: the round 8 brief miscounted the routed call sites; the routing itself is complete. NB-4: declared: postgres.py artifact store loop drops the work error on a held cancel by design, as its docstring says, unlike through() which chains it.",
+      "status": "accepted",
+      "source": null,
+      "recorded_at": "2026-11-02T06:44:04.541Z"
     }
   ],
   "knowledge": [
@@ -3618,6 +3715,14 @@
       "source": null,
       "tags": [],
       "recorded_at": "2026-10-31T07:15:40.595Z"
+    },
+    {
+      "id": "KNOWLEDGE-bd42619c",
+      "title": "M44 probe: Python's urllib sends a proxy token only as user:password; a command reaches the proxy by IP on the internal network",
+      "text": "Measured 2026-10-31 on Docker Desktop with the example image (scratchpad p5i2/egress_probe.py, all labelled agentsdk-probe and removed). An internal network plus a proxy container created on it and then connected to the bridge: the proxy's address on the internal network comes from docker inspect (172.19.0.2); a command on that network reached it by IP; that command's getaddrinfo of example.com raised gaierror and a direct connection to 1.1.1.1:443 failed. With HTTPS_PROXY=http://<token>@proxy:3128, urllib sent the CONNECT with no Proxy-Authorization at all; with http://agentsdk:<token>@proxy:3128 it sent Proxy-Authorization: Basic base64(agentsdk:<token>). So DECISION-88dea779's token goes in the URL's password, the user fixed to agentsdk; FR-160 is amended to say so. docker start -a on the proxy container delivered its stdout line by line.",
+      "source": null,
+      "tags": [],
+      "recorded_at": "2026-10-31T08:07:32.108Z"
     }
   ],
   "tasks": [
@@ -3640,9 +3745,9 @@
           "status": "pass",
           "evidence": {
             "human": "siva-rgb (owner)",
-            "reason": "FR-156 amended for M43 round 2: argv through env, signals ignored by the wrapper, a per-command nonce on its line, no authentic line is killed error (DECISION-0883f7bd, DECISION-88395b13).",
-            "source_hash": "616aada32faad9d28755f718f5ba546fa1039568d35c00873acb70633df79542",
-            "observed_at": "2026-10-31T04:19:44.701Z"
+            "reason": "M44 round 5: FR-161, FR-162 and P5-D23 corrected for N8, N6 and N2 (DECISION-7a3a2ae2)",
+            "source_hash": "1ca5de89f4c5dad40d0bcc652aa9cb03e0e22e3e49b931c0304b88f2f6a9aaa5",
+            "observed_at": "2026-11-01T10:50:42.988Z"
           }
         }
       ],
@@ -3652,7 +3757,7 @@
       "failures": [],
       "limitations": [],
       "created_at": "2026-09-05T14:48:57.897Z",
-      "updated_at": "2026-10-31T04:19:44.701Z"
+      "updated_at": "2026-11-01T10:50:42.988Z"
     },
     {
       "id": "M1-primitives",
@@ -6706,7 +6811,7 @@
     {
       "id": "M44-egress",
       "outcome": "A workspace reaches only the host:port pairs its spec names, through a per-workspace network and proxy, every connection recorded",
-      "state": "active",
+      "state": "done",
       "risk": "high",
       "owner": null,
       "scope": [],
@@ -6726,24 +6831,51 @@
       "gates": [
         {
           "id": "unit",
-          "command": ".venv\\Scripts\\python.exe -m pytest tests/test_egress.py -q",
+          "command": ".venv\\Scripts\\python.exe -m pytest tests/test_egress.py -q -p no:cacheprovider",
           "mandatory": true,
-          "status": "pending",
-          "evidence": null
+          "status": "pass",
+          "evidence": {
+            "path": ".genesis/evidence/M44-egress-unit.json",
+            "source_hash": "210ad398f0ff72b37f1980718c22117e29431ed6d6797518c8d2679abd5babb0",
+            "hash": "4ccd074f640c5dc15d4d36491a410ca5d4341812630544a9a6cb6f5d81afcb2a",
+            "observed_at": "2026-11-02T06:48:19.301Z"
+          }
         },
         {
           "id": "regression",
-          "command": ".venv\\Scripts\\python.exe -m pytest -q",
+          "command": ".venv\\Scripts\\python.exe -m pytest -q -p no:cacheprovider",
           "mandatory": true,
-          "status": "pending",
-          "evidence": null
+          "status": "pass",
+          "evidence": {
+            "path": ".genesis/evidence/M44-egress-regression.json",
+            "source_hash": "210ad398f0ff72b37f1980718c22117e29431ed6d6797518c8d2679abd5babb0",
+            "hash": "2559e585c4edbc57bc3931b2dd9c987b06556c8551dcf7e6a47f8815a15bffe5",
+            "observed_at": "2026-11-02T07:18:35.954Z"
+          }
+        },
+        {
+          "id": "docker",
+          "command": ".venv\\Scripts\\python.exe -m pytest tests/test_workspace.py tests/test_workspace_tools.py tests/test_workspace_plan.py tests/test_docker_provider.py tests/test_sandbox_contention.py tests/test_compute.py tests/test_egress.py -m docker -q -p no:cacheprovider",
+          "mandatory": true,
+          "status": "pass",
+          "evidence": {
+            "path": ".genesis/evidence/M44-egress-docker.json",
+            "source_hash": "210ad398f0ff72b37f1980718c22117e29431ed6d6797518c8d2679abd5babb0",
+            "hash": "578aa4f3a25643efe1f8a15d7087b649356263aa85c9821f0f4eb8e2276a7927",
+            "observed_at": "2026-11-02T08:02:20.292Z"
+          }
         },
         {
           "id": "independent-review",
           "command": "",
           "mandatory": true,
-          "status": "pending",
-          "evidence": null
+          "status": "pass",
+          "evidence": {
+            "human": "siva-rgb (owner)",
+            "reason": "Owner approval at source hash 210ad398 under the review stopping rule DECISION-c697f36c: round 8 (Sonnet 5.5) approved 1d1809cb with nothing blocking; its findings and the author sweep were fixed in M44 by DECISION-1e35a472, each fix with a test shown to fail when undone (132 mutants killed), and unit 172, regression 3143 and docker 115 all pass at 210ad398 with no warnings. No round 9 by the rule.",
+            "source_hash": "210ad398f0ff72b37f1980718c22117e29431ed6d6797518c8d2679abd5babb0",
+            "observed_at": "2026-11-02T08:11:10.057Z"
+          }
         }
       ],
       "next_action": "Run the task pre-flight.",
@@ -6752,12 +6884,12 @@
       "failures": [],
       "limitations": [],
       "created_at": "2026-10-30T13:01:01.412Z",
-      "updated_at": "2026-10-30T13:01:01.412Z"
+      "updated_at": "2026-11-02T08:11:10.270Z"
     },
     {
       "id": "M45-sandboxed-mcp",
       "outcome": "A stdio MCP server configured with a workspace runs in the sandbox, owned and reaped with its Runner",
-      "state": "queued",
+      "state": "active",
       "risk": "high",
       "owner": null,
       "scope": [],
@@ -6775,14 +6907,21 @@
       "gates": [
         {
           "id": "unit",
-          "command": ".venv\\Scripts\\python.exe -m pytest tests/test_sandboxed_mcp.py -q",
+          "command": ".venv\\Scripts\\python.exe -m pytest tests/test_sandboxed_mcp.py -q -p no:cacheprovider",
           "mandatory": true,
           "status": "pending",
           "evidence": null
         },
         {
           "id": "regression",
-          "command": ".venv\\Scripts\\python.exe -m pytest -q",
+          "command": ".venv\\Scripts\\python.exe -m pytest -q -p no:cacheprovider",
+          "mandatory": true,
+          "status": "pending",
+          "evidence": null
+        },
+        {
+          "id": "docker",
+          "command": ".venv\\Scripts\\python.exe -m pytest tests/test_workspace.py tests/test_workspace_tools.py tests/test_workspace_plan.py tests/test_docker_provider.py tests/test_sandbox_contention.py tests/test_compute.py tests/test_egress.py tests/test_sandboxed_mcp.py -m docker -q -p no:cacheprovider",
           "mandatory": true,
           "status": "pending",
           "evidence": null
@@ -6823,14 +6962,21 @@
       "gates": [
         {
           "id": "unit",
-          "command": ".venv\\Scripts\\python.exe -m pytest tests/test_snapshots.py -q",
+          "command": ".venv\\Scripts\\python.exe -m pytest tests/test_snapshots.py -q -p no:cacheprovider",
           "mandatory": true,
           "status": "pending",
           "evidence": null
         },
         {
           "id": "regression",
-          "command": ".venv\\Scripts\\python.exe -m pytest -q",
+          "command": ".venv\\Scripts\\python.exe -m pytest -q -p no:cacheprovider",
+          "mandatory": true,
+          "status": "pending",
+          "evidence": null
+        },
+        {
+          "id": "docker",
+          "command": ".venv\\Scripts\\python.exe -m pytest tests/test_workspace.py tests/test_workspace_tools.py tests/test_workspace_plan.py tests/test_docker_provider.py tests/test_sandbox_contention.py tests/test_compute.py tests/test_egress.py tests/test_sandboxed_mcp.py tests/test_snapshots.py -m docker -q -p no:cacheprovider",
           "mandatory": true,
           "status": "pending",
           "evidence": null
@@ -6872,14 +7018,21 @@
       "gates": [
         {
           "id": "unit",
-          "command": ".venv\\Scripts\\python.exe -m pytest tests/test_increment2_contention.py -q",
+          "command": ".venv\\Scripts\\python.exe -m pytest tests/test_increment2_contention.py -q -p no:cacheprovider",
           "mandatory": true,
           "status": "pending",
           "evidence": null
         },
         {
           "id": "regression",
-          "command": ".venv\\Scripts\\python.exe -m pytest -q",
+          "command": ".venv\\Scripts\\python.exe -m pytest -q -p no:cacheprovider",
+          "mandatory": true,
+          "status": "pending",
+          "evidence": null
+        },
+        {
+          "id": "docker",
+          "command": ".venv\\Scripts\\python.exe -m pytest tests/test_workspace.py tests/test_workspace_tools.py tests/test_workspace_plan.py tests/test_docker_provider.py tests/test_sandbox_contention.py tests/test_compute.py tests/test_egress.py tests/test_sandboxed_mcp.py tests/test_snapshots.py tests/test_increment2_contention.py -m docker -q -p no:cacheprovider",
           "mandatory": true,
           "status": "pending",
           "evidence": null
@@ -8441,6 +8594,240 @@
       "task": "M43-compute",
       "human": "Fable 5.1 (independent L4 reviewer, round 2)",
       "reason": "Round 2 verified first-hand on source hash 005673b7, equal to both gate evidence files and the live tree. Reproduced the unit gate (60 passed) and ran all 27 Docker-marked tests myself kept awake: the 18 measurement and security tests in 137 s and the 9 cancel-layer and example 37 tests in 1272 s, wall equal to monotonic, all passed. Independent nonce probe with a forced sentinel the command was never given: absent from /proc/1/environ, task/1/environ and cmdline, /proc/1/mem PermissionError, ptrace attach to PID 1 EPERM, process_vm_readv over all 40 mapped regions of PID 1 read 0 bytes, a forged line with a wrong nonce was ignored and the command charged its real 1.5 s burn; a probe that stalled PID 1 was charged its ceiling, 60 s times 2 cpus. The six trapped signals, the trap not reaching the command (exit 130), stdin whole after the nonce and no authentic line giving killed error at the ceiling all held on Docker. Charging: _Compute mirrors the model call path exactly (meter.record plus lease.charge) so RunResult.cost_usd, lease spend and the governor spend agree and equal the sum of ModelCalled and WorkspaceCommandEnded costs; each RunWorkspace has its own account so a plan workspace never charges another run; a spent lease refuses a command before any workspace is made; None price never becomes 0. NFR-49: agent_spec_hash depends only on id, instructions and tool_profile, and cpu_second_usd reaches only the lease, the manifest when set and the two new event fields. FR-155 five repairs match DECISION-97b301ea and each test fails without its repair. Example 37 vacuity tests pass; declared rows forbid nothing. Caveats, not blockers: take_reading returns the exit code the line names but docker.py reports docker inspect ExitCode and discards it, redundant since the wrapper exits with that same code, harmless dead data; the brief still names tenant prefix SYN-m43r1, I used SYN-m43r2; the no-authentic-line test uses a wrapper edited to never print rather than one stopped mid-way; compute is priced in USD only so a token-only ceiling is never stopped by it, declared in the README. Cleanup: 0 tenant and 0 probe labelled containers and volumes remain, the other projects 4 containers and 3 volumes untouched, workspaces 0, workspace_commands 0, SYN runs 0, 0 locks, 0 other connections, no stray python or node, no repository file changed by content (388 files SHA-256 compared).",
+      "revision": null
+    },
+    {
+      "id": "9cab6412-3b0e-4431-8798-66420b5b89ce",
+      "at": "2026-10-31T08:03:06.773Z",
+      "action": "requeue",
+      "task": "M44-egress",
+      "human": null,
+      "reason": null,
+      "revision": null
+    },
+    {
+      "id": "fcad4841-9278-4f8f-8020-80d1612b3cf0",
+      "at": "2026-10-31T08:03:53.018Z",
+      "action": "resume",
+      "task": "M44-egress",
+      "human": null,
+      "reason": null,
+      "revision": null
+    },
+    {
+      "id": "332be8b6-915a-4e2b-9372-0c7cd10f5c13",
+      "at": "2026-10-31T08:07:32.258Z",
+      "action": "requeue",
+      "task": "M44-egress",
+      "human": null,
+      "reason": null,
+      "revision": null
+    },
+    {
+      "id": "64abe9c4-ff96-4753-8d6d-f264309d6e0a",
+      "at": "2026-10-31T08:07:33.296Z",
+      "action": "resume",
+      "task": "M44-egress",
+      "human": null,
+      "reason": null,
+      "revision": null
+    },
+    {
+      "id": "c54d1718-38be-4bd2-a6f2-19d3566ff308",
+      "at": "2026-10-31T10:33:52.390Z",
+      "action": "requeue",
+      "task": "M44-egress",
+      "human": null,
+      "reason": null,
+      "revision": null
+    },
+    {
+      "id": "3903d757-5224-4eae-bf96-5c2c63067d17",
+      "at": "2026-10-31T10:34:17.520Z",
+      "action": "resume",
+      "task": "M44-egress",
+      "human": null,
+      "reason": null,
+      "revision": null
+    },
+    {
+      "id": "933dbdbf-3b21-4c9f-9a01-f82c01dc8ab3",
+      "at": "2026-10-31T14:50:18.773Z",
+      "action": "reject",
+      "task": "M44-egress",
+      "human": "L4 independent reviewer M44 round 1 (Sonnet 5.5)",
+      "reason": "REJECT. (1) HIGH: a run, release_workspace and aclose hang forever when the proxy report backlog takes more than 30 s to record. WorkspaceManager._booked waits 30 s on reports.join(), then cancels the recorder; the recorder is inside a shielded store call (RunControl.store), which absorbs the cancel and uncancels, so the recorder loops back to reports.get() and the following await space.recorder never returns. Reproduced on PostgreSQL at the 10000-connection cap (10001 rows incl. one connection_limit row count 150 all written, run left running for over 8 minutes, no RunCompleted or WorkspaceRemoved) and deterministically in memory (400 reports at 0.1 s each hangs; 100 reports at 0.1 s completes in 10 s). The queue is unbounded and every refused connection past the cap costs a DB update. (2) MEDIUM: the direct-connection check of example 38 and of the Docker probe in tests/test_egress.py dials 93.184.215.14:443, which is unreachable even from the host and from the default bridge (timeout; example.com now resolves to 104.20.23.154 and 172.66.147.243), so it cannot fail and passes vacuously (KNOWLEDGE-1afcf6b2, F8); 1.1.1.1:443 is reachable from the bridge and fails inside the workspace, so a reachable control address is available. (3) LOW to MEDIUM: with keep=True, WorkspaceConnection events land after RunCompleted; the connection_limit event carries count 1 while its row ends at the true count; a valid 32 x 253 char egress spec fails creation with a raw ValueError on Windows (proxy docker create line 36518 chars over 32767); a CONNECT port of 4301+ digits is recorded proxy_error with no host; space.commands is never pruned; the proxy stderr pipe is never drained. Held up: no report-line forging (fields json-escaped, kind restricted), isolated gateway scan found only the proxy, DNS gives SERVFAIL, IPv6 absent, no leaked network or proxy on failed or cancelled creation, no token in any row, event or manifest, 40 of 40 refusals attributed to their command, migration 0024 constraints hold both ways, M43 five carried items done, gates 97/3068/102 pass on source hash 89008bc0. Full findings list in the review report.",
+      "revision": null
+    },
+    {
+      "id": "c299103d-73bf-4d87-b50a-b7ed42abba6a",
+      "at": "2026-10-31T15:08:16.168Z",
+      "action": "requeue",
+      "task": "M44-egress",
+      "human": "siva-rgb (owner)",
+      "reason": "M44 round 1 repairs, DECISION-a7a1b37b: FR-162 amended first",
+      "revision": null
+    },
+    {
+      "id": "75710727-b8f6-4fae-9faa-d97837aed8f3",
+      "at": "2026-10-31T15:08:33.112Z",
+      "action": "resume",
+      "task": "M44-egress",
+      "human": "siva-rgb (owner)",
+      "reason": "M44 round 1 repairs, DECISION-a7a1b37b",
+      "revision": null
+    },
+    {
+      "id": "0834920c-8b16-4ffe-a04e-ac4c811c1a3e",
+      "at": "2026-10-31T18:20:03.200Z",
+      "action": "approve",
+      "task": "M44-egress",
+      "human": "Fable 5.1 (independent L4 reviewer, M44 round 2)",
+      "reason": "Round 2, fresh session, verified first-hand on source hash b68cf521 equal to all three gate evidence files (unit 108 passed, regression 3079 passed, docker 108 passed, each exit 0). Re-ran tests/test_egress.py myself: 108 passed without Docker and 24 passed with Docker in 340 s kept awake, wall clock matching. All eight attack items worked. Round 1 F1 to F7 closed: settle has one production caller, the recorder is never cancelled, and a store write that never returns still let the run and aclose finish within the bound (probe); F3 and F4 hold on a plan workspace and on Postgres (one connection_limit row whose count reaches the true total, one event with no count, proxy_ended row, bytes on allowed rows); F2 direct check cannot pass with isolation gone and fails closed on a dead or foreign address. Proxy held 30000 sni_of mutations, every head parsing trick refused or kept within the listed pair, no report can be forged (host cleaned, token validated, proxy builds the line), no token in any row, event, migration or SDK error. NFR-49: no egress means no watcher, no network, no egress key in record, agent_spec_hash untouched. M43 five carried items all done. Non-blocking observations for repair in M44 under the owner standing rule: (1) past the connection cap every refused connection still costs one store UPDATE on the limit row (297 updates for 298 refusals measured), so the one row bounds rows but not writes or queue memory; (2) a connection still undecided when the proxy is stopped with its workspace is counted but never reported, since Proxy.handle catches Exception and not the CancelledError from close; it cannot form a row as reason is NOT NULL, so within amended FR-162, but worth a word in the README; (3) the F2 direct check can fail falsely if the CDN rotates the address between the proxy resolving and the host control, erring safe; (4) a connection of no known command on a plan workspace is attributed to the creating child run, which may have ended, rather than the top run. Not probed first-hand: forcing the attribution race on Docker (reasoned: its only outcome is a row with no command, which FR-162 permits) and a bespoke in-container escape probe beyond the suite own isolation tests, which I ran. Host left as found: 0 containers, volumes, networks, processes, rows, locks.",
+      "revision": null
+    },
+    {
+      "id": "ac564d35-5e5f-4303-9d7b-f4dd9e210b76",
+      "at": "2026-10-31T18:50:37.018Z",
+      "action": "requeue",
+      "task": "M44-egress",
+      "human": "siva-rgb (owner)",
+      "reason": "M44 round 2 repairs, DECISION-e510a5e3: FR-161 and FR-162 amended first",
+      "revision": null
+    },
+    {
+      "id": "73d1221a-58de-48b8-a886-3b0cb5734871",
+      "at": "2026-10-31T18:50:56.710Z",
+      "action": "resume",
+      "task": "M44-egress",
+      "human": "siva-rgb (owner)",
+      "reason": "M44 round 2 repairs, DECISION-e510a5e3",
+      "revision": null
+    },
+    {
+      "id": "7780ec12-cb4b-4e03-96e3-ce28ab0eb128",
+      "at": "2026-11-01T05:01:16.277Z",
+      "action": "approve",
+      "task": "M44-egress",
+      "human": "Opus 5",
+      "reason": "Round 3 by Opus 5, focused on round 2 five repairs, all verified first-hand with measured output. The unrecorded row accounts for every queued connection exactly once, including the report dequeued at the moment the stop is seen, and never recounts refusals already on the limit row; booked returns at twice the bound when the store never returns, so round 1 F1 stays closed. The limit timer costs 2 report lines for 400 refusals, writes the exact final count at close even with the timer still pending, and does not outlive the proxy. A connection undecided at close is reported stopped exactly once and a decided one is never re-reported. Every row and event lands under the run that made it, the plan top-level run for an unknown token, proven with a control that reproduces round 2 shape and breaks the check. Migration 0024 file, recorded checksum and live constraint agree. No token appears in any row, event, command row or spec record. All three gates verified from their evidence at source hash c8e19bea, and I ran the M44 docker tests myself: 25 passed in 382 s. Two non-blocking findings to repair in M44: first, RunWorkspace end on the cancelled path sets binding ended and re-raises without calling settled, so it never takes the booking lock and an event already being written is not waited for, unlike the normal path which I measured waiting; the end-to-end consequence through a Runner is not proven. Second, past the removal bound a queued end report leaves its allowed row with null bytes and a queued proxy-ended report writes no row, and reports arriving behind the STOP marker after a removal that exceeded its own bound are neither recorded nor counted. Not probed: no bespoke in-container escape probe, no repeat of round 2 ClientHello and request-head breadth, the attribution race not forced, and the final limit count not exercised on docker where the cap is pinned at 10000. Host and store left at baseline: runs 10351, run events 65110, zero containers, volumes, networks, processes or locks.",
+      "revision": null
+    },
+    {
+      "id": "463ebe71-18fd-4365-8e72-25b28429f089",
+      "at": "2026-11-01T06:53:15.868Z",
+      "action": "requeue",
+      "task": "M44-egress",
+      "human": "siva-rgb (owner)",
+      "reason": "M44 rounds 3 and 4 repairs, DECISION-f7114b8b: FR-161 and FR-162 amended first",
+      "revision": null
+    },
+    {
+      "id": "2534e73a-be11-403e-aedb-f1c4d0aebc51",
+      "at": "2026-11-01T06:53:30.113Z",
+      "action": "resume",
+      "task": "M44-egress",
+      "human": "siva-rgb (owner)",
+      "reason": "M44 rounds 3 and 4 repairs, DECISION-f7114b8b",
+      "revision": null
+    },
+    {
+      "id": "92e40050-b2f7-413a-a9ab-8d6c196dc934",
+      "at": "2026-11-01T10:15:38.813Z",
+      "action": "reject",
+      "task": "M44-egress",
+      "human": "Sonnet 5.5 round 5 reviewer",
+      "reason": "Round 5 rejects. Blocking: (1) DECISION-f7114b8b item 1 is not closed on the double-cancel path: a second cancel during settled() skips the booking-lock wait, and a WorkspaceConnection event mid-write landed at sequence 9 after RunCancelled at 8 (reproduced, 3 s slow emit, bound 0.5 s). (2) Runner._end_workspace is guarded only in _cancelled: on the failed-run path (api.py line 1054) a cancel() during the workspace removal ends the run task CancelledError with no terminal event (reproduced, last event WorkspaceRemoved), and the _cancelled swallow skips end_plans so a plan workspace is left until aclose (end_plans calls: none). Non-blocking, all to repair in M44: settled() waits unbounded on a booking lock held by an emit that never returns; the late pass outlives aclose() against a never-returning store; a refused proxy_ended row is neither recorded nor counted (undeclared); the SNI check reads only the first server_name extension or entry; example 38 host_direct, neighbour and dns checks have no control; the one-unrecorded-row rule is not a database constraint; new cancelled-end tests do not put a real event mid-write and miss the second cancel. Verified sound: unrecorded accounting exactly once (4,800 random store-failure runs, mutant-sensitive), late pass and concurrent passes, migration 0024 file, checksum and live constraints agree, Docker cap test, 26 Docker egress tests and 129 unit tests pass, no escape found on Docker, nothing left behind.",
+      "revision": null
+    },
+    {
+      "id": "dccb1882-b0b1-4a5d-8077-e02f7dd61b8d",
+      "at": "2026-11-01T10:39:50.477Z",
+      "action": "requeue",
+      "task": "M44-egress",
+      "human": "siva-rgb (owner)",
+      "reason": "M44 round 5 repairs, DECISION-0d5473ef: FR-159 to FR-163 amended first",
+      "revision": null
+    },
+    {
+      "id": "30de622a-75e9-4488-a413-cf726bd32d0f",
+      "at": "2026-11-01T10:40:50.976Z",
+      "action": "resume",
+      "task": "M44-egress",
+      "human": "siva-rgb (owner)",
+      "reason": "M44 round 5 repairs, DECISION-0d5473ef",
+      "revision": null
+    },
+    {
+      "id": "51dcd839-abbe-46c5-b7b2-3d1b9c072185",
+      "at": "2026-11-01T10:44:00.990Z",
+      "action": "requeue",
+      "task": "M44-egress",
+      "human": "siva-rgb (owner)",
+      "reason": "M44 round 5: FR-162 corrected for the B1/N1 mechanism first",
+      "revision": null
+    },
+    {
+      "id": "0ea55fc2-2ca1-441e-bc15-d5370fb40f32",
+      "at": "2026-11-01T10:44:16.571Z",
+      "action": "resume",
+      "task": "M44-egress",
+      "human": "siva-rgb (owner)",
+      "reason": "M44 round 5 repairs, DECISION-0d5473ef and DECISION-5c68ddfb",
+      "revision": null
+    },
+    {
+      "id": "b136895b-fe16-44e1-b66b-04254fbcfda1",
+      "at": "2026-11-01T10:50:03.368Z",
+      "action": "requeue",
+      "task": "M44-egress",
+      "human": "siva-rgb (owner)",
+      "reason": "M44 round 5: FR-161 and FR-162 corrected for N8, N6 and N2 first (DECISION-7a3a2ae2)",
+      "revision": null
+    },
+    {
+      "id": "7b938035-ed72-4626-aa2c-3c569bba18f5",
+      "at": "2026-11-01T10:50:43.592Z",
+      "action": "resume",
+      "task": "M44-egress",
+      "human": "siva-rgb (owner)",
+      "reason": "M44 round 5 repairs, DECISION-0d5473ef, DECISION-5c68ddfb and DECISION-7a3a2ae2",
+      "revision": null
+    },
+    {
+      "id": "d4f23815-c3ac-4d5e-8a6b-874aa40930de",
+      "at": "2026-11-01T17:34:58.757Z",
+      "action": "approve",
+      "task": "M44-egress",
+      "human": "Fable 5.1 (L4 reviewer, round 6)",
+      "reason": "Round 6, fresh session: round 5 repairs verified first-hand. 32 reviewer mutants of my own on manager.py, handle.py, api.py, egress.py, records.py and scripts/38_egress.py (30 offline, 2 Docker), each killed by the test naming its repair and each file restored byte for byte; the B1 and N1 tests reach a real in-flight worker-thread write and a real second cancel. Probes: gate orderings hold under thread stress; a sibling write delays a child end only within the bound; through re-raises after any number of cancels; the 10000 cap holds on Docker with final count 30; a maximal 32x253 egress spec fits the proxy line at 29910 chars; 30 parallel refused commands all named, no token in any report; IPv6, the host, the bridge address, the gateway and name lookups all fail from inside. 28 Docker tests pass; content hash f1ef275c unchanged; database and Docker left as found. Non-blocking notes: through drops a held cancel when the work itself raises (unreachable from current callees); the end past the bound is bounded only because the store serialises a run event writes (Postgres per-run advisory lock), not by the manager; DECISION-5c68ddfb says past the bound but the gate shuts after the barrier, as the brief declares; the stop flag past the aclose bound also ends the recorder final pass; the proxy container name resolves inside to its own address; a ClientHello split across two TLS records is refused no_sni (pre-existing).",
+      "revision": null
+    },
+    {
+      "id": "bd4d6cb2-bdcf-44e3-8f2d-c23328674f13",
+      "at": "2026-11-02T03:31:49.603Z",
+      "action": "approve",
+      "task": "M44-egress",
+      "human": "Opus 5 (L4 reviewer, round 7)",
+      "reason": "Round 7, fresh session holding no memory of an earlier M44 review. Content hash 413ffdd1 recomputed with the same algorithm matches all three gate records (unit 164 passed, regression 3135, docker 115, each exit 0 with empty stderr); independent-review was the only stale gate. Six reviewer mutants on through(): dropping the new except Exception clause, dropping the chaining, dropping the whole held-cancel raise, setting cancelled in the new clause, and dropping the work.cancelled() guard in the chain were each killed by the test that names them (the new r6 test, plus the round 5 B1 and B2 tests, one of which also hung the file at 887 s); widening the clause to BaseException is the one survivor of all 164 unit tests, and narrowing is the right call under INVARIANT-af776957 because a BaseException raised by the work tears the loop down before through can decide. handle.py restored byte for byte, SHA-256 verified. Nine asyncio probes: with no cancel the result is returned and the very same exception object re-raised with cause and context unchanged; four cancels give one CancelledError with empty args; a held cancel wins over a success and over a failure, chained; a work cancelled meanwhile gives cause None with no raise inside the raise; the work is never left unowned and its exception is retrieved. Nothing in the SDK reads cause or context (only claimlock, unrelated) and nothing logs a traceback, so the chain reaches no row, event or log. README rows checked against code: observation 2 holds, every event write takes a per-run pg_advisory_xact_lock and the memory sink holds one lock per run; observation 6 holds, a ClientHello split across two TLS records gives sni_of None and is refused no_sni, measured. Three non-blocking findings. 1: docker.py _through, byte-identical to HEAD so pre-existing, still loses a held cancel when its work raises, reproduced on the shape of line 775 where wait_for raises TimeoutError and the call site suppresses it; low severity, the run stays marked. 2: the README row for observation 4 over-claims, the stop flag is set only when a late pass is outstanding past the aclose bound and only late passes are cancelled, so a recorder final counting pass can outlive aclose untold. 3: observation 5 understates, Docker 127.0.0.11 on an internal gateway-isolated network resolves every container name on that network, the asking one included, measured, with no consequence since names are uuid4 and external names still fail. Database, Docker and host left exactly as found: 0 rows, 0 containers, 0 networks, 0 volumes, 0 advisory locks, 0 stray processes; no repository file changed by content; nothing committed or published.",
+      "revision": null
+    },
+    {
+      "id": "c353dfb7-8b69-4cf3-abde-38f7609465df",
+      "at": "2026-11-02T06:20:47.138Z",
+      "action": "approve",
+      "task": "M44-egress",
+      "human": "Sonnet 5.5 (L4 reviewer, round 8)",
+      "reason": "Round 8 at source hash 1d1809cb. through() routing verified site by site: manager 11 sites (brief said nine), docker 6 at HEAD plus 2 added by M44 (brief said seven); no old copy left, handle.py imports no workspace module so no import cycle. Mutants: old loop under module name in docker killed by the new _contained test; old loop under another name at the docker 761 site killed; dropping the except Exception in through killed by both new tests. Non-blocking: the routing test is identity-only, so the old loop reintroduced under another name in manager.py (all sites or one) survives the egress suite; DECISION-ed9b1bba says tests reach each module case, which holds for docker only. postgres artifact loop lets the cancel win and drops the work error by design; claimlock keeps what was delivered. README rows match the code. Gate evidence fresh and green at the current hash. Docker gate warnings: not reproduced in 2 runs of the test (0 warnings), judged GC-timing noise from an unclosed client transport, no leaked containers found.",
+      "revision": null
+    },
+    {
+      "id": "574f1f32-2b81-4671-88df-72d09c5ca014",
+      "at": "2026-11-02T08:11:10.057Z",
+      "action": "approve",
+      "task": "M44-egress",
+      "human": "siva-rgb (owner)",
+      "reason": "Owner approval at source hash 210ad398 under the review stopping rule DECISION-c697f36c: round 8 (Sonnet 5.5) approved 1d1809cb with nothing blocking; its findings and the author sweep were fixed in M44 by DECISION-1e35a472, each fix with a test shown to fail when undone (132 mutants killed), and unit 172, regression 3143 and docker 115 all pass at 210ad398 with no warnings. No round 9 by the rule.",
       "revision": null
     }
   ],

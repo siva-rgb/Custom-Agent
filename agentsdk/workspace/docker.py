@@ -33,7 +33,10 @@ from types import MappingProxyType
 from typing import Any
 
 from ..errors import WorkspaceUnavailable
-from . import CommandOutcome, WorkspaceHandle, WorkspaceSpec, charged, normal_path
+# A container's removal, once begun, is never abandoned: finished even when the caller is
+# cancelled meanwhile, then that cancel raised (one helper, DECISION-ed9b1bba).
+from ..handle import through
+from . import CommandOutcome, WorkspaceHandle, WorkspaceSpec, charged, egress, normal_path
 
 MOUNT = "/workspace"
 UID = 65534
@@ -124,11 +127,12 @@ def env_refusal(env: Mapping[str, str]) -> str | None:
     return None
 
 
-def hardening(spec: WorkspaceSpec) -> list[str]:
+def hardening(spec: WorkspaceSpec, network: str = "none") -> list[str]:
     """P5-D6: every command container's limits, exactly these; nothing a model or a spec can reach
-    adds to them or takes one away."""
+    adds to them or takes one away. With egress, the workspace's own internal network replaces
+    `none`, and nothing else changes (FR-160)."""
     return [
-        "--network", "none", "--cap-drop", "ALL", "--security-opt", "no-new-privileges", "--read-only",
+        "--network", network, "--cap-drop", "ALL", "--security-opt", "no-new-privileges", "--read-only",
         "--tmpfs", f"/tmp:size={spec.tmp_bytes}", "--user", f"{UID}:{UID}", "--pids-limit", str(spec.pids),
         "--memory", str(spec.memory_bytes), "--memory-swap", str(spec.memory_bytes), "--cpus", f"{spec.cpus:.2f}",
         # The daemon keeps nothing of a command's output: it is read only through the attached
@@ -137,8 +141,69 @@ def hardening(spec: WorkspaceSpec) -> list[str]:
     ]
 
 
+PROXY_LIMITS = {"--pids-limit": "32", "--memory": str(64 * 2**20), "--memory-swap": str(64 * 2**20), "--cpus": "0.50"}
+
+
+def proxy_hardening(spec: WorkspaceSpec, network: str) -> list[str]:
+    """FR-160: the proxy's container is hardened as a command's is, on the workspace's network, with
+    fixed limits of its own (DECISION-88dea779)."""
+    args = hardening(spec, network)
+    for flag, value in PROXY_LIMITS.items():
+        args[args.index(flag) + 1] = value
+    return args
+
+
 def volume_name(workspace_id: str) -> str:
     return f"agentsdk-{workspace_id}"
+
+
+def engine_refusal(version: str) -> str | None:
+    """F1: an egress network's gateway is isolated, which needs Docker Engine 28; why this daemon
+    cannot give one, or None (DECISION-26009e04)."""
+    try:
+        major = int(version.split(".", 1)[0])
+    except ValueError:
+        major = 0
+    if major >= 28:
+        return None
+    return f"egress needs Docker Engine 28 or later, for a network whose gateway is isolated; this daemon is {version!r}"
+
+
+def ready_refusal(line: bytes) -> str | None:
+    """F6: why the proxy's first line is not a python3 at least 3.8 listening, or None."""
+    try:
+        ready = json.loads(line)
+        version = tuple(ready["python"]) if isinstance(ready, dict) and ready.get("kind") == "listening" else ()
+    except (ValueError, KeyError, TypeError):
+        version = ()
+    if len(version) == 2 and all(isinstance(n, int) for n in version) and version >= egress.PYTHON:
+        return None
+    return f"the image cannot run the egress proxy: it needs python3, {egress.PYTHON[0]}.{egress.PYTHON[1]} or later"
+
+
+def network_name(workspace_id: str) -> str:
+    return f"agentsdk-net-{workspace_id}"
+
+
+def proxy_name(workspace_id: str) -> str:
+    return f"agentsdk-proxy-{workspace_id}"
+
+
+def _egress_labels(handle: WorkspaceHandle) -> list[str]:
+    """The proxy's and the network's labels: the workspace's, but for its spec, which its volume
+    carries; with it the allow list would ride twice on the proxy's line (F5, DECISION-a7a1b37b)."""
+    return _labels({key: value for key, value in handle.labels.items() if key != "agentsdk.spec"})
+
+
+def proxy_args(handle: WorkspaceHandle, subnet: str, max_connections: int = egress.MAX_CONNECTIONS) -> list[str]:
+    """FR-160: the docker call creating a workspace's proxy, its allow list, subnet and connection cap
+    its config (FR-161, DECISION-f7114b8b)."""
+    workspace_id = handle.workspace_id
+    config = json.dumps({"allow": list(handle.spec.egress), "port": egress.PORT, "subnet": subnet,
+                         "max_connections": max_connections})
+    return ["create", "--pull", "never", "--name", proxy_name(workspace_id), *_egress_labels(handle),
+            *proxy_hardening(handle.spec, network_name(workspace_id)), "--entrypoint=", handle.spec.image,
+            "python3", "-c", egress.SOURCE, config]
 
 
 def _labels(labels: Mapping[str, str]) -> list[str]:
@@ -150,14 +215,18 @@ def _mount(handle: WorkspaceHandle) -> list[str]:
     return ["--mount", f"type=volume,src={volume_name(handle.workspace_id)},dst={MOUNT},volume-nocopy"]
 
 
-def container_args(handle: WorkspaceHandle, name: str, argv: list[str], env_names: list[str]) -> list[str]:
+def container_args(handle: WorkspaceHandle, name: str, argv: list[str], env_names: list[str], network: str = "none",
+                   assigned: tuple[str, ...] = ()) -> list[str]:
     """FR-142: `docker create` for one command. The image is by digest and never pulled; the
     entrypoint is cleared so `argv` runs as given, under the wrapper and no other shell (FR-156);
     each env value is named only (`-e NAME`) and given in the CLI's own environment, so none is on
-    a command line."""
+    a command line. With egress, the command joins its workspace's network and is `assigned` its
+    proxy URL as `-e NAME=VALUE`: the CLI reads HTTPS_PROXY from its own environment, so it cannot
+    go there, and its token names the command only (FR-160, DECISION-88dea779)."""
     return [
-        "create", "--pull", "never", "--name", name, "-i", *_labels(handle.labels), *hardening(handle.spec),
+        "create", "--pull", "never", "--name", name, "-i", *_labels(handle.labels), *hardening(handle.spec, network),
         "-w", MOUNT, *_mount(handle), *[arg for env in env_names for arg in ("-e", env)],
+        *[arg for env in assigned for arg in ("-e", env)],
         "--entrypoint=", handle.spec.image, "sh", "-c", WRAPPER, "sh", *argv,
     ]
 
@@ -274,23 +343,6 @@ def _root_tar() -> bytes:
     return buffer.getvalue()
 
 
-async def _through(awaitable: Awaitable[Any]) -> Any:
-    """Finishes `awaitable` even when the caller is cancelled meanwhile, then re-raises that
-    cancellation: a container's removal, once begun, is never abandoned."""
-    task = asyncio.ensure_future(awaitable)
-    cancelled = False
-    while not task.done():
-        try:
-            await asyncio.shield(task)
-        except asyncio.CancelledError:
-            if task.cancelled():
-                raise
-            cancelled = True
-    if cancelled:
-        raise asyncio.CancelledError()
-    return task.result()
-
-
 class _Kept:
     """One output stream: read to its end, kept up to `keep` bytes, every byte counted (FR-144)."""
 
@@ -306,22 +358,25 @@ class _Kept:
                 self.data += chunk[:room]
             self.tail = (self.tail + chunk)[-TAIL_BYTES:]
 
-    def take_reading(self, nonce: bytes) -> tuple[int | None, int] | None:
-        """The wrapper's line, taken off what the command printed: its reading and the exit code it
-        names, or None when no line carries the command's nonce."""
+    def take_reading(self, nonce: bytes) -> tuple[bool, int | None]:
+        """The wrapper's line, taken off what the command printed: whether a line carries the
+        command's nonce, and its reading (None when the container gave none). The exit code the line
+        names is the container's by construction, which is the one reported."""
         found = reading(self.tail, nonce)
         if found is None:
-            return None
-        usec, code, length = found
+            return False, None
+        usec, _, length = found
         self.count -= length
         del self.data[self.count:]
-        return usec, code
+        return True, usec
 
 
 @dataclass
 class _Command:
     name: str
     kill: asyncio.Event = field(default_factory=asyncio.Event)
+    network: str = "none"  # FR-160: its workspace's network, with egress
+    assigned: tuple[str, ...] = ()  # and its proxy URL
 
 
 @dataclass
@@ -329,6 +384,16 @@ class _Space:
     handle: WorkspaceHandle
     baseline: int = 0  # what the empty volume's root itself uses, which no command wrote
     running: dict[str, _Command] = field(default_factory=dict)
+    # FR-160 (M44), with egress: the network commands join, the proxy's address on it, its attached
+    # process and the task reading its reports, each command's token, and who is told of them.
+    network: str = "none"
+    address: str | None = None
+    proxy: asyncio.subprocess.Process | None = None
+    reader: asyncio.Task[None] | None = None
+    tokens: dict[str, str] = field(default_factory=dict)
+    watcher: Any = None
+    stopping: bool = False  # its proxy asked to stop, so its end is no death
+    noise: asyncio.Task[None] | None = None  # its stderr, drained so the client never stalls (F7)
 
 
 @dataclass(frozen=True)
@@ -345,9 +410,10 @@ class DockerProvider:
 
     name = "docker"
 
-    def __init__(self, docker: str = "docker") -> None:
+    def __init__(self, docker: str = "docker", *, max_connections: int = egress.MAX_CONNECTIONS) -> None:
         self._cli_name = docker
         self._spaces: dict[str, _Space] = {}
+        self._max_connections = max_connections  # each proxy's, as FakeProvider's (DECISION-f7114b8b)
 
     # --- the CLI ---------------------------------------------------------------------------------
 
@@ -403,7 +469,7 @@ class DockerProvider:
             if process.returncode is None:
                 with contextlib.suppress(ProcessLookupError):
                     process.kill()
-                await _through(process.wait())
+                await through(process.wait())
             raise
         return code, bytes(out.data), bytes(err.data)
 
@@ -450,11 +516,108 @@ class DockerProvider:
                 space.baseline = await self._du(handle)
             except Exception as exc:  # noqa: BLE001 - named by class only
                 raise WorkspaceUnavailable(f"the image cannot measure a workspace: {type(exc).__name__}") from None
+            if spec.egress:
+                await self._start_egress(handle, space)
         except BaseException:
             self._spaces.pop(workspace_id, None)
-            await _through(self._remove(workspace_id))
+            await through(self._discard(space, workspace_id))
             raise
         return handle
+
+    # --- egress (FR-160 to FR-162) -----------------------------------------------------------------
+
+    async def _start_egress(self, handle: WorkspaceHandle, space: _Space) -> None:
+        """The workspace's internal network, its gateway isolated, and its proxy, on it and on the
+        bridge, listening on that network alone, started attached so its reports reach the SDK
+        alone; ready once it says it is listening under a python3 it can run on."""
+        workspace_id, labels = handle.workspace_id, _egress_labels(handle)
+        network, name = network_name(workspace_id), proxy_name(workspace_id)
+        code, out, _ = await self._cli("version", "--format", "{{.Server.Version}}")
+        refusal = engine_refusal(out.decode().strip() if code == 0 else "")
+        if refusal is not None:
+            raise WorkspaceUnavailable(refusal)
+        # F1: no gateway address, so no command reaches the host through it (DECISION-26009e04).
+        code, _, _ = await self._cli("network", "create", "--internal", "-o",
+                                     "com.docker.network.bridge.gateway_mode_ipv4=isolated", *labels, network)
+        if code != 0:
+            raise WorkspaceUnavailable(f"docker could not create the workspace's network (exit {code})")
+        space.network = network
+        code, out, _ = await self._cli("network", "inspect", "--format", "{{(index .IPAM.Config 0).Subnet}}", network)
+        subnet = out.decode().strip()
+        if code != 0 or not subnet:
+            raise WorkspaceUnavailable("the workspace's network has no subnet")
+        args = proxy_args(handle, subnet, self._max_connections)
+        if _too_long(args):
+            # F5: refused as the workspace's, never a raw ValueError (DECISION-a7a1b37b).
+            raise WorkspaceUnavailable("the workspace's proxy would pass the docker command line's bound: "
+                                       "its egress list is too long")
+        code, _, _ = await self._cli(*args)
+        if code != 0:
+            raise WorkspaceUnavailable(f"docker could not create the workspace's proxy (exit {code})")
+        code, _, _ = await self._cli("network", "connect", "bridge", name)
+        if code != 0:
+            raise WorkspaceUnavailable(f"docker could not connect the workspace's proxy (exit {code})")
+        space.proxy = await self._spawn(["start", "-a", name])
+        space.noise = asyncio.ensure_future(_Kept(4096).drain(space.proxy.stderr))
+        try:
+            first = await asyncio.wait_for(space.proxy.stdout.readline(), _CLI_SECONDS)
+        except asyncio.TimeoutError:
+            first = b""
+        refusal = ready_refusal(first)
+        if refusal is not None:
+            raise WorkspaceUnavailable(refusal)
+        code, out, _ = await self._cli("inspect", "--format", "{{json .NetworkSettings.Networks}}", name)
+        try:
+            space.address = json.loads(out)[network]["IPAddress"] if code == 0 else None
+        except (ValueError, KeyError, TypeError):
+            space.address = None
+        if not space.address:
+            raise WorkspaceUnavailable("the workspace's proxy has no address on its network")
+        space.reader = asyncio.ensure_future(self._read_reports(space))
+
+    async def _read_reports(self, space: _Space) -> None:
+        """FR-162: the proxy's own reports, a JSON line each, its tokens made command ids; what is not
+        one is not a report. Its output ending when no stop was asked is its death: reported `ended`
+        (F2, DECISION-26009e04)."""
+        while line := await space.proxy.stdout.readline():
+            try:
+                report = json.loads(line)
+            except ValueError:
+                continue
+            if not isinstance(report, dict) or report.get("kind") not in ("connection", "end", "limit"):
+                continue
+            token = report.pop("token", None)
+            if report["kind"] == "connection":
+                report["command_id"] = space.tokens.get(token) if isinstance(token, str) else None
+            if space.watcher is not None:
+                with contextlib.suppress(Exception):
+                    space.watcher(report)
+        if not space.stopping and space.watcher is not None:
+            with contextlib.suppress(Exception):
+                space.watcher({"kind": "ended", "at": egress._now()})
+
+    def watch_egress(self, handle: WorkspaceHandle, callback: Any) -> None:
+        """FR-162: `callback` gets each report of the workspace's proxy, its token made a command id."""
+        self._space(handle).watcher = callback
+
+    async def _stop_egress(self, space: _Space) -> None:
+        """The proxy asked to stop, so each open tunnel reports its bytes, and its reports read to the
+        end; its container, and the network, go with the workspace's sweep."""
+        if space.proxy is None:
+            return
+        space.stopping = True
+        await self._cli("stop", "-t", "5", proxy_name(space.handle.workspace_id))
+        if space.reader is not None:
+            with contextlib.suppress(BaseException):
+                await asyncio.wait_for(asyncio.shield(space.reader), _CLI_SECONDS)
+            space.reader.cancel()
+        if space.proxy.returncode is None:
+            with contextlib.suppress(ProcessLookupError):
+                space.proxy.kill()
+        with contextlib.suppress(Exception):
+            await asyncio.wait_for(space.proxy.wait(), _CLI_SECONDS)
+        if space.noise is not None:
+            space.noise.cancel()  # it writes nothing: it only reads to the stream's end
 
     @contextlib.asynccontextmanager
     async def _helper(self, handle: WorkspaceHandle) -> AsyncIterator[str]:
@@ -469,7 +632,7 @@ class DockerProvider:
                 raise WorkspaceUnavailable(f"docker could not reach the workspace (exit {code})")
             yield name
         finally:
-            await _through(self._rm(name))
+            await through(self._rm(name))
 
     async def _alive(self, name: str) -> bool:
         code, _, _ = await self._cli("inspect", "--format", "{{.Id}}", name)
@@ -487,8 +650,19 @@ class DockerProvider:
                                   stdout_bytes=0, stderr_bytes=len(message), duration=0.0)
         command_id = command_id or str(uuid.uuid4())
         command = _Command(f"agentsdk-cmd-{uuid.uuid4()}")
-        if _too_long(container_args(handle, command.name, list(argv), sorted(handle.spec.env))):
+        assigned: tuple[str, ...] = ()
+        token = None
+        if space.address is not None:
+            # FR-160: its own token, which names it in the proxy's reports (DECISION-88dea779).
+            token = secrets.token_hex(16)
+            space.tokens[token] = command_id
+            url = f"http://{egress.USER}:{token}@{space.address}:{egress.PORT}"
+            assigned = (f"HTTPS_PROXY={url}", f"https_proxy={url}")
+        command.network, command.assigned = space.network, assigned
+        if _too_long(container_args(handle, command.name, list(argv), sorted(handle.spec.env), space.network,
+                                    assigned)):
             # As exec reports E2BIG: the model's own arguments, never docker's absence (pre-review P4).
+            space.tokens.pop(token, None)
             message = b"argument list too long: the command line would pass the 32,767 characters Windows allows\n"
             return CommandOutcome(exit_code=126, stdout=b"", stderr=message, stdout_cut=False, stderr_cut=False,
                                   stdout_bytes=0, stderr_bytes=len(message), duration=time.monotonic() - started)
@@ -498,6 +672,8 @@ class DockerProvider:
                                           env=handle.spec.env, keep=handle.spec.max_output_bytes)
         finally:
             space.running.pop(command_id, None)
+            # F4: a token names its command only while it runs (DECISION-26009e04).
+            space.tokens.pop(token, None)
         out, err = ended.stdout, ended.stderr
         duration = time.monotonic() - started
         return CommandOutcome(
@@ -519,8 +695,8 @@ class DockerProvider:
         process: asyncio.subprocess.Process | None = None
         nonce = _nonce().encode()
         try:
-            code, _, _ = await self._cli(*container_args(handle, command.name, argv, sorted(env)),
-                                         env=self._env(env))
+            code, _, _ = await self._cli(*container_args(handle, command.name, argv, sorted(env), command.network,
+                                                        command.assigned), env=self._env(env))
             if command.kill.is_set():
                 return _Ended(None, out, err, "cancelled")
             if code != 0:
@@ -564,24 +740,30 @@ class DockerProvider:
                 raise WorkspaceUnavailable("the command's container could not be inspected")
             state = json.loads(state)
             exit_code = int(state["ExitCode"])
-            found = out.take_reading(nonce)
+            found, usec = out.take_reading(nonce)
             # OOMKilled says any process in the container was killed for memory: the command was
             # ended at its bound only when its own process went by SIGKILL; otherwise it ended on
             # its own, and keeps its exit code (M42 pre-review F6, DECISION-4689af02).
             if state.get("OOMKilled") and exit_code == 137:
                 return _Ended(None, out, err, "limit")
-            if found is None:
+            if not found:
                 # No line carrying its nonce, so the wrapper did not finish: the container's exit code
                 # may be PID 1's, not the command's, so none is reported (DECISION-88395b13).
                 return _Ended(None, out, err, "error")
-            return _Ended(exit_code, out, err, None, found[0])
+            return _Ended(exit_code, out, err, None, usec)
         finally:
-            await _through(self._rm(command.name))
-            if process is not None and process.returncode is None:
-                with contextlib.suppress(ProcessLookupError):
-                    process.kill()
-                with contextlib.suppress(Exception):
-                    await _through(asyncio.wait_for(process.wait(), _CLI_SECONDS))
+            await through(self._cleaned(command.name, process))
+
+    async def _cleaned(self, name: str, process: asyncio.subprocess.Process | None) -> None:
+        """A command's container removed, then its `docker start -a` client killed and waited for,
+        bounded: one step under `through`, so a cancel held during the removal never skips the
+        kill (DECISION-1e35a472)."""
+        await self._rm(name)
+        if process is not None and process.returncode is None:
+            with contextlib.suppress(ProcessLookupError):
+                process.kill()
+            with contextlib.suppress(Exception):
+                await asyncio.wait_for(process.wait(), _CLI_SECONDS)
 
     async def kill(self, handle: WorkspaceHandle, command_id: str) -> None:
         space = self._spaces.get(handle.workspace_id)
@@ -670,7 +852,7 @@ class DockerProvider:
                 if process.returncode is None:
                     with contextlib.suppress(ProcessLookupError):
                         process.kill()
-                await _through(process.wait())
+                await through(process.wait())
             if len(data) > MAX_TRANSFER_BYTES:
                 raise ValueError(f"the transfer is over {MAX_TRANSFER_BYTES} B")
             if process.returncode != 0:
@@ -698,20 +880,40 @@ class DockerProvider:
         if space is not None:
             for command in list(space.running.values()):
                 command.kill.set()
+            await through(self._discard(space, handle.workspace_id))
+            return
         await self._remove(handle.workspace_id)
 
+    async def _discard(self, space: _Space, workspace_id: str) -> None:
+        """Its proxy stopped, then everything it holds removed: one step under `through`, so a
+        cancel held while the proxy stops never skips the removal (DECISION-1e35a472)."""
+        await self._stop_egress(space)
+        await self._remove(workspace_id)
+
     async def _remove(self, workspace_id: str) -> None:
-        """Every container over the workspace, by its label, then its volume. A container created
-        while this runs still holds the volume, so the sweep is repeated a few times."""
+        """Every container over the workspace, by its label -- its proxy's too -- then its volume and
+        its network. A container created while this runs still holds the volume, so the sweep is
+        repeated a few times."""
         for attempt in range(_REMOVE_ATTEMPTS):
             code, out, _ = await self._cli("ps", "-aq", "--filter", f"label=agentsdk.workspace={workspace_id}")
             if code == 0:
                 await self._rm(*out.decode().split())
             code, _, _ = await self._cli("volume", "rm", "-f", volume_name(workspace_id))
-            if code == 0:
+            if code == 0 and await self._network_gone(workspace_id):
                 return
             await asyncio.sleep(0.5 * (attempt + 1))
-        raise WorkspaceUnavailable(f"docker could not remove the workspace's volume (exit {code})")
+        raise WorkspaceUnavailable(f"docker could not remove the workspace's volume or network (exit {code})")
+
+    async def _network_gone(self, workspace_id: str) -> bool:
+        """FR-160: the workspace's network removed, or never made."""
+        code, out, _ = await self._cli("network", "ls", "-q", "--filter", f"label=agentsdk.workspace={workspace_id}")
+        if code != 0:
+            return False
+        found = out.decode().split()
+        if found:
+            code, _, _ = await self._cli("network", "rm", *found)
+            return code == 0
+        return True
 
     async def list_owned(self, labels: Mapping[str, str]) -> list[WorkspaceHandle]:
         filters = [arg for key, value in sorted(labels.items()) for arg in ("--filter", f"label={key}={value}")]
@@ -735,6 +937,22 @@ class DockerProvider:
                 continue  # found again by the next listing
             for container in inspected:
                 found = dict((container.get("Config") or {}).get("Labels") or {})
+                workspace_id = found.get("agentsdk.workspace", "")
+                if workspace_id and volume_name(workspace_id) not in names:
+                    orphans.setdefault(workspace_id, found)
+        # And a labelled network whose volume is gone, so it goes too (FR-160).
+        code, out, _ = await self._cli("network", "ls", "-q", "--filter", "label=agentsdk.workspace", *filters)
+        if code != 0:
+            raise WorkspaceUnavailable(f"docker could not list networks (exit {code})")
+        networks = out.decode().split()
+        for start in range(0, len(networks), 100):
+            _, out, _ = await self._cli("network", "inspect", *networks[start:start + 100], keep=16 * 2**20)
+            try:
+                inspected = json.loads(out) if out.strip() else []
+            except ValueError:
+                continue
+            for network in inspected:
+                found = dict(network.get("Labels") or {})
                 workspace_id = found.get("agentsdk.workspace", "")
                 if workspace_id and volume_name(workspace_id) not in names:
                     orphans.setdefault(workspace_id, found)
@@ -768,7 +986,10 @@ def _recorded(labels: Mapping[str, str]) -> WorkspaceSpec:
     never fails a listing (pre-review P5)."""
     try:
         record = json.loads(labels.get("agentsdk.spec") or "")
-        return WorkspaceSpec(**{k: v for k, v in record.items() if k in WorkspaceSpec.__dataclass_fields__})
+        fields = {k: v for k, v in record.items() if k in WorkspaceSpec.__dataclass_fields__}
+        if "egress" in fields:
+            fields["egress"] = tuple(fields["egress"])
+        return WorkspaceSpec(**fields)
     except Exception:  # noqa: BLE001 - whatever a label holds
         return _UNKNOWN_SPEC
 
