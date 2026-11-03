@@ -29,9 +29,9 @@ import posixpath
 import threading
 import time
 import uuid
+import weakref
 from collections import deque
 from collections.abc import Awaitable, Callable
-from functools import partial
 from typing import Any
 from urllib.parse import quote
 
@@ -42,6 +42,7 @@ from . import (MEASURE_SECONDS, SETUP_SECONDS, CommandOutcome, WorkspaceHandle, 
                charged)
 from .owner import is_dead, this_owner
 from .records import CommandRecord, ConnectionRecord, WorkspaceRecord, now
+from .tools import files_tar
 
 Emit = Callable[[EventType, dict[str, Any]], Awaitable[Any]]
 Call = Callable[..., Awaitable[Any]]
@@ -56,7 +57,11 @@ class _Slots:
     """FR-152: at most `limit` workspaces held at once, whichever loop each run is on. A waiter
     that is cancelled after its slot was handed to it gives that slot on. Each wait names the
     workspace it is for: once one of a plan's children begins creating it, its siblings still
-    waiting are released without a slot, so one workspace never takes two (DECISION-b1498111)."""
+    waiting are released without a slot, so one workspace never takes two (DECISION-b1498111).
+
+    NFR-39 (M45 round 3, DECISION-8e21d1ff): a sandboxed server's engine shares these slots, so
+    each waiter is held weakly -- by its waiting task alone. A run abandoned while it waits leaves
+    nothing here that reaches it; its waiter, gone, is passed over."""
 
     class _Waiter:
         def __init__(self, loop: asyncio.AbstractEventLoop, space: object) -> None:
@@ -65,7 +70,16 @@ class _Slots:
     def __init__(self, limit: int) -> None:
         self.limit, self.held = limit, 0
         self._lock = threading.Lock()
-        self._waiters: deque[_Slots._Waiter] = deque()
+        self._waiters: deque[weakref.ref[_Slots._Waiter]] = deque()
+
+    def _waiting(self) -> list[_Slots._Waiter]:
+        """Under the lock: the waiters still waiting, in order; those gone are dropped, and those whose
+        loop was closed under them, which no grant can reach (M45 round 3 pre-review)."""
+        alive = [waiter for waiter in (ref() for ref in self._waiters)
+                 if waiter is not None and not waiter.loop.is_closed()]
+        if len(alive) != len(self._waiters):
+            self._waiters = deque(weakref.ref(waiter) for waiter in alive)
+        return alive
 
     async def take(self, waiting: Callable[[int], Awaitable[None]] | None, space: object = None,
                    begun: Callable[[], bool] | None = None) -> bool:
@@ -80,7 +94,7 @@ class _Slots:
                 # (M41 review caveat, DECISION-b7423cae).
                 return False
             waiter = _Slots._Waiter(asyncio.get_running_loop(), space)
-            self._waiters.append(waiter)
+            self._waiters.append(weakref.ref(waiter))
             held = self.held
         # Told from its own task: a store write awaited here would absorb this wait's cancellation
         # (handle.py), and a wait for a workspace is cancellable (FR-152).
@@ -93,8 +107,8 @@ class _Slots:
             # Cancelled waiting, or after its grant while the wait was told (M41 pre-review).
             with self._lock:
                 granted = waiter.granted
-                if not granted and waiter in self._waiters:
-                    self._waiters.remove(waiter)
+                if not granted and waiter in self._waiting():
+                    self._waiters = deque(ref for ref in self._waiters if ref() is not waiter)
             if granted:
                 self.give()
             if told is not None:
@@ -105,18 +119,44 @@ class _Slots:
     def release(self, space: object) -> None:
         """Every wait for `space` ends without a slot: a sibling is creating it."""
         with self._lock:
-            for waiter in [w for w in self._waiters if w.space is space]:
-                self._waiters.remove(waiter)
-                waiter.loop.call_soon_threadsafe(_grant, waiter.future)
+            released = [w for w in self._waiting() if w.space is space]
+            self._waiters = deque(ref for ref in self._waiters if ref() not in released)
+            for waiter in released:
+                _scheduled(waiter)
 
     def give(self) -> None:
         with self._lock:
-            while self._waiters:
-                waiter = self._waiters.popleft()
+            for waiter in self._waiting():
+                self._waiters.popleft()
                 waiter.granted = True
-                waiter.loop.call_soon_threadsafe(_grant, waiter.future)
-                return
+                if _scheduled(waiter):
+                    return
+                waiter.granted = False
             self.held -= 1
+
+
+def _scheduled(waiter: _Slots._Waiter) -> bool:
+    """Its grant handed to its loop; False when that loop closed, on another thread, after the
+    check under the lock -- the slot then goes to the next waiter or back (M45 round 4 NB1)."""
+    try:
+        waiter.loop.call_soon_threadsafe(_grant, waiter.future)
+    except RuntimeError:
+        return False
+    return True
+
+
+def _arrival(manager: WorkspaceManager, space: _Space, handle: WorkspaceHandle) -> Callable[[Any], None]:
+    """FR-162: a proxy's watcher, as its provider keeps it. NFR-39 (M45 round 3, DECISION-8e21d1ff):
+    a sandboxed server's engine shares that provider, so the watcher holds its manager and its
+    workspace weakly -- each is held by what owns it -- and a report for either, gone, is dropped."""
+    managers, spaces = weakref.ref(manager), weakref.ref(space)
+
+    def arrived(report: Any) -> None:
+        manager, space = managers(), spaces()
+        if manager is not None and space is not None:
+            manager.arrived(space, handle, report)
+
+    return arrived
 
 
 def _grant(future: asyncio.Future[None]) -> None:
@@ -228,6 +268,11 @@ _STOP = object()
 
 async def _no_event(kind: EventType, payload: dict[str, Any]) -> None:
     return None
+
+
+async def _stored(function: Callable[..., Any], *args: Any, **kwargs: Any) -> Any:
+    """A store write with no run to write it through (FR-165): on a worker thread (FR-20)."""
+    return await asyncio.to_thread(function, *args, **kwargs)
 
 
 class _Forget:
@@ -384,7 +429,7 @@ class RunWorkspace:
                 space.owner = self._binding
             space.reports = asyncio.Queue()
             space.recorder = asyncio.ensure_future(self._manager.book(space, handle))
-            watch(handle, partial(self._manager.arrived, space, handle))
+            watch(handle, _arrival(self._manager, space, handle))
         await self._emit(EventType.WORKSPACE_CREATED, {
             "workspace_id": handle.workspace_id, "provider": provider.name, "image": self.spec.image,
             "scope": self.spec.scope})
@@ -618,6 +663,18 @@ class WorkspaceManager:
         self._reaping: asyncio.Future[None] | None = None
         self._late: set[asyncio.Task[None]] = set()  # passes counting reports after a recorder ended
         self._stop_late = False  # set by aclose past its bound (round 5 N2)
+        self._trailing: set[asyncio.Task[Any]] = set()  # a late record's removal, on its own loop (M45 N1)
+        self._runs: Callable[[], WorkspaceManager | None] | None = None  # a server side's Runner manager
+
+    def for_servers(self) -> WorkspaceManager:
+        """FR-165: the manager a sandboxed server's engine is given -- this one's provider, store,
+        owner, Runner label and slots, and none of its runs' workspaces. NFR-39 (M45 round 3,
+        DECISION-8e21d1ff): the engine is held by a module-global finalizer, so it holds nothing
+        that reaches a run; this manager it reaches only weakly, for whether it was closed."""
+        servers = WorkspaceManager(self.provider, self.store, self.max_concurrent)
+        servers.owner, servers.runner_id, servers.slots = self.owner, self.runner_id, self.slots
+        servers._runs = weakref.ref(self)
+        return servers
 
     def for_run(self, spec: WorkspaceSpec, tenant_id: str, project_id: str, run_id: str, emit: Emit,
                 call: Call, *, plan_run_id: str | None = None, account: Any = None,
@@ -796,8 +853,90 @@ class WorkspaceManager:
         await settle(space.recorder, _REMOVE_SECONDS, lambda: setattr(space, "stop_booking", True))
 
     def refuse_if_closed(self) -> None:
-        if self._closed:
+        runs = self if self._runs is None else self._runs()
+        if self._closed or runs is None or runs._closed:  # a server side's Runner, gone, was never closed
             raise WorkspaceUnavailable("this Runner was closed: it creates no workspace")
+
+    # --- sandboxed MCP servers (FR-164, FR-165, M45) ----------------------------------------------
+
+    async def open_server(self, spec: WorkspaceSpec, files: Any, tenant_id: str, project_id: str, *,
+                          seconds: float) -> _Space:
+        """A sandboxed server's workspace, on the loop its connection lives on: a slot within
+        `seconds` (its connect_timeout), its files imported through the checked transfer, recorded
+        scope `server` with no run -- it is its Runner's tenancy's, as its connection is
+        (DECISION-2a12196e) -- and with egress, its connections booked as rows with no run and no
+        event (DECISION-61aed587). It is kept out of `spaces`, which the Runner's own loop ends: its
+        connection removes it, and `aclose()` sweeps by this Runner's label what is left."""
+        self.refuse_if_closed()
+        space = _Space(spec, tenant_id, project_id, None)
+        space.owner = _Binding(None, _no_event, _stored)
+        try:
+            await asyncio.wait_for(self.slots.take(None, space), seconds)
+        except TimeoutError:
+            raise WorkspaceUnavailable(f"no workspace slot came free within {seconds} s") from None
+        space.slot = True
+        provider, handle, writing = self.provider, None, None
+        labels = {"agentsdk.tenant": tenant_id, "agentsdk.project": project_id,
+                  "agentsdk.workspace": str(uuid.uuid4()), "agentsdk.owner": self.owner,
+                  "agentsdk.runner": self.runner_id}
+        try:
+            self.refuse_if_closed()
+            handle = await asyncio.wait_for(provider.create(spec, labels), SETUP_SECONDS)
+            if files:
+                await asyncio.wait_for(provider.import_(handle, files_tar(files)), SETUP_SECONDS)
+            # Bounded: its connection's start is (connect_timeout, M33's every-wait rule).
+            writing = asyncio.ensure_future(_stored(self.store().record_workspace, WorkspaceRecord(
+                workspace_id=handle.workspace_id, tenant_id=tenant_id, project_id=project_id, run_id=None,
+                scope="server", provider=provider.name, image=spec.image, limits=spec.record(), created_at=now())))
+            await asyncio.wait_for(asyncio.shield(writing), _REMOVE_SECONDS)
+        except BaseException as exc:
+            if handle is not None:
+                with contextlib.suppress(Exception):
+                    await asyncio.wait_for(provider.remove(handle), _REMOVE_SECONDS)
+                # Pre-review F6, round 1 N1: a record write that timed out may have landed, or land
+                # later: its removal record follows it whenever it does.
+                if writing is not None:
+                    # Kept from now, not from when the write lands: a close waits for it (NB1).
+                    self._trail(self._removed_after(writing, tenant_id, project_id, handle.workspace_id))
+            space.slot = False
+            self.slots.give()
+            if isinstance(exc, Exception) and not isinstance(exc, WorkspaceUnavailable):
+                raise WorkspaceUnavailable(f"the server's workspace could not be made: {type(exc).__name__}") from None
+            raise
+        space.handle = handle
+        watch = getattr(provider, "watch_egress", None)
+        if spec.egress and watch is not None:
+            space.reports = asyncio.Queue()
+            space.recorder = asyncio.ensure_future(self.book(space, handle))
+            watch(handle, _arrival(self, space, handle))
+        return space
+
+    def _trail(self, work: Awaitable[Any]) -> None:
+        """Work that follows a write still under way when its caller gave up, kept until it ends."""
+        task = asyncio.ensure_future(work)
+        self._trailing.add(task)
+        task.add_done_callback(self._trailing.discard)
+
+    async def _removed_after(self, writing: asyncio.Future[Any], tenant_id: str, project_id: str,
+                             workspace_id: str) -> None:
+        """A record written late, or never: its removal recorded once its write has ended."""
+        await asyncio.wait({writing})
+        await self._record_removal(tenant_id, project_id, workspace_id, "aclose", None)
+
+    async def trailed(self) -> None:
+        """Waits, within the removal bound, for the work that follows a late write, and for a pass
+        counting what a server's proxy reported after its recorder ended -- before the loop it runs on
+        is closed (M45 round 2 NB1; round 3 pre-review). Never raises but for its caller's cancellation."""
+        if self._trailing or self._late:
+            await asyncio.wait(self._trailing | self._late, timeout=_REMOVE_SECONDS)
+
+    async def server_launch(self, space: _Space, command: str, args: list[str]) -> Any:
+        """How its provider starts the server over its workspace, each time it starts."""
+        return await self.provider.server_launch(space.handle, command, list(args))
+
+    async def close_server(self, space: _Space) -> None:
+        """Its server has ended for good, with its Runner: its workspace removed, recorded `aclose`."""
+        await self.finish(space, "aclose", None, None)
 
     async def end_plans(self, run_id: str, emit: Emit, call: Call) -> None:
         """FR-151: a top-level run ended, and with it the workspaces its plan's children shared."""
@@ -814,9 +953,9 @@ class WorkspaceManager:
         rows alone, and an event already being written lands before its terminal event
         (DECISION-a7a1b37b). Cancelled meanwhile, it still does all of that, then raises the cancel
         (round 5 B1, DECISION-0d5473ef)."""
-        await through(self._settle(space, binding))
+        await through(self._settled_events(space, binding))
 
-    async def _settle(self, space: _Space, binding: _Binding) -> None:
+    async def _settled_events(self, space: _Space, binding: _Binding) -> None:
         loop = asyncio.get_running_loop()
         until = loop.time() + _REMOVE_SECONDS
         try:

@@ -107,11 +107,24 @@ class Served:
              *(["--legacy-only"] if legacy_only else [])],
             env={**__import__("os").environ, **PACKAGES}, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         deadline = time.monotonic() + 60
-        while not port_file.exists():
-            assert self.process.poll() is None, "the fixture server exited"
-            assert time.monotonic() < deadline, "the fixture server did not start"
-            time.sleep(0.05)
-        self.port = int(port_file.read_text(encoding="utf-8"))
+        try:
+            while True:
+                assert self.process.poll() is None, "the fixture server exited"
+                assert time.monotonic() < deadline, "the fixture server did not start"
+                try:
+                    self.port = int(port_file.read_text(encoding="utf-8"))
+                    break
+                except FileNotFoundError:
+                    pass
+                except PermissionError:
+                    # Windows refuses an open for a moment as the file is renamed into place or
+                    # scanned: read again within the same deadline (M45's regression gate, the owner).
+                    pass
+                time.sleep(0.05)
+        except BaseException:
+            # Never started for its test, so no teardown ends it: it would hold its port for days.
+            self.process.kill()
+            raise
         self.base = f"http://127.0.0.1:{self.port}"
         self.url = f"{self.base}/mcp"
 

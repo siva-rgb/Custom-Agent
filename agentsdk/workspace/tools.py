@@ -15,7 +15,7 @@ from __future__ import annotations
 import io
 import posixpath
 import tarfile
-from collections.abc import Iterable
+from collections.abc import Iterable, Mapping
 from dataclasses import replace
 from typing import Any
 
@@ -138,6 +138,30 @@ def one_file_tar(path: str, content: bytes) -> bytes:
         info = tarfile.TarInfo(posixpath.normpath(path))
         info.size, info.mode, info.uid, info.gid = len(content), 0o644, 65534, 65534
         tar.addfile(info, io.BytesIO(content))
+    return buffer.getvalue()
+
+
+def files_tar(files: Mapping[str, bytes]) -> bytes:
+    """FR-164: a sandboxed server's files as one tar the SDK builds itself: each regular file, and
+    each folder above it once, owned by 65534 -- the checked transfer's own shape."""
+    buffer, folders = io.BytesIO(), set()
+    with tarfile.open(fileobj=buffer, mode="w") as tar:
+        for path in sorted(files):
+            name = posixpath.normpath(path)
+            parent = posixpath.dirname(name)
+            above = []
+            while parent and parent not in folders:
+                above.append(parent)
+                parent = posixpath.dirname(parent)
+            for folder in reversed(above):
+                folders.add(folder)
+                info = tarfile.TarInfo(folder)
+                info.type, info.mode, info.uid, info.gid = tarfile.DIRTYPE, 0o755, 65534, 65534
+                tar.addfile(info)
+            content = files[path]
+            info = tarfile.TarInfo(name)
+            info.size, info.mode, info.uid, info.gid = len(content), 0o644, 65534, 65534
+            tar.addfile(info, io.BytesIO(content))
     return buffer.getvalue()
 
 

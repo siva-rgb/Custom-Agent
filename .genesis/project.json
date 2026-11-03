@@ -9,7 +9,7 @@
     "non_goals": [],
     "trust_boundary": "local repository",
     "created_at": "2026-09-05T14:48:57.894Z",
-    "updated_at": "2026-11-02T08:11:10.271Z"
+    "updated_at": "2026-11-03T16:19:34.846Z"
   },
   "policy": {
     "ponytail": "full",
@@ -25,7 +25,7 @@
   "lifecycle": {
     "phase": "build",
     "status": "active",
-    "active_task": "M45-sandboxed-mcp",
+    "active_task": "M46-snapshots",
     "blocker": null,
     "next_action": "Run the task pre-flight."
   },
@@ -34,8 +34,8 @@
     "type": "new-product",
     "started_at": "2026-09-05T14:48:57.897Z",
     "spec_check": {
-      "at": "2026-11-01T10:50:42.778Z",
-      "source_hash": "f88e982417b4e4715dd7e7326394d8be17c8daf73a7e3a775433e275eb94bc34",
+      "at": "2026-11-02T11:44:39.493Z",
+      "source_hash": "0921e3ddb3e5ec22265c1a0a4d0a8369949520a3a31dafe9d96d5907df512fac",
       "requirements": [
         "AC-1",
         "AC-10",
@@ -365,13 +365,13 @@
       ]
     },
     "plan_check": {
-      "at": "2026-11-01T10:50:43.219Z",
+      "at": "2026-11-02T11:44:39.895Z",
       "source_hash": "10d81a26ab329feff7334c8877343e320fcc2df25ebe18382a3a468245037493"
     },
     "plan_approval": {
       "human": "siva-rgb (owner)",
-      "reason": "M44 round 5: plan re-approved after FR-161, FR-162 and P5-D23 corrected (DECISION-7a3a2ae2)",
-      "at": "2026-11-01T10:50:43.398Z",
+      "reason": "M45: plan re-approved after FR-165 amended (DECISION-5470ab57)",
+      "at": "2026-11-02T11:44:40.069Z",
       "source_hash": "10d81a26ab329feff7334c8877343e320fcc2df25ebe18382a3a468245037493"
     }
   },
@@ -708,12 +708,12 @@
         "NFR-8",
         "NFR-9"
       ],
-      "source_hash": "f88e982417b4e4715dd7e7326394d8be17c8daf73a7e3a775433e275eb94bc34",
+      "source_hash": "0921e3ddb3e5ec22265c1a0a4d0a8369949520a3a31dafe9d96d5907df512fac",
       "approval": {
         "human": "siva-rgb (owner)",
-        "reason": "M44 round 5: FR-161, FR-162 and P5-D23 corrected for N8, N6 and N2 (DECISION-7a3a2ae2)",
-        "at": "2026-11-01T10:50:42.988Z",
-        "source_hash": "f88e982417b4e4715dd7e7326394d8be17c8daf73a7e3a775433e275eb94bc34"
+        "reason": "M45: FR-165 amended for a dead server (DECISION-5470ab57)",
+        "at": "2026-11-02T11:44:39.690Z",
+        "source_hash": "0921e3ddb3e5ec22265c1a0a4d0a8369949520a3a31dafe9d96d5907df512fac"
       }
     }
   ],
@@ -2345,6 +2345,94 @@
       "status": "accepted",
       "source": null,
       "recorded_at": "2026-11-02T06:44:04.541Z"
+    },
+    {
+      "id": "DECISION-b478705b",
+      "title": "M45 pre-flight: legacy fixture through files, the opening run, a local process on the fake, env and cwd refused",
+      "text": "Owner (siva-rgb), 2026-11-02. Nothing carried from M44 (closed by DECISION-1e35a472). (1) Example 39 runs the legacy-era M33 fixture server, standard library only, given to the server through McpServer files and imported by the checked transfer, under the pinned image python3: the modern fixture needs the mcp library the image lacks, and images are never pulled or built. (2) A sandboxed server connection is shared per alias, tenant and project (P4-D28), so its workspace is recorded in workspaces, scope server, under the run whose call opened the connection; no migration. A crash restart (once, P4-D28) starts a new container over the same workspace, its files kept; the workspace is removed only with the server: when its Runner closes it, at aclose, or when reaped. (3) FakeProvider runs a sandboxed server as a local subprocess whose cwd is a temporary workspace folder holding its files, with the same records, lifetime, slot and reaping as Docker; containment checks (network, host, neighbour) run on Docker only, as M44 did. (4) StdioServer env or cwd given with a workspace raises ValueError naming WorkspaceSpec.env; the server cwd is its workspace root, its environment its spec env alone (FR-166). Also: a sandboxed server waits for a workspace slot within its connect_timeout; past it the connection fails as any connection does. FR-164, FR-165 and FR-167 amended first. Review stopping rule DECISION-c697f36c applies from round 1.",
+      "status": "accepted",
+      "source": null,
+      "recorded_at": "2026-11-02T09:23:50.118Z"
+    },
+    {
+      "id": "DECISION-2a12196e",
+      "title": "M45 pre-flight corrected: migration 0026, a server workspace recorded with no run",
+      "text": "Owner (siva-rgb), 2026-11-02. Corrects DECISION-b478705b item 2, which rested on two wrong premises found when the code was mapped: the workspaces table and WorkspaceSpec allow only scope run or plan, so a server row needs a migration whatever is chosen; and an MCP connection opens knowing only its alias, tenant and project, and can open with no run at all (an application read, as example 27 first look). Migration 0026 (M45) adds scope server to workspaces and lets run_id be NULL for that scope only; P5-D23 amended, M46 snapshots move to 0027. A sandboxed server workspace belongs to its Runner tenancy, as its connection does, and is recorded with no run, so an application read may open it. Author defaults, stated for the owner: a server WorkspaceSpec with keep=True or scope plan raises ValueError (a server workspace lives exactly as long as its server); its row is recorded scope server whatever the spec says. The rest of DECISION-b478705b stands: the legacy fixture through files, crash restart over the same workspace, a slot within connect_timeout, a local process on FakeProvider, env and cwd refused.",
+      "status": "accepted",
+      "source": null,
+      "recorded_at": "2026-11-02T10:12:31.392Z"
+    },
+    {
+      "id": "DECISION-61aed587",
+      "title": "M45: a sandboxed server egress recorded as rows with no run",
+      "text": "Owner (siva-rgb), 2026-11-02. A sandboxed server workspace has no run (DECISION-2a12196e), but each egress connection is a workspace_connections row whose run_id is NOT NULL, and an event under a run. Migration 0026 also lets workspace_connections.run_id be NULL, for the connections of a server workspace only. A server connection is then a row alone, with no event, under the same proxy and rules as M44 (FR-159 to FR-162), its command unknown, and what cannot be recorded within the removal bound counted on its one unrecorded row. FR-166 holds as written: a server reaches out only through its spec egress.",
+      "status": "accepted",
+      "source": null,
+      "recorded_at": "2026-11-02T10:14:13.577Z"
+    },
+    {
+      "id": "DECISION-92ae6ae5",
+      "title": "M45: example 39 carries its own legacy server; the M33 fixture is sandboxed by the gate",
+      "text": "Owner (siva-rgb), 2026-11-02. Corrects DECISION-b478705b item 1 for example 39 only: AC-17 runs every example offline from a copy outside the repository, where tests/fixtures/mcp_servers.py is absent, so example 39 cannot read the M33 fixture. Example 39 carries its own small legacy-era stdio server, standard library only (echo, reach, resolve), as a text constant given through McpServer files and run sandboxed, as example 27 carries its own server. The M33 fixture itself is run sandboxed by the M45 gate tests (tests/test_sandboxed_mcp.py), on FakeProvider and on Docker. FR-167 amended first.",
+      "status": "accepted",
+      "source": null,
+      "recorded_at": "2026-11-02T10:49:43.985Z"
+    },
+    {
+      "id": "DECISION-5470ab57",
+      "title": "M45 pre-review: seven findings repaired, a dead server releases its workspace",
+      "text": "Owner (siva-rgb), 2026-11-02, after the M45 adversarial pre-review (seven findings, verified first-hand). F1 (blocking): server_args, alone of every container launch, did not clear the image entrypoint, so an image with one ran it before the server and on its stdout; it now passes --entrypoint= as every command does. F2 (blocking): the caller deadline for a start (_ensure_bound) and the engine close bound left out every wait a sandboxed start and close add (a slot within connect_timeout, creation and import within SETUP_SECONDS each, the record, the provider calls, the removal and its egress drain); both now include them for a server with a workspace. F3: tests for the slot given back after a close, a server with egress on both stores with its connection row of no run and the trigger refusing a run workspace row of no run, and a closed manager refusing a server workspace. F4: example 39 cleanup check requires the server folder gone on the fake. F5: server_files refuses a path that is also another path folder, and two paths differing only in case. F6: a workspace whose record write timed out or was cancelled is recorded removed after its removal. F7: amends DECISION-b478705b: a server marked dead, its one restart spent, has its workspace removed and its slot given back at once, recorded aclose, instead of holding them until the Runner closes. FR-165 amended first.",
+      "status": "accepted",
+      "source": null,
+      "recorded_at": "2026-11-02T11:44:29.099Z"
+    },
+    {
+      "id": "DECISION-7a3e4526",
+      "title": "M45 round 1 repairs: a sandboxed Runner collectable again, four findings fixed, N4 declared",
+      "text": "Owner (siva-rgb), 2026-11-02, after round 1 (Fable 5.1, rejected on one blocking defect, reproduced first-hand). B1: the WorkspaceManager was given the Runner bound method _workspace_store, and handed to the MCP engine, so the engine finalizer registry reached the Runner: a Runner with a sandboxed server was never collected and its NFR-39 finalizer never ran. The manager now gets a store getter holding no Runner, as the catalog getter already does; a test collects a sandboxed Runner and sees its server workspace removed. N1: a record write that lands after its bound is followed, when it lands, by its removal record. N2: example 39 neighbour workspace carries an owner label and is removed in a finally. N3: the test_compute warning filter narrowed to the unclosed transport message. N5: WorkspaceRecord.run_id and ConnectionRecord.run_id typed optional. N4 declared, not fixed: the 0026 trigger fires on INSERT only; no SDK path updates run_id or scope, and a fix would need migration 0027. Sweep: every object handed to the MCP engine checked for a reference back to the Runner. Round 2 follows, the round having rejected.",
+      "status": "accepted",
+      "source": null,
+      "recorded_at": "2026-11-02T17:38:28.775Z"
+    },
+    {
+      "id": "DECISION-3756a232",
+      "title": "M45 round 2 repairs: an ended run leaves nothing that reaches it, proven across eight run shapes",
+      "text": "Owner (siva-rgb), 2026-11-03, after round 2 (Opus 5, rejected, reproduced first-hand). Why it recurred: round 1 B1 was repaired as one edge (the store getter), not as the property NFR-39 needs, that nothing the MCP engine reaches leads back to a Runner; the collection test covered one run shape. A 360 probe walking the reference graph from the engine found the kept shape leaking through engine, manager, kept space, command binding, StoredEmit, PublishingSink, RunHandle, Runner, and the code shows more routes of the same kind (a kept workspace egress watcher, the slot queue). Mechanism (the owner chose it over a server-only object, which would have moved M44 egress recording): when a run ends, settled() releases its binding event writer and run store call, replaced by no event and a direct store write, so an ended run leaves nothing in the manager that reaches it; its later connection rows are written straight to the store. One property test walks the graph from the engine across eight shapes (plain, kept, kept with egress, plan, egress, failed, cancelled, waiting for a slot) and asserts no route to a Runner, RunControl, RunHandle or event sink, with the collection test per shape. Gap tests from the requirements trace: the stored manifest records a sandboxed server spec (FR-164), a sandboxed server results stay untrusted MCP content (FR-166), and a run with no sandboxed server is unchanged (NFR-49). NB1: the trailed removal kept by a strong reference is tested, and a server close waits, bounded, for its trailed removal. NB2: example 39 neighbour made inside the try. NB3 and NB4 declared. Review briefs gain mcp_tool_versions and mcp_tool_acceptances in their cleanup order. Note for the control log: round 2 reason says 7 mutants run, 6 killed; the reviewer corrected it to 6 run, 5 killed, 1 survivor.",
+      "status": "accepted",
+      "source": null,
+      "recorded_at": "2026-11-03T04:59:01.973Z"
+    },
+    {
+      "id": "DECISION-8e21d1ff",
+      "title": "M45 round 3: no strong edge from the MCP engine to run state; the run-end release withdrawn (owner)",
+      "text": "Round 3 (Sonnet 5.5) rejected NFR-39 a third time: a Runner dropped mid-run never reached settled(), so its binding still led from the engine to it; a plan top-level binding the same. Cause of all three rounds: the engine held the Runner WorkspaceManager, which holds run state by design, and each repair cleared one route at one moment. Owner chose the mechanism: the engine holds no strong reference to that manager. It gets a server-side manager of its own (same provider, store getter, owner, runner label and slots) that holds no run state and reaches the Runner manager only weakly, for its closed check. Two further routes found in reading are closed the same way: the shared slot queue holds each waiter weakly (a waiting run task is held by its own frame), and a provider egress watcher holds its manager and workspace weakly. DECISION-3756a232 release at run end is withdrawn: with no engine edge it guards nothing, and its plan-owner copy was an unguarded mutant (round 3). Tests: the engine reaches no Runner manager, slot waiter or run object in any shape, and a gc collection test per shape, abandoned runs included. NB-C walker gaps (kwdefaults, function dict, class attributes) and NB-D (trailed unguarded in _close_all) repaired in M45.",
+      "status": "accepted",
+      "source": null,
+      "recorded_at": "2026-11-03T07:39:40.636Z"
+    },
+    {
+      "id": "DECISION-acc02de9",
+      "title": "M45 round 3 repair as built: the fake provider maps weak, the walk after the loop closes, reports kept as text",
+      "text": "Under DECISION-8e21d1ff. Reading the providers found a fourth route of the same kind: FakeProvider kept a running command task and kill event that stay pending after the run loop closes and lead back to the run, so a run abandoned mid-command pinned its Runner through the provider the engine keeps. Its running and kills maps are now weak-value maps. DockerProvider running map left strong: made strong in a mutant its collection test still passed, so a weak map there would guard nothing. The WorkspaceProvider docstring states the rule. Tests: the walk runs after the run loop is closed (NFR-39 condition; a live loop is a root of its own), then the Runner is dropped and must be collected. 18 fake cases: 9 shapes ended and 9 abandoned, mid-command included. The Docker mid-command cases run in a process of their own, the parent reaping what it left. During the collection and the cleanup, unraisable reports and warnings are kept as text only, because pytest keeps each report object, which resurrected the Runner; no warning filter remains. Mutation: 66 mutants, all killed, 17 of them round 3.",
+      "status": "accepted",
+      "source": null,
+      "recorded_at": "2026-11-03T08:18:20.666Z"
+    },
+    {
+      "id": "DECISION-26bac515",
+      "title": "M45 round 3 pre-review: two more provider routes closed, five items repaired",
+      "text": "A fresh pre-review of the round 3 repair (DECISION-8e21d1ff, DECISION-acc02de9) found, verified first-hand: B1, the fake egress Proxy kept each handler task in a strong set, and on the fake a handler is the command task, so a run abandoned mid-connection pinned its Runner; Proxy.handlers is a WeakSet. B2, DockerProvider running map reached the run through each command kill event once its container ran; DECISION-acc02de9 left it strong because a mutant survived, but that test was vacuous: its readiness check fired before the container ran. The map is weak again and the Docker test waits for the kill to be awaited. The sweep of provider-held asyncio objects found nothing else (Docker reader and proxy process are awaited only after the space leaves the provider map). Repaired with tests: S1 a failing walk keeps its paths; S2 reports during collection are checked against the expected closed-loop kinds; S3 a server granted its slot after its Runner closed makes nothing; a slot waiter whose loop was closed is passed over; the engine close waits for a server late count through trailed(). Mutation: 72 mutants, all killed.",
+      "status": "accepted",
+      "source": null,
+      "recorded_at": "2026-11-03T08:42:15.353Z"
+    },
+    {
+      "id": "DECISION-5f41eec5",
+      "title": "M45 round 4 close: NB1 and NB2 repaired in M45, no further review (owner)",
+      "text": "Round 4 (Fable 5.1) approved with nothing blocking, so under DECISION-c697f36c it is the last round. NB1: _Slots.give and release raised when a waiter loop closed on another thread after the check, losing the slot; the grant now goes through _scheduled, which on RuntimeError passes the slot to the next waiter or back to the count, and release still ends every other wait. NB2: FakeProvider.remove ignored a failed rmtree of a server folder still held as a live process working folder on Windows, leaving empty folders; it now retries as Docker does with the shared _REMOVE_ATTEMPTS and raises WorkspaceUnavailable keeping the space listed for the reap. Four tests, each shown failing on the unrepaired code. Sweep: the five other call_soon_threadsafe sites already catch RuntimeError. M13 survivor judged inapplicable: the plain ended shape holds no run state. Owner chose: record, run the three gates, then close; commit only when asked.",
+      "status": "accepted",
+      "source": null,
+      "recorded_at": "2026-11-03T13:22:29.476Z"
     }
   ],
   "knowledge": [
@@ -3745,9 +3833,9 @@
           "status": "pass",
           "evidence": {
             "human": "siva-rgb (owner)",
-            "reason": "M44 round 5: FR-161, FR-162 and P5-D23 corrected for N8, N6 and N2 (DECISION-7a3a2ae2)",
-            "source_hash": "1ca5de89f4c5dad40d0bcc652aa9cb03e0e22e3e49b931c0304b88f2f6a9aaa5",
-            "observed_at": "2026-11-01T10:50:42.988Z"
+            "reason": "M45: FR-165 amended for a dead server (DECISION-5470ab57)",
+            "source_hash": "858105c25d28982eeb37c78a327b72ec664612b01ceda162f7983f00d217a7c9",
+            "observed_at": "2026-11-02T11:44:39.690Z"
           }
         }
       ],
@@ -3757,7 +3845,7 @@
       "failures": [],
       "limitations": [],
       "created_at": "2026-09-05T14:48:57.897Z",
-      "updated_at": "2026-11-01T10:50:42.988Z"
+      "updated_at": "2026-11-02T11:44:39.690Z"
     },
     {
       "id": "M1-primitives",
@@ -6889,7 +6977,7 @@
     {
       "id": "M45-sandboxed-mcp",
       "outcome": "A stdio MCP server configured with a workspace runs in the sandbox, owned and reaped with its Runner",
-      "state": "active",
+      "state": "done",
       "risk": "high",
       "owner": null,
       "scope": [],
@@ -6909,29 +6997,49 @@
           "id": "unit",
           "command": ".venv\\Scripts\\python.exe -m pytest tests/test_sandboxed_mcp.py -q -p no:cacheprovider",
           "mandatory": true,
-          "status": "pending",
-          "evidence": null
+          "status": "pass",
+          "evidence": {
+            "path": ".genesis/evidence/M45-sandboxed-mcp-unit.json",
+            "source_hash": "380749fae95065114bc72d96c7a1110da0529abcd21cebc4a44402d5d809d3b7",
+            "hash": "72a747f2ffd504f61b7596c958ecc044ecb96501195c8c085f4ecb147022081c",
+            "observed_at": "2026-11-03T13:23:39.759Z"
+          }
         },
         {
           "id": "regression",
           "command": ".venv\\Scripts\\python.exe -m pytest -q -p no:cacheprovider",
           "mandatory": true,
-          "status": "pending",
-          "evidence": null
+          "status": "pass",
+          "evidence": {
+            "path": ".genesis/evidence/M45-sandboxed-mcp-regression.json",
+            "source_hash": "380749fae95065114bc72d96c7a1110da0529abcd21cebc4a44402d5d809d3b7",
+            "hash": "7ada6fe94147bafffc42bafbbe0c5dab4b0ab6b44812e452b374610e480b77eb",
+            "observed_at": "2026-11-03T13:57:24.661Z"
+          }
         },
         {
           "id": "docker",
           "command": ".venv\\Scripts\\python.exe -m pytest tests/test_workspace.py tests/test_workspace_tools.py tests/test_workspace_plan.py tests/test_docker_provider.py tests/test_sandbox_contention.py tests/test_compute.py tests/test_egress.py tests/test_sandboxed_mcp.py -m docker -q -p no:cacheprovider",
           "mandatory": true,
-          "status": "pending",
-          "evidence": null
+          "status": "pass",
+          "evidence": {
+            "path": ".genesis/evidence/M45-sandboxed-mcp-docker.json",
+            "source_hash": "380749fae95065114bc72d96c7a1110da0529abcd21cebc4a44402d5d809d3b7",
+            "hash": "d33f69a5723749082c75c14d3a742a35ae02e366ffa687484020679779beb3c2",
+            "observed_at": "2026-11-03T14:44:13.264Z"
+          }
         },
         {
           "id": "independent-review",
           "command": "",
           "mandatory": true,
-          "status": "pending",
-          "evidence": null
+          "status": "pass",
+          "evidence": {
+            "human": "siva-rgb (owner)",
+            "reason": "Owner approval at source hash 380749fa under the review stopping rule DECISION-c697f36c: round 4 (Fable 5.1) approved 434f6050 with nothing blocking; its two findings were fixed in M45 by DECISION-5f41eec5, NB1 slot grant on a loop closed meanwhile and NB2 server folder left by the fake removal, each with tests shown failing on the unrepaired code, and the five other call_soon_threadsafe sites swept. Unit 84, regression 3227 and docker 128 all pass at 380749fa with empty stderr. No round 5 by the rule.",
+            "source_hash": "380749fae95065114bc72d96c7a1110da0529abcd21cebc4a44402d5d809d3b7",
+            "observed_at": "2026-11-03T16:19:11.214Z"
+          }
         }
       ],
       "next_action": "Run the task pre-flight.",
@@ -6940,12 +7048,12 @@
       "failures": [],
       "limitations": [],
       "created_at": "2026-10-30T13:01:01.553Z",
-      "updated_at": "2026-10-30T13:01:01.553Z"
+      "updated_at": "2026-11-03T16:19:34.845Z"
     },
     {
       "id": "M46-snapshots",
       "outcome": "A workspace's state is snapshotted and a new workspace of the same tenancy starts from it, within bounds",
-      "state": "queued",
+      "state": "active",
       "risk": "high",
       "owner": null,
       "scope": [],
@@ -8828,6 +8936,141 @@
       "task": "M44-egress",
       "human": "siva-rgb (owner)",
       "reason": "Owner approval at source hash 210ad398 under the review stopping rule DECISION-c697f36c: round 8 (Sonnet 5.5) approved 1d1809cb with nothing blocking; its findings and the author sweep were fixed in M44 by DECISION-1e35a472, each fix with a test shown to fail when undone (132 mutants killed), and unit 172, regression 3143 and docker 115 all pass at 210ad398 with no warnings. No round 9 by the rule.",
+      "revision": null
+    },
+    {
+      "id": "fea755fa-094a-49aa-b865-4f2bfb443521",
+      "at": "2026-11-02T09:23:50.289Z",
+      "action": "requeue",
+      "task": "M45-sandboxed-mcp",
+      "human": "siva-rgb (owner)",
+      "reason": "M45 pre-flight: FR-164, FR-165 and FR-167 amended first",
+      "revision": null
+    },
+    {
+      "id": "e5b0898f-f7c0-4ccf-99d8-ac8320ab4401",
+      "at": "2026-11-02T09:24:10.036Z",
+      "action": "resume",
+      "task": "M45-sandboxed-mcp",
+      "human": "siva-rgb (owner)",
+      "reason": "M45 pre-flight, DECISION-b478705b",
+      "revision": null
+    },
+    {
+      "id": "a6f5f6ce-88de-41e3-b042-6294a476ca23",
+      "at": "2026-11-02T10:12:31.581Z",
+      "action": "requeue",
+      "task": "M45-sandboxed-mcp",
+      "human": "siva-rgb (owner)",
+      "reason": "M45 pre-flight corrected: FR-165 and P5-D23 amended first (DECISION-55d2cbfe pending id)",
+      "revision": null
+    },
+    {
+      "id": "1ea828e2-aef7-43d7-8367-1a2f3275b468",
+      "at": "2026-11-02T10:12:46.675Z",
+      "action": "resume",
+      "task": "M45-sandboxed-mcp",
+      "human": "siva-rgb (owner)",
+      "reason": "M45 pre-flight corrected by DECISION-2a12196e; the requeue reason named a placeholder id in error, DECISION-2a12196e is the decision",
+      "revision": null
+    },
+    {
+      "id": "ad4f370b-b0a0-4b53-a840-4b85dfdc8c23",
+      "at": "2026-11-02T10:14:13.731Z",
+      "action": "requeue",
+      "task": "M45-sandboxed-mcp",
+      "human": "siva-rgb (owner)",
+      "reason": "M45: FR-166 and P5-D23 amended first for a server egress rows with no run",
+      "revision": null
+    },
+    {
+      "id": "02625f38-c368-4a97-b19e-76f787798395",
+      "at": "2026-11-02T10:14:25.596Z",
+      "action": "resume",
+      "task": "M45-sandboxed-mcp",
+      "human": "siva-rgb (owner)",
+      "reason": "M45 pre-flight, DECISION-b478705b, DECISION-2a12196e and DECISION-61aed587",
+      "revision": null
+    },
+    {
+      "id": "29c67aae-c780-4ffd-9764-a3d6fca486c6",
+      "at": "2026-11-02T10:49:44.181Z",
+      "action": "requeue",
+      "task": "M45-sandboxed-mcp",
+      "human": "siva-rgb (owner)",
+      "reason": "M45: FR-167 amended first, example 39 carries its own server",
+      "revision": null
+    },
+    {
+      "id": "77796c62-759f-436a-b389-2d750eed5d25",
+      "at": "2026-11-02T10:49:56.940Z",
+      "action": "resume",
+      "task": "M45-sandboxed-mcp",
+      "human": "siva-rgb (owner)",
+      "reason": "M45, DECISION-92ae6ae5",
+      "revision": null
+    },
+    {
+      "id": "ae74a57d-54a3-49b6-a45e-67822484f9b7",
+      "at": "2026-11-02T11:44:29.273Z",
+      "action": "requeue",
+      "task": "M45-sandboxed-mcp",
+      "human": "siva-rgb (owner)",
+      "reason": "M45 pre-review: FR-165 amended first for a dead server",
+      "revision": null
+    },
+    {
+      "id": "9783bc92-6483-4cad-9f4c-c2b777d65a14",
+      "at": "2026-11-02T11:44:40.218Z",
+      "action": "resume",
+      "task": "M45-sandboxed-mcp",
+      "human": "siva-rgb (owner)",
+      "reason": "M45 pre-review repairs, DECISION-5470ab57",
+      "revision": null
+    },
+    {
+      "id": "923730bd-15b2-4f49-94f6-a9056db0ba7a",
+      "at": "2026-11-02T17:06:07.920Z",
+      "action": "reject",
+      "task": "M45-sandboxed-mcp",
+      "human": "Fable 5.1 (L4 reviewer, M45 round 1)",
+      "reason": "M45 round 1 rejected: one blocking defect. A Runner with a sandboxed server can never be garbage-collected: the MCP engine holds engine.sandbox, the WorkspaceManager, whose store is a bound method of the Runner, and the engine is rooted in the live agentsdk-mcp thread, so the NFR-39 finalizer never fires. A sandboxed Runner dropped without aclose leaves its server process (on Docker its container, volume and network), its temp folder, its slot and its unremoved workspaces row for the life of the host process. Probed on FakeProvider: a plain Runner is collected and its server ends; the sandboxed one is not; with that one reference cut it is collected and its server ends. The test test_closing_its_servers_alone_removes_a_server_workspace claims NFR-39 but calls _mcp.aclose directly and never collects a Runner. Non-blocking: a server workspace record write that stalls past REMOVE_SECONDS and then lands leaves an unremoved row for a removed workspace (F6 reversed, open_server failure path); example 39 removes its neighbour workspace only on the success path and that neighbour carries no owner label so a crash leaves it unreapable; the filterwarnings marker on test_compute is broader than its comment (any unraisable, all three parametrisations), though nothing of M45 runs in that test; the 0026 trigger covers INSERT only, with no SDK UPDATE path. Verified first-hand: 37 mutants, all killed, each applied and restored byte for byte, hash aaf18244 unchanged; unit 46 passed and docker 11 passed; migration 0026 idempotent in an isolated schema with every constraint and the trigger behaving as stated; on Docker a sandboxed server reaches its allowed pair only through the proxy, recorded allowed with no run and no command, token in no row, event or record, container hardened as a command, nothing left after aclose; NFR-49 identical to HEAD field by field.",
+      "revision": null
+    },
+    {
+      "id": "593604ad-7146-43d1-b5a8-aecd4a7a46d6",
+      "at": "2026-11-03T04:35:32.771Z",
+      "action": "reject",
+      "task": "M45-sandboxed-mcp",
+      "human": "Opus 5 (L4 reviewer, M45 round 2)",
+      "reason": "Round 1 B1 is only half repaired. The store getter no longer holds the Runner, but WorkspaceManager.spaces still does: a kept workspace stays in spaces, its _Space.commands holds a _Binding whose call is RunControl.store, and RunControl.task reaches the Runner. The manager is handed to the MCP engine as engine.sandbox, so the weakref finalize registry reaches the Runner again, and a Runner with a sandboxed server plus a WorkspaceSpec keep=True is never collected. Measured: on FakeProvider the server process, its folder and both workspaces survive the dropped Runner; on Docker one container and two volumes were left on the daemon, against NFR-39 and FR-165. A Runner with a sandboxed server and no kept workspace collects correctly on both providers, including with Persistence.postgres, with egress, and with its own loop still open. N1, N2, N3, N5 and the N4 README row all verified sound; 7 mutants run, 6 killed, the survivor being the untested keeping of the trailed removal task.",
+      "revision": null
+    },
+    {
+      "id": "b340e31a-8bc2-4f02-9d78-a5f871635ee6",
+      "at": "2026-11-03T06:50:01.350Z",
+      "action": "reject",
+      "task": "M45-sandboxed-mcp",
+      "human": "Sonnet 5.5",
+      "reason": "M45 round 3 rejected on NFR-39 as a property. A run still under way when its loop closes keeps a Runner with a sandboxed server uncollectable: the manager held by the engine finalizer holds the run command binding in _Space.commands (manager.py line 444) or the egress owner binding (line 390), and these are released only by settled() at a run end, which never happens for a run abandoned mid flight. Measured: Runner with a sandboxed server, one run_command ran, model hangs, loop closed with the run pending, Runner dropped, gc.collect: not collected; chain Runner, coroutine, Task, RunControl, method, _Binding, dict, dict, _Space, set, WorkspaceManager, _Engine, method, finalize info; the server process stayed alive (pid file, still alive after drop and gc). Controls collected: the same run with a plain stdio server, and a sandboxed run that called only the server tool. The author walker does find this route when the shape is run, so the gap is the shapes: all eight are settled runs and the one collection test is the kept shape. Second finding, non blocking: mutant end_plans never settles the plan owner survives all 61 unit tests, and a kept plan with children then leaks through the top level owner binding; no test has a kept plan with children. Mutants run by me: 10 run, 9 killed, 1 survived. All applied and restored by sha256. Verified fine: trailed, M44 late connection rows after release, eight probe shapes collected including postgres, docker, two runners, dead server, release, plan children. Cleanup: all tables back to baseline, 0 containers volumes networks processes.",
+      "revision": null
+    },
+    {
+      "id": "0d26310f-45aa-4d39-9f42-90decc15c742",
+      "at": "2026-11-03T12:01:28.058Z",
+      "action": "approve",
+      "task": "M45-sandboxed-mcp",
+      "human": "Fable 5.1",
+      "reason": "Round 4 independent review, approved with nothing blocking. Mechanism attacked first-hand with an own GC harness (positive and negative controls, walker shown to traverse contextvars): ten shapes the author did not cover, a sandboxed server with its own egress ended and abandoned, a kept run abandoned, a run abandoned mid MCP call, and four under Persistence.postgres, every Runner collected and its server workspace removed; a run abandoned mid call is held only until the call ends, 12 s measured. 15 mutants of the mechanism applied by SHA-256, all killed, every file restored byte for byte: for_servers returning the Runner manager, _runs strong, own slots, another label, waiters strong, a gone waiter granted, a closed-loop waiter granted, watcher strong, fake running and kills strong, proxy handlers strong, closed check without _runs, report check removed, a module-global hold caught by the collection assertion not the walk, trailed unguarded, Docker running map strong in its own process; plus one vacuity probe of the Docker readiness check. Property test judged non-vacuous: its subject is reached, the Runner is held during the walk, collection and removal are asserted independently of the report filter. Withdrawn release: M44 after-end tests and example 38 pass, no event after a terminal event. Three gates at 434f6050 pass with empty stderr. Non-blocking: _Slots give and release (manager.py 125 and 132) raise and lose a slot when a waiter loop closes between the filter and call_soon_threadsafe, measured; FakeProvider.remove silently leaves an empty server folder when the server process still runs, measured, aclose and collection paths leave none. Cleanup complete: rows by own ids, counters at baseline, 0 Docker objects, 0 folders, 0 processes.",
+      "revision": null
+    },
+    {
+      "id": "bc983c0e-0fb6-4a14-923f-d0b79a536f49",
+      "at": "2026-11-03T16:19:11.214Z",
+      "action": "approve",
+      "task": "M45-sandboxed-mcp",
+      "human": "siva-rgb (owner)",
+      "reason": "Owner approval at source hash 380749fa under the review stopping rule DECISION-c697f36c: round 4 (Fable 5.1) approved 434f6050 with nothing blocking; its two findings were fixed in M45 by DECISION-5f41eec5, NB1 slot grant on a loop closed meanwhile and NB2 server folder left by the fake removal, each with tests shown failing on the unrepaired code, and the five other call_soon_threadsafe sites swept. Unit 84, regression 3227 and docker 128 all pass at 380749fa with empty stderr. No round 5 by the rule.",
       "revision": null
     }
   ],

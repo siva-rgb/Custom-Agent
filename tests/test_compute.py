@@ -881,6 +881,11 @@ async def test_on_docker_the_cancel_check_without_one_layer_fails_or_is_covered(
 
 @pytest.mark.docker
 @pytest.mark.parametrize("layer", ["provider kill", "command removal", "workspace sweep"])
+# It takes away every layer that ends a cancelled command, so the command's docker client is left
+# unended by design; its pipe transport is then collected unclosed after its loop has gone, and
+# whether that warns depends on when it is collected (M45, the owner's choice). Nothing else is
+# silenced here: the check's own failure is still asserted.
+@pytest.mark.filterwarnings(r"ignore:Exception ignored in.*Transport\.__del__:pytest.PytestUnraisableExceptionWarning")
 async def test_on_docker_the_cancel_check_without_a_layer_and_its_cover_fails(monkeypatch, layer):
     """FR-155: the check fails once the layers EX36.CANCEL_LAYERS names as a layer's cover are taken
     away too."""

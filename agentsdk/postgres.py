@@ -2175,8 +2175,9 @@ class PostgresWorkspaceStore:
     def _space(row: Any) -> Any:
         from .workspace.records import WorkspaceRecord
 
-        return WorkspaceRecord(str(row[0]), row[1], row[2], str(row[3]), row[4], row[5], row[6], row[7], row[8],
-                               row[9], row[10])
+        # A server's workspace has no run (FR-165, migration 0026).
+        return WorkspaceRecord(str(row[0]), row[1], row[2], None if row[3] is None else str(row[3]), row[4], row[5],
+                               row[6], row[7], row[8], row[9], row[10])
 
     @staticmethod
     def _command(row: Any) -> Any:
@@ -2263,8 +2264,8 @@ class PostgresWorkspaceStore:
                 f"SELECT {self._CONNECTION} FROM workspace_connections WHERE tenant_id = %s AND project_id = %s"
                 " AND (%s::uuid IS NULL OR run_id = %s::uuid) ORDER BY at",
                 (tenant_id, project_id, run_id, run_id)).fetchall()
-        return [ConnectionRecord(str(r[0]), str(r[1]), r[2], r[3], str(r[4]), None if r[5] is None else str(r[5]),
-                                 *r[6:]) for r in rows]
+        return [ConnectionRecord(str(r[0]), str(r[1]), r[2], r[3], None if r[4] is None else str(r[4]),
+                                 None if r[5] is None else str(r[5]), *r[6:]) for r in rows]
 
     def workspaces(self, tenant_id: str, project_id: str, run_id: str | None = None) -> list[Any]:
         with _checkout(self._dsn) as conn:

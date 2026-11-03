@@ -21,7 +21,7 @@ class WorkspaceRecord:
     workspace_id: str
     tenant_id: str
     project_id: str
-    run_id: str
+    run_id: str | None  # None for a sandboxed server's workspace (FR-165, migration 0026)
     scope: str
     provider: str
     image: str
@@ -69,7 +69,7 @@ class ConnectionRecord:
     workspace_id: str
     tenant_id: str
     project_id: str
-    run_id: str
+    run_id: str | None  # None for a server workspace's connection (DECISION-61aed587)
     command_id: str | None
     host: str | None
     port: int | None

@@ -17,12 +17,16 @@ import math
 import posixpath
 import re
 import secrets
+import shutil
 import tarfile
+import tempfile
 import time
 import uuid
+import weakref
 from collections.abc import Awaitable, Callable, Mapping
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
+from pathlib import Path
 from types import MappingProxyType
 from typing import Any, Protocol, runtime_checkable
 
@@ -64,6 +68,8 @@ SETUP_SECONDS = 120.0
 # What reading a workspace's size may take; a command's first use reads it first when it is stale,
 # so the tools' deadline is past it too (DECISION-4689af02).
 MEASURE_SECONDS = 120.0
+# How many times a provider tries a removal, waiting longer each time, before it raises.
+_REMOVE_ATTEMPTS = 4
 
 
 def _limit(name: str, value: Any) -> float:
@@ -178,6 +184,27 @@ def charged(reading: float | None, killed: str | None, duration: float, cpus: fl
     return reading
 
 
+# FR-165 (M45, pre-review F2): what a sandboxed server's start and close may take beyond an MCP
+# server's own -- its slot within connect_timeout apart, which its caller adds. A start: the
+# workspace's creation and its files' import, SETUP_SECONDS each; its record, 30 s (the manager's
+# _REMOVE_SECONDS); and a launch's two docker calls, 60 s each (docker's _CLI_SECONDS). A close: the
+# removal and its egress drain, 30 s each, and its record, 30 s. Tested against those constants.
+SERVER_START_SECONDS = 2 * SETUP_SECONDS + 30.0 + 2 * 60.0
+SERVER_CLOSE_SECONDS = 3 * 30.0
+
+
+@dataclass(frozen=True)
+class ServerLaunch:
+    """FR-164: how a sandboxed MCP server is started over its workspace -- the program, its
+    arguments, its environment (the values its program needs, never recorded) and its working
+    directory -- which the MCP client starts over stdio as it starts any server."""
+
+    command: str
+    args: tuple[str, ...]
+    env: Mapping[str, str] | None = field(default=None, repr=False)
+    cwd: str | None = None
+
+
 @dataclass(frozen=True)
 class WorkspaceHandle:
     """A provider's reference to one workspace. `workspace_id` names it everywhere."""
@@ -200,7 +227,12 @@ class WorkspaceProvider(Protocol):
     missing path, `NotADirectoryError` for anything but a folder (DECISION-0004d2dc),
     `PermissionError` for a folder that cannot be read, and `WorkspaceUnavailable` otherwise.
     `size` counts as `du` does. `kill` raises when the command may still be running; on a run's
-    cancellation the manager records that as `kill_error` (DECISION-d4ede901)."""
+    cancellation the manager records that as `kill_error` (DECISION-d4ede901).
+
+    NFR-39 (M45 round 3, DECISION-8e21d1ff): with a sandboxed MCP server, the server's engine keeps
+    the provider until its server's workspace is removed, after its `Runner` is gone. So a provider
+    keeps nothing that still waits on a run once that run's loop is closed -- `FakeProvider` holds
+    a running command's task and kill weakly -- or a dropped `Runner` is never collected."""
 
     name: str
 
@@ -242,6 +274,42 @@ def normal_path(path: str) -> str:
     if any(p == ".." for p in parts):
         raise ValueError(f"not a workspace path: {path!r}")
     return "/".join(parts)
+
+
+def server_files(env: Any, cwd: Any, spec: Any, files: Any) -> Mapping[str, bytes]:
+    """FR-164 (DECISION-b478705b, DECISION-2a12196e): a sandboxed MCP server's files, checked and
+    frozen. A workspace's server takes its environment from its spec alone and runs from its
+    workspace's root; it lives exactly as long as its server, so it is neither kept nor a plan's;
+    its files are clean relative paths to bytes, and given only with a workspace."""
+    if files is None or not isinstance(files, Mapping):
+        raise ValueError("files must map paths to bytes")
+    if spec is None:
+        if files:
+            raise ValueError("files are given to a sandboxed server only: give it a workspace too")
+        return MappingProxyType({})
+    if not isinstance(spec, WorkspaceSpec):
+        raise ValueError("workspace must be a WorkspaceSpec")
+    if env or cwd is not None:
+        raise ValueError("a sandboxed server's environment is its WorkspaceSpec.env alone, and it runs from its"
+                         " workspace's root: give no env or cwd of its own")
+    if spec.keep or spec.scope != "run":
+        raise ValueError("a server's workspace lives exactly as long as its server: keep and scope plan are refused")
+    for path, data in files.items():
+        parts = path.split("/") if isinstance(path, str) else []
+        if (not parts or any(p in ("", ".", "..") for p in parts) or "\\" in path or ":" in path
+                or "\x00" in path or unstorable_reason(path)):
+            raise ValueError(f"files: {path!r} is not a clean relative path")
+        if not isinstance(data, bytes):
+            raise ValueError(f"files: {path!r} must be bytes")
+    # Pre-review F5: one tree, as the transfer filter reads it -- no path a folder of another, and
+    # none two that only case tells apart (a host's folder may fold them into one file).
+    folders = {"/".join(path.split("/")[:i]) for path in files for i in range(1, path.count("/") + 1)}
+    clashes = sorted(folders & set(files))
+    if clashes:
+        raise ValueError(f"files: {clashes[0]!r} is a file and also another file's folder")
+    if len({path.casefold() for path in files}) != len(files):
+        raise ValueError("files: two paths differ only in case")
+    return MappingProxyType(dict(files))
 
 
 class FakeFiles:
@@ -558,15 +626,28 @@ class _FakeEgress:
         return body
 
 
+def _written(folder: Path, files: Mapping[str, bytes]) -> None:
+    """A fake workspace's files, written under `folder` (each path already a workspace path)."""
+    for path, data in files.items():
+        target = folder.joinpath(*path.split("/"))
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_bytes(data)
+
+
 class _FakeWorkspace:
     def __init__(self, handle: WorkspaceHandle) -> None:
         self.handle = handle
         self.files = FakeFiles()
-        self.running: dict[str, asyncio.Task[Any]] = {}
-        self.kills: dict[str, asyncio.Event] = {}
+        # NFR-39 (M45 round 3, DECISION-8e21d1ff): a sandboxed server's engine keeps this provider,
+        # and a run awaits what is kept here; each is held by its command's own call alone.
+        self.running: weakref.WeakValueDictionary[str, asyncio.Task[Any]] = weakref.WeakValueDictionary()
+        self.kills: weakref.WeakValueDictionary[str, asyncio.Event] = weakref.WeakValueDictionary()
         self.proxy: Proxy | None = None  # FR-160: only with egress
         self.tokens: dict[str, str] = {}  # each command's token, to its command id
         self.watcher: Callable[[dict], None] | None = None
+        # FR-165 (M45): a sandboxed server's working directory, made from its files at its first
+        # start and kept across a restart; removed with the workspace (DECISION-b478705b).
+        self.folder: Path | None = None
 
 
 class FakeProvider:
@@ -744,8 +825,31 @@ class FakeProvider:
             await self.kill(handle, command_id)
         if space.proxy is not None:
             # Stopped as Docker's is, so its last reports come first (DECISION-e510a5e3).
-            await space.proxy.close()
+            proxy, space.proxy = space.proxy, None
+            await proxy.close()
+        if space.folder is not None:
+            # A server's process may still be ending, and on Windows its working folder cannot go
+            # until it has: tried as Docker's removal is, and one left stays listed for the reap
+            # (M45 round 4 NB2).
+            for attempt in range(_REMOVE_ATTEMPTS):
+                await asyncio.to_thread(shutil.rmtree, space.folder, True)
+                if not space.folder.exists():
+                    break
+                await asyncio.sleep(0.5 * (attempt + 1))
+            else:
+                raise WorkspaceUnavailable("the server's folder could not be removed: its process still runs in it")
         self._spaces.pop(handle.workspace_id, None)
+
+    async def server_launch(self, handle: WorkspaceHandle, command: str, args: list[str]) -> ServerLaunch:
+        """FR-165 (DECISION-b478705b): a sandboxed server here is a local process -- no isolation,
+        the same records and lifetime -- run from a folder holding its workspace's files, made at
+        its first start and kept across a restart, with its spec's env alone."""
+        space = self._space(handle)
+        if space.folder is None:
+            files = dict(space.files._files)
+            space.folder = Path(await asyncio.to_thread(tempfile.mkdtemp, prefix="agentsdk-server-"))
+            await asyncio.to_thread(_written, space.folder, files)
+        return ServerLaunch(command, tuple(args), dict(handle.spec.env), str(space.folder))
 
     async def list_owned(self, labels: Mapping[str, str]) -> list[WorkspaceHandle]:
         return [s.handle for s in self._spaces.values()

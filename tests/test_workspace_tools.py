@@ -252,7 +252,8 @@ class ScriptedCli(DockerProvider):
 def _running(provider: DockerProvider) -> WorkspaceHandle:
     handle = WorkspaceHandle(workspace_id="w-1", spec=WorkspaceSpec(image=FAKE_IMAGE), labels={})
     space = dk._Space(handle)
-    space.running["c-1"] = dk._Command("agentsdk-cmd-1")
+    # M45 round 3 (DECISION-26bac515): `running` holds a command weakly; its task holds it, here the provider.
+    provider.held = space.running["c-1"] = dk._Command("agentsdk-cmd-1")
     provider._spaces["w-1"] = space
     return handle
 

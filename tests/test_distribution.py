@@ -84,6 +84,8 @@ EXPECTED_EXAMPLES = {
     "37_compute.py",
     # FR-163 (M44): egress by allow list.
     "38_egress.py",
+    # FR-167 (M45): an MCP server in the sandbox.
+    "39_sandboxed_mcp.py",
 }
 
 

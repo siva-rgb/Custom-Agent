@@ -40,6 +40,7 @@ from ..catalog import (ToolVersion, changed_parts, checked_hash, entry_hash, pro
 from ..errors import ToolBlocked, ToolExecutionError
 from ..events import EventType
 from ..primitives import ContentProvenance, InstructionAuthority, Origin, TaintFlag, TrustZone, unstorable_reason
+from ..workspace import SERVER_CLOSE_SECONDS, SERVER_START_SECONDS, server_files
 from ..tools import (ApprovalPolicy, ApprovedCall, ResultProvenance, RiskClass, Tool, ToolOutput, ToolRegistry,
                      ToolSpec)
 
@@ -209,10 +210,15 @@ class StdioServer:
     accept: tuple[McpAcceptance, ...] = ()
 
     resources_as_tool: bool = False
+    # FR-164 (M45): run sandboxed, over a workspace of its own holding `files` (P5-D21).
+    workspace: Any = None
+    files: Mapping[str, bytes] = field(default_factory=dict, repr=False)
 
     def __post_init__(self) -> None:
         if not isinstance(self.command, str) or not self.command or unstorable_reason(self.command):
             raise ValueError("command must be non-empty storable text")
+        # FR-164: a sandboxed server's workspace and files, checked where workspaces are (M45).
+        object.__setattr__(self, "files", server_files(self.env, self.cwd, self.workspace, self.files))
         object.__setattr__(self, "args", tuple(self.args))
         object.__setattr__(self, "env", dict(self.env or {}))
         for value in self.args:
@@ -225,8 +231,10 @@ class StdioServer:
 
     def record(self) -> dict[str, Any]:
         """FR-123: what the manifest records -- names, never values (NFR-37)."""
+        sandbox = {} if self.workspace is None else {"workspace": self.workspace.record(), "files": sorted(self.files)}
         return {"alias": self.alias, "kind": "stdio", "command": self.command, "args": list(self.args),
-                "env": sorted(self.env), **_common_record(self)}
+                "env": sorted(self.env), **_common_record(self), **sandbox}
+
 
 
 # FR-130: headers the SDK or the library sets on every request; a configured one would override
@@ -697,8 +705,12 @@ class _Connection:
     """
 
     def __init__(self, server: StdioServer, registered: frozenset[str], submit: Any,
-                 tenancy: tuple[str, str] = ("", ""), catalog: Any = None, clock: Any = time.monotonic) -> None:
+                 tenancy: tuple[str, str] = ("", ""), catalog: Any = None, clock: Any = time.monotonic,
+                 sandbox: Any = None) -> None:
         self.server, self._registered, self._submit = server, registered, submit
+        # FR-165 (M45): its Runner manager's server side, and this connection's server workspace once
+        # it has one -- kept across a crash's restart, removed when the connection closes.
+        self._sandbox, self._server_space = sandbox, None
         self.client: Any = None
         self.tools: dict[str, Tool] = {}
         # FR-127 (M34): the catalog of this connection's tenancy. `usable` maps each listed tool
@@ -761,6 +773,8 @@ class _Connection:
                 return events + (await self._catalogue() if self.client is not None else [])
             if self.starts >= 2:  # FR-124: restarted once in its life already
                 self.dead, self._why = True, "ServerExited"
+                # Its workspace and slot go now, not at its Runner's close (DECISION-5470ab57).
+                await self._end_workspace()
                 return []
             loop = asyncio.get_running_loop()
             if self._failed_at is not None and loop.time() - self._failed_at < _RETRY_SECONDS:
@@ -965,6 +979,7 @@ class _Connection:
         stop = asyncio.Event()
         nonce = secrets.token_hex(16)
         self._nonce = nonce if isinstance(server, HttpServer) else None
+        launch = await self._launch() if getattr(server, "workspace", None) is not None else None
 
         async def serve() -> None:
             # Its stderr is dropped: never an error, never content, never logged (FR-124).
@@ -977,6 +992,10 @@ class _Connection:
                             # FR-130: the library leaves a client it is given open; this session closes it.
                             http = await stack.enter_async_context(_http_client(server, nonce))
                             transport = streamable_http_client(server.url, http_client=http)
+                        elif launch is not None:  # FR-164: started over its workspace, as its provider says
+                            params = StdioServerParameters(command=launch.command, args=list(launch.args),
+                                                           env=dict(launch.env or {}) or None, cwd=launch.cwd)
+                            transport = stdio_client(params, errlog=devnull)
                         else:
                             params = StdioServerParameters(command=server.command, args=list(server.args),
                                                            env=dict(server.env) or None, cwd=server.cwd)
@@ -1667,6 +1686,27 @@ class _Connection:
                 await asyncio.wait([task], timeout=_CLOSE_SECONDS)
             await _ended(task)
             self.client = None
+            # FR-165: its workspace goes with it, a container that ignored its stdin's end too.
+            await self._end_workspace()
+
+    async def _end_workspace(self) -> None:
+        """A sandboxed server ended for good -- closed, or dead with its restart spent: its
+        workspace removed and its slot given back (FR-165, DECISION-5470ab57)."""
+        space, self._server_space = self._server_space, None
+        if space is not None:
+            await self._sandbox.close_server(space)
+
+    async def _launch(self) -> Any:
+        """FR-164, FR-165: a sandboxed server's start -- its workspace at its first, waiting for a
+        slot within its connect_timeout, then how its provider starts it; a restart reuses the
+        workspace, its files kept (DECISION-b478705b)."""
+        server = self.server
+        if self._sandbox is None:
+            raise ConnectionError("a sandboxed server needs its Runner's workspace_provider")
+        if self._server_space is None:
+            self._server_space = await self._sandbox.open_server(server.workspace, server.files, *self._tenancy,
+                                                                 seconds=server.connect_timeout)
+        return await self._sandbox.server_launch(self._server_space, server.command, list(server.args))
 
 
 async def _ended_waits(asking: _AskingCall | None) -> None:
@@ -1889,8 +1929,12 @@ def _http_client(server: HttpServer, nonce: str) -> Any:
 
 
 def _ensure_bound(server: StdioServer) -> float:
-    """How long a start may take, every inner bound included: the caller's own deadline."""
-    return 2 * server.connect_timeout + 2 * _VALIDATION_SECONDS + 2 * _STORE_SECONDS + 3 * _CLOSE_SECONDS + 5
+    """How long a start may take, every inner bound included: the caller's own deadline. A
+    sandboxed server's start adds its slot within connect_timeout and its workspace's own bounds
+    (FR-165, M45 pre-review F2)."""
+    sandbox = server.connect_timeout + SERVER_START_SECONDS if getattr(server, "workspace", None) is not None else 0
+    return (2 * server.connect_timeout + 2 * _VALIDATION_SECONDS + 2 * _STORE_SECONDS + 3 * _CLOSE_SECONDS + 5
+            + sandbox)
 
 
 def _call_bound(server: StdioServer) -> float:
@@ -1925,13 +1969,15 @@ class _Engine:
         # FR-127 (M34): where the catalog is kept, and the clock it reads -- replaced by tests.
         self.catalog: Any = None
         self.clock: Any = time.monotonic
+        self.sandbox: Any = None  # FR-165 (M45): its Runner manager's server side, for sandboxed servers
 
     def connection(self, alias: str, tenant_id: str, project_id: str) -> _Connection:
         """On self.loop only."""
         key = (alias, tenant_id, project_id)
         if key not in self.connections:
             self.connections[key] = _Connection(self.servers[alias], self.registered, self.submit,
-                                                (tenant_id, project_id), self.catalog, lambda: self.clock())
+                                                (tenant_id, project_id), self.catalog, lambda: self.clock(),
+                                                sandbox=self.sandbox)
         return self.connections[key]
 
     async def submit(self, coroutine: Any, timeout: float) -> Any:
@@ -2003,6 +2049,12 @@ class _Engine:
             for connection in connections:
                 connection.closed = True
             await asyncio.gather(*(connection.close() for connection in connections), return_exceptions=True)
+            if self.sandbox is not None:
+                # A server workspace's removal record still following a late write lands before the
+                # loop's tasks are ended below (M45 round 2 NB1, DECISION-3756a232). Guarded as the
+                # connections' closes are: nothing here skips the ending below (round 3 NB-D).
+                with contextlib.suppress(Exception):
+                    await self.sandbox.trailed()
             here = asyncio.current_task()
             for _ in range(5):  # a submission accepted just before "closed" was set may still be starting
                 await asyncio.sleep(0)
@@ -2077,6 +2129,15 @@ class McpClients:
     def records(self) -> list[dict[str, Any]]:
         return [server.record() for server in self.servers.values()]
 
+    def sandboxed(self) -> list[str]:
+        """FR-164: the aliases of the servers that run over a workspace."""
+        return [alias for alias, server in self.servers.items() if getattr(server, "workspace", None) is not None]
+
+    def use_workspaces(self, manager: Any) -> None:
+        """FR-165: where a sandboxed server's workspace comes from -- the Runner's manager's server
+        side, which reaches none of its runs (NFR-39, M45 round 3, DECISION-8e21d1ff)."""
+        self._engine.sandbox = manager.for_servers()
+
     @property
     def clock(self) -> Any:
         """FR-127: the catalog's clock, in seconds, monotonic; tests replace it."""
@@ -2148,7 +2209,9 @@ class McpClients:
         caller cancelled while waiting stops waiting, and the close goes on."""
         if self._engine.loop is not None and asyncio.get_running_loop() is self._engine.loop:
             raise RuntimeError("Runner.aclose() cannot be awaited on the Runner's own MCP loop")
-        bound = max(_ensure_bound(s) for s in self.servers.values()) + 2 * _CLOSE_SECONDS
+        # A sandboxed server's close removes its workspace too (FR-165, M45 pre-review F2).
+        bound = (max(_ensure_bound(s) for s in self.servers.values()) + 2 * _CLOSE_SECONDS
+                 + (SERVER_CLOSE_SECONDS if self.sandboxed() else 0))
         await asyncio.wait_for(asyncio.shield(asyncio.wrap_future(self._engine.close())), bound)
         thread = self._engine._thread
         if thread is not None and thread.is_alive():  # resolved as it returns: gone in a moment

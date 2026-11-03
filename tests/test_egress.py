@@ -2949,7 +2949,7 @@ def test_r5_n6_migration_0025_adds_the_one_unrecorded_row_index():
     from agentsdk import migrate
 
     versions = [version for version, _ in migrate.discover()]
-    assert versions[-1] == "0025" and "0024" in versions
+    assert "0025" in versions and "0024" in versions  # not the latest: later milestones add their own
     text = (REPO / "agentsdk" / "migrations" / "0025_workspace_connections_unrecorded.sql").read_text(encoding="utf-8")
     assert "CREATE UNIQUE INDEX" in text and "WHERE reason = 'unrecorded'" in text
 

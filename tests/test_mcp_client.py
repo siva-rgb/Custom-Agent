@@ -1027,6 +1027,19 @@ def test_every_wait_in_the_mcp_module_names_its_bound():
         ("serve", "stop.wait()"): "set by close; the task is cancelled by _ended within the close bound",
         ("_open", "asyncio.wait_for(ready, server.connect_timeout)"): "connect_timeout",
         ("_open", "_ended(task)"): "the close bound",
+        # M45 (FR-164, FR-165): a sandboxed server's workspace, made at its first start, removed at close.
+        ("_open", "self._launch()"): "_launch's own bounds, below",
+        ("_launch", "self._sandbox.open_server(server.workspace, server.files, *self._tenancy, "
+                    "seconds=server.connect_timeout)"):
+            "connect_timeout for a slot, SETUP_SECONDS each for the creation and the import, _REMOVE_SECONDS for its record",
+        ("_launch", "self._sandbox.server_launch(self._server_space, server.command, list(server.args))"):
+            "the provider's: _CLI_SECONDS for each docker call; on the fake, a folder written from files held in memory",
+        ("_end_workspace", "self._sandbox.close_server(space)"):
+            "SERVER_CLOSE_SECONDS: the removal, the egress drain and the record, 30 s each",
+        ("close", "self._end_workspace()"): "SERVER_CLOSE_SECONDS, in the engine close's bound",
+        ("_ensure", "self._end_workspace()"): "SERVER_CLOSE_SECONDS, once, as the server is marked dead",
+        ("_close_all", "self.sandbox.trailed()"): "_REMOVE_SECONDS: a late record's removal, before the loop ends",
+        ("_close_all", "with contextlib.suppress(Exception)"): "suppresses; waits on nothing",
         ("call", "self._submit(self._call(name, arguments, entry.output_schema, tool, asking), _asked_bound(server, asking))"):
             "_call_bound, and each of three waits' approval_timeout, held by the caller",
         ("_call", "self.current(name)"): "current's own bounds, inside _call_bound",
@@ -1172,6 +1185,10 @@ def test_every_wait_in_the_mcp_module_names_its_bound():
     # Calls that wait on nothing, each by its callee as written. Every cost here is at most linear
     # in what it is given: anything that is not belongs in `bounds`, with its bound.
     waits_on_nothing = {
+        # M45: a sandboxed server's files checked (a pure check), its spec's record (a dict), the servers' view.
+        "server_files", "self.workspace.record", "self.servers.items",
+        # M45 round 3: the engine's server-side manager, built from the Runner's (DECISION-8e21d1ff).
+        "manager.for_servers",
         # builtins, exceptions, constructors and the SDK's own value types
         "all", "any", "dict", "enumerate", "float", "frozenset", "getattr", "isinstance", "len", "list",
         "max", "range", "set", "sorted", "str", "tuple", "type", "super", "super().__init__",
@@ -1355,6 +1372,10 @@ def test_every_loop_in_the_mcp_module_names_what_it_iterates():
         ("__post_init__", "self.args"): config,  # M35: StdioServer's own; the common fields are _check_common's
         ("__post_init__", "self.env or {}"): config, ("__post_init__", "self.env.items()"): config,
         ("record", "self.args"): config, ("record", "self.env"): config,
+        # M45: a sandboxed server's files and arguments, and the launch its provider built from them.
+        ("record", "self.files"): config, ("_launch", "server.args"): config, ("sandboxed", "self.servers.items()"): config,
+        ("serve", "launch.args"): "the provider's launch, built from the configuration",
+        ("serve", "launch.env or {}"): "the provider's launch, built from the configuration",
         ("records", "self.servers.values()"): config, ("aclose", "self.servers.values()"): config,
         ("checker", "self.servers"): config, ("serve", "server.args"): config, ("serve", "server.env"): config,
         ("_call", "result.content"): "the result's blocks, parsed by the library: " + built,

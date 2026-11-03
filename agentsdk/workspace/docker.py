@@ -27,6 +27,7 @@ import sys
 import tarfile
 import time
 import uuid
+import weakref
 from collections.abc import AsyncIterator, Awaitable, Mapping
 from dataclasses import dataclass, field
 from types import MappingProxyType
@@ -36,7 +37,7 @@ from ..errors import WorkspaceUnavailable
 # A container's removal, once begun, is never abandoned: finished even when the caller is
 # cancelled meanwhile, then that cancel raised (one helper, DECISION-ed9b1bba).
 from ..handle import through
-from . import CommandOutcome, WorkspaceHandle, WorkspaceSpec, charged, egress, normal_path
+from . import _REMOVE_ATTEMPTS, CommandOutcome, ServerLaunch, WorkspaceHandle, WorkspaceSpec, charged, egress, normal_path
 
 MOUNT = "/workspace"
 UID = 65534
@@ -44,7 +45,6 @@ MAX_TRANSFER_BYTES = 16 * 2**20  # FR-143
 MAX_TRANSFER_MEMBERS = 10_000
 _CLI_SECONDS = 60.0  # any docker call that is not a command
 _MEASURE_SECONDS = 60.0
-_REMOVE_ATTEMPTS = 4
 _READ = 64 * 1024
 # FR-156, P5-D17: every container's PID 1. It runs the argv and keeps its exit code, kills every
 # other process until none is left -- PID 1 is the one kill -1 never reaches -- then prints the
@@ -231,6 +231,25 @@ def container_args(handle: WorkspaceHandle, name: str, argv: list[str], env_name
     ]
 
 
+SERVER_ROLE = "agentsdk.role"  # FR-165: a sandboxed server's container, found by it on a restart
+
+
+def server_args(handle: WorkspaceHandle, name: str, command: str, args: list[str], env_names: list[str],
+                network: str = "none", assigned: tuple[str, ...] = ()) -> list[str]:
+    """FR-164, FR-165: `docker run -i` for a sandboxed MCP server -- attached, its stdio the
+    protocol, hardened as a command is over its workspace's volume, labelled as its workspace is
+    and as a server. No wrapper: the server's stdin is the protocol's from its first byte, and a
+    server is never charged. The image's entrypoint is cleared, as a command's is, so `command`
+    runs as given and nothing else writes to the protocol (M45 pre-review F1). Env values by name
+    only, as a command's (FR-142)."""
+    return [
+        "run", "-i", "--pull", "never", "--name", name, *_labels({**handle.labels, SERVER_ROLE: "server"}),
+        *hardening(handle.spec, network), "-w", MOUNT, *_mount(handle),
+        *[arg for env in env_names for arg in ("-e", env)], *[arg for env in assigned for arg in ("-e", env)],
+        "--entrypoint=", handle.spec.image, command, *args,
+    ]
+
+
 def reading(tail: bytes, nonce: bytes) -> tuple[int | None, int, int] | None:
     """FR-156: the wrapper's line, when `tail` ends with one carrying the command's `nonce`: its
     `usage_usec` (None when the container gave none), the exit code it names, and its length. Only
@@ -383,7 +402,9 @@ class _Command:
 class _Space:
     handle: WorkspaceHandle
     baseline: int = 0  # what the empty volume's root itself uses, which no command wrote
-    running: dict[str, _Command] = field(default_factory=dict)
+    # NFR-39 (M45 round 3, DECISION-8e21d1ff): a sandboxed server's engine keeps this provider, and a
+    # run awaits each command's kill; each is held by its command's own call alone.
+    running: weakref.WeakValueDictionary[str, _Command] = field(default_factory=weakref.WeakValueDictionary)
     # FR-160 (M44), with egress: the network commands join, the proxy's address on it, its attached
     # process and the task reading its reports, each command's token, and who is told of them.
     network: str = "none"
@@ -639,6 +660,27 @@ class DockerProvider:
         return code == 0
 
     # --- commands --------------------------------------------------------------------------------
+
+    async def server_launch(self, handle: WorkspaceHandle, command: str, args: list[str]) -> ServerLaunch:
+        """FR-165: a sandboxed server's container, started by the MCP client as `docker run -i`.
+        One from before -- a crash's restart (DECISION-b478705b) -- is removed first, whether or
+        not it heeded its stdin's end. With egress it joins its workspace's network with a proxy
+        URL whose token names no command, so its connections are recorded with none
+        (DECISION-61aed587)."""
+        space = self._space(handle)
+        code, out, _ = await self._cli("ps", "-aq", "--filter", f"label=agentsdk.workspace={handle.workspace_id}",
+                                       "--filter", f"label={SERVER_ROLE}=server")
+        if code == 0 and out.split():
+            await self._rm(*out.decode().split())
+        assigned: tuple[str, ...] = ()
+        if space.address is not None:
+            url = f"http://{egress.USER}:{secrets.token_hex(16)}@{space.address}:{egress.PORT}"
+            assigned = (f"HTTPS_PROXY={url}", f"https_proxy={url}")
+        args_ = server_args(handle, f"agentsdk-srv-{uuid.uuid4()}", command, list(args), sorted(handle.spec.env),
+                            space.network, assigned)
+        if _too_long(args_):
+            raise WorkspaceUnavailable("the server's docker command line would pass the 32,767 characters Windows allows")
+        return ServerLaunch(self._docker(), tuple(args_), self._env(handle.spec.env), None)
 
     async def run(self, handle: WorkspaceHandle, argv: list[str], *, timeout: float, stdin: bytes | None = None,
                   command_id: str | None = None) -> CommandOutcome:

@@ -24,6 +24,7 @@ import socket
 import ssl
 import sys
 import uuid
+import weakref
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -205,7 +206,9 @@ class Proxy:
         self.max_tunnels, self.idle_seconds, self.max_connections = max_tunnels, idle_seconds, max_connections
         self.max_waiting = max_waiting
         self.connections = self.at_limit = self.tunnels = self.waiting = 0
-        self.handlers: set = set()
+        # NFR-39 (M45 round 3, DECISION-8e21d1ff): on FakeProvider a handler is its command's own task,
+        # which a run awaits; held weakly, by the task that runs it and its loop alone.
+        self.handlers: weakref.WeakSet = weakref.WeakSet()
         # Past the limit, the count reported at the first refusal, then at most once a second, and
         # when the proxy stops: lines, queue and writes bounded (DECISION-e510a5e3).
         self.limit_reported = 0
@@ -240,9 +243,10 @@ class Proxy:
 
     async def close(self) -> None:
         """Every open tunnel ended, each reporting its bytes: the proxy's last reports."""
-        for task in list(self.handlers):
+        handlers = list(self.handlers)
+        for task in handlers:
             task.cancel()
-        await asyncio.gather(*self.handlers, return_exceptions=True)
+        await asyncio.gather(*handlers, return_exceptions=True)
         if self.limit_timer is not None:
             self.limit_timer.cancel()
         self._report_limit()

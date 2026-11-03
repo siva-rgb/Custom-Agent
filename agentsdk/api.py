@@ -462,7 +462,18 @@ class Runner:
             taken = sorted(set(RESERVED) & set(self._registry.names()))
             if taken:
                 raise ValueError(f"registered tools take workspace tool names: {taken}")
-            self._workspaces = WorkspaceManager(workspace_provider, self._workspace_store, max_concurrent_workspaces)
+            # Its store getter holds no Runner, as the catalog's: the manager reaches the MCP engine
+            # (a sandboxed server's workspace), whose finalizer would otherwise keep a collected
+            # Runner alive and never end its servers (NFR-39, M45 round 1 B1, DECISION-7a3e4526).
+            workspace_store = (persistence.workspace_store if persistence is not None
+                               else (lambda store=self._memory_workspaces: store))
+            self._workspaces = WorkspaceManager(workspace_provider, workspace_store, max_concurrent_workspaces)
+        sandboxed = self._mcp.sandboxed() if mcp_servers else []
+        if sandboxed:
+            # FR-164 (M45): a sandboxed server's workspace is its Runner's, from its provider.
+            if self._workspaces is None:
+                raise ValueError(f"sandboxed MCP servers {sandboxed} need this Runner's workspace_provider")
+            self._mcp.use_workspaces(self._workspaces)
         self._hook = hook if hook is not None else RuntimeHook()
         self._assembler = assembler if assembler is not None else ContextAssembler()
         # FR-76 (M19): with no persistence, the in-memory artifact and run-state
