@@ -2267,6 +2267,44 @@ class PostgresWorkspaceStore:
         return [ConnectionRecord(str(r[0]), str(r[1]), r[2], r[3], None if r[4] is None else str(r[4]),
                                  None if r[5] is None else str(r[5]), *r[6:]) for r in rows]
 
+    _SNAPSHOT = "snapshot_id, workspace_id, tenant_id, project_id, size_bytes, created_at, removed_at, removed_reason"
+
+    def record_snapshot(self, record: Any) -> None:
+        """FR-168 (migration 0027): written once, of a workspace of its own tenancy."""
+        with _checkout(self._dsn) as conn, conn.transaction():
+            conn.execute(
+                f"INSERT INTO workspace_snapshots ({self._SNAPSHOT}) VALUES (%s,%s,%s,%s,%s,%s,%s,%s)",
+                (record.snapshot_id, record.workspace_id, record.tenant_id, record.project_id, record.size_bytes,
+                 record.created_at, record.removed_at, record.removed_reason))
+
+    def record_snapshot_removal(self, tenant_id: str, project_id: str, snapshot_id: str, reason: str,
+                                removed_at: datetime | None = None) -> bool:
+        """Fills a snapshot's removal, once: False when it was already removed, or is not a
+        snapshot of this tenant and project."""
+        from .workspace.records import SNAPSHOT_REMOVAL_REASONS
+
+        if reason not in SNAPSHOT_REMOVAL_REASONS:
+            raise ValueError(f"unknown snapshot removal reason: {reason!r}")
+        try:
+            snapshot_id = str(uuid.UUID(str(snapshot_id)))
+        except ValueError:
+            return False
+        with _checkout(self._dsn) as conn, conn.transaction():
+            done = conn.execute(
+                "UPDATE workspace_snapshots SET removed_at = %s, removed_reason = %s WHERE snapshot_id = %s"
+                " AND tenant_id = %s AND project_id = %s AND removed_at IS NULL",
+                (removed_at or datetime.now(timezone.utc), reason, snapshot_id, tenant_id, project_id))
+            return done.rowcount == 1
+
+    def snapshots(self, tenant_id: str, project_id: str) -> list[Any]:
+        from .workspace.records import SnapshotRecord
+
+        with _checkout(self._dsn) as conn:
+            rows = conn.execute(
+                f"SELECT {self._SNAPSHOT} FROM workspace_snapshots WHERE tenant_id = %s AND project_id = %s"
+                " ORDER BY created_at", (tenant_id, project_id)).fetchall()
+        return [SnapshotRecord(str(r[0]), str(r[1]), *r[2:]) for r in rows]
+
     def workspaces(self, tenant_id: str, project_id: str, run_id: str | None = None) -> list[Any]:
         with _checkout(self._dsn) as conn:
             rows = conn.execute(

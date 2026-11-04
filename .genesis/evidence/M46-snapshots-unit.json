@@ -1,0 +1,22 @@
+{
+  "task": "M46-snapshots",
+  "gate": "unit",
+  "command": ".venv\\Scripts\\python.exe -m pytest tests/test_snapshots.py -q -p no:cacheprovider",
+  "started_at": "2026-11-04T05:53:47.258Z",
+  "observed_at": "2026-11-04T05:54:38.213Z",
+  "exit_code": 0,
+  "signal": null,
+  "stdout": ".......................................                                  [100%]\r\n39 passed, 11 deselected in 50.11s\r\n",
+  "stderr": "",
+  "revision": {
+    "commit": "60169f453db3cd22924151fb4555a7197badddc2",
+    "dirty": true
+  },
+  "source_hash": "5dbea89a6334efeb8dedf2f0fbbe6b742ca064f7326e515e2da5b1264be564f8",
+  "environment": {
+    "node": "v20.10.0",
+    "platform": "win32",
+    "arch": "x64"
+  },
+  "hash": "ebb7f86623b6c840201b75479619752c8b551ccde7464f016e2e412a78a4bb23"
+}

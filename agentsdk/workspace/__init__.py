@@ -41,6 +41,8 @@ __all__ = [
     "FakeCommand",
     "FakeFiles",
     "FakeProvider",
+    "SnapshotHandle",
+    "SnapshotRef",
     "WorkspaceHandle",
     "WorkspaceProvider",
     "WorkspaceSpec",
@@ -68,6 +70,9 @@ SETUP_SECONDS = 120.0
 # What reading a workspace's size may take; a command's first use reads it first when it is stale,
 # so the tools' deadline is past it too (DECISION-4689af02).
 MEASURE_SECONDS = 120.0
+# FR-168 (M46): what copying a workspace into a snapshot, or a snapshot into a new workspace, may
+# take; a command or write asked while a snapshot is taken waits for it as long (DECISION-bafa7be8).
+SNAPSHOT_SECONDS = 600.0
 # How many times a provider tries a removal, waiting longer each time, before it raises.
 _REMOVE_ATTEMPTS = 4
 
@@ -106,6 +111,8 @@ class WorkspaceSpec:
     run_command_approval: ApprovalPolicy = ApprovalPolicy.REQUIRE_APPROVAL
     # FR-159 (M44): the `host:port` pairs it may reach, through a proxy of its own; none by default.
     egress: tuple[str, ...] = ()
+    # FR-169 (M46): the snapshot, of the same tenancy, it starts as a copy of; none by default.
+    from_snapshot: str | None = None
 
     def __post_init__(self) -> None:
         # P5-D6: by digest, never a tag, so what runs is what was recorded; the provider never
@@ -137,6 +144,8 @@ class WorkspaceSpec:
         if not isinstance(self.run_command_approval, ApprovalPolicy):
             raise ValueError("WorkspaceSpec.run_command_approval must be an ApprovalPolicy")
         parse_egress(self.egress)
+        if self.from_snapshot is not None and (not isinstance(self.from_snapshot, str) or not self.from_snapshot):
+            raise ValueError("WorkspaceSpec.from_snapshot must name a snapshot, as SnapshotRef.snapshot_id does")
 
     def record(self) -> dict[str, Any]:
         """What the manifest and the `workspaces` row record: the image, the limits in force, the
@@ -150,6 +159,7 @@ class WorkspaceSpec:
             "run_command_approval": self.run_command_approval.value,
             # Named only when set, so a spec without it records what it did before (NFR-49).
             **({"egress": list(self.egress)} if self.egress else {}),
+            **({"from_snapshot": self.from_snapshot} if self.from_snapshot is not None else {}),
         }
 
 
@@ -214,6 +224,29 @@ class WorkspaceHandle:
     labels: Mapping[str, str] = field(default_factory=dict)
 
 
+@dataclass(frozen=True)
+class SnapshotHandle:
+    """FR-168 (M46): a provider's reference to one snapshot, labelled as its workspace was, with
+    `agentsdk.snapshot` naming it and `agentsdk.of` its workspace. `size_bytes` is its measure when
+    it was taken, and None when it was listed: a provider cannot always say it again."""
+
+    snapshot_id: str
+    labels: Mapping[str, str] = field(default_factory=dict)
+    size_bytes: int | None = None
+
+
+@dataclass(frozen=True)
+class SnapshotRef:
+    """FR-168: what `Runner.snapshot_workspace` returns. `WorkspaceSpec(from_snapshot=snapshot_id)`
+    starts a workspace of the same tenant and project from it."""
+
+    snapshot_id: str
+    workspace_id: str
+    tenant_id: str
+    project_id: str
+    size_bytes: int
+
+
 @runtime_checkable
 class WorkspaceProvider(Protocol):
     """FR-138, P5-D2: what the `WorkspaceManager` asks of a provider. Every method is a
@@ -256,6 +289,16 @@ class WorkspaceProvider(Protocol):
 
     async def list_owned(self, labels: Mapping[str, str]) -> list[WorkspaceHandle]: ...
 
+    # FR-168, FR-169 (M46): `snapshot` copies a workspace, between commands, into a snapshot
+    # labelled `labels`, measured as `size` counts; `create` with a spec's `from_snapshot` starts the
+    # workspace as that snapshot's copy, and raises `WorkspaceUnavailable` when there is none. A
+    # snapshot is never one of `list_owned`'s workspaces: `list_snapshots` names them.
+    async def snapshot(self, handle: WorkspaceHandle, labels: Mapping[str, str]) -> SnapshotHandle: ...
+
+    async def remove_snapshot(self, snapshot_id: str) -> None: ...
+
+    async def list_snapshots(self, labels: Mapping[str, str]) -> list[SnapshotHandle]: ...
+
 
 # =================================================================================================
 # FakeProvider (FR-139)
@@ -294,6 +337,9 @@ def server_files(env: Any, cwd: Any, spec: Any, files: Any) -> Mapping[str, byte
                          " workspace's root: give no env or cwd of its own")
     if spec.keep or spec.scope != "run":
         raise ValueError("a server's workspace lives exactly as long as its server: keep and scope plan are refused")
+    if spec.from_snapshot is not None:
+        # DECISION-bafa7be8: snapshots are of run and plan workspaces only (M46 pre-review F2).
+        raise ValueError("a server's workspace starts from its files, never from a snapshot")
     for path, data in files.items():
         parts = path.split("/") if isinstance(path, str) else []
         if (not parts or any(p in ("", ".", "..") for p in parts) or "\\" in path or ":" in path
@@ -322,6 +368,12 @@ class FakeFiles:
         self._files: dict[str, bytes] = {}
         self._dirs: set[str] = set()
         self._links: dict[str, str] = {}
+
+    def copy(self) -> FakeFiles:
+        """FR-168: the tree as it is now, links kept as links."""
+        copied = FakeFiles()
+        copied._files, copied._dirs, copied._links = dict(self._files), set(self._dirs), dict(self._links)
+        return copied
 
     def size(self) -> int:
         """As `du` counts (DECISION-d4ede901): each file in whole 4 KiB blocks and each folder one
@@ -668,6 +720,8 @@ class FakeProvider:
         self._resolve = {name: list(addresses) for name, addresses in (resolve or {}).items()}
         self._sites = dict(sites or {})
         self._max_connections = max_connections
+        # FR-168 (M46): each snapshot's handle and its copy of the tree, in memory.
+        self._snapshots: dict[str, tuple[SnapshotHandle, FakeFiles]] = {}
 
     def _proxy(self, space: _FakeWorkspace) -> Proxy:
         async def resolve(host: str, port: int) -> list[str]:
@@ -716,7 +770,14 @@ class FakeProvider:
     async def create(self, spec: WorkspaceSpec, labels: Mapping[str, str]) -> WorkspaceHandle:
         workspace_id = labels.get("agentsdk.workspace") or str(uuid.uuid4())
         handle = WorkspaceHandle(workspace_id=workspace_id, spec=spec, labels=MappingProxyType(dict(labels)))
+        snapshot = None
+        if spec.from_snapshot is not None:
+            snapshot = self._snapshots.get(spec.from_snapshot)
+            if snapshot is None:
+                raise WorkspaceUnavailable(f"snapshot {spec.from_snapshot} does not exist")
         space = self._spaces[workspace_id] = _FakeWorkspace(handle)
+        if snapshot is not None:
+            space.files = snapshot[1].copy()
         if spec.egress:
             space.proxy = self._proxy(space)
         return handle
@@ -854,6 +915,19 @@ class FakeProvider:
     async def list_owned(self, labels: Mapping[str, str]) -> list[WorkspaceHandle]:
         return [s.handle for s in self._spaces.values()
                 if all(s.handle.labels.get(k) == v for k, v in labels.items())]
+
+    async def snapshot(self, handle: WorkspaceHandle, labels: Mapping[str, str]) -> SnapshotHandle:
+        files = self._space(handle).files.copy()
+        taken = SnapshotHandle(labels["agentsdk.snapshot"], MappingProxyType(dict(labels)), files.size())
+        self._snapshots[taken.snapshot_id] = (taken, files)
+        return taken
+
+    async def remove_snapshot(self, snapshot_id: str) -> None:
+        self._snapshots.pop(snapshot_id, None)
+
+    async def list_snapshots(self, labels: Mapping[str, str]) -> list[SnapshotHandle]:
+        return [taken for taken, _ in self._snapshots.values()
+                if all(taken.labels.get(k) == v for k, v in labels.items())]
 
 
 from .docker import DockerProvider, read_tar  # noqa: E402 - it builds on the names above (FR-142)

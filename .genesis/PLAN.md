@@ -418,15 +418,15 @@
 
 ### M46-snapshots — A workspace's state is snapshotted and a new workspace of the same tenancy starts from it, within bounds
 
-- state/risk: active / high
+- state/risk: done / high
 - requirements: FR-168, FR-169, FR-170, AC-104, NFR-47
 - scope: not bounded
-- gates: unit: .venv\Scripts\python.exe -m pytest tests/test_snapshots.py -q -p no:cacheprovider, regression: .venv\Scripts\python.exe -m pytest -q -p no:cacheprovider, docker: .venv\Scripts\python.exe -m pytest tests/test_workspace.py tests/test_workspace_tools.py tests/test_workspace_plan.py tests/test_docker_provider.py tests/test_sandbox_contention.py tests/test_compute.py tests/test_egress.py tests/test_sandboxed_mcp.py tests/test_snapshots.py -m docker -q -p no:cacheprovider, independent-review: pending
-- next: Run the task pre-flight.
+- gates: unit: .venv\Scripts\python.exe -m pytest tests/test_snapshots.py -q -p no:cacheprovider, regression: .venv\Scripts\python.exe -m pytest -q -p no:cacheprovider, docker: .venv\Scripts\python.exe -m pytest tests/test_workspace.py tests/test_workspace_tools.py tests/test_workspace_plan.py tests/test_docker_provider.py tests/test_sandbox_contention.py tests/test_compute.py tests/test_egress.py tests/test_sandboxed_mcp.py tests/test_snapshots.py -m docker -q -p no:cacheprovider, independent-review: pass
+- next: Pre-flight done (DECISION-bafa7be8): write tests/test_snapshots.py first, then migration 0027 and the implementation.
 
 ### M47-increment2-contention — Hostile code with egress, a hostile sandboxed MCP server, a snapshot and a compute ceiling are contained, recorded and cleaned up on both stores
 
-- state/risk: queued / high
+- state/risk: active / high
 - requirements: FR-171, AC-105, NFR-46, NFR-47, NFR-48, NFR-49
 - scope: not bounded
 - gates: unit: .venv\Scripts\python.exe -m pytest tests/test_increment2_contention.py -q -p no:cacheprovider, regression: .venv\Scripts\python.exe -m pytest -q -p no:cacheprovider, docker: .venv\Scripts\python.exe -m pytest tests/test_workspace.py tests/test_workspace_tools.py tests/test_workspace_plan.py tests/test_docker_provider.py tests/test_sandbox_contention.py tests/test_compute.py tests/test_egress.py tests/test_sandboxed_mcp.py tests/test_snapshots.py tests/test_increment2_contention.py -m docker -q -p no:cacheprovider, independent-review: pending

@@ -573,6 +573,27 @@ class Runner:
             return False
         return await self._workspaces.release(tenant_id, project_id, workspace_id)
 
+    async def snapshot_workspace(self, tenant_id: str, project_id: str, workspace_id: str) -> Any:
+        """FR-168 (M46): copies a run's or a plan's workspace of this tenant and project, between
+        commands, into a snapshot, and returns its `SnapshotRef`; a workspace started with
+        `WorkspaceSpec(from_snapshot=ref.snapshot_id)` begins as its copy (FR-169). Refused with
+        `WorkspaceRefused` while a command or a write is under way, for a sandboxed MCP server's
+        workspace, or past the workspace's `max_workspace_bytes`; `WorkspaceUnavailable` when this
+        Runner holds no such workspace. `aclose()` keeps it when its workspace was kept, and
+        removes it otherwise (DECISION-bafa7be8). The application takes snapshots; no tool does."""
+        if self._workspaces is None:
+            raise WorkspaceUnavailable("this Runner was given no workspace_provider")
+        return await self._workspaces.snapshot(tenant_id, project_id, workspace_id)
+
+    async def release_snapshot(self, tenant_id: str, project_id: str, snapshot_id: str) -> bool:
+        """FR-168: removes a snapshot of this tenant and project, whichever Runner of the same
+        provider took it, recorded `released`. False when there is no such snapshot. Raises
+        `WorkspaceUnavailable` when it cannot be removed -- on Docker, while a restore is reading it --
+        and it stays, to be released again or reaped."""
+        if self._workspaces is None:
+            return False
+        return await self._workspaces.release_snapshot(tenant_id, project_id, snapshot_id)
+
     async def _safe_emit_kind(self, events: EventSink, control: RunControl, event_type: EventType,
                               payload: dict) -> None:
         await self._safe_emit(events, event_type, payload, control)

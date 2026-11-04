@@ -33,11 +33,12 @@ from dataclasses import dataclass, field
 from types import MappingProxyType
 from typing import Any
 
-from ..errors import WorkspaceUnavailable
+from ..errors import WorkspaceRefused, WorkspaceUnavailable
 # A container's removal, once begun, is never abandoned: finished even when the caller is
 # cancelled meanwhile, then that cancel raised (one helper, DECISION-ed9b1bba).
 from ..handle import through
-from . import _REMOVE_ATTEMPTS, CommandOutcome, ServerLaunch, WorkspaceHandle, WorkspaceSpec, charged, egress, normal_path
+from . import (_REMOVE_ATTEMPTS, SNAPSHOT_SECONDS, CommandOutcome, ServerLaunch, SnapshotHandle, WorkspaceHandle,
+               WorkspaceSpec, charged, egress, normal_path)
 
 MOUNT = "/workspace"
 UID = 65534
@@ -157,6 +158,26 @@ def volume_name(workspace_id: str) -> str:
     return f"agentsdk-{workspace_id}"
 
 
+def snapshot_volume(snapshot_id: str) -> str:
+    """FR-168 (M46): a snapshot's volume. It carries no `agentsdk.workspace` label, so it is never
+    one of `list_owned`'s workspaces."""
+    return f"agentsdk-snap-{snapshot_id}"
+
+
+_SNAPSHOT_FROM = "/snapshot"
+# Run as a command is, over both volumes, with the bound as $1. First every regular file's apparent
+# size is summed, each inode once, and past the bound it exits 3 having written nothing: `cp -a`
+# writes a sparse file out in full, so a file `du` counts as nothing could write the host's disk
+# full before the copy was measured (M46 pre-review F4). Then links, hard links and modes are
+# copied, and the copy measured. Under pipefail only the count exits 3: a missing find, stat or awk
+# fails the copy as itself, never as the bound, nor sums nothing and lets it run (DECISION-f15a2771).
+_COPY = ("set -o pipefail; "
+         f"find {_SNAPSHOT_FROM} -type f -exec stat -c '%i %s' {{}} + "
+         f"| awk -v limit=\"$1\" '!seen[$1]++ {{s += $2}} END {{exit (s > limit) ? 3 : 0}}' || exit $?; "
+         f"cp -a {_SNAPSHOT_FROM}/. {MOUNT}/ && du -sk {MOUNT}")
+_PAST_BOUND = 3
+
+
 def engine_refusal(version: str) -> str | None:
     """F1: an egress network's gateway is isolated, which needs Docker Engine 28; why this daemon
     cannot give one, or None (DECISION-26009e04)."""
@@ -208,6 +229,12 @@ def proxy_args(handle: WorkspaceHandle, subnet: str, max_connections: int = egre
 
 def _labels(labels: Mapping[str, str]) -> list[str]:
     return [arg for key, value in sorted(labels.items()) for arg in ("--label", f"{key}={value}")]
+
+
+def _labelled(found: Mapping[str, str], wanted: Mapping[str, str]) -> bool:
+    """Every wanted label, exactly: Docker's `--filter label=` ignores a value's trailing whitespace,
+    so another tenancy named with one more space would match (M46 pre-review F1)."""
+    return all(found.get(key) == value for key, value in wanted.items())
 
 
 def _mount(handle: WorkspaceHandle) -> list[str]:
@@ -537,6 +564,19 @@ class DockerProvider:
                 space.baseline = await self._du(handle)
             except Exception as exc:  # noqa: BLE001 - named by class only
                 raise WorkspaceUnavailable(f"the image cannot measure a workspace: {type(exc).__name__}") from None
+            if spec.from_snapshot is not None:
+                # FR-169: copied in after the empty volume's baseline, so its size counts the copy.
+                if not await self.list_snapshots({"agentsdk.snapshot": spec.from_snapshot}):
+                    raise WorkspaceUnavailable(f"snapshot {spec.from_snapshot} does not exist")
+                try:
+                    await self._copied(handle, snapshot_volume(spec.from_snapshot), volume_name(workspace_id))
+                except WorkspaceRefused as exc:
+                    raise WorkspaceUnavailable(str(exc)) from None  # FR-169: the restore fails the workspace
+                if not await self.list_snapshots({"agentsdk.snapshot": spec.from_snapshot}):
+                    # Released meanwhile: the mount made an empty, unlabelled volume in its place,
+                    # and the copy is of nothing. That volume goes, and so does this workspace.
+                    await self._cli("volume", "rm", "-f", snapshot_volume(spec.from_snapshot))
+                    raise WorkspaceUnavailable(f"snapshot {spec.from_snapshot} was removed while it was copied")
             if spec.egress:
                 await self._start_egress(handle, space)
         except BaseException:
@@ -641,13 +681,14 @@ class DockerProvider:
             space.noise.cancel()  # it writes nothing: it only reads to the stream's end
 
     @contextlib.asynccontextmanager
-    async def _helper(self, handle: WorkspaceHandle) -> AsyncIterator[str]:
-        """A container over the volume that is created and never started: what `docker cp` reads
-        from and writes into (FR-143)."""
+    async def _helper(self, handle: WorkspaceHandle, volume: str | None = None) -> AsyncIterator[str]:
+        """A container over the volume -- the workspace's, or `volume` -- that is created and never
+        started: what `docker cp` reads from and writes into (FR-143)."""
         name = f"agentsdk-xfer-{uuid.uuid4()}"
+        mount = _mount(handle) if volume is None else ["--mount", f"type=volume,src={volume},dst={MOUNT},volume-nocopy"]
         try:
             code, _, _ = await self._cli("create", "--pull", "never", "--name", name, *_labels(handle.labels),
-                                         "--network", "none", *_mount(handle), "--entrypoint=", handle.spec.image,
+                                         "--network", "none", *mount, "--entrypoint=", handle.spec.image,
                                          "true")
             if code != 0:
                 raise WorkspaceUnavailable(f"docker could not reach the workspace (exit {code})")
@@ -842,6 +883,85 @@ class DockerProvider:
         space = self._space(handle)
         return max(0, await self._du(handle) - space.baseline)
 
+    # --- snapshots (FR-168, FR-169; DECISION-bafa7be8) -------------------------------------------
+
+    async def _copied(self, handle: WorkspaceHandle, source: str, target: str) -> int:
+        """`source`'s volume copied into `target`'s by `cp -a`, in a container of the workspace's own
+        image hardened as a command is -- no network, every capability dropped, its limits -- the
+        source mounted read-only; what the target then uses, in bytes, as `du` counts. Nothing is
+        pulled or built, and the container is removed however this ends. Refused with
+        `WorkspaceRefused`, nothing written, when the source's files pass the workspace's
+        `max_workspace_bytes` by their apparent size."""
+        name = f"agentsdk-snap-cp-{uuid.uuid4()}"
+        try:
+            code, out, _ = await self._cli(
+                "run", "--pull", "never", "--name", name, *_labels(handle.labels), *hardening(handle.spec),
+                "--mount", f"type=volume,src={source},dst={_SNAPSHOT_FROM},readonly",
+                "--mount", f"type=volume,src={target},dst={MOUNT},volume-nocopy",
+                "--entrypoint=", handle.spec.image, "sh", "-c", _COPY, "sh", str(handle.spec.max_workspace_bytes),
+                timeout=SNAPSHOT_SECONDS, keep=4096)
+        finally:
+            await through(self._rm(name))
+        if code == _PAST_BOUND:
+            raise WorkspaceRefused(f"the files to copy pass max_workspace_bytes ({handle.spec.max_workspace_bytes} B) "
+                                   f"by their apparent size: nothing was copied")
+        if code != 0:
+            raise WorkspaceUnavailable(f"the copy ended with exit code {code}")
+        try:
+            return int(out.split()[0]) * 1024
+        except (IndexError, ValueError):
+            raise WorkspaceUnavailable("the copy printed no size") from None
+
+    async def snapshot(self, handle: WorkspaceHandle, labels: Mapping[str, str]) -> SnapshotHandle:
+        """FR-168: a volume of its own, labelled `labels`, its root owned as a workspace's is, the
+        workspace copied into it and measured as `size` measures the workspace."""
+        space = self._space(handle)
+        snapshot_id = labels["agentsdk.snapshot"]
+        name = snapshot_volume(snapshot_id)
+        code, _, _ = await self._cli("volume", "create", *_labels(labels), name)
+        if code != 0:
+            raise WorkspaceUnavailable(f"docker could not create the snapshot's volume (exit {code})")
+        try:
+            async with self._helper(handle, name) as helper:
+                code, _, _ = await self._cli("cp", "-a", "-", f"{helper}:/", stdin=_root_tar())
+            if code != 0:
+                raise WorkspaceUnavailable(f"docker could not prepare the snapshot (exit {code})")
+            used = await self._copied(handle, volume_name(handle.workspace_id), name)
+        except BaseException:
+            with contextlib.suppress(Exception):
+                await through(self.remove_snapshot(snapshot_id))
+            raise
+        return SnapshotHandle(snapshot_id, MappingProxyType(dict(labels)), max(0, used - space.baseline))
+
+    async def remove_snapshot(self, snapshot_id: str) -> None:
+        name = snapshot_volume(snapshot_id)
+        for attempt in range(_REMOVE_ATTEMPTS):
+            code, _, _ = await self._cli("volume", "rm", "-f", name)
+            if code == 0:
+                return
+            await asyncio.sleep(0.5 * (attempt + 1))
+        raise WorkspaceUnavailable(f"docker could not remove the snapshot's volume (exit {code})")
+
+    async def list_snapshots(self, labels: Mapping[str, str]) -> list[SnapshotHandle]:
+        filters = [arg for key, value in sorted(labels.items()) for arg in ("--filter", f"label={key}={value}")]
+        code, out, _ = await self._cli("volume", "ls", "-q", "--filter", "label=agentsdk.snapshot", *filters)
+        if code != 0:
+            raise WorkspaceUnavailable(f"docker could not list volumes (exit {code})")
+        names = out.decode().split()
+        found: list[SnapshotHandle] = []
+        for start in range(0, len(names), 100):
+            code, out, _ = await self._cli("volume", "inspect", *names[start:start + 100], keep=16 * 2**20)
+            try:
+                inspected = json.loads(out) if out.strip() else []
+            except ValueError:
+                continue  # found again by the next listing
+            for volume in inspected:
+                tags = dict(volume.get("Labels") or {})
+                if (tags.get("agentsdk.snapshot") and volume.get("Name") == snapshot_volume(tags["agentsdk.snapshot"])
+                        and _labelled(tags, labels)):
+                    found.append(SnapshotHandle(tags["agentsdk.snapshot"], MappingProxyType(tags)))
+        return found
+
     # --- listing (DECISION-0004d2dc) -------------------------------------------------------------
 
     async def list(self, handle: WorkspaceHandle, path: str, *,
@@ -1016,7 +1136,9 @@ class DockerProvider:
         for workspace_id, found in orphans.items():
             handles.append(WorkspaceHandle(workspace_id=workspace_id, spec=_recorded(found),
                                            labels=MappingProxyType(found)))
-        return sorted(handles, key=lambda h: h.workspace_id)
+        # Docker's label filter ignores a value's trailing whitespace: each label is compared exactly
+        # here (M46 pre-review F1).
+        return sorted((h for h in handles if _labelled(h.labels, labels)), key=lambda h: h.workspace_id)
 
 
 # A listed workspace whose labels name no spec this SDK can read: enough to remove it (FR-151).

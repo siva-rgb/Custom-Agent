@@ -22,6 +22,7 @@ first one it reaps what a dead Runner left (DECISION-825b81a6).
 from __future__ import annotations
 
 import asyncio
+import concurrent.futures
 import contextlib
 import hashlib
 import json
@@ -38,10 +39,10 @@ from urllib.parse import quote
 from ..errors import BudgetExceeded, WorkspaceRefused, WorkspaceUnavailable
 from ..events import EventType
 from ..handle import StoredEmit, settle, through
-from . import (MEASURE_SECONDS, SETUP_SECONDS, CommandOutcome, WorkspaceHandle, WorkspaceProvider, WorkspaceSpec,
-               charged)
+from . import (MEASURE_SECONDS, SETUP_SECONDS, SNAPSHOT_SECONDS, CommandOutcome, SnapshotRef, WorkspaceHandle,
+               WorkspaceProvider, WorkspaceSpec, charged)
 from .owner import is_dead, this_owner
-from .records import CommandRecord, ConnectionRecord, WorkspaceRecord, now
+from .records import CommandRecord, ConnectionRecord, SnapshotRecord, WorkspaceRecord, now
 from .tools import files_tar
 
 Emit = Callable[[EventType, dict[str, Any]], Awaitable[Any]]
@@ -205,6 +206,12 @@ class _Space:
         self.counting = asyncio.Lock()
         self.booked = False
         self.late: asyncio.Task[None] | None = None
+        # FR-168 (M46, DECISION-bafa7be8): the commands and writes under way in it, and a snapshot
+        # being taken of it, whichever loops they are on; a snapshot is refused while one is under
+        # way, and one asked while a snapshot is taken waits for it.
+        self.use = threading.Lock()
+        self.busy = 0
+        self.copying: concurrent.futures.Future[None] | None = None
 
 
 class _Binding:
@@ -404,12 +411,17 @@ class RunWorkspace:
             "agentsdk.runner": self._manager.runner_id,
         }
         provider = self._manager.provider
+        if self.spec.from_snapshot is not None:
+            await self._manager.usable_snapshot(self.spec.from_snapshot, self.tenant_id, self.project_id)
         try:
             handle = await provider.create(self.spec, labels)
         except WorkspaceUnavailable:
             raise
         except Exception as exc:  # noqa: BLE001 - a provider's failure, named by class only
             raise WorkspaceUnavailable(f"the provider could not create a workspace: {type(exc).__name__}") from None
+        if self.spec.from_snapshot is not None:
+            # FR-169: measured as it was copied, before it is recorded or runs anything.
+            await self._manager.within_bound(handle, self.spec)
         try:
             await self._record("record_workspace", WorkspaceRecord(
                 workspace_id=handle.workspace_id, tenant_id=self.tenant_id, project_id=self.project_id,
@@ -469,6 +481,13 @@ class RunWorkspace:
 
     async def run(self, argv: list[str], *, stdin: bytes | None, timeout: float,
                   tool_call_id: str | None) -> CommandOutcome:
+        # A copy under way is waited for within the command's own timeout, and what is left of it is
+        # the command's, so the executor's deadline still covers both (DECISION-f15a2771).
+        async with self._manager.using(self._space, timeout) as waited:
+            return await self._run(argv, stdin=stdin, timeout=timeout - waited, tool_call_id=tool_call_id)
+
+    async def _run(self, argv: list[str], *, stdin: bytes | None, timeout: float,
+                   tool_call_id: str | None) -> CommandOutcome:
         # Asked first, as the loop asks before each model call: a run whose budget is spent starts
         # no command, and creates no workspace for one (DECISION-91ec4213).
         if self._account is not None and not self._account.may_run():
@@ -597,15 +616,17 @@ class RunWorkspace:
                                f"its record could not be completed: {type(failure).__name__}")
 
     async def import_(self, data: bytes) -> None:
-        handle = await self.ensure()
-        await self._refuse_if_full(handle, "write_workspace_file")
-        try:
-            await self._manager.provider.import_(handle, data)
-            await self._measure(handle)
-        except asyncio.CancelledError:
-            # The write may have landed, unmeasured: the next use reads first (M40 round 1).
-            self._stale = True
-            raise
+        # A write has no timeout of its own: its tool's deadline covers max_command_seconds.
+        async with self._manager.using(self._space, self.spec.max_command_seconds):
+            handle = await self.ensure()
+            await self._refuse_if_full(handle, "write_workspace_file")
+            try:
+                await self._manager.provider.import_(handle, data)
+                await self._measure(handle)
+            except asyncio.CancelledError:
+                # The write may have landed, unmeasured: the next use reads first (M40 round 1).
+                self._stale = True
+                raise
 
     async def export(self, path: str) -> bytes:
         handle = await self.ensure()
@@ -665,6 +686,9 @@ class WorkspaceManager:
         self._stop_late = False  # set by aclose past its bound (round 5 N2)
         self._trailing: set[asyncio.Task[Any]] = set()  # a late record's removal, on its own loop (M45 N1)
         self._runs: Callable[[], WorkspaceManager | None] | None = None  # a server side's Runner manager
+        # FR-168 (M46): each snapshot this manager took and has not removed, with its tenancy and
+        # whether its workspace was kept, which decides whether aclose() keeps it (DECISION-bafa7be8).
+        self.snapshots: dict[str, tuple[str, str, bool]] = {}
 
     def for_servers(self) -> WorkspaceManager:
         """FR-165: the manager a sandboxed server's engine is given -- this one's provider, store,
@@ -868,6 +892,9 @@ class WorkspaceManager:
         event (DECISION-61aed587). It is kept out of `spaces`, which the Runner's own loop ends: its
         connection removes it, and `aclose()` sweeps by this Runner's label what is left."""
         self.refuse_if_closed()
+        if spec.from_snapshot is not None:
+            # Its configuration refuses one first; this is the manager's own check (M46 pre-review F2).
+            raise WorkspaceUnavailable("a server's workspace starts from its files, never from a snapshot")
         space = _Space(spec, tenant_id, project_id, None)
         space.owner = _Binding(None, _no_event, _stored)
         try:
@@ -1044,6 +1071,170 @@ class WorkspaceManager:
         except Exception:  # noqa: BLE001 - nothing's ending is held up by its record
             pass
 
+    # --- snapshots (FR-168, FR-169; DECISION-bafa7be8) -------------------------------------------
+
+    @contextlib.asynccontextmanager
+    async def using(self, space: _Space, seconds: float) -> Any:
+        """A command or a write in `space`: counted while under way, and begun only once a snapshot
+        being taken of it is done, waited for within the caller's own deadline, `seconds`, and at
+        most SNAPSHOT_SECONDS (DECISION-f15a2771); yields the seconds it waited."""
+        started = time.monotonic()
+        bound = min(seconds, SNAPSHOT_SECONDS)
+        while True:
+            with space.use:
+                copying = space.copying
+                if copying is None:
+                    space.busy += 1
+                    break
+            try:
+                await asyncio.wait_for(asyncio.shield(asyncio.wrap_future(copying)),
+                                       max(0.0, bound - (time.monotonic() - started)))
+            except TimeoutError:
+                raise WorkspaceUnavailable("the workspace is still being snapshotted") from None
+        try:
+            yield time.monotonic() - started
+        finally:
+            with space.use:
+                space.busy -= 1
+
+    async def snapshot(self, tenant_id: str, project_id: str, workspace_id: str) -> SnapshotRef:
+        """FR-168: a copy of a run's or a plan's workspace of this tenant and project, taken between
+        commands, measured, and refused past its spec's `max_workspace_bytes`; recorded, or nothing
+        of it is kept."""
+        self.refuse_if_closed()
+        space = next((s for s in list(self.spaces)
+                      if s.handle is not None and not s.removed and s.handle.workspace_id == str(workspace_id)
+                      and (s.tenant_id, s.project_id) == (tenant_id, project_id)), None)
+        if space is None:
+            await self._refuse_if_server(tenant_id, project_id, str(workspace_id))
+            raise WorkspaceUnavailable(f"workspace {workspace_id} is no workspace of this Runner's runs in that tenancy")
+        with space.use:
+            if space.busy:
+                raise WorkspaceRefused("a command or a write is under way in the workspace: a snapshot is taken "
+                                       "between commands")
+            if space.copying is not None:
+                raise WorkspaceRefused("a snapshot of the workspace is being taken already")
+            space.copying = concurrent.futures.Future()
+        try:
+            return await self._taken(space)
+        finally:
+            with space.use:
+                copying, space.copying = space.copying, None
+            copying.set_result(None)
+
+    async def _taken(self, space: _Space) -> SnapshotRef:
+        handle, snapshot_id = space.handle, str(uuid.uuid4())
+        labels = {"agentsdk.snapshot": snapshot_id, "agentsdk.of": handle.workspace_id,
+                  "agentsdk.tenant": space.tenant_id, "agentsdk.project": space.project_id,
+                  "agentsdk.owner": self.owner, "agentsdk.runner": self.runner_id}
+        writing: asyncio.Future[Any] | None = None
+        try:
+            taken = await asyncio.wait_for(self.provider.snapshot(handle, labels), SNAPSHOT_SECONDS)
+            if taken.size_bytes is None or taken.size_bytes > space.spec.max_workspace_bytes:
+                raise WorkspaceRefused(f"the snapshot holds {taken.size_bytes} B, past max_workspace_bytes "
+                                       f"({space.spec.max_workspace_bytes} B): it is not kept")
+            record = SnapshotRecord(snapshot_id=snapshot_id, workspace_id=handle.workspace_id,
+                                    tenant_id=space.tenant_id, project_id=space.project_id,
+                                    size_bytes=taken.size_bytes, created_at=now())
+            writing = asyncio.ensure_future(_stored(self.store().record_snapshot, record))
+            await asyncio.wait_for(asyncio.shield(writing), _REMOVE_SECONDS)
+        except BaseException as exc:
+            # Nothing unrecorded is kept, however the taking ended.
+            try:
+                await asyncio.wait_for(self.provider.remove_snapshot(snapshot_id), _REMOVE_SECONDS)
+            except Exception:  # noqa: BLE001 - kept in sight, so aclose() tries again (M46 pre-review F6)
+                self.snapshots[snapshot_id] = (space.tenant_id, space.project_id, False)
+            if writing is not None:
+                # A write that lands after its caller gave up -- cancelled, or past its bound -- is
+                # followed by its removal record, as a server workspace's is (M46 pre-review F3).
+                self._trail(self._snapshot_removed_after(writing, space.tenant_id, space.project_id, snapshot_id))
+            if isinstance(exc, (WorkspaceRefused, WorkspaceUnavailable)) or not isinstance(exc, Exception):
+                raise
+            raise WorkspaceUnavailable(f"the snapshot could not be taken or recorded: {type(exc).__name__}") from None
+        self.snapshots[snapshot_id] = (space.tenant_id, space.project_id, space.spec.keep)
+        return SnapshotRef(snapshot_id=snapshot_id, workspace_id=handle.workspace_id, tenant_id=space.tenant_id,
+                           project_id=space.project_id, size_bytes=taken.size_bytes)
+
+    async def _snapshot_removed_after(self, writing: asyncio.Future[Any], tenant_id: str, project_id: str,
+                                      snapshot_id: str) -> None:
+        """A snapshot's record written late, or never, after its copy was removed: its removal
+        recorded once its write has ended -- `aclose`, as a server workspace's late record is."""
+        await asyncio.wait({writing})
+        with contextlib.suppress(Exception):
+            await asyncio.wait_for(_stored(self.store().record_snapshot_removal, tenant_id, project_id, snapshot_id,
+                                           "aclose"), _REMOVE_SECONDS)
+
+    async def _refuse_if_server(self, tenant_id: str, project_id: str, workspace_id: str) -> None:
+        """A sandboxed server's workspace of this Runner -- labelled with no run -- is refused by name
+        (DECISION-bafa7be8); anything else is simply not found."""
+        wanted = {"agentsdk.workspace": workspace_id, "agentsdk.runner": self.runner_id,
+                  "agentsdk.tenant": tenant_id, "agentsdk.project": project_id}
+        try:
+            owned = await asyncio.wait_for(self.provider.list_owned(wanted), _REMOVE_SECONDS)
+        except Exception:  # noqa: BLE001 - not found, then
+            return
+        if any("agentsdk.run" not in handle.labels and all(handle.labels.get(k) == v for k, v in wanted.items())
+               for handle in owned):
+            raise WorkspaceRefused("a sandboxed MCP server's workspace is not snapshotted")
+
+    async def _snapshot_of(self, snapshot_id: str, tenant_id: str, project_id: str) -> Any:
+        """The provider's snapshot by its id, in this tenancy alone, or None. Its labels are compared
+        exactly here as well: a provider's filter may not be (Docker's ignores trailing whitespace,
+        M46 pre-review F1)."""
+        wanted = {"agentsdk.snapshot": str(snapshot_id), "agentsdk.tenant": tenant_id, "agentsdk.project": project_id}
+        found = await asyncio.wait_for(self.provider.list_snapshots(wanted), _REMOVE_SECONDS)
+        return next((taken for taken in found
+                     if all(taken.labels.get(key) == value for key, value in wanted.items())), None)
+
+    async def usable_snapshot(self, snapshot_id: str, tenant_id: str, project_id: str) -> None:
+        """FR-169: a workspace starts only from a snapshot of its own tenant and project that is
+        still there; another tenancy's is not found, as a released one is."""
+        try:
+            found = await self._snapshot_of(snapshot_id, tenant_id, project_id)
+        except Exception as exc:  # noqa: BLE001 - named by class only
+            raise WorkspaceUnavailable(f"the snapshot could not be looked up: {type(exc).__name__}") from None
+        if found is None:
+            raise WorkspaceUnavailable(f"snapshot {snapshot_id} is no snapshot of this tenant and project")
+
+    async def within_bound(self, handle: WorkspaceHandle, spec: WorkspaceSpec) -> None:
+        """FR-169: a workspace started from a snapshot past its spec's `max_workspace_bytes`, or one
+        whose size cannot be read, is removed before it is recorded (fail closed)."""
+        try:
+            size = await asyncio.wait_for(self.provider.size(handle), _MEASURE_SECONDS)
+        except Exception as exc:  # noqa: BLE001 - named by class only
+            size, why = None, type(exc).__name__
+        if size is None or size > spec.max_workspace_bytes:
+            with contextlib.suppress(Exception):
+                await asyncio.wait_for(self.provider.remove(handle), _REMOVE_SECONDS)
+            if size is None:
+                raise WorkspaceUnavailable(f"the snapshot's copy could not be measured ({why})")
+            raise WorkspaceUnavailable(f"the snapshot holds {size} B, past this workspace's max_workspace_bytes "
+                                       f"({spec.max_workspace_bytes} B)")
+
+    async def release_snapshot(self, tenant_id: str, project_id: str, snapshot_id: str) -> bool:
+        """FR-168: removes a snapshot of this tenant and project, whichever Runner took it, recorded
+        `released`. False when there is no such snapshot. Raises `WorkspaceUnavailable` when the
+        provider cannot remove it -- on Docker, while a restore is reading it -- and the snapshot
+        stays, its row live, to be released again or reaped (DECISION-f15a2771)."""
+        try:
+            found = await self._snapshot_of(snapshot_id, tenant_id, project_id)
+        except Exception as exc:  # noqa: BLE001 - named by class only
+            raise WorkspaceUnavailable(f"the snapshot could not be looked up: {type(exc).__name__}") from None
+        if found is None:
+            return False
+        await self._remove_snapshot(found.snapshot_id, tenant_id, project_id, "released")
+        return True
+
+    async def _remove_snapshot(self, snapshot_id: str, tenant_id: str | None, project_id: str | None,
+                               reason: str) -> None:
+        """Removed, then recorded; a removal that fails raises, and leaves it to be released again or
+        reaped."""
+        await asyncio.wait_for(self.provider.remove_snapshot(snapshot_id), _REMOVE_SECONDS)
+        self.snapshots.pop(snapshot_id, None)
+        with contextlib.suppress(Exception):  # nothing's ending is held up by its record
+            await asyncio.wait_for(asyncio.to_thread(
+                self.store().record_snapshot_removal, tenant_id, project_id, snapshot_id, reason), _REMOVE_SECONDS)
+
     async def release(self, tenant_id: str, project_id: str, workspace_id: str) -> bool:
         """FR-151: removes a kept workspace of this tenant and project whose run or plan has ended,
         recorded `released`. False for any other id."""
@@ -1063,6 +1254,22 @@ class WorkspaceManager:
         for space in list(self.spaces):
             with contextlib.suppress(Exception):
                 await self.finish(space, "aclose", None, None)
+        # FR-168: a snapshot of a workspace not kept goes too; a kept one's outlives this Runner, for
+        # release or reaping (DECISION-bafa7be8).
+        # A removal refused while a restore reads the snapshot is tried again within the bound; one
+        # still refused is left to reaping (DECISION-f15a2771).
+        deadline = time.monotonic() + _REMOVE_SECONDS
+        for snapshot_id, (tenant_id, project_id, kept) in list(self.snapshots.items()):
+            while not kept:
+                try:
+                    await self._remove_snapshot(snapshot_id, tenant_id, project_id, "aclose")
+                    break
+                except Exception:  # noqa: BLE001 - nothing's ending is held up by one snapshot
+                    if time.monotonic() >= deadline:
+                        break
+                    await asyncio.sleep(min(1.0, max(0.0, deadline - time.monotonic())))
+        if self._trailing:  # a snapshot's record that landed late, followed by its removal (pre-review F3)
+            await asyncio.wait(set(self._trailing), timeout=_REMOVE_SECONDS)
         if self._late:  # a report after its recorder ended, still being counted (DECISION-f7114b8b)
             _, left = await asyncio.wait(set(self._late), timeout=_REMOVE_SECONDS)
             if left:
@@ -1113,6 +1320,17 @@ class WorkspaceManager:
                 continue
             await self._record_removal(handle.labels.get("agentsdk.tenant"), handle.labels.get("agentsdk.project"),
                                        handle.workspace_id, "reaped", None)
+        # FR-168: a dead owner's snapshots, each judged and removed as its workspaces are.
+        listing = getattr(self.provider, "list_snapshots", None)
+        for taken in (await listing({}) if listing is not None else []):
+            try:
+                owner = taken.labels.get("agentsdk.owner")
+                if not owner or not await asyncio.to_thread(is_dead, owner):
+                    continue
+                await self._remove_snapshot(taken.snapshot_id, taken.labels.get("agentsdk.tenant"),
+                                            taken.labels.get("agentsdk.project"), "reaped")
+            except Exception:  # noqa: BLE001
+                continue
         self._reaped = True
 
 

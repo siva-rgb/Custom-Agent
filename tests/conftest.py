@@ -62,6 +62,10 @@ _TRACKED = (
     # M38 (FR-140, NFR-41): workspaces and the commands they ran.
     ("workspaces", "workspace_id"),
     ("workspace_commands", "command_id"),
+    # M44 (FR-162): each egress connection -- tracked from M46, which found it missing.
+    ("workspace_connections", "connection_id"),
+    # M46 (FR-168): snapshots. Their rows carry a tenancy, not a run.
+    ("workspace_snapshots", "snapshot_id"),
 )
 _RUN_TABLES = tuple(table for table, _ in _TRACKED)
 

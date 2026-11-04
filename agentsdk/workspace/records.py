@@ -85,6 +85,26 @@ class ConnectionRecord:
         return asdict(self)
 
 
+SNAPSHOT_REMOVAL_REASONS = ("released", "aclose", "reaped")
+
+
+@dataclass(frozen=True)
+class SnapshotRecord:
+    """FR-168 (M46, migration 0027): one snapshot of a workspace, as it was measured when taken."""
+
+    snapshot_id: str
+    workspace_id: str
+    tenant_id: str
+    project_id: str
+    size_bytes: int
+    created_at: datetime
+    removed_at: datetime | None = None
+    removed_reason: str | None = None
+
+    def as_row(self) -> dict[str, Any]:
+        return asdict(self)
+
+
 def now() -> datetime:
     return datetime.now(timezone.utc)
 
@@ -97,6 +117,33 @@ class InMemoryWorkspaceStore:
         self._spaces: dict[str, WorkspaceRecord] = {}
         self._commands: list[CommandRecord] = []
         self._connections: dict[str, ConnectionRecord] = {}
+        self._snapshots: dict[str, SnapshotRecord] = {}
+
+    def record_snapshot(self, record: SnapshotRecord) -> None:
+        with self._lock:
+            if record.snapshot_id in self._snapshots:
+                raise ValueError(f"snapshot {record.snapshot_id} is already recorded")
+            self._snapshots[record.snapshot_id] = record
+
+    def record_snapshot_removal(self, tenant_id: str, project_id: str, snapshot_id: str, reason: str,
+                                removed_at: datetime | None = None) -> bool:
+        """Fills a snapshot's removal, once: False when it was already removed, or is not a snapshot
+        of this tenant and project."""
+        if reason not in SNAPSHOT_REMOVAL_REASONS:
+            raise ValueError(f"unknown snapshot removal reason: {reason!r}")
+        with self._lock:
+            record = self._snapshots.get(snapshot_id)
+            if record is None or (record.tenant_id, record.project_id) != (tenant_id, project_id):
+                return False
+            if record.removed_at is not None:
+                return False
+            self._snapshots[snapshot_id] = replace(record, removed_at=removed_at or now(), removed_reason=reason)
+            return True
+
+    def snapshots(self, tenant_id: str, project_id: str) -> list[SnapshotRecord]:
+        with self._lock:
+            return sorted((r for r in self._snapshots.values() if (r.tenant_id, r.project_id) == (tenant_id, project_id)),
+                          key=lambda r: r.created_at)
 
     def record_workspace(self, record: WorkspaceRecord) -> None:
         with self._lock:

@@ -9,7 +9,7 @@
     "non_goals": [],
     "trust_boundary": "local repository",
     "created_at": "2026-09-05T14:48:57.894Z",
-    "updated_at": "2026-11-03T16:19:34.846Z"
+    "updated_at": "2026-11-04T08:18:00.142Z"
   },
   "policy": {
     "ponytail": "full",
@@ -25,7 +25,7 @@
   "lifecycle": {
     "phase": "build",
     "status": "active",
-    "active_task": "M46-snapshots",
+    "active_task": "M47-increment2-contention",
     "blocker": null,
     "next_action": "Run the task pre-flight."
   },
@@ -2433,6 +2433,30 @@
       "status": "accepted",
       "source": null,
       "recorded_at": "2026-11-03T13:22:29.476Z"
+    },
+    {
+      "id": "DECISION-bafa7be8",
+      "title": "M46 pre-flight: snapshot lifetime as written, refused mid-command, copied by the workspace image, run and plan only (owner)",
+      "text": "FR-168 to FR-170. Lifetime: a snapshot of a kept workspace survives aclose and any Runner of the same tenant, project and provider may start from it; release_snapshot removes it, or reaping once its owning process is dead; a snapshot of a workspace not kept is removed with aclose. Between commands: snapshot_workspace is refused WorkspaceRefused while a command runs in the workspace, and a command started while the copy runs waits for it within its own deadline. Copying on Docker: the workspace own digest-pinned image runs cp -a in a container hardened as a command is, over the workspace volume and the snapshot volume; a restore copies with the new spec image; links kept; nothing pulled or built. Scope: run and plan workspaces only; a sandboxed server workspace is refused WorkspaceRefused. FakeProvider keeps a snapshot as an in-memory copy of the workspace files, links included; workspace_snapshots is migration 0027 on both stores.",
+      "status": "accepted",
+      "source": null,
+      "recorded_at": "2026-11-03T16:47:56.778Z"
+    },
+    {
+      "id": "DECISION-9da244b8",
+      "title": "M46 pre-review: exact labels, no server restore, late records followed, apparent size counted first (owner on F4 and F5)",
+      "text": "A fresh Sonnet pre-review found, each verified first-hand. F1 blocking: Docker volume label filters ignore a value trailing whitespace, so tenant T plus a space, tab or newline restored and released T snapshot; labels are now compared exactly in DockerProvider.list_snapshots and list_owned and again in the manager. F2 blocking: a sandboxed server spec with from_snapshot skipped the tenancy and bound checks; server_files refuses it and open_server refuses it. F3: a cancel during the record write left a live row of a removed snapshot; the write is shielded and a late record is followed by its removal recorded aclose, as a server workspace late record is, and aclose waits for it. F4 (owner: count before copying): cp -a writes sparse files out in full; the copy first sums apparent sizes of regular files, each inode once, and exits before writing past the bound, on a snapshot and on a restore. F5 (owner: declare): a workspace holding what its own user cannot read, or a tree past PATH_MAX, fails closed WorkspaceUnavailable; declared in the README. F6: a copy whose removal failed is kept tracked so aclose retries it. Example 40 control reports a failure instead of raising. Mutation: 49 mutants all killed, 11 of them undoing these repairs. Earlier in the milestone: a snapshot released during a restore copy left an empty auto-created volume and an empty workspace; the restore now rechecks the snapshot after the copy and removes the stray volume. workspace_snapshots and the untracked M44 table workspace_connections joined conftest _TRACKED.",
+      "status": "accepted",
+      "source": null,
+      "recorded_at": "2026-11-04T02:49:51.038Z"
+    },
+    {
+      "id": "DECISION-f15a2771",
+      "title": "M46 round 1 close: five findings repaired in M46, no further review (owner)",
+      "text": "Round 1 (Fable 5.1) approved with nothing blocking (control f5518a6e); under DECISION-c697f36c it is the last round. Its recorded reason omits finding 5, found after the approval: this record adds it. Repairs, each with a test shown to fail when undone, a sweep and all gates: 1) the copy script runs under pipefail and exits 3 only from its size count, so a missing find, stat or awk fails WorkspaceUnavailable, not WorkspaceRefused; an image without stat no longer skips the count; README names find, stat and awk. 2) README declares that a workspace not kept, ending mid-snapshot, stops the copy, which fails closed. 3) Owner: declare and retry. release_snapshot raises WorkspaceUnavailable while a restore reads the snapshot and may be called again (docstring, README); aclose retries a failed removal within its bound and otherwise leaves it to reaping, declared. 4) Owner: code to the decision. A command or write waits for a copy within its own timeout, at most SNAPSHOT_SECONDS; refusing a snapshot while a write is under way is kept, clarifying DECISION-bafa7be8, a write overlapping a copy being the same hazard. 5) The sparse-file test prepares its target root as snapshot() does, with a control that a write into it grows du, so the bound is measured, not a permission error. The three python processes the round named are the owner's VS Code Jupyter kernel (ipykernel_launcher), not fixture servers: left alone.",
+      "status": "accepted",
+      "source": null,
+      "recorded_at": "2026-11-04T05:22:30.397Z"
     }
   ],
   "knowledge": [
@@ -7053,7 +7077,7 @@
     {
       "id": "M46-snapshots",
       "outcome": "A workspace's state is snapshotted and a new workspace of the same tenancy starts from it, within bounds",
-      "state": "active",
+      "state": "done",
       "risk": "high",
       "owner": null,
       "scope": [],
@@ -7072,43 +7096,63 @@
           "id": "unit",
           "command": ".venv\\Scripts\\python.exe -m pytest tests/test_snapshots.py -q -p no:cacheprovider",
           "mandatory": true,
-          "status": "pending",
-          "evidence": null
+          "status": "pass",
+          "evidence": {
+            "path": ".genesis/evidence/M46-snapshots-unit.json",
+            "source_hash": "5dbea89a6334efeb8dedf2f0fbbe6b742ca064f7326e515e2da5b1264be564f8",
+            "hash": "ebb7f86623b6c840201b75479619752c8b551ccde7464f016e2e412a78a4bb23",
+            "observed_at": "2026-11-04T05:54:38.213Z"
+          }
         },
         {
           "id": "regression",
           "command": ".venv\\Scripts\\python.exe -m pytest -q -p no:cacheprovider",
           "mandatory": true,
-          "status": "pending",
-          "evidence": null
+          "status": "pass",
+          "evidence": {
+            "path": ".genesis/evidence/M46-snapshots-regression.json",
+            "source_hash": "5dbea89a6334efeb8dedf2f0fbbe6b742ca064f7326e515e2da5b1264be564f8",
+            "hash": "30ca850f50b5f4339b0aff7e3498552a17d3bff0219ba30d1142f8796d209e02",
+            "observed_at": "2026-11-04T06:27:31.534Z"
+          }
         },
         {
           "id": "docker",
           "command": ".venv\\Scripts\\python.exe -m pytest tests/test_workspace.py tests/test_workspace_tools.py tests/test_workspace_plan.py tests/test_docker_provider.py tests/test_sandbox_contention.py tests/test_compute.py tests/test_egress.py tests/test_sandboxed_mcp.py tests/test_snapshots.py -m docker -q -p no:cacheprovider",
           "mandatory": true,
-          "status": "pending",
-          "evidence": null
+          "status": "pass",
+          "evidence": {
+            "path": ".genesis/evidence/M46-snapshots-docker.json",
+            "source_hash": "5dbea89a6334efeb8dedf2f0fbbe6b742ca064f7326e515e2da5b1264be564f8",
+            "hash": "efb600e52b2c1c3e66ce7714375016ac72d72afbe2d616833f71969a9e6b8bf2",
+            "observed_at": "2026-11-04T07:17:29.533Z"
+          }
         },
         {
           "id": "independent-review",
           "command": "",
           "mandatory": true,
-          "status": "pending",
-          "evidence": null
+          "status": "pass",
+          "evidence": {
+            "human": "siva-rgb (owner)",
+            "reason": "Owner approval at source hash 5dbea89a under the review stopping rule DECISION-c697f36c: round 1 (Fable 5.1) approved f5518a6e with nothing blocking; its five findings were fixed in M46 by DECISION-f15a2771, including finding 5 the vacuous sparse-file assertion found after the approval was recorded; each repair has a test shown failing on the unrepaired code, 58 mutants all killed. Unit 39, regression 3266 and docker 139 all pass at 5dbea89a with empty stderr. No round 2 by the rule.",
+            "source_hash": "5dbea89a6334efeb8dedf2f0fbbe6b742ca064f7326e515e2da5b1264be564f8",
+            "observed_at": "2026-11-04T08:17:59.899Z"
+          }
         }
       ],
-      "next_action": "Run the task pre-flight.",
+      "next_action": "Pre-flight done (DECISION-bafa7be8): write tests/test_snapshots.py first, then migration 0027 and the implementation.",
       "blocker": null,
       "notes": [],
       "failures": [],
       "limitations": [],
       "created_at": "2026-10-30T13:01:01.690Z",
-      "updated_at": "2026-10-30T13:01:01.691Z"
+      "updated_at": "2026-11-04T08:18:00.141Z"
     },
     {
       "id": "M47-increment2-contention",
       "outcome": "Hostile code with egress, a hostile sandboxed MCP server, a snapshot and a compute ceiling are contained, recorded and cleaned up on both stores",
-      "state": "queued",
+      "state": "active",
       "risk": "high",
       "owner": null,
       "scope": [],
@@ -9071,6 +9115,24 @@
       "task": "M45-sandboxed-mcp",
       "human": "siva-rgb (owner)",
       "reason": "Owner approval at source hash 380749fa under the review stopping rule DECISION-c697f36c: round 4 (Fable 5.1) approved 434f6050 with nothing blocking; its two findings were fixed in M45 by DECISION-5f41eec5, NB1 slot grant on a loop closed meanwhile and NB2 server folder left by the fake removal, each with tests shown failing on the unrepaired code, and the five other call_soon_threadsafe sites swept. Unit 84, regression 3227 and docker 128 all pass at 380749fa with empty stderr. No round 5 by the rule.",
+      "revision": null
+    },
+    {
+      "id": "f5518a6e-7877-498d-a565-5600c194fc82",
+      "at": "2026-11-04T04:51:55.622Z",
+      "action": "approve",
+      "task": "M46-snapshots",
+      "human": "Fable 5.1",
+      "reason": "L4 round 1 approved, nothing blocking. Verified first-hand: gate evidence source hash matches the tree, SPEC quotes verbatim, approved-test edits are additions only. Probed on FakeProvider, Postgres and Docker with tenants SYN-m46r1: between-commands holds across loops with no hold leak and a bounded wait that refuses within SNAPSHOT_SECONDS with nothing written or recorded; a snapshot during a write refused; exact labels for 8 more spellings; cancel and timeout mid-copy and a restore cancelled mid-copy leave no container, volume, row or hold; NFR-47 confirmed by docker inspect of the running copy container; hard links counted once; migration 0027 idempotent in an isolated schema with its trigger refusing cross-tenancy inserts and every second write; written once across Runners on Postgres; manifest records from_snapshot; NFR-49 no new key without one; example 40 passes offline and on Docker. 17 mutants covering F1 to F4 and F6 and the core checks all killed by their tests, files restored by SHA-256. Non-blocking findings to repair in M46: (1) an image lacking find, stat or awk makes the copy script exit 3 and the provider reports WorkspaceRefused past max_workspace_bytes, the wrong class and message, and the README names only sh, cp and du; (2) undeclared: a non-kept workspace whose run ends during its snapshot kills the copy (exit 137) and the taking fails WorkspaceUnavailable with nothing left; (3) Runner.release_snapshot raises WorkspaceUnavailable while a restore holds the volume although its docstring promises only False, and a non-kept snapshot held by a concurrent restore at aclose may outlive aclose until released or reaped; (4) wording: DECISION-bafa7be8 says refused while a command runs and waits within its own deadline, while the code and README refuse during writes too and bound the wait by SNAPSHOT_SECONDS, owner to confirm. Cleanup: 0 rows, containers, volumes, networks or processes of mine remain.",
+      "revision": null
+    },
+    {
+      "id": "5fd082ce-838d-4ba4-8c57-ce94f49ad176",
+      "at": "2026-11-04T08:17:59.899Z",
+      "action": "approve",
+      "task": "M46-snapshots",
+      "human": "siva-rgb (owner)",
+      "reason": "Owner approval at source hash 5dbea89a under the review stopping rule DECISION-c697f36c: round 1 (Fable 5.1) approved f5518a6e with nothing blocking; its five findings were fixed in M46 by DECISION-f15a2771, including finding 5 the vacuous sparse-file assertion found after the approval was recorded; each repair has a test shown failing on the unrepaired code, 58 mutants all killed. Unit 39, regression 3266 and docker 139 all pass at 5dbea89a with empty stderr. No round 2 by the rule.",
       "revision": null
     }
   ],

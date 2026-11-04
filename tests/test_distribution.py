@@ -86,6 +86,8 @@ EXPECTED_EXAMPLES = {
     "38_egress.py",
     # FR-167 (M45): an MCP server in the sandbox.
     "39_sandboxed_mcp.py",
+    # FR-170 (M46): snapshots.
+    "40_snapshots.py",
 }
 
 
