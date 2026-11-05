@@ -1,0 +1,22 @@
+{
+  "task": "M47-increment2-contention",
+  "gate": "docker",
+  "command": ".venv\\Scripts\\python.exe -m pytest tests/test_workspace.py tests/test_workspace_tools.py tests/test_workspace_plan.py tests/test_docker_provider.py tests/test_sandbox_contention.py tests/test_compute.py tests/test_egress.py tests/test_sandboxed_mcp.py tests/test_snapshots.py tests/test_increment2_contention.py -m docker -q -p no:cacheprovider",
+  "started_at": "2026-11-05T11:42:40.440Z",
+  "observed_at": "2026-11-05T12:59:45.173Z",
+  "exit_code": 0,
+  "signal": null,
+  "stdout": "........................................................................ [ 42%]\r\n........................................................................ [ 85%]\r\n........................                                                 [100%]\r\n168 passed, 739 deselected in 4623.39s (1:17:03)\r\n",
+  "stderr": "",
+  "revision": {
+    "commit": "a7e46a2c8e692d5a5ba4519be9b3f0e5a1b4a05e",
+    "dirty": true
+  },
+  "source_hash": "0cc954e01979903bd78f692a5db139be8249b42f650739bc3a4ec9a36545217a",
+  "environment": {
+    "node": "v20.10.0",
+    "platform": "win32",
+    "arch": "x64"
+  },
+  "hash": "68407fd3d9a27b2f1cb74ce3c50ceefeb39a50fd00f8c6e20842f43fb98c2d8e"
+}

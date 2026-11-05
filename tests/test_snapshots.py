@@ -857,6 +857,65 @@ async def test_example_40_fails_its_tenancy_check_when_another_tenancy_may_start
     assert checks["another tenancy's workspace cannot start from it"] is False
 
 
+async def _example_40_why(tenant: str) -> dict:
+    return {label: (passed, why) for label, passed, why in await _example().offline("memory", "fake", tenant=tenant)}
+
+
+async def test_example_40_fails_its_tenancy_check_when_the_other_tenancy_can_start_nothing(monkeypatch):
+    """M47 round 1 F1 (DECISION-ee543c57): a refusal for any reason passed; one that holds for every
+    workspace of the other tenancy is no tenancy check, and its control now says so."""
+    tenant, hits = tenancy(), []
+    real = FakeProvider.create
+
+    async def create(self, spec, labels):
+        if labels.get("agentsdk.tenant") == tenant + "-other":
+            hits.append(spec.from_snapshot)
+            raise WorkspaceUnavailable("an unrelated failure")
+        return await real(self, spec, labels)
+
+    monkeypatch.setattr(FakeProvider, "create", create)
+    passed, why = (await _example_40_why(tenant))["another tenancy's workspace cannot start from it"]
+    assert hits and passed is False and why == "the other tenancy could start no workspace at all", (hits, why)
+
+
+async def test_example_40_fails_its_tenancy_check_when_the_other_tenancy_may_release_it(monkeypatch):
+    tenant, hits = tenancy(), []
+    real = Runner.release_snapshot
+
+    async def release(self, tenant_id, project_id, snapshot_id):
+        if tenant_id == tenant + "-other":
+            hits.append(snapshot_id)
+            return True
+        return await real(self, tenant_id, project_id, snapshot_id)
+
+    monkeypatch.setattr(Runner, "release_snapshot", release)
+    passed, why = (await _example_40_why(tenant))["another tenancy's workspace cannot start from it"]
+    assert hits and passed is False and why == "the other tenancy's release answered True", (hits, why)
+
+
+async def test_example_40_fails_its_release_check_when_the_snapshot_is_still_listed(monkeypatch):
+    """M47 round 1 F1's pattern: once released, a restore that failed for another reason passed while
+    the snapshot was still there; the listing is its witness now."""
+    tenant, hits = tenancy(), []
+    real_create = FakeProvider.create
+    released = []
+
+    async def kept(self, tenant_id, project_id, snapshot_id):
+        released.append(snapshot_id)
+        return True  # answers released, removes nothing
+
+    async def create(self, spec, labels):
+        if spec.from_snapshot and released:
+            hits.append(spec.from_snapshot)
+            raise WorkspaceUnavailable("an unrelated failure")
+        return await real_create(self, spec, labels)
+
+    monkeypatch.setattr(Runner, "release_snapshot", kept)
+    monkeypatch.setattr(FakeProvider, "create", create)
+    passed, why = (await _example_40_why(tenant))["once released, it starts no workspace"]
+    assert hits and passed is False and why == "1 snapshot(s) still listed after the release", (hits, why)
+
+
 # =================================================================================================
 # On Docker
 # =================================================================================================

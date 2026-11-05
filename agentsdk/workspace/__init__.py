@@ -712,12 +712,16 @@ class FakeProvider:
     name = "fake"
 
     def __init__(self, commands: Mapping[str, FakeCommandFn] | None = None, *,
-                 resolve: Mapping[str, list[str]] | None = None, sites: Mapping[tuple[str, int], bytes] | None = None,
+                 resolve: Mapping[str, list[str] | Callable[[], list[str]]] | None = None,
+                 sites: Mapping[tuple[str, int], bytes] | None = None,
                  max_connections: int = MAX_CONNECTIONS) -> None:
         self._commands = dict(commands or {})
         self._spaces: dict[str, _FakeWorkspace] = {}
-        # FR-163: the names the fake's proxy resolves, and what each allowed site sends back.
-        self._resolve = {name: list(addresses) for name, addresses in (resolve or {}).items()}
+        # FR-163: the names the fake's proxy resolves, and what each allowed site sends back. A
+        # name's addresses may be a callable, asked at each resolution: a name that rebinds
+        # (M47, DECISION-18bd3f65).
+        self._resolve = {name: addresses if callable(addresses) else list(addresses)
+                         for name, addresses in (resolve or {}).items()}
         self._sites = dict(sites or {})
         self._max_connections = max_connections
         # FR-168 (M46): each snapshot's handle and its copy of the tree, in memory.
@@ -725,10 +729,13 @@ class FakeProvider:
 
     def _proxy(self, space: _FakeWorkspace) -> Proxy:
         async def resolve(host: str, port: int) -> list[str]:
-            return list(self._resolve.get(host, []))
+            found = self._resolve.get(host, [])
+            return list(found() if callable(found) else found)
 
         async def connect(address: str, port: int):
-            host = next((name for name, found in self._resolve.items() if address in found), None)
+            # A site is found by the name a fixed answer gives its address.
+            host = next((name for name, found in self._resolve.items()
+                         if not callable(found) and address in found), None)
             site = self._sites.get((host, port))
             if site is None:
                 raise ConnectionRefusedError(f"nothing answers at {address}:{port}")

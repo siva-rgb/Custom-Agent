@@ -88,6 +88,8 @@ EXPECTED_EXAMPLES = {
     "39_sandboxed_mcp.py",
     # FR-170 (M46): snapshots.
     "40_snapshots.py",
+    # FR-171 (M47): increment 2's exit signal.
+    "41_increment2_contention.py",
 }
 
 

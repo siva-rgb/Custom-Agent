@@ -177,14 +177,25 @@ async def demonstrate(store_name: str, provider_name: str, tenant: str):
         check("the second workspace is a workspace of its own", restored, "no snapshot was taken",
               lambda: None if made(restored) and made(restored)[0] != kept_id else f"it made {made(restored)}")
 
-        elsewhere = await run(spec(from_snapshot=ref.snapshot_id), READ_BACK, owner=tenant + "-other") if ref else None
+        # Refused for its tenancy, not for any failure (M47 round 1 F1, DECISION-ee543c57): the other
+        # tenancy starts a workspace of its own (the control), and cannot release the snapshot either --
+        # the same lookup, answered by a value, not by an error's text.
+        other = tenant + "-other"
+        elsewhere = await run(spec(from_snapshot=ref.snapshot_id), READ_BACK, owner=other) if ref else None
+        plain = await run(spec(), READ_BACK, owner=other) if ref else None
+        theirs = await runner.release_snapshot(other, PROJECT, ref.snapshot_id) if ref else None
         check("another tenancy's workspace cannot start from it", elsewhere and restored, "no snapshot was taken",
-              lambda: None if not made(elsewhere) and made(restored) else f"it made {made(elsewhere)}")
+              lambda: (None if not made(elsewhere) and made(restored) else f"it made {made(elsewhere)}")
+              or (None if made(plain) else "the other tenancy could start no workspace at all")
+              or (None if theirs is False else f"the other tenancy's release answered {theirs}"))
 
         released = await runner.release_snapshot(tenant, PROJECT, ref.snapshot_id) if ref else False
         after = await run(spec(from_snapshot=ref.snapshot_id), READ_BACK) if released else None
+        listed = await chosen.list_snapshots({"agentsdk.tenant": tenant, "agentsdk.project": PROJECT}) if released \
+            else []
         check("once released, it starts no workspace", after and restored, "the snapshot was never released",
-              lambda: None if not made(after) and made(restored) else f"it made {made(after)}")
+              lambda: (None if not made(after) and made(restored) else f"it made {made(after)}")
+              or (None if not listed else f"{len(listed)} snapshot(s) still listed after the release"))
     finally:
         model.go.set()
         await runner.aclose()

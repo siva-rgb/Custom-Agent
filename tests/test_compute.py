@@ -29,6 +29,7 @@ import json
 import os
 import subprocess
 import sys
+import time
 import uuid
 from decimal import Decimal
 from pathlib import Path
@@ -866,6 +867,32 @@ async def test_on_docker_a_line_printed_just_before_a_timeout_is_never_read():
         await docker.remove(handle)
     assert any(o.killed == "timeout" for o in outcomes)
     assert [o.stdout for o in outcomes if dk.MARK in o.stdout] == []
+
+
+@pytest.mark.docker
+async def test_on_docker_a_client_outliving_its_bound_is_ended_then(monkeypatch):
+    """M47 Docker gate: a `docker start -a` client still running a bound after its command's timeout
+    -- here its container is never removed -- is killed then, its output read to its end within one
+    more bound; before, its reads were given up after a second, then it was killed. The gate's
+    unclosed-transport warnings went with it: 4 of 6 runs of the provider-kill case before, 0 of 6
+    after."""
+    docker, handle = await _docker_handle()
+    real_rm = DockerProvider._rm
+
+    async def rm(self, *names):
+        return await real_rm(self, *[name for name in names if not name.startswith("agentsdk-cmd-")])
+
+    monkeypatch.setattr(dk, "_CLI_SECONDS", 5.0)
+    monkeypatch.setattr(DockerProvider, "_rm", rm)
+    try:
+        started = time.monotonic()
+        outcome = await docker.run(handle, ["sh", "-c", "while :; do echo flood; done"], timeout=1)
+        took = time.monotonic() - started
+    finally:
+        monkeypatch.undo()
+        await docker.remove(handle)
+    assert outcome.killed == "timeout"
+    assert took < 1 + 2 * 5.0, took
 
 
 @pytest.mark.docker

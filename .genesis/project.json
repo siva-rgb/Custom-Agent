@@ -9,7 +9,7 @@
     "non_goals": [],
     "trust_boundary": "local repository",
     "created_at": "2026-09-05T14:48:57.894Z",
-    "updated_at": "2026-11-04T08:18:00.142Z"
+    "updated_at": "2026-11-05T13:08:12.923Z"
   },
   "policy": {
     "ponytail": "full",
@@ -23,11 +23,11 @@
     }
   },
   "lifecycle": {
-    "phase": "build",
-    "status": "active",
-    "active_task": "M47-increment2-contention",
+    "phase": "verify",
+    "status": "ready",
+    "active_task": null,
     "blocker": null,
-    "next_action": "Run the task pre-flight."
+    "next_action": "Review completed work and choose the next bounded outcome."
   },
   "commands": {},
   "workflow": {
@@ -2457,6 +2457,62 @@
       "status": "accepted",
       "source": null,
       "recorded_at": "2026-11-04T05:22:30.397Z"
+    },
+    {
+      "id": "DECISION-33856cec",
+      "title": "M47 pre-flight: live model verbatim, snapshot at an approval, own hostile server, removals split by provider (owner)",
+      "text": "FR-171 and AC-105. (1) Live mode as DECISION-21e7f6fb: each child's task hands it the exact probe, framed as a sandbox-containment test, and the gateway model writes it into run_command or the server tool; a model that declines fails its check, never skips it. Ten repetitions on PostgreSQL and Docker, children shuffled with random delays, live-marked before review; scripted children on Docker and, in the gates, on FakeProvider. (2) Snapshot: run_command needs approval, and the operator snapshots the child's workspace while its next command waits for approval, between commands by construction in every mode; restores are tried from another tenancy (refused), under a spec whose bound is below the large file (refused), and within bounds reading the links. (3) The hostile MCP server is a small standard-library stdio fixture carried as text in example 41, one tool per probe reporting what it reached; its kill with the Runner is witnessed by the provider listing and the container gone, each probe against a control showing the address answers from outside the sandbox. (4) AC-105 removals: the internal network, the proxy's address check, its SNI check and the server's container removal Docker-marked; the snapshot's tenancy check and the compute charge on both providers. Every check meets DECISION-a00773b0, DECISION-a7d6a1f5, KNOWLEDGE-1afcf6b2 and DECISION-94bfee7c.",
+      "status": "accepted",
+      "source": null,
+      "recorded_at": "2026-11-04T08:40:55.385Z"
+    },
+    {
+      "id": "DECISION-18bd3f65",
+      "title": "M47 pre-flight: the rebinding name from a public service, rotated on the fake (owner)",
+      "text": "FR-171 rebinding probe. Live and on Docker, the child is allowed a name of the public rbndr.us service that alternates a loopback and a global address, with TTL 0. Its witness: the host resolves it repeatedly and sees both answers, or the check fails as vacuous. Every attempt must be refused not_global or recorded at a global address, never connected to the private one (FR-161: the proxy connects to an address it checked, never resolving again). Offline, FakeProvider's resolver answers that name in rotation, so the gates hold the same check. Example 41 depends on rbndr.us as example 38 depends on example.com.",
+      "status": "accepted",
+      "source": null,
+      "recorded_at": "2026-11-04T08:45:02.855Z"
+    },
+    {
+      "id": "DECISION-dda032f4",
+      "title": "M47: gate timeout raised to 7200000 ms (owner)",
+      "text": "M47 adds about 38 minutes of Docker-marked tests (example 41 about 83 s a run, ten runs on each store, six AC-105 removals, the scripted run) to a docker gate of about 50 minutes, past DECISION-f4e7dd24's 3600000 ms. From M47 gates run with --timeout 7200000, kept awake; the tests are unchanged and the gate holds ten runs on each store, as M42's did.",
+      "status": "accepted",
+      "source": null,
+      "recorded_at": "2026-11-04T09:13:37.547Z"
+    },
+    {
+      "id": "DECISION-58c667e0",
+      "title": "M47 pre-review and live runs: four findings repaired, the live model's shapes handled in the example",
+      "text": "A fresh Sonnet pre-reviewer probed M47 at runtime; each finding was reproduced first-hand before repair, each repair with a test shown failing by a mutant. F1 (blocking): the snapshot child's second command changed nothing, so a snapshot aliasing the live tree passed every check; the second command now rewrites a.txt and adds later.txt and reads a.txt back, the restore must read the earlier state, and the check's subject is that command's own output, started after the snapshot was recorded. F2: aclose() ran inline, so an exception or a cancel left workspaces; offline() and live() now close the Runner and remove the neighbour in a finally. F3: server calls whose id began with q were set aside as quotes; nothing is set aside by id now. F4 (note): the server checks read the example's own server's result text and the restore check the list_workspace format; neither is an SDK error message, so DECISION-94bfee7c is not engaged. The live runs found three shapes of a real model, handled in the example, not the SDK: both of the snapshot child's commands asked in one response, whose approvals are all settled before either runs (the operator refuses a second command asked before the first ran, the child asks again alone, and the second command needs the first's nonce); the egress probe run more than once (every run judged on its own rows); and the egress child out of output at the default limit (live roles get 8000 tokens, as example 36's do), whose failure had also starved the server's check of its controls (they now always run).",
+      "status": "accepted",
+      "source": null,
+      "recorded_at": "2026-11-04T12:21:50.862Z"
+    },
+    {
+      "id": "DECISION-429f053c",
+      "title": "M47 gates: the rebinding witness looks longer; a docker client outliving its bound is killed then",
+      "text": "Two repairs after the first M47 gates, both found by the round's own runs. (1) Live run 10 of round 4 failed REBOUND only at the control's witness: its 12 lookups from a container on the bridge, over 13 s, saw only 1.1.1.1 while the proxy itself was handed both answers; an upstream resolver held the answer past the name's TTL. The witness is kept as DECISION-18bd3f65 defines it and now looks up to 60 times, stopping at two answers (exec timeout 120 to 180 s). Ten later live runs passed all 18 checks. (2) The Docker gate passed with two unclosed-transport warnings in test_compute's provider-kill cancel case, absent from the M44 to M46 gates; they reproduced in 4 of 6 runs. A probe found two commands per run waiting out both 60 s bounds in DockerProvider._contained (the client's exit, then its reads) before _cleaned killed the client: the case takes away the command removal that ends a timed-out command. _contained now kills a client still running after its first bound and then reads its pipes to their end. The provider-kill case then warned in 0 of 6 runs and fell from 310 to 378 s to 124 s; a new Docker test fails without the repair (11.0 s against 1 + 2 x 5 s) and passes with it. The warning's exact mechanism was not isolated: a probe outside pytest caught no unclosed transport with or without the repair, so the evidence is the 4 of 6 to 0 of 6 change, not a witnessed leak.",
+      "status": "accepted",
+      "source": null,
+      "recorded_at": "2026-11-05T03:17:39.711Z"
+    },
+    {
+      "id": "DECISION-fc8cb843",
+      "title": "M47: example 41's ten Docker runs per store are ten tests, each under faulthandler_timeout",
+      "text": "The second M47 docker gate passed with stall dumps in its stderr: test_on_docker_example_41_holds_every_check_ten_times ran ten example runs in one test, about 15 minutes per store, past pytest.ini's faulthandler_timeout of 300 s, so the M33 asyncio-task dump fired on every gate though nothing stalled -- noise that would hide a real stall. M44 kept one example run per test for this reason (DECISION-f7114b8b). The test is now parametrized by seed and store: twenty tests of one run each, about 85 s, the same ten runs per store FR-171 and AC-105 ask for. Example 36's ten-run test (M42) stays under 300 s and left the M46 gate's stderr empty.",
+      "status": "accepted",
+      "source": null,
+      "recorded_at": "2026-11-05T05:16:33.860Z"
+    },
+    {
+      "id": "DECISION-ee543c57",
+      "title": "M47 round 1 close: F1 to F3 repaired in M47, F1 by controls and a public witness in examples 40 and 41, no further review (owner)",
+      "text": "Fable 5.1 approved M47 round 1 with nothing blocking (control 403d4e3e); under DECISION-c697f36c it is the last round, and its three findings are repaired in M47. Verified first-hand: F1, the other tenancy's restore refused 3 times while TENANCY's property read only that no workspace was made, so any failure passed it; the refused calls record ToolExecutionError only, the cause being in message text, which DECISION-94bfee7c forbids reading. F2, with STOPPED's no-command-started-after clause removed the 28 offline tests passed. F3, remains() answering None (fired once) passed KILLED; NOTHING_LEFT failed in the same run. Owner: F1 is repaired in the examples, not the SDK -- the other tenancy must start a plain workspace (a control that it can) and Runner.release_snapshot from it must answer False (a structured public witness of the same tenancy lookup), beside the same-tenant restore; applied to example 41 and to example 40, which has the same shape (M46). Declared: a fault injected exactly at the refusal still passes; only the message text could tell it. F2 gets a test where one burn command starts after the ceiling, failing STOPPED for that clause's reason; F3 reads a failed listing as a failure. Then mutants and gates, and the owner completes the task; commit and publish only when asked.",
+      "status": "accepted",
+      "source": null,
+      "recorded_at": "2026-11-05T10:28:26.111Z"
     }
   ],
   "knowledge": [
@@ -7152,7 +7208,7 @@
     {
       "id": "M47-increment2-contention",
       "outcome": "Hostile code with egress, a hostile sandboxed MCP server, a snapshot and a compute ceiling are contained, recorded and cleaned up on both stores",
-      "state": "active",
+      "state": "done",
       "risk": "high",
       "owner": null,
       "scope": [],
@@ -7172,29 +7228,49 @@
           "id": "unit",
           "command": ".venv\\Scripts\\python.exe -m pytest tests/test_increment2_contention.py -q -p no:cacheprovider",
           "mandatory": true,
-          "status": "pending",
-          "evidence": null
+          "status": "pass",
+          "evidence": {
+            "path": ".genesis/evidence/M47-increment2-contention-unit.json",
+            "source_hash": "0cc954e01979903bd78f692a5db139be8249b42f650739bc3a4ec9a36545217a",
+            "hash": "3544f8c7dd1c9df7b32ab08f23cb0ac02e255cb6cc6f3a728b53ef2517ba7e8d",
+            "observed_at": "2026-11-05T11:05:58.920Z"
+          }
         },
         {
           "id": "regression",
           "command": ".venv\\Scripts\\python.exe -m pytest -q -p no:cacheprovider",
           "mandatory": true,
-          "status": "pending",
-          "evidence": null
+          "status": "pass",
+          "evidence": {
+            "path": ".genesis/evidence/M47-increment2-contention-regression.json",
+            "source_hash": "0cc954e01979903bd78f692a5db139be8249b42f650739bc3a4ec9a36545217a",
+            "hash": "d109a37d2a1b104af830bdfd3ae7aafa371c12da57f4cd379081f911626dc3ac",
+            "observed_at": "2026-11-05T11:42:40.001Z"
+          }
         },
         {
           "id": "docker",
           "command": ".venv\\Scripts\\python.exe -m pytest tests/test_workspace.py tests/test_workspace_tools.py tests/test_workspace_plan.py tests/test_docker_provider.py tests/test_sandbox_contention.py tests/test_compute.py tests/test_egress.py tests/test_sandboxed_mcp.py tests/test_snapshots.py tests/test_increment2_contention.py -m docker -q -p no:cacheprovider",
           "mandatory": true,
-          "status": "pending",
-          "evidence": null
+          "status": "pass",
+          "evidence": {
+            "path": ".genesis/evidence/M47-increment2-contention-docker.json",
+            "source_hash": "0cc954e01979903bd78f692a5db139be8249b42f650739bc3a4ec9a36545217a",
+            "hash": "68407fd3d9a27b2f1cb74ce3c50ceefeb39a50fd00f8c6e20842f43fb98c2d8e",
+            "observed_at": "2026-11-05T12:59:45.173Z"
+          }
         },
         {
           "id": "independent-review",
           "command": "",
           "mandatory": true,
-          "status": "pending",
-          "evidence": null
+          "status": "pass",
+          "evidence": {
+            "human": "siva-rgb (owner)",
+            "reason": "Owner approval at source hash 0cc954e0 under the review stopping rule DECISION-c697f36c: round 1 (Fable 5.1) approved 403d4e3e with nothing blocking; its three findings were fixed in M47 by DECISION-ee543c57. F1: the tenancy checks of examples 40 and 41 now require a plain-workspace control and a release answering False in the other tenancy, and the release check of example 40 requires the snapshot gone from the listing. F2: a test where a command starts after the ceiling fails STOPPED for that reason. F3: a failed listing fails KILLED. 31 mutants killed, 2 live runs held 18 of 18, gates unit 32, regression 3301 and docker 168 passed with empty stderr. Declared: a fault injected at the tenancy refusal itself is told only by message text.",
+            "source_hash": "0cc954e01979903bd78f692a5db139be8249b42f650739bc3a4ec9a36545217a",
+            "observed_at": "2026-11-05T13:08:04.300Z"
+          }
         }
       ],
       "next_action": "Run the task pre-flight.",
@@ -7203,7 +7279,7 @@
       "failures": [],
       "limitations": [],
       "created_at": "2026-10-30T13:01:01.831Z",
-      "updated_at": "2026-10-30T13:01:01.832Z"
+      "updated_at": "2026-11-05T13:08:12.922Z"
     }
   ],
   "learning_proposals": [],
@@ -9133,6 +9209,24 @@
       "task": "M46-snapshots",
       "human": "siva-rgb (owner)",
       "reason": "Owner approval at source hash 5dbea89a under the review stopping rule DECISION-c697f36c: round 1 (Fable 5.1) approved f5518a6e with nothing blocking; its five findings were fixed in M46 by DECISION-f15a2771, including finding 5 the vacuous sparse-file assertion found after the approval was recorded; each repair has a test shown failing on the unrepaired code, 58 mutants all killed. Unit 39, regression 3266 and docker 139 all pass at 5dbea89a with empty stderr. No round 2 by the rule.",
+      "revision": null
+    },
+    {
+      "id": "403d4e3e-e631-43d7-8875-318d000eb2f5",
+      "at": "2026-11-05T09:39:29.677Z",
+      "action": "approve",
+      "task": "M47-increment2-contention",
+      "human": "Fable 5.1",
+      "reason": "M47 round 1 approved on source hash ef3328fe (gates fresh, SPEC unchanged, six decisions recorded as briefed). Verified first-hand: 28 offline tests pass; the six AC-105 removals and the egress-child-does-nothing case pass on Docker (7 passed, 446.91 s); two scripted Docker runs (seed 1, seed 9 with quoting) and one live gateway run held all 18 checks, each leaving no container, volume, network, row or folder; a mid-plan cancel on Docker with two command containers running left nothing in 3.6 s. Breaking the SDK at runtime on the fake: a ceiling that never refuses a call fails STOPPED (1 command started after it); a provider sparing the server workspace fails KILLED and NOTHING_LEFT; the tenancy check removed fails TENANCY; a crashed hostile server on Docker fails CONTAINED (it said ToolExecutionError: mcp server hostile exited), so the server checks are not vacuous. Mutants, each verified applied by SHA-256 and the file restored byte for byte: rebound always true killed; changed forced true killed; the tenancy clause dropped killed; the docker.py repair removed killed by test_compute with -m docker (1 failed, 13.77 s) and measured 11.0 s against 6.0 s with it; the STOPPED clause no command started after dropped SURVIVED all 28 offline tests (clause 3 still catches a never-stopping burner, so a test gap, not a vacuity). Non-blocking findings to repair under DECISION-c697f36c: (1) the TENANCY and below-bound checks pass when the other restore fails for an unrelated reason, since their witness is only that no workspace was made (probe: provider raising on that call alone gave 14 of 14), the same shape as example 40; (2) no test breaks the ceiling itself, so add one with may_call always true; (3) the KILLED check passes its remains clause when the daemon cannot be listed (left is None) while NOTHING_LEFT fails. Observations: the unclosed-transport mechanism was not isolated by me either (0 of 2 on the mutant); it is consistent with a client transport alive at loop close, the shape M45 declared, and the repair leaves the normal path untouched (the du helper client finished and closed with and without it); example 36 line 550 leaves a subprocess TextIOWrapper unclosed under -W always, outside M47; five agentsdk-server folders from Nov 4 predate this review. Cleanup: my tenants SYN-m47r1 and the live project contention2-67b82879 removed by run id, 0 rows, 0 Docker objects, 0 new folders, 0 processes left.",
+      "revision": null
+    },
+    {
+      "id": "73583c79-08a0-4fa8-882f-c508249e4c2f",
+      "at": "2026-11-05T13:08:04.300Z",
+      "action": "approve",
+      "task": "M47-increment2-contention",
+      "human": "siva-rgb (owner)",
+      "reason": "Owner approval at source hash 0cc954e0 under the review stopping rule DECISION-c697f36c: round 1 (Fable 5.1) approved 403d4e3e with nothing blocking; its three findings were fixed in M47 by DECISION-ee543c57. F1: the tenancy checks of examples 40 and 41 now require a plain-workspace control and a release answering False in the other tenancy, and the release check of example 40 requires the snapshot gone from the listing. F2: a test where a command starts after the ceiling fails STOPPED for that reason. F3: a failed listing fails KILLED. 31 mutants killed, 2 live runs held 18 of 18, gates unit 32, regression 3301 and docker 168 passed with empty stderr. Declared: a fault injected at the tenancy refusal itself is told only by message text.",
       "revision": null
     }
   ],

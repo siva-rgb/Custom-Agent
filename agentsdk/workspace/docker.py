@@ -809,6 +809,13 @@ class DockerProvider:
                 await self._rm(command.name)  # the only total kill (P5-D5)
             with contextlib.suppress(asyncio.TimeoutError):
                 await asyncio.wait_for(asyncio.shield(waiting), _CLI_SECONDS)
+            if not waiting.done():
+                # A client outliving its bound is ended now, so its pipes reach their end and close
+                # before their reads are given up: none left open (M47 Docker gate).
+                with contextlib.suppress(ProcessLookupError):
+                    process.kill()
+                with contextlib.suppress(asyncio.TimeoutError):
+                    await asyncio.wait_for(asyncio.shield(waiting), _CLI_SECONDS)
             with contextlib.suppress(asyncio.TimeoutError, Exception):
                 await asyncio.wait_for(talking, _CLI_SECONDS)
             if killed is not None:

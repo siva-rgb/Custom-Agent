@@ -1,0 +1,22 @@
+{
+  "task": "M47-increment2-contention",
+  "gate": "unit",
+  "command": ".venv\\Scripts\\python.exe -m pytest tests/test_increment2_contention.py -q -p no:cacheprovider",
+  "started_at": "2026-11-05T11:04:51.363Z",
+  "observed_at": "2026-11-05T11:05:58.920Z",
+  "exit_code": 0,
+  "signal": null,
+  "stdout": "................................                                         [100%]\r\n32 passed, 28 deselected in 66.38s (0:01:06)\r\n",
+  "stderr": "",
+  "revision": {
+    "commit": "a7e46a2c8e692d5a5ba4519be9b3f0e5a1b4a05e",
+    "dirty": true
+  },
+  "source_hash": "0cc954e01979903bd78f692a5db139be8249b42f650739bc3a4ec9a36545217a",
+  "environment": {
+    "node": "v20.10.0",
+    "platform": "win32",
+    "arch": "x64"
+  },
+  "hash": "3544f8c7dd1c9df7b32ab08f23cb0ac02e255cb6cc6f3a728b53ef2517ba7e8d"
+}
