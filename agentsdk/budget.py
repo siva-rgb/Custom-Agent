@@ -15,8 +15,9 @@ once; that overshoot is charged to the run rather than hidden. Money in Decimal,
 float, because a spend summed across thousands of calls must not drift.
 
 Nothing drives plan nodes until M19, so M17's governor is handed to runs through
-`RunConfig.budget_lease` by whatever acts as the orchestrator; budgets for plain
-single-agent runs stay out of scope (backlog I-04, DECISION-c274eb02).
+`RunConfig.budget_lease` by whatever acts as the orchestrator. Since M48 a plain run takes
+`RunConfig.budget`, which the Runner turns into the one lease of
+`BudgetGovernor.for_single_run` (FR-172, closing backlog I-04).
 """
 
 from __future__ import annotations
@@ -278,6 +279,28 @@ class BudgetGovernor:
         self._spent_usd, self._spent_tokens = Decimal(0), 0
         return self
 
+    @classmethod
+    def for_single_run(cls, policy: BudgetPolicy) -> BudgetGovernor:
+        """A governor for one plain run (FR-172, M48, DECISION-6a07dbc6).
+
+        Its single reservation, `run`, holds the whole ceiling: no orchestrator reserve and
+        nothing unallocated, since no replan or sibling can claim any of it. Its lease is the
+        run's `budget_lease`, so the run is checked and charged as a plan's single child is.
+        """
+        if not isinstance(policy, BudgetPolicy):
+            raise ValueError(f"policy must be a BudgetPolicy, got {type(policy).__name__}")
+        self = cls.__new__(cls)
+        self.policy, self.plan, self._lock = policy, None, threading.Lock()
+        usd, tokens = policy.run_ceiling_usd, policy.run_ceiling_tokens
+        self._orchestrator = BudgetAmount(usd=None if usd is None else Decimal(0),
+                                          tokens=None if tokens is None else 0)
+        self._unallocated_usd = None if usd is None else Decimal(0)
+        self._unallocated_tokens = None if tokens is None else 0
+        self._reservations = {SINGLE_RUN: [usd, tokens]}
+        self._leases, self._kept = {}, set()
+        self._spent_usd, self._spent_tokens = Decimal(0), 0
+        return self
+
     def adopt(self, plan: Any, *, carried: tuple[str, ...] = ()) -> None:
         """Fund a plan version's nodes from what this run has left (FR-67, FR-75).
 
@@ -296,13 +319,13 @@ class BudgetGovernor:
             raise ValueError("a governor needs a PlanVersion with at least one node")
         with self._lock:
             before = None if self.plan is None else self.plan.version
-            leaving = [n for n in self._reservations if n != _ORCHESTRATOR and n not in carried and n not in self._kept]
+            leaving = [n for n in self._reservations if n != ORCHESTRATOR and n not in carried and n not in self._kept]
             for node_id in leaving:
                 lease = self._leases.get(node_id)
                 if lease is not None and not lease._released:
                     raise ValueError(f"node {node_id!r} is still running and cannot be replanned")
             funded = tuple(n for n in nodes if n.node_id not in carried)
-            taken = {_ORCHESTRATOR, *self._kept}
+            taken = {ORCHESTRATOR, *self._kept}
             clash = [n.node_id for n in funded if n.node_id in taken]
             if clash:
                 raise ValueError(
@@ -350,7 +373,7 @@ class BudgetGovernor:
     @property
     def allocation(self) -> BudgetAllocation:
         with self._lock:
-            held = self._reservations.get(_ORCHESTRATOR)
+            held = self._reservations.get(ORCHESTRATOR)
             orchestrator = (
                 self._orchestrator if held is None else BudgetAmount(usd=held[0], tokens=held[1])
             )
@@ -360,7 +383,7 @@ class BudgetGovernor:
                 reservations=MappingProxyType({
                     node_id: BudgetAmount(usd=amount[0], tokens=amount[1])
                     for node_id, amount in self._reservations.items()
-                    if node_id != _ORCHESTRATOR
+                    if node_id != ORCHESTRATOR
                 }),
             )
 
@@ -389,11 +412,11 @@ class BudgetGovernor:
         """The orchestrator's own lease, drawn on its reserve: its planning calls are
         counted, not free (FR-73)."""
         with self._lock:
-            if _ORCHESTRATOR not in self._reservations:
-                self._reservations[_ORCHESTRATOR] = [self._orchestrator.usd, self._orchestrator.tokens]
-            if _ORCHESTRATOR not in self._leases:
-                self._leases[_ORCHESTRATOR] = BudgetLease(self, _ORCHESTRATOR)
-            return self._leases[_ORCHESTRATOR]
+            if ORCHESTRATOR not in self._reservations:
+                self._reservations[ORCHESTRATOR] = [self._orchestrator.usd, self._orchestrator.tokens]
+            if ORCHESTRATOR not in self._leases:
+                self._leases[ORCHESTRATOR] = BudgetLease(self, ORCHESTRATOR)
+            return self._leases[ORCHESTRATOR]
 
     def top_up(self, node_id: str, amount: BudgetAmount) -> None:
         """Move `amount` from the unallocated reserve to a node's reservation.
@@ -533,7 +556,10 @@ def tokens_of(usage: Usage) -> int:
     return max(0, int(parts))
 
 
-_ORCHESTRATOR = "<orchestrator>"
+# The orchestrator's own reservation in a plan's governor; public since M48 round 1 (F-C), as SINGLE_RUN is.
+ORCHESTRATOR = "<orchestrator>"
+# The one reservation of a plain run's governor (FR-172), named in its manifest's budget_reservations.
+SINGLE_RUN = "run"
 
 
 @dataclass

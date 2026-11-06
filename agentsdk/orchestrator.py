@@ -20,7 +20,7 @@ from dataclasses import dataclass, field
 from typing import Any, Mapping
 
 from .api import AgentSpec, RunConfig, RunStatus
-from .budget import BudgetGovernor, BudgetPolicy
+from .budget import ORCHESTRATOR, BudgetGovernor, BudgetPolicy
 from .errors import MaxDepthExceeded, describe_exception
 from .events import EventType
 from .executor import ToolExecutor
@@ -207,7 +207,10 @@ class Orchestrator:
 
     async def _run_plan(self, *, scope: ToolScope, **document: Any) -> ToolOutput:
         lease = scope._lease
-        if lease is None or getattr(lease, "governor", None) is None or scope._runner is None:
+        # The orchestrator's own lease, not any lease: a plain run's (RunConfig.budget, FR-172)
+        # has no plan to adopt and would fail later, past a paid planning call (M48 pre-review F4).
+        if (lease is None or getattr(lease, "governor", None) is None or scope._runner is None
+                or getattr(lease, "node_id", None) != ORCHESTRATOR):
             raise ValueError(f"{PLAN_TOOL} runs only in a run started with Orchestrator.config()")
         governor = lease.governor
         run = self._runs.get(scope.run_id)

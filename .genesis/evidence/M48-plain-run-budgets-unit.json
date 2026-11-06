@@ -1,0 +1,22 @@
+{
+  "task": "M48-plain-run-budgets",
+  "gate": "unit",
+  "command": ".venv\\Scripts\\python.exe -m pytest tests/test_plain_budgets.py -q -p no:cacheprovider",
+  "started_at": "2026-11-06T09:31:51.601Z",
+  "observed_at": "2026-11-06T09:32:00.155Z",
+  "exit_code": 0,
+  "signal": null,
+  "stdout": "................................                                         [100%]\r\n32 passed, 1 deselected in 7.76s\r\n",
+  "stderr": "",
+  "revision": {
+    "commit": "711088fd5824ed334963a3f0420932b3383afd7c",
+    "dirty": true
+  },
+  "source_hash": "aca4ccec22380f4886a9f9198e73dc6ff85c1b4cc08b51d0e3ab46b6f34c3cfa",
+  "environment": {
+    "node": "v20.10.0",
+    "platform": "win32",
+    "arch": "x64"
+  },
+  "hash": "47eefd0ea599ba13ca1bbc2283dceebf5a1cdbf9b53cb26c5acd2f6890eacf1a"
+}

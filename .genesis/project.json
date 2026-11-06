@@ -9,7 +9,7 @@
     "non_goals": [],
     "trust_boundary": "local repository",
     "created_at": "2026-09-05T14:48:57.894Z",
-    "updated_at": "2026-11-05T13:08:12.923Z"
+    "updated_at": "2026-11-06T11:18:06.204Z"
   },
   "policy": {
     "ponytail": "full",
@@ -23,19 +23,19 @@
     }
   },
   "lifecycle": {
-    "phase": "verify",
-    "status": "ready",
-    "active_task": null,
+    "phase": "build",
+    "status": "active",
+    "active_task": "M49-general-preset",
     "blocker": null,
-    "next_action": "Review completed work and choose the next bounded outcome."
+    "next_action": "Run the task pre-flight."
   },
   "commands": {},
   "workflow": {
     "type": "new-product",
     "started_at": "2026-09-05T14:48:57.897Z",
     "spec_check": {
-      "at": "2026-11-02T11:44:39.493Z",
-      "source_hash": "0921e3ddb3e5ec22265c1a0a4d0a8369949520a3a31dafe9d96d5907df512fac",
+      "at": "2026-11-05T16:53:00.675Z",
+      "source_hash": "105ae58d630780c2d342c97cd62a9da707db53612ad0f6cd04522b67fc79d238",
       "requirements": [
         "AC-1",
         "AC-10",
@@ -45,6 +45,10 @@
         "AC-103",
         "AC-104",
         "AC-105",
+        "AC-106",
+        "AC-107",
+        "AC-108",
+        "AC-109",
         "AC-11",
         "AC-12",
         "AC-13",
@@ -223,7 +227,19 @@
         "FR-17",
         "FR-170",
         "FR-171",
+        "FR-172",
+        "FR-173",
+        "FR-174",
+        "FR-175",
+        "FR-176",
+        "FR-177",
+        "FR-178",
+        "FR-179",
         "FR-18",
+        "FR-180",
+        "FR-181",
+        "FR-182",
+        "FR-183",
         "FR-19",
         "FR-2",
         "FR-20",
@@ -358,6 +374,9 @@
         "NFR-48",
         "NFR-49",
         "NFR-5",
+        "NFR-50",
+        "NFR-51",
+        "NFR-52",
         "NFR-6",
         "NFR-7",
         "NFR-8",
@@ -365,14 +384,14 @@
       ]
     },
     "plan_check": {
-      "at": "2026-11-02T11:44:39.895Z",
-      "source_hash": "10d81a26ab329feff7334c8877343e320fcc2df25ebe18382a3a468245037493"
+      "at": "2026-11-05T16:53:01.109Z",
+      "source_hash": "0c3ab68837bfbf04a960dcc410743a84ce23df8ce22aa4995c3848f1f822da13"
     },
     "plan_approval": {
       "human": "siva-rgb (owner)",
-      "reason": "M45: plan re-approved after FR-165 amended (DECISION-5470ab57)",
-      "at": "2026-11-02T11:44:40.069Z",
-      "source_hash": "10d81a26ab329feff7334c8877343e320fcc2df25ebe18382a3a468245037493"
+      "reason": "Plan unchanged after the FR-172 and AC-106 clarification; M48 resumes.",
+      "at": "2026-11-05T16:53:01.319Z",
+      "source_hash": "0c3ab68837bfbf04a960dcc410743a84ce23df8ce22aa4995c3848f1f822da13"
     }
   },
   "artifacts": [
@@ -390,6 +409,10 @@
         "AC-103",
         "AC-104",
         "AC-105",
+        "AC-106",
+        "AC-107",
+        "AC-108",
+        "AC-109",
         "AC-11",
         "AC-12",
         "AC-13",
@@ -568,7 +591,19 @@
         "FR-17",
         "FR-170",
         "FR-171",
+        "FR-172",
+        "FR-173",
+        "FR-174",
+        "FR-175",
+        "FR-176",
+        "FR-177",
+        "FR-178",
+        "FR-179",
         "FR-18",
+        "FR-180",
+        "FR-181",
+        "FR-182",
+        "FR-183",
         "FR-19",
         "FR-2",
         "FR-20",
@@ -703,17 +738,20 @@
         "NFR-48",
         "NFR-49",
         "NFR-5",
+        "NFR-50",
+        "NFR-51",
+        "NFR-52",
         "NFR-6",
         "NFR-7",
         "NFR-8",
         "NFR-9"
       ],
-      "source_hash": "0921e3ddb3e5ec22265c1a0a4d0a8369949520a3a31dafe9d96d5907df512fac",
+      "source_hash": "105ae58d630780c2d342c97cd62a9da707db53612ad0f6cd04522b67fc79d238",
       "approval": {
         "human": "siva-rgb (owner)",
-        "reason": "M45: FR-165 amended for a dead server (DECISION-5470ab57)",
-        "at": "2026-11-02T11:44:39.690Z",
-        "source_hash": "0921e3ddb3e5ec22265c1a0a4d0a8369949520a3a31dafe9d96d5907df512fac"
+        "reason": "M48 pre-review F3: FR-172 and AC-106 state DECISION-6a07dbc6, a run whose final answer is the crossing call completes with its spend recorded; no other change.",
+        "at": "2026-11-05T16:53:00.873Z",
+        "source_hash": "105ae58d630780c2d342c97cd62a9da707db53612ad0f6cd04522b67fc79d238"
       }
     }
   ],
@@ -2513,6 +2551,62 @@
       "status": "accepted",
       "source": null,
       "recorded_at": "2026-11-05T10:28:26.111Z"
+    },
+    {
+      "id": "DECISION-e66f1af4",
+      "title": "Phase 5A P5A-D1 to P5A-D4: phase-5a branch, two increments, ad hoc delegation, a larger ADR-12 rerun (owner)",
+      "text": "Owner, at Phase 5A's start (DECISION-dd87feb8, option B). P5A-D1 Branch: local main is fast-forwarded to M47 (711088f), Phase 5A works on a new branch phase-5a from there, phase-5 stays frozen as Phase 5's record, and the publish script's branch list gains phase-5a. P5A-D2 Increments: two. Increment 1 is the general preset -- a default general AgentSpec with tuned instructions over the built-in tool suite, and a general-purpose subagent -- with a broader capability eval. Increment 2 is the model-driven autonomous mode, informed by increment 1's measurement. P5A-D3 Autonomy: ad hoc delegation. The agent decides turn by turn and spawns subagents through a tool when it chooses, looping by taking more turns; there is no plan object, but every spawn goes through the SubagentPool, budget leases, the sandbox and the ApprovalManager. Orchestrated plans stay DAG-only, so ADR-02 is amended, not replaced; bounded loop nodes (I-01) stay unbuilt. P5A-D4 Exit signal: ADR-12 rerun against the raw Claude Agent SDK with the general preset on a larger task set mixing file work, shell and code in the sandbox, egress and delegation, reporting the measured gaps; and every governance property (budgets, sandbox, approvals, tenancy) held under contention, as each earlier exit signal did.",
+      "status": "accepted",
+      "source": null,
+      "recorded_at": "2026-11-05T13:24:15.872Z"
+    },
+    {
+      "id": "DECISION-2cdd97da",
+      "title": "Phase 5A increment 1's decisions P5A-D5 to P5A-D14 accepted (owner)",
+      "text": "Accepted 2026-11-05 as drafted, the owner choosing the recommended option on each open row. P5A-D5 Preset: general_agent(...) returns the AgentSpec and the tools to register for a general agent -- shipped instructions, a tool profile, a workspace spec, a budget, a context policy and a turn limit -- each overridable; nothing changes for a caller who does not use it. P5A-D6 Tools: sandbox only; the preset's tools are the workspace tools, so files, shell and code run in the hardened container and the network only by the workspace's egress allow list; the host file tools and fetch_url are not in its profile. P5A-D7 Approval: inside the sandbox the preset's run_command is auto (the hardening does not depend on approval, P5-D10); export_workspace_file, the only way a file leaves, still needs approval; a caller may require approval for every command. P5A-D8 Budget: budgets for plain runs (I-04) arrive in increment 1 (M48): a single run takes a BudgetPolicy and is stopped budget_exceeded at its ceiling, model calls and compute alike, as a plan's child is; the preset always has one. P5A-D9 Long tasks: the preset applies ContextPolicy() (compaction on), a turn limit of 40, and requires a model whose context window the registry knows. P5A-D10 Instructions: shipped as SDK source with a version (general-v1, ...) recorded in the manifest; a change is a new version and a new agent_spec_hash; tuned against the eval on at least two upstream providers through the gateway, with no provider-specific wording (NFR-1). P5A-D11 Subagent: a general-purpose subagent spec from the same preset, briefed and depth-limited as any child (FR-70 to FR-72), with its own workspace, usable as an orchestrator role now and by increment 2's delegation tool; its briefing sets its turns. P5A-D12 Eval: ADR-12 grows to about 36 tasks adding sandbox work -- shell, code that must run, files written and edited, a fetch through egress, a multi-step repair -- each checked by its result in the workspace, not by answer text alone; 3 repetitions; both arms on the same model; the Claude arm runs the pinned CLI in a disposable container with the task's files copied in, its local image built only with the owner's approval at M50. P5A-D13 Records: no migration expected; the manifest names the preset and its version; the report names both and reports every gap as measured. P5A-D14 Milestones: M48 budgets for plain runs; M49 the preset and the subagent (example 42); M50 the larger eval (harness, tasks, the containerised Claude arm); M51 the comparison and tuning, increment 1's exit: the preset's run of the larger eval, its gaps reported, its budget, sandbox and approval properties held.",
+      "status": "accepted",
+      "source": null,
+      "recorded_at": "2026-11-05T13:28:58.432Z"
+    },
+    {
+      "id": "DECISION-abd83872",
+      "title": "Phase 5A increment 1 spec review: P5A-D5, D11, D12 and D13 amended (owner)",
+      "text": "A fresh Fable 5.1 reviewer read the draft of Phase 5A increment 1 (FR-172 to FR-183, NFR-50 to NFR-52, AC-106 to AC-109) against the code; its blocking findings were verified first-hand. Owner: (1) the manifest stores each field as a column, so P5A-D13 is amended to one migration, 0028, adding execution_manifests.preset, NULL before it; (2) in the unattended comparison this SDK's arm refuses every export at once, each refusal recorded, the checker reading the kept workspace through the provider's export; (3) delegation tasks join the comparison with increment 2's delegation tool, P5A-D4's mix otherwise kept; (4) the general subagent's turns come from Orchestrator(..., role_turns=...), a per-role briefing default (4 for any role it does not name), the plan schema unchanged. Also settled in the text from the review: RunConfig.budget becomes a lease of BudgetGovernor.for_single_run(policy), whose one lease holds the whole ceiling; a USD ceiling on an unpriced model raises UnpricedModel before the run (FR-69); general_agent takes a registry (default_registry() when None), keep and export_approval; general_subagent takes no budget, max_turns or context_policy; WorkspaceSpec.files is recorded as path to SHA-256 only and refused with from_snapshot or on a plan-scoped spec; the eval's per-task budget is ten times the kind's M15 median cost; the Claude arm drives the pinned CLI through claude_agent_sdk inside its container, the key only in the container's environment, its ordinary networking stated as an asymmetry; both arms use the task's turn limit; example 42's and 43's checks name store witnesses and the hostile attempts are issued through scripted children.",
+      "status": "accepted",
+      "source": null,
+      "recorded_at": "2026-11-05T14:33:58.234Z"
+    },
+    {
+      "id": "DECISION-6a07dbc6",
+      "title": "M48 pre-flight: a plain run's budget as a single-run lease; a final answer on the crossing call completes (owner)",
+      "text": "FR-172 clarified, the SPEC unchanged. RunConfig.budget is turned, once at the start of the run (Runner.run and Runner.start), into the one lease of BudgetGovernor.for_single_run(policy), a governor whose single reservation, named run, holds the whole ceiling with nothing unallocated and no orchestrator reserve; it is then the run's budget_lease, so the loop's check before each model call, run_command's before each command, the charges, the spend record and the manifest are the existing paths, unchanged. Refusals before the run starts read existing fields: a budget beside a budget_lease (an orchestrator's run carries its own lease), on a run the SubagentPool placed (depth set), and a USD ceiling on an unpriced model (UnpricedModel, FR-69). No migration: the spend columns exist since 0008. Owner: when the model call that crosses the ceiling is also the run's final answer, the run completes, its spend over the ceiling recorded, as a plan's child does; budget_exceeded ends a run stopped before a further model call or command.",
+      "status": "accepted",
+      "source": null,
+      "recorded_at": "2026-11-05T16:21:33.178Z"
+    },
+    {
+      "id": "DECISION-23563bf6",
+      "title": "M48 pre-review: two test gaps closed, the plan tool refuses a plain run's lease, FR-172 and AC-106 re-approved (owner)",
+      "text": "A fresh Sonnet 5.5 pre-reviewer probed M48 at runtime and found nothing blocking; each finding was verified first-hand. F1: no test covered an unknown cost (a mutant charging None as 0 survived); tests now hold that a call nothing prices leaves the run's spend None on both stores, never 0, and that under a USD ceiling the unknown spend stops the run budget_exceeded (FR-68). F2: no test pinned a second command of the crossing turn; one now does, overshoot one command. F3: FR-172 and AC-106 said a crossed run ends budget_exceeded while DECISION-6a07dbc6 says a final answer on the crossing call completes; owner: both amended by one sentence, M48 requeued first, then spec check and approve, plan check and approve under the owner, M48 resumed. F4: an orchestrator's agent run with RunConfig(budget=...) bypassed Orchestrator.config() and failed after a paid planning call with a misleading message; run_plan now refuses any lease but the orchestrator's own, with its existing message. Also from the pre-review's own mutants: the type check in Runner._budgeted duplicated the governor's and was removed. Eleven mutants killed. Forward note for M50 and increment 2: SubagentPool.spawn takes no lease from a plain run, so a delegation tool must pass the run's own.",
+      "status": "accepted",
+      "source": null,
+      "recorded_at": "2026-11-05T16:53:17.446Z"
+    },
+    {
+      "id": "DECISION-7498a8a2",
+      "title": "M48 round 1 close: F-A to F-D repaired in M48, no further review (owner)",
+      "text": "Fable 5.1 approved M48 round 1 with nothing blocking (control c4cb8b29); by DECISION-c697f36c it is the last round, and each finding was verified first-hand before the owner chose. F-A: SubagentPool.spawn's lease defaults to None and the run's lease was reachable only as the private ToolScope._lease, so a budgeted plain run that delegated ran its child outside its ceiling. Owner: ToolScope gains a read-only public budget_lease, the run's lease or None; the README tells a delegating tool to pass it to spawn(lease=...), and says a child spawned with no lease is not governed. Two tests on both stores: a child given the scope's lease stops at the parent's 0.40 ceiling after 2 calls and the parent before its next (0.45 spent), and the control with no lease runs the child to max_turns. Three mutants (property returns None, the tool scope built with no lease, spawn ignoring the lease) are killed. Increment 2's delegation tool must still pass the run's lease. F-B: DECISION-6a07dbc6 says FR-172 clarified with the SPEC unchanged; that clause is superseded by DECISION-23563bf6, which amended FR-172 and AC-106 under the owner; this decision is the correction of record. F-C: budget._ORCHESTRATOR is renamed ORCHESTRATOR, public as SINGLE_RUN is, and orchestrator.py imports it under that name. F-D: the single-run manifest records the plan fractions of its policy, as FR-172 specifies; no change. The three gates are rerun on the repaired tree; the owner then approves M48.",
+      "status": "accepted",
+      "source": null,
+      "recorded_at": "2026-11-06T05:13:01.804Z"
+    },
+    {
+      "id": "DECISION-08a56b57",
+      "title": "M48 gates: two one-off Docker failures in older tests, gates rerun unchanged (owner)",
+      "text": "After the F-A to F-D repairs (DECISION-7498a8a2) two gate runs on source hash aca4ccec each passed unit (32) and regression (3333) and failed one different Docker test, in code M48 does not touch. Run 3 (11:30 to 12:43 IST): the M44 egress test a_proxy_stopped_under_an_undecided_connection_reports_it_stopped recorded malformed, not stopped, while Windows logged six Modern Standby periods (Kernel-Power 506/507) despite ES_SYSTEM_REQUIRED; the proxy's 10 s read deadline fits; alone it passed 5 of 5. The keep-awake wrappers now also hold ES_DISPLAY_REQUIRED. Run 4 (13:40 to 14:56, no standby): that test passed, and example 41 seed 4 on the memory store failed its rebinding check, an attempt allowed at 1.1.1.1 with 0 bytes back, which the witness reads as unproven (DECISION-18bd3f65 depends on the public rbndr.us name and what answers at its global address); alone it passed 3 of 3. Owner: rerun the three gates with no test changed. The failed evidence is kept in the session scratchpad.",
+      "status": "accepted",
+      "source": null,
+      "recorded_at": "2026-11-06T09:31:51.146Z"
     }
   ],
   "knowledge": [
@@ -3913,9 +4007,9 @@
           "status": "pass",
           "evidence": {
             "human": "siva-rgb (owner)",
-            "reason": "M45: FR-165 amended for a dead server (DECISION-5470ab57)",
-            "source_hash": "858105c25d28982eeb37c78a327b72ec664612b01ceda162f7983f00d217a7c9",
-            "observed_at": "2026-11-02T11:44:39.690Z"
+            "reason": "M48 pre-review F3: FR-172 and AC-106 state DECISION-6a07dbc6, a run whose final answer is the crossing call completes with its spend recorded; no other change.",
+            "source_hash": "82e34ee0385cdac0a4b772a659a1829c34ec03a9374cb8b7fb5327be37c59b5d",
+            "observed_at": "2026-11-05T16:53:00.873Z"
           }
         }
       ],
@@ -3925,7 +4019,7 @@
       "failures": [],
       "limitations": [],
       "created_at": "2026-09-05T14:48:57.897Z",
-      "updated_at": "2026-11-02T11:44:39.690Z"
+      "updated_at": "2026-11-05T16:53:00.873Z"
     },
     {
       "id": "M1-primitives",
@@ -7280,6 +7374,249 @@
       "limitations": [],
       "created_at": "2026-10-30T13:01:01.831Z",
       "updated_at": "2026-11-05T13:08:12.922Z"
+    },
+    {
+      "id": "M48-plain-run-budgets",
+      "outcome": "A top-level run given a budget is stopped budget_exceeded at its ceiling, model calls and compute alike, its spend recorded honestly",
+      "state": "done",
+      "risk": "high",
+      "owner": null,
+      "scope": [],
+      "dependencies": [
+        "M47-increment2-contention"
+      ],
+      "requirements": [
+        "FR-172",
+        "FR-173",
+        "AC-106",
+        "NFR-50"
+      ],
+      "gates": [
+        {
+          "id": "unit",
+          "command": ".venv\\Scripts\\python.exe -m pytest tests/test_plain_budgets.py -q -p no:cacheprovider",
+          "mandatory": true,
+          "status": "pass",
+          "evidence": {
+            "path": ".genesis/evidence/M48-plain-run-budgets-unit.json",
+            "source_hash": "aca4ccec22380f4886a9f9198e73dc6ff85c1b4cc08b51d0e3ab46b6f34c3cfa",
+            "hash": "47eefd0ea599ba13ca1bbc2283dceebf5a1cdbf9b53cb26c5acd2f6890eacf1a",
+            "observed_at": "2026-11-06T09:32:00.155Z"
+          }
+        },
+        {
+          "id": "regression",
+          "command": ".venv\\Scripts\\python.exe -m pytest -q -p no:cacheprovider",
+          "mandatory": true,
+          "status": "pass",
+          "evidence": {
+            "path": ".genesis/evidence/M48-plain-run-budgets-regression.json",
+            "source_hash": "aca4ccec22380f4886a9f9198e73dc6ff85c1b4cc08b51d0e3ab46b6f34c3cfa",
+            "hash": "65ca0a27bf73a1a4466bffe601609d826bd8adc0310461787e4e2679c37cb627",
+            "observed_at": "2026-11-06T10:03:40.650Z"
+          }
+        },
+        {
+          "id": "docker",
+          "command": ".venv\\Scripts\\python.exe -m pytest tests/test_workspace.py tests/test_workspace_tools.py tests/test_workspace_plan.py tests/test_docker_provider.py tests/test_sandbox_contention.py tests/test_compute.py tests/test_egress.py tests/test_sandboxed_mcp.py tests/test_snapshots.py tests/test_increment2_contention.py tests/test_plain_budgets.py -m docker -q -p no:cacheprovider",
+          "mandatory": true,
+          "status": "pass",
+          "evidence": {
+            "path": ".genesis/evidence/M48-plain-run-budgets-docker.json",
+            "source_hash": "aca4ccec22380f4886a9f9198e73dc6ff85c1b4cc08b51d0e3ab46b6f34c3cfa",
+            "hash": "d25e7c2c77d03a1f5d5e1debb0d6aa6720090be5b43848fa943aacad62d60325",
+            "observed_at": "2026-11-06T11:17:41.669Z"
+          }
+        },
+        {
+          "id": "independent-review",
+          "command": "",
+          "mandatory": true,
+          "status": "pass",
+          "evidence": {
+            "human": "siva-rgb (owner)",
+            "reason": "M48 round 1 approved by Fable 5.1 (c4cb8b29) with nothing blocking; F-A to F-D repaired in M48 (DECISION-7498a8a2): public ToolScope.budget_lease with two tests and three killed mutants, ORCHESTRATOR public, correction of record for 6a07dbc6. Gates pass on hash aca4ccec: unit 32, regression 3333, docker 169. Two earlier one-off Docker failures in older tests recorded in DECISION-08a56b57. Recorded at the owner instruction.",
+            "source_hash": "aca4ccec22380f4886a9f9198e73dc6ff85c1b4cc08b51d0e3ab46b6f34c3cfa",
+            "observed_at": "2026-11-06T11:18:05.969Z"
+          }
+        }
+      ],
+      "next_action": "Run the task pre-flight.",
+      "blocker": null,
+      "notes": [],
+      "failures": [],
+      "limitations": [],
+      "created_at": "2026-11-05T14:39:54.228Z",
+      "updated_at": "2026-11-06T11:18:06.204Z"
+    },
+    {
+      "id": "M49-general-preset",
+      "outcome": "general_agent and general_subagent give a ready general agent in the sandbox, within a budget, its exports approved, recorded in the manifest",
+      "state": "active",
+      "risk": "high",
+      "owner": null,
+      "scope": [],
+      "dependencies": [
+        "M48-plain-run-budgets"
+      ],
+      "requirements": [
+        "FR-174",
+        "FR-175",
+        "FR-176",
+        "FR-177",
+        "FR-178",
+        "AC-107",
+        "NFR-50",
+        "NFR-52"
+      ],
+      "gates": [
+        {
+          "id": "unit",
+          "command": ".venv\\Scripts\\python.exe -m pytest tests/test_general_preset.py -q -p no:cacheprovider",
+          "mandatory": true,
+          "status": "pending",
+          "evidence": null
+        },
+        {
+          "id": "regression",
+          "command": ".venv\\Scripts\\python.exe -m pytest -q -p no:cacheprovider",
+          "mandatory": true,
+          "status": "pending",
+          "evidence": null
+        },
+        {
+          "id": "docker",
+          "command": ".venv\\Scripts\\python.exe -m pytest tests/test_workspace.py tests/test_workspace_tools.py tests/test_workspace_plan.py tests/test_docker_provider.py tests/test_sandbox_contention.py tests/test_compute.py tests/test_egress.py tests/test_sandboxed_mcp.py tests/test_snapshots.py tests/test_increment2_contention.py tests/test_plain_budgets.py tests/test_general_preset.py -m docker -q -p no:cacheprovider",
+          "mandatory": true,
+          "status": "pending",
+          "evidence": null
+        },
+        {
+          "id": "independent-review",
+          "command": "",
+          "mandatory": true,
+          "status": "pending",
+          "evidence": null
+        }
+      ],
+      "next_action": "Run the task pre-flight.",
+      "blocker": null,
+      "notes": [],
+      "failures": [],
+      "limitations": [],
+      "created_at": "2026-11-05T14:39:54.393Z",
+      "updated_at": "2026-11-05T14:39:54.394Z"
+    },
+    {
+      "id": "M50-adr12-sandbox",
+      "outcome": "The ADR-12 harness runs sandbox tasks on the general preset and on a containerised Claude arm, each checked by its result in the workspace",
+      "state": "queued",
+      "risk": "high",
+      "owner": null,
+      "scope": [],
+      "dependencies": [
+        "M49-general-preset"
+      ],
+      "requirements": [
+        "FR-179",
+        "FR-180",
+        "AC-108",
+        "NFR-51"
+      ],
+      "gates": [
+        {
+          "id": "unit",
+          "command": ".venv\\Scripts\\python.exe -m pytest tests/test_adr12_sandbox.py tests/test_adr12_comparison.py -q -p no:cacheprovider",
+          "mandatory": true,
+          "status": "pending",
+          "evidence": null
+        },
+        {
+          "id": "regression",
+          "command": ".venv\\Scripts\\python.exe -m pytest -q -p no:cacheprovider",
+          "mandatory": true,
+          "status": "pending",
+          "evidence": null
+        },
+        {
+          "id": "docker",
+          "command": ".venv\\Scripts\\python.exe -m pytest tests/test_workspace.py tests/test_workspace_tools.py tests/test_workspace_plan.py tests/test_docker_provider.py tests/test_sandbox_contention.py tests/test_compute.py tests/test_egress.py tests/test_sandboxed_mcp.py tests/test_snapshots.py tests/test_increment2_contention.py tests/test_plain_budgets.py tests/test_general_preset.py tests/test_adr12_sandbox.py -m docker -q -p no:cacheprovider",
+          "mandatory": true,
+          "status": "pending",
+          "evidence": null
+        },
+        {
+          "id": "independent-review",
+          "command": "",
+          "mandatory": true,
+          "status": "pending",
+          "evidence": null
+        }
+      ],
+      "next_action": "Run the task pre-flight.",
+      "blocker": null,
+      "notes": [],
+      "failures": [],
+      "limitations": [],
+      "created_at": "2026-11-05T14:39:54.557Z",
+      "updated_at": "2026-11-05T14:39:54.557Z"
+    },
+    {
+      "id": "M51-general-contention",
+      "outcome": "The larger comparison is reported, and general agents of two tenancies hold budget, sandbox, approval and tenancy under contention on both stores",
+      "state": "queued",
+      "risk": "high",
+      "owner": null,
+      "scope": [],
+      "dependencies": [
+        "M50-adr12-sandbox"
+      ],
+      "requirements": [
+        "FR-181",
+        "FR-182",
+        "FR-183",
+        "AC-109",
+        "NFR-50",
+        "NFR-51",
+        "NFR-52"
+      ],
+      "gates": [
+        {
+          "id": "unit",
+          "command": ".venv\\Scripts\\python.exe -m pytest tests/test_general_contention.py -q -p no:cacheprovider",
+          "mandatory": true,
+          "status": "pending",
+          "evidence": null
+        },
+        {
+          "id": "regression",
+          "command": ".venv\\Scripts\\python.exe -m pytest -q -p no:cacheprovider",
+          "mandatory": true,
+          "status": "pending",
+          "evidence": null
+        },
+        {
+          "id": "docker",
+          "command": ".venv\\Scripts\\python.exe -m pytest tests/test_workspace.py tests/test_workspace_tools.py tests/test_workspace_plan.py tests/test_docker_provider.py tests/test_sandbox_contention.py tests/test_compute.py tests/test_egress.py tests/test_sandboxed_mcp.py tests/test_snapshots.py tests/test_increment2_contention.py tests/test_plain_budgets.py tests/test_general_preset.py tests/test_adr12_sandbox.py tests/test_general_contention.py -m docker -q -p no:cacheprovider",
+          "mandatory": true,
+          "status": "pending",
+          "evidence": null
+        },
+        {
+          "id": "independent-review",
+          "command": "",
+          "mandatory": true,
+          "status": "pending",
+          "evidence": null
+        }
+      ],
+      "next_action": "Run the task pre-flight.",
+      "blocker": null,
+      "notes": [],
+      "failures": [],
+      "limitations": [],
+      "created_at": "2026-11-05T14:39:54.725Z",
+      "updated_at": "2026-11-05T14:39:54.726Z"
     }
   ],
   "learning_proposals": [],
@@ -9227,6 +9564,33 @@
       "task": "M47-increment2-contention",
       "human": "siva-rgb (owner)",
       "reason": "Owner approval at source hash 0cc954e0 under the review stopping rule DECISION-c697f36c: round 1 (Fable 5.1) approved 403d4e3e with nothing blocking; its three findings were fixed in M47 by DECISION-ee543c57. F1: the tenancy checks of examples 40 and 41 now require a plain-workspace control and a release answering False in the other tenancy, and the release check of example 40 requires the snapshot gone from the listing. F2: a test where a command starts after the ceiling fails STOPPED for that reason. F3: a failed listing fails KILLED. 31 mutants killed, 2 live runs held 18 of 18, gates unit 32, regression 3301 and docker 168 passed with empty stderr. Declared: a fault injected at the tenancy refusal itself is told only by message text.",
+      "revision": null
+    },
+    {
+      "id": "a5820474-8381-45da-ab30-6da4d9c5e981",
+      "at": "2026-11-05T16:52:33.000Z",
+      "action": "requeue",
+      "task": "M48-plain-run-budgets",
+      "human": "siva-rgb (owner)",
+      "reason": "M48 pre-review F3: FR-172 and AC-106 amended to state DECISION-6a07dbc6; requeued before the spec re-approval so only one task goes active.",
+      "revision": null
+    },
+    {
+      "id": "c4cb8b29-b96a-4ef4-86fe-1f81c53e30e2",
+      "at": "2026-11-06T04:56:43.823Z",
+      "action": "approve",
+      "task": "M48-plain-run-budgets",
+      "human": "Fable 5.1",
+      "reason": "M48 round 1, fresh Fable 5.1 session, sound: approve with no blocking finding. Verified first-hand: gate evidence hashes equal the working tree (033e46a9), brief quotes verbatim from SPEC.md, requeue then spec then plan re-approval, no approved test changed. Mutation: 14 line-exact CRLF-preserving mutants on api.py, budget.py, orchestrator.py and loop.py, each applied by SHA-256 and restored byte for byte; 13 killed by tests/test_plain_budgets.py, 1 survivor (the governor-level unknown-cost None in _charge is redundant with the lease-level None for a single run, M17 code; removing both is killed, so the test reaches its state). Runtime probes, memory and postgres: one RunConfig reused by 3 concurrent runs and one policy across runners each cross their own ceiling, caller config unmutated; 3 concurrency-safe tool calls on the crossing turn run then budget_exceeded; compaction after a crossing call makes no summary call, a crossing summary call is recorded purpose compaction and the next main call refused; a command approved after the ceiling was spent does not start; USD and token boundaries from both sides at >=; four burn3 commands on one turn: one crosses, three refused with ToolCalled errors, none charged or recorded, spend equals event costs; schema re-ask refused budget_exceeded; max_tokens kept as its own end; cpu_second_usd None charges nothing; exact compute hit refuses the next command. Postgres: runs.cost_usd, manifest budget_policy, budget_reservations {run}, budget_spend and RunResult all equal the sum of ModelCalled and WorkspaceCommandEnded costs (2.30); unknown cost None everywhere never 0; no budget records NULL budget columns; six refusals (lease, depth, dict, duck-typed policy, unpriced USD, Orchestrator.config budget) raise before any row, event or model call; cancellation in flight records None. NFR-50: a no-budget run with commands, parallel tools and compaction under HEAD package and tree on both stores: identical result, requests, 36 events, runs row, manifest, commands (only fresh artifact urns and timestamps differ); no preset column exists yet. Older suites: 1137 passed, 96 deselected in 767 s kept awake; M48 docker test 1 passed on the daemon. Non-blocking findings, to record: F-A the forward note is measured, a budgeted plain run spawning through public SubagentPool.spawn with no lease ran a child unbounded (whole-process 1.05 USD against a 0.40 ceiling, parent spend 0.45 excludes the child 0.60) and ToolScope._lease is private so an application cannot pass the lease through public API today, out of M48 scope by P5A-D3 but the ceiling is per run not per process until increment 2 exposes it; F-B DECISION-6a07dbc6 still says the SPEC unchanged, superseded by 23563bf6, stale clause harmless; F-C orchestrator.py imports the private _ORCHESTRATOR name from budget.py; F-D the single-run manifest budget_policy records plan fractions the single-run governor ignores, as FR-172 specifies. Gaps: no live gateway run, gates not rerun (evidence fresh at hash), MCP tools under a budget not probed. Cleanup: 9 runs with their manifests, events, messages, workspaces, commands and 8 artifacts deleted by recorded id, 0 remaining in 20 tables, runs back at 10351, 0 locks, 0 docker objects, 0 new temp folders, no stray process. Probes under C:/Users/<user>/AppData/Local/Temp/m48r1-review.",
+      "revision": null
+    },
+    {
+      "id": "326a10e1-9f3b-4403-91cd-40bd1ddf48c0",
+      "at": "2026-11-06T11:18:05.969Z",
+      "action": "approve",
+      "task": "M48-plain-run-budgets",
+      "human": "siva-rgb (owner)",
+      "reason": "M48 round 1 approved by Fable 5.1 (c4cb8b29) with nothing blocking; F-A to F-D repaired in M48 (DECISION-7498a8a2): public ToolScope.budget_lease with two tests and three killed mutants, ORCHESTRATOR public, correction of record for 6a07dbc6. Gates pass on hash aca4ccec: unit 32, regression 3333, docker 169. Two earlier one-off Docker failures in older tests recorded in DECISION-08a56b57. Recorded at the owner instruction.",
       "revision": null
     }
   ],

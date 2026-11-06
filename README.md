@@ -197,6 +197,13 @@ persisted so you can reconstruct exactly what happened afterwards.
   charged its wall time times its `cpus`. With `BudgetPolicy(cpu_second_usd=...)`
   compute is charged to a plan's budget like a model call, and a child whose
   compute passes its reservation stops `budget_exceeded` (M43, example 37).
+  A plain run takes a budget of its own, `RunConfig(budget=BudgetPolicy(...))`:
+  it runs on one lease holding the whole ceiling, checked before each model call
+  and each command, and stops `budget_exceeded` once its ceiling is spent; a run
+  whose final answer is the call that crossed it completes, its spend recorded
+  (M48). A tool that spawns a child from such a run passes its scope's
+  `budget_lease` to `SubagentPool.spawn(lease=...)`, so the child spends from the
+  same ceiling; a child spawned with no lease is not governed by it.
   A workspace with `WorkspaceSpec(egress=("host:port", ...))` reaches only
   those pairs, through a network and a proxy of its own: HTTPS `CONNECT` to a
   listed pair, every address the name resolves to global, the ClientHello's
@@ -350,7 +357,7 @@ Stated plainly, because an SDK that overstates itself costs you a week:
 | On PostgreSQL, a custom event sink that names no scope, or that cannot write inside the store's transaction (it lacks `write` and `stored`), gets the summary and its event as two writes, so if its `emit` fails the summary stays stored without its event; the SDK's own sinks write both in one transaction | Declared (M20a, M21a) |
 | Under a `ContextPolicy` an agent is sent its `tool_profile`'s tools even when its own `permission_policy` permits others; a call to one of those is refused as an unknown tool | Phase 4's policy engine, which can list what a checker permits |
 | Context compaction for a run without a `ContextPolicy`: a plain run still sends its full history every turn. A run carrying one, as every orchestrated run does since M20, compacts at 0.75 of its context window | Opt in with `RunConfig.context_policy` |
-| Budget enforcement (cost is measured and recorded, never limited); retention and partitioning of stored rows | Phase 2 / Phase 8 |
+| Retention and partitioning of stored rows (budgets are enforced: a plan's since M17 and M19, a plain run's since M48) | Phase 8 |
 | A second wire format (for example Anthropic's native Messages API) | Deferred by choice; the contract was checked against it |
 | Enforcing structured output | Phase 2. The slot exists and is unused |
 

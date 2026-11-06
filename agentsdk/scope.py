@@ -27,6 +27,7 @@ class ToolScope(RunScope):
     its fields for storability (DECISION-53461588) and a store is not a value. The
     underscored fields are the orchestrator's (M19): its plan tool needs the run's event
     stream, control, Runner and budget lease, and an ordinary tool has no use for them.
+    The lease alone is also read through `budget_lease`, for a tool that delegates.
     """
 
     node_id: str | None = None
@@ -60,6 +61,16 @@ class ToolScope(RunScope):
         # store finds the same ledger.
         if self.ledger_run_id is not None and canonical_id(self.ledger_run_id) is None:
             raise ValueError(f"ledger_run_id must be None or a canonical UUID as text, got {self.ledger_run_id!r}")
+
+    @property
+    def budget_lease(self) -> Any:
+        """The lease governing the calling run, None for a run without one (M48 round 1, F-A).
+
+        A tool that spawns a child through `SubagentPool.spawn` passes this as its `lease`, so
+        the child spends from the run's ceiling; a spawn passed no lease runs the child
+        ungoverned. Read-only: the lease is the run's, set when the run starts.
+        """
+        return self._lease
 
 
 class AttributedArtifacts:

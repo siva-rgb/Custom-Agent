@@ -1,4 +1,4 @@
-# Product specification — custom-agent-sdk (Phase 0 to Phase 5)
+# Product specification — custom-agent-sdk (Phase 0 to Phase 5A)
 
 > Status: draft. A coding agent must not implement product code until this specification is approved through Genesis.
 
@@ -171,7 +171,7 @@ builds on the migration and the types the last one added.
 |---|---|
 | P2-D15 Plan storage | The planner emits a JSON document validated against a shipped schema, stored as an immutable `PlanVersion` with `parent_plan`; a `RunStateStore` holds node status. Taken as settled, because ADR-03 already requires it |
 | P2-D16 Acceptance criteria | Deterministic only in this increment: output validates against `expected_output_schema`, a named artifact exists with a recorded checksum, a named tool returns success. A `critic` criterion parses but is refused at runtime until Phase 3 |
-| P2-D17 Loops | No loop nodes; convergence goes through replanning bounded by `max_replans`, so ADR-02 stays DAG-only. Reopening it remains Phase 5A's business (I-01) |
+| P2-D17 Loops | No loop nodes; convergence goes through replanning bounded by `max_replans`, so ADR-02 stays DAG-only. Reopening it remains Phase 5A's business (I-01); Phase 5A keeps plans DAG-only and builds no loop nodes (P5A-D3) |
 | P2-D18 Replanning | Automatic while budget remains and the replan count is under its limit; a completed side-effecting node is never rerun. `PlanNode.side_effecting` defaults to True, so the unsafe case is the default |
 | P2-D19 Budget numbers | Reservation cap 40% of the unallocated pool; nodes without a proposal split that pool equally; orchestrator reserve 20% of the run ceiling; unallocated reserve 20%. All four are `BudgetPolicy` defaults (I-05) |
 | P2-D20 Prices | A dated price table ships in the package, a caller's `ModelPricing` overrides it, and a USD budget on a model absent from it is a configuration error at the call site. Token ceilings always work (I-13) |
@@ -1132,6 +1132,99 @@ The attacks to design against are:
   - **Checked against the store, the provider and the commands' and servers' own output, on both stores,** each check naming its subject with a witness independent of the property (KNOWLEDGE-1afcf6b2): no connection but to the allowed pair succeeded, each refusal recorded with its reason; the server reached nothing and nothing of it remained; the snapshot restored only in its tenancy and within bounds; the plan stopped within one command's cost of its ceiling, every command charged at least its reading.
   - **Repetitions:** ten times on `DockerProvider` with the children's start order shuffled and random delays, as a live-marked test before review; the gates run the same plan on `FakeProvider`. A check whose subject never happened fails in every mode (DECISION-a7d6a1f5).
 
+### Phase 5A, increment 1: the general preset (M48 to M51)
+
+Until now every agent was built by its caller: a spec, instructions, a tool list and a `Runner` wired
+with them. Phase 5A gives the SDK a ready general agent (DECISION-dd87feb8, option B), as a consumer
+of Phases 2 to 5, not a replacement for their governance: it runs inside a budget, the sandbox and
+the approval manager, and records what any run records. Increment 1 is the preset and a
+general-purpose subagent, measured against the raw Claude Agent SDK on a larger task set. Increment 2
+is the model-driven autonomous mode, specified once increment 1's measurement exists.
+
+**What exists** (inventory of 2026-11-05):
+- no tool is registered by default, and an empty `tool_profile` denies everything (FR-35);
+- the host file tools take a root on the host and are Windows-only; the workspace tools run in the
+  hardened container and are added per run when the spec has a workspace (FR-146);
+- a plain run has no budget (backlog I-04), no compaction unless a `ContextPolicy` is passed, and 10
+  turns by default; a plan's child is briefed with 4; a run's workspace starts empty unless it
+  starts from a snapshot, and is removed when its run ends unless kept;
+- no preset or factory exists, and the ADR-12 comparison (M15) covers 12 read-only tasks: 35 of 36
+  against 36 of 36, the one failure a provider outage, at about a quarter of the Claude arm's cost.
+
+**The decisions.** P5A-D1 to P5A-D4 were taken at the phase's start (DECISION-e66f1af4); P5A-D5 to
+P5A-D14 were accepted on 2026-11-05 (DECISION-2cdd97da), and P5A-D5, P5A-D11, P5A-D12 and P5A-D13
+amended by the owner after the spec review (DECISION-abd83872).
+
+| Decision | P5A-D1 to P5A-D14, 2026-11-05 |
+|---|---|
+| P5A-D1 Branch | Local `main` fast-forwarded to M47; Phase 5A works on `phase-5a`; `phase-5` stays frozen as Phase 5's record |
+| P5A-D2 Increments | Increment 1: the general preset, the general-purpose subagent and a broader capability eval. Increment 2: the model-driven autonomous mode, informed by increment 1's measurement |
+| P5A-D3 Autonomy | Increment 2 is ad hoc delegation: the agent spawns subagents through a tool when it chooses, every spawn through the `SubagentPool`, budget leases, the sandbox and the approval manager. Orchestrated plans stay DAG-only: ADR-02 is amended, not replaced, and bounded loop nodes (I-01) stay unbuilt |
+| P5A-D4 Exit signal | The ADR-12 comparison rerun with the general preset on a larger task set, its gaps reported as measured; and every governance property -- budgets, sandbox, approvals, tenancy -- held under contention. Delegation tasks join the set with increment 2's tool |
+| P5A-D5 Preset | `general_agent(...)` returns the spec and run configuration of a general agent: shipped instructions, a tool profile, a workspace spec, a budget, a context policy and a turn limit, each overridable; nothing changes for a caller who does not use it. The decision's "tools to register" are, in FR-146's terms, the workspace tools a run with a workspace is given |
+| P5A-D6 Tools | Sandbox only: the preset's tools are the workspace tools, so files, shell and code run in the hardened container and the network only by the workspace's `egress`. The host file tools and `fetch_url` are not in its profile |
+| P5A-D7 Approval | The preset's `run_command` is `auto`: the hardening does not depend on approval (P5-D10). `export_workspace_file`, the only way a file leaves, needs approval. A caller may require approval for every command |
+| P5A-D8 Budget | Budgets for plain runs (I-04): a single run takes a `BudgetPolicy` and is stopped `budget_exceeded` at its ceiling, model calls and compute alike. The preset always has one |
+| P5A-D9 Long tasks | The preset applies `ContextPolicy()`, 40 turns, and a model whose context window the registry knows |
+| P5A-D10 Instructions | Shipped as SDK source with a version (`general-v1`, ...) the manifest records; a change is a new version and a new `agent_spec_hash`. Tuned on at least two upstream providers through the gateway, with no provider-specific wording (NFR-1) |
+| P5A-D11 Subagent | A general-purpose subagent from the same preset, briefed and depth-limited as any child (FR-70 to FR-72), with its own workspace; an orchestrator role now, and the spec increment 2's delegation tool spawns. Its turns come from its briefing, which an orchestrator sets per role (`role_turns`) |
+| P5A-D12 Eval | ADR-12 grows with sandbox tasks, each checked by its result in the workspace; 3 repetitions; both arms on the same model and turn limit. The Claude arm runs the pinned CLI in a disposable container with the task's files, its local image built only with the owner's approval. This SDK's arm refuses every export, each refusal recorded; delegation tasks wait for increment 2 |
+| P5A-D13 Records | One migration, `0028`: the manifest's `preset`. The report names the preset's version and reports every gap as measured |
+| P5A-D14 Milestones | M48 budgets for plain runs; M49 the preset and the subagent (example 42); M50 the larger eval; M51 the comparison and tuning, increment 1's exit (example 43) |
+
+#### M48: budgets for plain runs
+
+- FR-172: A top-level run can be given a budget (P5A-D8, closing backlog I-04).
+  - **`RunConfig.budget`**, a `BudgetPolicy` or None (the default).
+  - **Mechanism:** the `Runner` turns it into a lease of a single-run governor, `BudgetGovernor.for_single_run(policy)`, whose one lease holds the whole ceiling, in USD, tokens or both -- no reserve is set aside, since no replan or sibling can claim it. The lease is passed where `budget_lease` is today, so the loop's check before each model call (FR-68) and `run_command`'s before each command (FR-157) are unchanged; each model call's and each command's cost is charged when it ends.
+  - **The end:** a run whose ceiling is spent ends `failed`, reason `budget_exceeded`, after the call or command that crossed it is recorded; the overshoot is at most that one call or command, as for a child. A run whose final answer is the call that crossed its ceiling completes, its spend over the ceiling recorded, as a child does (DECISION-6a07dbc6).
+  - **Refused before the run starts:** `ValueError` for a budget beside a `budget_lease`, on a run the `SubagentPool` places, or on an orchestrator's run, which has its own (FR-67); `UnpricedModel` for a USD ceiling on a model nothing prices (FR-69). A token ceiling applies whatever the prices.
+  - **Recorded:** the manifest's `budget_policy`, and `budget_reservations` naming the run's one lease; the run's spend in its `runs` row and its `RunResult`, as a child's is.
+- FR-173: **Honest spend for a plain run** (NFR-23): its recorded spend equals the sum of its `ModelCalled` and `WorkspaceCommandEnded` costs. A command's cost is None only when `cpu_second_usd` is None, and is then charged nothing (FR-157). A plain run with no budget records exactly what it recorded before M48 (NFR-50).
+
+#### M49: the general preset and the general-purpose subagent
+
+- FR-174: **`general_agent(...)`** (`agentsdk.presets`) returns a `GeneralAgent` holding an `AgentSpec` and a method `config(tenant_id, project_id, **overrides) -> RunConfig` (P5A-D5).
+  - **Arguments:** `model` (a registry id, required, which becomes `AgentSpec.preferred_model`), `image` (a digest-pinned image, required), `budget` (a `BudgetPolicy`, required), and optionally `registry` (a `ModelRegistry`, the shipped `default_registry()` when None), `egress`, `files` (FR-175), the workspace's limits, `keep` (False), `max_turns` (40), `context_policy` (`ContextPolicy()`), `run_command_approval` (`auto`), `export_approval` (`REQUIRE_APPROVAL`) and `instructions` (the shipped version's text).
+  - **Its spec:** id `general`, the shipped instructions, the tool profile `run_command`, `read_workspace_file`, `write_workspace_file`, `list_workspace`, `export_workspace_file`, and a `WorkspaceSpec` with the arguments' limits, `egress`, files, `keep` and approvals (P5A-D6). No host tool and no MCP server is in its profile.
+  - **Its configuration:** `config()` returns a `RunConfig` with the preset's `budget`, `max_turns` and `context_policy`; `overrides` replace any field of it.
+  - **Refused, `ValueError`, when it is built:** a model whose context window `registry` does not know (P5A-D9, FR-78) -- a caller whose `Runner` registers the model passes that registry -- a budget of the wrong type, and an image not pinned by digest.
+  - **Approval:** `run_command` follows `run_command_approval`; `export_workspace_file` follows the new `WorkspaceSpec.export_approval`, whose default, `AUTO`, keeps every other workspace as it was (P5A-D7, NFR-50).
+- FR-175: **A workspace can start with files.** `WorkspaceSpec.files`, a mapping of relative paths to bytes, is written into a run's workspace when it is created, through the same checked tar as `import` (P5-D8): regular files only, with the path, size and count bounds, counted against `max_workspace_bytes` before anything is written.
+  - **Recorded:** the manifest's `workspace` record and the `workspaces` row carry the files as path to SHA-256, never the content, and name them only when files are given, as `egress` is (NFR-49); `export_approval` is named only when it is not `AUTO`; `agent_spec_hash` is unchanged by either.
+  - **Refused, `ValueError`:** files with `from_snapshot`, and files on a `scope="plan"` workspace spec, since the children sharing it could name different files.
+- FR-176: **The instructions** ship as SDK source, versioned (`general-v1` first) (P5A-D10). Migration `0028` adds `execution_manifests.preset`, JSONB: the preset's name and version, NULL for every other run and for every run before it, idempotent as every migration is (FR-17). A changed text is a new version; `agent_spec_hash` changes with it. The text names no provider, model or provider-specific feature.
+- FR-177: **The general-purpose subagent:** `general_subagent(...)` returns the spec of a child (P5A-D11).
+  - **Arguments:** `model`, `image`, and optionally `registry`, `egress`, `files`, the workspace's limits, `run_command_approval`, `export_approval` and `instructions` (its own shipped text, written for a briefed task that answers its parent). No `budget`, `max_turns` or `context_policy`: a child's budget is its lease, its turns its briefing's and its context policy the orchestrator's.
+  - **Turns:** `Orchestrator(..., role_turns=...)` maps a role to the turns its children are briefed with, the default 4 (`_DEFAULT_MAX_TURNS`) for any role it does not name; `role_turns` is recorded in the orchestrator's manifest. The general subagent's documented setting is 20.
+  - Each child gets its own workspace (P5-D11), its own lease and its depth, as any child.
+- FR-178: **Example 42** (`scripts/42_general_agent.py`) runs the preset, offline (`FakeProvider`, a scripted model), on Docker, and live with the gateway model. Its checks, each naming its subject with a store witness and failing when the subject never happened (KNOWLEDGE-1afcf6b2, DECISION-a7d6a1f5):
+  - **a task from the workspace's files** is solved by code the run wrote and ran: witnessed by the run's `workspace_commands` rows, a command among them reading those files, and the result checked in the kept workspace through `export`;
+  - **a runaway is stopped by its budget:** a ceiling set below one turn's cost, so completion cannot reach it, ends `budget_exceeded`, its spend at or above the ceiling minus one call;
+  - **an export waits for approval:** its interruption and decision rows, and no artifact before the decision;
+  - **a plan whose role is the general subagent** completes on both stores, each child in its own workspace, briefed with its `role_turns`.
+
+#### M50: the larger comparison
+
+- FR-179: The ADR-12 harness grows (P5A-D12, FR-61 to FR-63 amended). The report states the task count; every acceptance criterion covers every task present.
+  - **Tasks:** a new kind, `sandbox`, of about 24 tasks: shell work, code that must run and pass the task's own check, files written and edited, a fetch through the workspace's egress to an allowed host, and a multi-step repair. The 12 earlier tasks stay. A sandbox task carries its files, a turn limit and a checker that reads the workspace after the run -- files and outputs, not answer text alone -- and, as before, a good, a bad and a tricky outcome that test the checker. Delegation tasks join with increment 2's tool (P5A-D4).
+  - **This SDK's arm** runs the general preset with the task's files (FR-175), the task's allowed host as its egress, `keep=True`, tenant `adr12` and project `comparison`. Its approver refuses every export at once, each refusal recorded. The checker reads the kept workspace through the provider's `export` (FR-143's checked tar) -- the host never opens a workspace path (NFR-43) -- then releases it; runs and workspaces are removed by their recorded ids.
+  - **Budget per task:** one rule for every task of a kind -- a USD ceiling of ten times that kind's median cost on this SDK's arm in M15 (sandbox tasks: ten times the multi-step median), and a token ceiling likewise -- recorded in the report; a run that ends `budget_exceeded` is reported as its own terminal status.
+  - **The Claude arm** runs the Python `claude_agent_sdk` driving the CLI pinned in `evals/adr12/package.json`, both inside a disposable container: the task's files copied in, tools `Read`, `Glob`, `Grep`, `Bash`, `Write` and `Edit`, the task's turn limit, its working folder read back for the checker, and the container removed after. Its image is built locally from a Dockerfile in `evals/adr12/`, by the owner or with the owner's approval; nothing pulls or builds it in a gate, and it holds no credential. The gateway's key reaches only the container's environment, never the image or a command line. It runs with ordinary networking, to reach the gateway and the fetch task's host, while this SDK's arm reaches only its allow list; the report states that asymmetry.
+  - **Same model and turns:** both arms use one model through the gateway and the task's turn limit; the report names the model, both SDK versions, the preset's version and the image digests.
+- FR-180: The harness's own tests, offline, cover every new task's checker against its good, bad and tricky outcomes, and both arms' construction, as M15's do.
+
+#### M51: the comparison, tuning, and increment 1's exit
+
+- FR-181: **The comparison** runs every task three times on each arm (P5A-D4), and the report gives, per kind and overall: pass rates, terminal statuses, turns, tokens, cost and wall time, each gap reported as measured, never as a pass or fail of this SDK (FR-62).
+- FR-182: **Tuning** happens between comparisons, on the preset alone: its instructions may change between runs of the sandbox tasks on at least two upstream providers; each version is recorded with the providers it ran on, and the final report is one comparison of the final version (P5A-D10).
+- FR-183: **The exit signal** (P5A-D4) is a test and an example. `scripts/43_general_contention.py` runs general agents and general subagents of two tenancies at once, starts shuffled with random delays. The hostile attempts are commands the example issues through scripted children, as FR-171's are, so each subject always happens; live, the gateway model is given each attempt verbatim and one that declines fails its check:
+  - each run is stopped by its own budget within one call's or command's cost of its ceiling;
+  - each workspace reaches nothing but its allowed host: an IP literal, an unlisted host, a privately resolving name, the host's database port and a neighbour are each refused or unreachable, against a control, as example 41's are;
+  - every export waits for approval and is recorded with its decision;
+  - nothing of one tenancy is read by the other -- its workspace, rows, snapshot or exported artifact -- and nothing remains after `aclose()`.
+  - **Checked against the store, the provider and the commands' own output, on both stores,** each check naming its subject with a witness independent of the property (KNOWLEDGE-1afcf6b2), ten times on `DockerProvider` before review and on `FakeProvider` in the gates, under DECISION-a00773b0 and DECISION-a7d6a1f5.
+
 ## Non-functional requirements
 
 - NFR-1: Provider-agnostic. Switching between `openai.*`, `bedrock.*`, `azure.*`, and `vertex_ai.*` models is a configuration change only — no SDK source file changes, no new adapter.
@@ -1189,6 +1282,9 @@ The attacks to design against are:
 - NFR-47: Nothing leaves a workspace except a tool result, an exported artifact, a snapshot inside Docker, or a connection the proxy allowed to a pair its spec names (amends NFR-43). No connection reaches a non-global address, another workspace or the host, from a command or a sandboxed server.
 - NFR-48: No command is charged less than it could have used: its `cpu_seconds` is its own reading, or else its wall time times its `cpus` limit, and nothing a command prints changes it.
 - NFR-49: Runs whose workspaces have no `egress`, no snapshot and no sandboxed server send the same requests and record the same events and rows as before M43, apart from the new columns, recorded empty, and `cpu_seconds`; their `agent_spec_hash` is unchanged.
+- NFR-50: A run with no `budget`, no preset and no workspace `files` sends the same requests and records the same events, rows and manifest as before M48, apart from the manifest's `preset` column, NULL (FR-176); a workspace spec without `files` and with the default `export_approval` has the record it had; an orchestrator without `role_turns` briefs every child with the turns it did (FR-172, FR-174, FR-175, FR-177).
+- NFR-51: Phase 5A adds no runtime dependency (NFR-40). The Claude arm's image, its Dockerfile and its CLI are eval-only, under `evals/adr12/`, and nothing in `agentsdk/` imports, pulls or builds them.
+- NFR-52: The preset stays provider-agnostic (NFR-1): its instructions, tools and defaults name no provider, model or provider-specific feature, and it runs on any registry model whose context window is known.
 
 ## Constraints
 
@@ -1218,7 +1314,8 @@ The attacks to design against are:
 - No durable interruptions, replay, or idempotency (Phase 6).
 - No context compaction in the first increment. The owner moved it from Phase 7 to Phase 2's second increment on 2026-09-14.
 - M14 exports a minimal span tree and no content; the full OpenTelemetry mapping and compatibility enforcement stay in Phase 8.
-- M15 measures; it builds no general-agent capability. A general-agent preset and a model-driven autonomous mode alongside the DAG are Phase 5A (owner, 2026-09-14).
+- M15 measures; it builds no general-agent capability. A general-agent preset and a model-driven autonomous mode alongside the DAG are Phase 5A (owner, 2026-09-14): the preset is its first increment, above; the autonomous mode its second.
+- Phase 5A's first increment has no delegation tool and no autonomous mode (increment 2, P5A-D3), no host file tool, `fetch_url`, web search or MCP server in the preset's profile (P5A-D6), no skills or instruction bundles, no resuming a preset's run, and no delegation task in the comparison (P5A-D12); the Claude arm's image is never pulled or built in a gate.
 - No streaming of model tokens. `RunHandle` (M12) streams runtime events, not tokens.
 - No structured-output enforcement beyond the unused schema slot.
 - None of the three Stage 2 products is built or started.
@@ -1555,6 +1652,13 @@ found the defects, turned into assertions.
 - AC-104: FR-168 to FR-170, on both stores: a snapshot restores the state at its taking, links kept inside Docker; another tenancy's, a released one and one past the bound are refused; nothing of a snapshot remains after its release or reaping.
 - AC-105: FR-171, the exit signal: example 41 holds every check ten times on `DockerProvider`, shuffled with random delays, and the gates hold its plan on `FakeProvider`; each check fails without its subject -- a test removes, in turn, the internal network, the proxy's address check, its SNI check, the server's container removal, the snapshot's tenancy check and the compute charge, and each removal fails the check that names it.
 
+### Phase 5A, increment 1
+
+- AC-106: FR-172 and FR-173, on both stores: a plain run with a USD ceiling, and one with a token ceiling, each ends `budget_exceeded` after the model call that crossed it is recorded, unless that call was its final answer, when it completes with its spend recorded; one crossed by a command's compute ends the same way, the command recorded; a budget beside a lease, on a pool-placed child or on an orchestrator's run raises `ValueError`, and a USD ceiling on an unpriced model raises `UnpricedModel`, each before the run starts; a run without a budget records what it did before M48.
+- AC-107: FR-174 to FR-178, on both stores: each refusal of FR-174 and FR-175 raises before anything is created, and files past a bound are refused before anything is written; files are recorded as path and SHA-256 only; an export waits for approval and a command does not; the manifest's `preset` names `general` and its version, and is NULL for a run without the preset; an orchestrator's `role_turns` briefs the general subagent with its turns and every other role with 4; example 42 holds every check offline, on Docker and live, and each of its checks fails without its subject.
+- AC-108: FR-179 and FR-180: every task's checker accepts its good outcome and rejects its bad and tricky ones; this SDK's arm runs a sandbox task with its files and egress, refuses its exports, reads the kept workspace through `export` and releases it; the Claude arm runs a sandbox task in its container and is read back, with no credential in its image; nothing in a gate pulls or builds an image.
+- AC-109: FR-181 to FR-183, the exit signal: the report covers every task three times on each arm, per kind and overall, with the preset's version, the model and both SDKs' versions; example 43 holds every check ten times on `DockerProvider`, shuffled with random delays, and the gates hold it on `FakeProvider`; each check fails without its subject -- a test removes, in turn, the plain run's budget check, the export's approval, the workspace's egress check, and the tenancy filter (the `WorkspaceManager`'s key by tenant and project, FR-138, and the store's tenant predicate, each removed on its own), and each removal fails the check that names it.
+
 ## Risks
 
 - **A published history publishes every file ever committed.** Removing a file from the tree does not remove it from history, so an exclusion applied only to the current tree publishes the excluded file anyway. Mitigation: decide what is published per commit, not per tree, before the first push.
@@ -1580,7 +1684,7 @@ found the defects, turned into assertions.
 - **Telemetry can carry tenant data out of the database.** Mitigation: M14 exports no content (FR-59), every span carries its tenant and project so a backend can separate them, and AC-46 walks every attribute for content and credentials.
 - **The GenAI conventions are in Development status,** so attribute names can change. Mitigation: one pinned version, recorded on every span (P2-D12).
 - **The comparison may not run as designed.** The Claude Agent SDK may not accept the gateway, or the gateway's Claude model ids may not map to its model names. Mitigation: FR-63's pre-flight stops M15 for an owner decision instead of letting a substitute stand in.
-- **Twelve tasks cannot prove general capability.** Mitigation: the report states its task set and makes no general claim; the set grows with Phase 5A.
+- **Twelve tasks cannot prove general capability, nor can Phase 5A's larger set.** Mitigation: the report states its task set and makes no general claim; the set grew with Phase 5A (FR-179), and each gap is reported as measured.
 - **Name resolution still shares the default pool.** The fetch tool resolves DNS through `loop.getaddrinfo`, which runs on the executor store calls use, and M11 lets fetch calls run in parallel. Mitigation: bounded by `max_concurrent_tools`; resolution moves to an SDK pool if a workload shows contention.
 - **A running walk can delay interpreter exit** by up to its 20-second budget, because pool threads are joined at exit. Mitigation: stated; the walk budget bounds it.
 - **Artifact reads carry hex.** psycopg reads `BYTEA` as text by default, so a 10 MiB read carries about 20 MiB. Mitigation: bounded by the cap and the pool size; the store reads `content` in binary where it can.

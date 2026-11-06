@@ -60,7 +60,7 @@ from .interruptions import (
 from .calibration import CalibrationReport, _checked, calibrate
 from .claimlock import ClaimLock
 from .primitives import ContentProvenance, unstorable_reason
-from .budget import BudgetLease, tokens_of
+from .budget import SINGLE_RUN, BudgetGovernor, BudgetLease, BudgetPolicy, tokens_of
 from .prices import PRICE_TABLE_DATE, shipped_pricing
 from .registry import ModelRegistry, call_cost, default_registry
 from .scheduler import ProviderSlots, RunSlots, SchedulerLimits
@@ -214,9 +214,13 @@ class RunConfig:
     scheduler_limits: SchedulerLimits | None = None
     # FR-67, FR-68: this run's claim on a plan node's reservation, handed over by
     # whatever drives the plan -- the orchestrator M19 brings. Application code
-    # driving a plain run leaves it None; budgets for plain single-agent runs are
-    # out of scope (backlog I-04, DECISION-c274eb02).
+    # driving a plain run leaves it None, and gives the run a budget below instead.
     budget_lease: BudgetLease | None = None
+    # FR-172 (M48, closing backlog I-04): a top-level run's own budget. The Runner turns
+    # it, once at the start, into the one lease of a single-run governor and runs on that
+    # lease as a plan's single child runs on its own (DECISION-6a07dbc6). Refused beside a
+    # budget_lease and on a run the SubagentPool placed.
+    budget: BudgetPolicy | None = None
     # FR-70 to FR-72 (M18): how deep this run sits under its top-level parent, and
     # the schema its answer must match. Both are set by the SubagentPool when it
     # spawns a child, never by application code, as budget_lease is
@@ -947,6 +951,7 @@ class Runner:
         errors raise here, at the call site, before any run is started. The run
         belongs to the event loop that started it.
         """
+        config = self._budgeted(config)
         opened = self._open(spec, config)
         loop = asyncio.get_running_loop()
         control = RunControl()
@@ -959,6 +964,24 @@ class Runner:
         control.task = asyncio.ensure_future(self._drive(spec, task, config, opened, events, control))
         control.task.add_done_callback(handle._finished)
         return handle
+
+    @staticmethod
+    def _budgeted(config: RunConfig) -> RunConfig:
+        """FR-172: a run's own budget, as the lease the rest of the run already obeys.
+
+        A fresh governor per run, so one run's spend never stops another's. Refused where
+        the run is already governed: beside a lease (an orchestrator's run holds one) and on
+        a run the SubagentPool placed, whose lease is its parent's to give.
+        """
+        if config.budget is None:
+            return config
+        if config.budget_lease is not None:
+            raise ValueError("a run with a budget_lease is governed by it: give it no budget as well")
+        if config.depth is not None:
+            raise ValueError("a run the SubagentPool placed is governed by its lease: give it no budget")
+        # The governor refuses anything but a BudgetPolicy, naming it.
+        lease = BudgetGovernor.for_single_run(config.budget).lease(SINGLE_RUN)
+        return replace(config, budget_lease=lease)
 
     def _open(self, spec: AgentSpec, config: RunConfig) -> _OpenedRun:
         """Everything decided before a run starts; configuration errors raise here."""
