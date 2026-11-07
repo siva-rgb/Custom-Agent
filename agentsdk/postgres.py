@@ -949,6 +949,9 @@ class PostgresRunStore:
         mcp_servers = manifest.get("mcp_servers")
         # FR-140 (0019): NULL for a run without a workspace, and every manifest before M38.
         workspace = manifest.get("workspace")
+        # FR-176, FR-177 (0028): NULL for a run without a preset or role_turns, and every manifest before M49.
+        preset = manifest.get("preset")
+        role_turns = manifest.get("role_turns")
         conn.execute(
             """
                 INSERT INTO execution_manifests (
@@ -957,12 +960,12 @@ class PostgresRunStore:
                     model_adapter_version, tool_spec_hashes, policy_version,
                     max_output_tokens, reasoning_effort, pricing, scheduler_limits,
                     budget_policy, budget_reservations, price_table_date, tools_sent, gate_policy,
-                    approval_timeout, mcp_servers, workspace
+                    approval_timeout, mcp_servers, workspace, preset, role_turns
                 )
                 -- Tenancy from the run row, as everywhere else. Inside
                 -- start_run the row is written in this same transaction, so
                 -- the SELECT sees it.
-                SELECT r.run_id, r.tenant_id, r.project_id, %s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s
+                SELECT r.run_id, r.tenant_id, r.project_id, %s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s
                 FROM runs r
                 WHERE r.run_id = %s AND r.tenant_id = %s AND r.project_id = %s
             """,
@@ -987,6 +990,8 @@ class PostgresRunStore:
                 approval_timeout,
                 Jsonb(mcp_servers) if mcp_servers is not None else None,
                 Jsonb(workspace) if workspace is not None else None,
+                Jsonb(preset) if preset is not None else None,
+                Jsonb(role_turns) if role_turns is not None else None,
                 scope.run_id,
                 scope.tenant_id,
                 scope.project_id,

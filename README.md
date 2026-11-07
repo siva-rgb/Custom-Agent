@@ -204,6 +204,15 @@ persisted so you can reconstruct exactly what happened afterwards.
   (M48). A tool that spawns a child from such a run passes its scope's
   `budget_lease` to `SubagentPool.spawn(lease=...)`, so the child spends from the
   same ceiling; a child spawned with no lease is not governed by it.
+  `agentsdk.presets.general_agent(model=..., image=..., budget=...)` is a ready
+  general agent: shipped instructions (`general-v1`), the five workspace tools
+  and nothing on the host, a workspace that may start with `files`, and
+  `.config(tenant, project)` giving its budget, 40 turns and `ContextPolicy()`.
+  Its commands run without asking; an export waits for approval
+  (`WorkspaceSpec.export_approval`). `general_subagent(...)` is the same agent as
+  an orchestrator's role, briefed with `Orchestrator(role_turns={role: 20})`.
+  The manifest records the preset and its version, and an orchestrator's
+  `role_turns` (M49, example 42).
   A workspace with `WorkspaceSpec(egress=("host:port", ...))` reaches only
   those pairs, through a network and a proxy of its own: HTTPS `CONNECT` to a
   listed pair, every address the name resolves to global, the ClientHello's
@@ -736,6 +745,7 @@ credentials -- which is also how the test suite checks them.
 | [`39_sandboxed_mcp.py`](scripts/39_sandboxed_mcp.py) | A sandboxed MCP server: the M33 fixture, given as a file, runs over a workspace of its own and serves a plan's child; on Docker it tries the network, the host, a neighbour's proxy and a name lookup, and each fails against a control. Its workspace is recorded scope `server` with no run, and nothing of it remains after `aclose()` (FR-164 to FR-167) |
 | [`40_snapshots.py`](scripts/40_snapshots.py) | Snapshots: a run builds a workspace -- a file, a folder, a link -- and pauses between commands while the application snapshots it; the run then changes it, and a second workspace started from the snapshot reads the state at the snapshot, the link still a link. Another tenancy's workspace cannot start from it, nor this one's once it is released, and after `aclose()` nothing of either remains (FR-168 to FR-170) |
 | [`41_increment2_contention.py`](scripts/41_increment2_contention.py) | Increment 2's exit signal: one plan whose children act at once -- one allowed one host tries every other way out, a name that rebinds between loopback and a public address among them; one uses a hostile sandboxed MCP server that tries the network, the host and a neighbour and is killed with its `Runner`; one's workspace, holding a link and a file past a later bound, is snapshotted between its commands and restored only in its tenancy and within bounds; one burns CPU until its compute ceiling stops it. Every check is against the store, the provider and the commands' own output, each with a witness that its subject happened. `--offline` on `FakeProvider`; `--scripted` and live need Docker and the internet (example.com and rbndr.us) (FR-171) |
+| [`42_general_agent.py`](scripts/42_general_agent.py) | The general preset: a run whose workspace starts with a task's files solves it with a program it writes and runs, read back from the kept workspace; a runaway is stopped by its budget after the one call that crossed it; an export waits for approval while commands do not; and a plan whose role is the general subagent completes, each child in its own workspace with its `role_turns`. Every check is against the store and fails when its subject never happened. `--offline` on `FakeProvider`; `--scripted` and live need Docker (FR-174 to FR-178) |
 
 ```bash
 python scripts/02_custom_tools.py --offline

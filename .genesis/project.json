@@ -9,7 +9,7 @@
     "non_goals": [],
     "trust_boundary": "local repository",
     "created_at": "2026-09-05T14:48:57.894Z",
-    "updated_at": "2026-11-06T11:18:06.204Z"
+    "updated_at": "2026-11-07T18:08:23.503Z"
   },
   "policy": {
     "ponytail": "full",
@@ -25,7 +25,7 @@
   "lifecycle": {
     "phase": "build",
     "status": "active",
-    "active_task": "M49-general-preset",
+    "active_task": "M50-adr12-sandbox",
     "blocker": null,
     "next_action": "Run the task pre-flight."
   },
@@ -34,8 +34,8 @@
     "type": "new-product",
     "started_at": "2026-09-05T14:48:57.897Z",
     "spec_check": {
-      "at": "2026-11-05T16:53:00.675Z",
-      "source_hash": "105ae58d630780c2d342c97cd62a9da707db53612ad0f6cd04522b67fc79d238",
+      "at": "2026-11-07T15:18:28.813Z",
+      "source_hash": "f7c451e5997b463bfe6a064ec7354476d097796106d84dd0c778098444b4f4b1",
       "requirements": [
         "AC-1",
         "AC-10",
@@ -384,13 +384,13 @@
       ]
     },
     "plan_check": {
-      "at": "2026-11-05T16:53:01.109Z",
+      "at": "2026-11-07T15:43:53.167Z",
       "source_hash": "0c3ab68837bfbf04a960dcc410743a84ce23df8ce22aa4995c3848f1f822da13"
     },
     "plan_approval": {
       "human": "siva-rgb (owner)",
-      "reason": "Plan unchanged after the FR-172 and AC-106 clarification; M48 resumes.",
-      "at": "2026-11-05T16:53:01.319Z",
+      "reason": "M49 round 1 close: plan re-approved after FR-177 and NFR-50 amended",
+      "at": "2026-11-07T15:43:53.358Z",
       "source_hash": "0c3ab68837bfbf04a960dcc410743a84ce23df8ce22aa4995c3848f1f822da13"
     }
   },
@@ -746,12 +746,12 @@
         "NFR-8",
         "NFR-9"
       ],
-      "source_hash": "105ae58d630780c2d342c97cd62a9da707db53612ad0f6cd04522b67fc79d238",
+      "source_hash": "f7c451e5997b463bfe6a064ec7354476d097796106d84dd0c778098444b4f4b1",
       "approval": {
         "human": "siva-rgb (owner)",
-        "reason": "M48 pre-review F3: FR-172 and AC-106 state DECISION-6a07dbc6, a run whose final answer is the crossing call completes with its spend recorded; no other change.",
-        "at": "2026-11-05T16:53:00.873Z",
-        "source_hash": "105ae58d630780c2d342c97cd62a9da707db53612ad0f6cd04522b67fc79d238"
+        "reason": "M49 round 1 close: FR-177 states the role_turns refusals (F-A); NFR-50 names the role_turns column (F-B)",
+        "at": "2026-11-07T15:43:52.929Z",
+        "source_hash": "f7c451e5997b463bfe6a064ec7354476d097796106d84dd0c778098444b4f4b1"
       }
     }
   ],
@@ -2607,6 +2607,46 @@
       "status": "accepted",
       "source": null,
       "recorded_at": "2026-11-06T09:31:51.146Z"
+    },
+    {
+      "id": "DECISION-8aa24890",
+      "title": "M49 pre-flight: the preset marked on AgentSpec, the subagent recorded as general-subagent, three live runs per store (owner)",
+      "text": "FR-174 to FR-178 clarified, the SPEC unchanged. AgentSpec gains preset, None by default, a (name, version) pair that general_agent sets to (general, general-v1) and general_subagent to (general-subagent, general-subagent-v1); the Runner writes it to execution_manifests.preset (migration 0028), NULL when None, so a caller who takes the spec and builds their own RunConfig is still recorded. agent_spec_hash is unchanged by the field, since it hashes id, instructions and tool profile only; a new text is a new version and a new hash (FR-176). A general subagent's children record their own name and version, so the M50 report can tell them from a top-level preset run. Example 42 runs live on openai.gpt-4o-mini, the one model the shipped price table prices, so the preset's USD ceiling applies (a USD ceiling on an unpriced model is refused, FR-69): three runs per store. Docker Desktop, stopped at the owner's request, is started only when M49's Docker work begins; tests and code first on FakeProvider. Known from the code: export_workspace_file's approval is hard-coded AUTO today, and FR-174 adds WorkspaceSpec.export_approval with AUTO as its default (NFR-50).",
+      "status": "accepted",
+      "source": null,
+      "recorded_at": "2026-11-07T07:52:28.841Z"
+    },
+    {
+      "id": "DECISION-05d0a716",
+      "title": "M49 pre-flight: migration 0028 also records an orchestrator's role_turns (owner)",
+      "text": "FR-177 asks that an orchestrator's role_turns be recorded in its run's manifest, which had no column for it, while P5A-D13 allowed one migration for preset only. Owner: migration 0028 adds a second nullable JSONB column, execution_manifests.role_turns, beside preset; P5A-D13, FR-176 and FR-177 amended to say so; M49 requeued, then the spec and plan re-approved. Mechanism (author): Orchestrator(role_turns=...) validates a mapping of role names it holds to turns of 1 or more, briefs each child of a named role with its turns and every other role with 4, and Orchestrator.config passes the mapping on a new RunConfig.role_turns field, None by default, that the Runner records in the manifest and nothing else reads; NULL when None, so an orchestrator without role_turns records what it did before (NFR-50).",
+      "status": "accepted",
+      "source": null,
+      "recorded_at": "2026-11-07T08:13:17.218Z"
+    },
+    {
+      "id": "DECISION-2eebb3be",
+      "title": "M49 live runs: example 42 held 8 of 9 on openai.gpt-4o-mini; one run's model repeated a broken program (owner)",
+      "text": "Example 42 was run live through the gateway on openai.gpt-4o-mini, on Docker, under tenancies of its own (SYN-m49live-), from a scratchpad driver over the example's demonstrate(). The first attempt found a defect in the example, fixed before any run counted: the scripted planner's registry entry had no price, so the orchestrator's USD ceiling refused it (FR-69); it is now priced at zero, since it calls no provider. Then 3 runs on the memory store held all four checks; of 3 on Postgres, one failed the task check: the model wrote solve.py with a stray indent, read the IndentationError, and wrote and ran the identical program four more times until the run's 12 turns were spent, though the shipped text says to fix a failure rather than repeat it. The SDK recorded every command and the check failed as written, not vacuously; the run's other three checks held. Owner: recorded as measured, the model's repeat and not the SDK, and 3 more Postgres runs made: all held every check, 8 of 9 in all. Instruction tuning stays with M51 (P5A-D10). The live runs' 36 rows were removed by their tenancies.",
+      "status": "accepted",
+      "source": null,
+      "recorded_at": "2026-11-07T10:02:28.637Z"
+    },
+    {
+      "id": "DECISION-88bcbbaf",
+      "title": "M49 pre-review: six findings repaired in M49, F4 by the Runner checking the shipped text (owner)",
+      "text": "A fresh Sonnet 5.5 pre-reviewer probed M49 at runtime (no pytest, no repo edit); the tree and database matched the baseline afterwards, though it left one probe process running, which was stopped. Each finding was verified first-hand. F1 (blocking): WorkspaceSpec.files bounded the contents' sum while the transfer bounds the tar, headers and padding included, so files of 16776216 B, or 5000 of 3000 B (a 17.9 MB tar), passed construction and failed every workspace tool at creation; the bound is now the size of the tar the manager sends, beside the contents against max_workspace_bytes (any value over 0 is allowed, so that check is reachable and now tested). F2: example 42's task check never witnessed that the given files landed, so a model writing its own copy passed; it now requires the workspace row to name the files by SHA-256 and NOTES.md, which the task never needs, to be in the kept workspace byte for byte and never written by the run. F3: the preset read a model id at its last colon, the Runner at its first; now the first, and an empty client is refused. F4, owner: AgentSpec.preset survived dataclasses.replace with new instructions; the Runner now records a mark naming a shipped version as custom when the spec's text is not that version's (presets.recorded_preset), and a mark naming no shipped version as given. F5: Orchestrator(role_turns={}) records NULL, and config(role_turns=...) overrides instead of colliding. F6: egress and registry of the wrong kind raise ValueError. Each repair has a test and a killed mutant; 39 mutants in all, none surviving. Not changed: the critic gate's briefing keeps 4 turns, the role being the gate's, not an orchestrator role.",
+      "status": "accepted",
+      "source": null,
+      "recorded_at": "2026-11-07T10:50:29.919Z"
+    },
+    {
+      "id": "DECISION-2ee2b899",
+      "title": "M49 round 1 close: F-A refused at both routes, F-B amends NFR-50, no further review (owner)",
+      "text": "Round 1 (Fable 5.1) approved with nothing blocking; under DECISION-c697f36c it is the last round. F-A: Orchestrator.config() accepted a role_turns override that reached the manifest while children were briefed with the orchestrator own mapping. Owner chose refusal: config() raises ValueError on role_turns, and (owner, the second route found in the sweep) RunConfig refuses role_turns unless its budget_lease is an orchestrator lease. dataclasses.replace on an orchestrator config remains possible, as for gate_policy since M26 (owner accepted). Tests: refusals per route and a record-equals-briefings test against the runs rows; three mutants removing the repairs all killed. F-B: NFR-50 names the preset and role_turns columns, NULL; FR-177 states the refusals. SPEC and plan re-approved. Gates rerun on source hash 96af1956: unit 124, regression 3457, docker 171 passed.",
+      "status": "accepted",
+      "source": ".genesis/reviews/M49-review-prompt.md",
+      "recorded_at": "2026-11-07T17:53:02.824Z"
     }
   ],
   "knowledge": [
@@ -4007,9 +4047,9 @@
           "status": "pass",
           "evidence": {
             "human": "siva-rgb (owner)",
-            "reason": "M48 pre-review F3: FR-172 and AC-106 state DECISION-6a07dbc6, a run whose final answer is the crossing call completes with its spend recorded; no other change.",
-            "source_hash": "82e34ee0385cdac0a4b772a659a1829c34ec03a9374cb8b7fb5327be37c59b5d",
-            "observed_at": "2026-11-05T16:53:00.873Z"
+            "reason": "M49 round 1 close: FR-177 states the role_turns refusals (F-A); NFR-50 names the role_turns column (F-B)",
+            "source_hash": "96af195668d6bdf8a622b011d46760892cf8bc7705b14f35b60b467e01f9468e",
+            "observed_at": "2026-11-07T15:43:52.929Z"
           }
         }
       ],
@@ -4019,7 +4059,7 @@
       "failures": [],
       "limitations": [],
       "created_at": "2026-09-05T14:48:57.897Z",
-      "updated_at": "2026-11-05T16:53:00.873Z"
+      "updated_at": "2026-11-07T15:43:52.929Z"
     },
     {
       "id": "M1-primitives",
@@ -7452,7 +7492,7 @@
     {
       "id": "M49-general-preset",
       "outcome": "general_agent and general_subagent give a ready general agent in the sandbox, within a budget, its exports approved, recorded in the manifest",
-      "state": "active",
+      "state": "done",
       "risk": "high",
       "owner": null,
       "scope": [],
@@ -7474,29 +7514,49 @@
           "id": "unit",
           "command": ".venv\\Scripts\\python.exe -m pytest tests/test_general_preset.py -q -p no:cacheprovider",
           "mandatory": true,
-          "status": "pending",
-          "evidence": null
+          "status": "pass",
+          "evidence": {
+            "path": ".genesis/evidence/M49-general-preset-unit.json",
+            "source_hash": "96af195668d6bdf8a622b011d46760892cf8bc7705b14f35b60b467e01f9468e",
+            "hash": "26af12502cd67bd5ee2e60f467b370d2f0322e003c77d6c81595b3caa468e4f5",
+            "observed_at": "2026-11-07T15:44:32.126Z"
+          }
         },
         {
           "id": "regression",
           "command": ".venv\\Scripts\\python.exe -m pytest -q -p no:cacheprovider",
           "mandatory": true,
-          "status": "pending",
-          "evidence": null
+          "status": "pass",
+          "evidence": {
+            "path": ".genesis/evidence/M49-general-preset-regression.json",
+            "source_hash": "96af195668d6bdf8a622b011d46760892cf8bc7705b14f35b60b467e01f9468e",
+            "hash": "400e19a6ce3db2bc2c0483856c23673512fda781a3950571705abf8a1ddca755",
+            "observed_at": "2026-11-07T16:21:25.675Z"
+          }
         },
         {
           "id": "docker",
           "command": ".venv\\Scripts\\python.exe -m pytest tests/test_workspace.py tests/test_workspace_tools.py tests/test_workspace_plan.py tests/test_docker_provider.py tests/test_sandbox_contention.py tests/test_compute.py tests/test_egress.py tests/test_sandboxed_mcp.py tests/test_snapshots.py tests/test_increment2_contention.py tests/test_plain_budgets.py tests/test_general_preset.py -m docker -q -p no:cacheprovider",
           "mandatory": true,
-          "status": "pending",
-          "evidence": null
+          "status": "pass",
+          "evidence": {
+            "path": ".genesis/evidence/M49-general-preset-docker.json",
+            "source_hash": "96af195668d6bdf8a622b011d46760892cf8bc7705b14f35b60b467e01f9468e",
+            "hash": "285a480ea2d622268bdcb18d692bdc4c27e4d385cd8cc74195a24e9c3cb9106e",
+            "observed_at": "2026-11-07T17:52:24.828Z"
+          }
         },
         {
           "id": "independent-review",
           "command": "",
           "mandatory": true,
-          "status": "pending",
-          "evidence": null
+          "status": "pass",
+          "evidence": {
+            "human": "siva-rgb (owner)",
+            "reason": "M49 round 1 (Fable 5.1) approved with nothing blocking; F-A and F-B repaired per DECISION-2ee2b899, gates rerun on 96af1956",
+            "source_hash": "96af195668d6bdf8a622b011d46760892cf8bc7705b14f35b60b467e01f9468e",
+            "observed_at": "2026-11-07T18:08:22.828Z"
+          }
         }
       ],
       "next_action": "Run the task pre-flight.",
@@ -7505,12 +7565,12 @@
       "failures": [],
       "limitations": [],
       "created_at": "2026-11-05T14:39:54.393Z",
-      "updated_at": "2026-11-05T14:39:54.394Z"
+      "updated_at": "2026-11-07T18:08:23.172Z"
     },
     {
       "id": "M50-adr12-sandbox",
       "outcome": "The ADR-12 harness runs sandbox tasks on the general preset and on a containerised Claude arm, each checked by its result in the workspace",
-      "state": "queued",
+      "state": "active",
       "risk": "high",
       "owner": null,
       "scope": [],
@@ -9592,17 +9652,53 @@
       "human": "siva-rgb (owner)",
       "reason": "M48 round 1 approved by Fable 5.1 (c4cb8b29) with nothing blocking; F-A to F-D repaired in M48 (DECISION-7498a8a2): public ToolScope.budget_lease with two tests and three killed mutants, ORCHESTRATOR public, correction of record for 6a07dbc6. Gates pass on hash aca4ccec: unit 32, regression 3333, docker 169. Two earlier one-off Docker failures in older tests recorded in DECISION-08a56b57. Recorded at the owner instruction.",
       "revision": null
+    },
+    {
+      "id": "638ca752-4a55-445d-8a4d-28786d81f4cc",
+      "at": "2026-11-07T08:12:57.549Z",
+      "action": "requeue",
+      "task": "M49-general-preset",
+      "human": "siva-rgb (owner)",
+      "reason": "M49 pre-flight: FR-176, FR-177 and P5A-D13 amended so migration 0028 also adds execution_manifests.role_turns; requeued before the spec re-approval so only one task goes active.",
+      "revision": null
+    },
+    {
+      "id": "27276957-75fa-4555-ae1f-5dfc26fb120f",
+      "at": "2026-11-07T14:11:22.505Z",
+      "action": "approve",
+      "task": "M49-general-preset",
+      "human": "Fable 5.1",
+      "reason": "L4 round 1 approved, first-hand on hash 661234413d99: gate evidence fresh; 19 mutants over F1 to F6 and the files, export, role_turns and preset paths each applied and killed with SHA-256 asserted before and after; 105 unit, 2 docker and 2945 older tests pass; NFR-50 holds by running plain, workspace and orchestrator runs under the HEAD package and the tree with identical requests, rows, events and manifests, both new columns NULL; files land before the first command on Fake and Docker, including a tar exactly at the transfer bound, and are recorded as SHA-256 only; a failed import is never recorded and returns its slot; a general subagent child export waits with no artifact before the decision; replans brief by role_turns; example 42 passes offline, scripted and live and fails under 9 runtime breaks each counted; texts name no provider. Non-blocking: Orchestrator.config(role_turns=...) or role_turns=None records a mapping the children were not briefed with (manifest 3 vs briefed 20, and 20 recorded while children got 4) - refuse the option or brief from it; NFR-50 names only the preset column though role_turns is a second NULL column. Observations: apparent bytes at construction vs 4 KiB blocks at the measured bound when max_workspace_bytes is tiny; non-str instructions accepted as AgentSpec does at HEAD; server_files without a spec reports the path error first. Baseline restored, 0 docker objects, 0 processes, nothing in the tree.",
+      "revision": null
+    },
+    {
+      "id": "f26fbd19-52a9-4e48-b117-7153c5139286",
+      "at": "2026-11-07T15:10:33.711Z",
+      "action": "requeue",
+      "task": "M49-general-preset",
+      "human": "siva-rgb (owner)",
+      "reason": "M49 round 1 (Fable 5.1, approved): F-A repaired by refusing role_turns in Orchestrator.config(); F-B amends NFR-50 to name the role_turns column (owner)",
+      "revision": null
+    },
+    {
+      "id": "37a274b7-33c2-428c-84a2-88b36f4ba208",
+      "at": "2026-11-07T18:08:22.828Z",
+      "action": "approve",
+      "task": "M49-general-preset",
+      "human": "siva-rgb (owner)",
+      "reason": "M49 round 1 (Fable 5.1) approved with nothing blocking; F-A and F-B repaired per DECISION-2ee2b899, gates rerun on 96af1956",
+      "revision": null
     }
   ],
   "discovery": null,
   "checkpoint": {
-    "at": "2026-10-31T07:15:52.692Z",
+    "at": "2026-11-07T18:08:23.401Z",
     "revision": {
-      "commit": "f4aa59f94e8acd3e3b74b3451491664a29547d47",
+      "commit": "2a26790f20e6d33d2538aef643bd2baaa687e896",
       "dirty": true,
-      "source_hash": "005673b76fd16174cc3087f9236ed3c04b0e850b0d08460310c847a45195713a"
+      "source_hash": "96af195668d6bdf8a622b011d46760892cf8bc7705b14f35b60b467e01f9468e"
     },
-    "active_task": "M44-egress",
+    "active_task": "M50-adr12-sandbox",
     "next_action": "Run the task pre-flight."
   },
   "legacy": null

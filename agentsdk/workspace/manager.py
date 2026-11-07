@@ -422,6 +422,15 @@ class RunWorkspace:
         if self.spec.from_snapshot is not None:
             # FR-169: measured as it was copied, before it is recorded or runs anything.
             await self._manager.within_bound(handle, self.spec)
+        if self.spec.files:
+            # FR-175: through the checked transfer, bounded as setup is, before it is recorded or
+            # runs anything; a workspace whose files did not land is removed, never used.
+            try:
+                await asyncio.wait_for(provider.import_(handle, files_tar(self.spec.files)), SETUP_SECONDS)
+            except Exception as exc:  # noqa: BLE001 - a provider's failure, named by class only
+                with contextlib.suppress(Exception):
+                    await asyncio.wait_for(provider.remove(handle), _REMOVE_SECONDS)
+                raise WorkspaceUnavailable(f"the workspace's files could not be written: {type(exc).__name__}") from None
         try:
             await self._record("record_workspace", WorkspaceRecord(
                 workspace_id=handle.workspace_id, tenant_id=self.tenant_id, project_id=self.project_id,

@@ -93,7 +93,7 @@ def specs(spec: WorkspaceSpec) -> dict[str, ToolSpec]:
             "export_workspace_file",
             "Save a file of your workspace as an artifact of this run, the only way a file leaves it. "
             "Returns the artifact's id.",
-            {"path": PATH, "mime_type": MIME_TYPE}, ["path"], RiskClass.WRITE, ApprovalPolicy.AUTO, deadline),
+            {"path": PATH, "mime_type": MIME_TYPE}, ["path"], RiskClass.WRITE, spec.export_approval, deadline),
     }
 
 

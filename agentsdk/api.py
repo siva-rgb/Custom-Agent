@@ -60,7 +60,7 @@ from .interruptions import (
 from .calibration import CalibrationReport, _checked, calibrate
 from .claimlock import ClaimLock
 from .primitives import ContentProvenance, unstorable_reason
-from .budget import SINGLE_RUN, BudgetGovernor, BudgetLease, BudgetPolicy, tokens_of
+from .budget import ORCHESTRATOR, SINGLE_RUN, BudgetGovernor, BudgetLease, BudgetPolicy, tokens_of
 from .prices import PRICE_TABLE_DATE, shipped_pricing
 from .registry import ModelRegistry, call_cost, default_registry
 from .scheduler import ProviderSlots, RunSlots, SchedulerLimits
@@ -167,11 +167,20 @@ class AgentSpec:
     # FR-137 (M38): where the agent's commands run. None gives it no workspace and none of the
     # workspace tools, and leaves its agent_spec_hash as it was (NFR-41).
     workspace: WorkspaceSpec | None = None
+    # FR-176 (M49): the preset this spec came from, as (name, version), recorded in the manifest's
+    # `preset`; None for a spec built by hand. Beside agent_spec_hash, never in it: a preset's text
+    # is already hashed, and its version is a new hash when the text changes (DECISION-8aa24890).
+    preset: tuple[str, str] | None = None
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "tool_profile", tuple(self.tool_profile))
         if self.workspace is not None and not isinstance(self.workspace, WorkspaceSpec):
             raise ValueError(f"AgentSpec.workspace must be a WorkspaceSpec, got {type(self.workspace).__name__}")
+        if self.preset is not None and not (
+            type(self.preset) is tuple and len(self.preset) == 2
+            and all(type(part) is str and part and unstorable_reason(part) is None for part in self.preset)
+        ):
+            raise ValueError(f"AgentSpec.preset must be None or a (name, version) pair of non-empty str, got {self.preset!r}")
         _refuse_bad_output_limit(self.max_output_tokens, "AgentSpec")
         object.__setattr__(
             self, "reasoning_effort", _reasoning_effort(self.reasoning_effort, "AgentSpec")
@@ -187,6 +196,26 @@ class AgentSpec:
         if self.permission_policy is not None:
             return self.permission_policy
         return AllowlistPermissionChecker(set(self.tool_profile))
+
+
+def _recorded_preset(preset: tuple[str, str] | None, instructions: str) -> dict[str, str] | None:
+    """FR-176: the manifest's `preset`, a shipped version only where the spec holds its text."""
+    if preset is None:
+        return None
+    from .presets import recorded_preset  # imports this module: resolved at first use
+
+    return recorded_preset(preset, instructions)
+
+
+def checked_role_turns(role_turns: Any) -> dict[str, int]:
+    """FR-177: a mapping of non-empty role names to turns of 1 or more, as a plain dict, or ValueError."""
+    if not isinstance(role_turns, Mapping) or not all(
+        type(role) is str and role and unstorable_reason(role) is None
+        and type(turns) is int and 1 <= turns <= _MAX_TURNS_CEILING
+        for role, turns in role_turns.items()
+    ):
+        raise ValueError(f"role_turns must map role names to turns from 1 to {_MAX_TURNS_CEILING}, got {role_turns!r}")
+    return dict(role_turns)
 
 
 def _decimal_text(value: Any) -> str | None:
@@ -254,6 +283,10 @@ class RunConfig:
     gate_policy: GatePolicy | None = None
     # FR-116 (M30): how long a call requiring approval waits before it expires, in seconds.
     approval_timeout: float = 3600
+    # FR-177 (M49): the turns an orchestrator briefs each named role's children with, recorded in
+    # its run's manifest and read by nothing else. Set by Orchestrator.config(); None records NULL
+    # (DECISION-05d0a716, NFR-50).
+    role_turns: Mapping[str, int] | None = None
 
     def __post_init__(self) -> None:
         # Before the range checks: a bool passes every one of them (True >= 1,
@@ -332,6 +365,13 @@ class RunConfig:
             raise ValueError(f"approval_timeout must be a finite number of seconds over 0, got {timeout!r}")
         if self.context_policy is not None and not isinstance(self.context_policy, ContextPolicy):
             raise ValueError(f"context_policy must be a ContextPolicy or None, got {type(self.context_policy).__name__}")
+        if self.role_turns is not None:
+            object.__setattr__(self, "role_turns", checked_role_turns(self.role_turns))
+            # M49 round 1 F-A: only an orchestrator briefs children with role_turns, so any other
+            # run recording them would record turns nobody was given.
+            if not isinstance(self.budget_lease, BudgetLease) or self.budget_lease.node_id != ORCHESTRATOR:
+                raise ValueError("role_turns belong to an orchestrator's run: pass Orchestrator(..., role_turns=...) "
+                                 "and run it with Orchestrator.config()")
         if self.scheduler_limits is not None and self.scheduler_limits.provider_concurrency_limits:
             # A provider limit is shared by every run of a Runner, so one run
             # cannot set it.
@@ -1388,6 +1428,8 @@ class Runner:
                     reasoning_effort=reasoning_effort.value if reasoning_effort is not None else None,
                     pricing=self._pricing_record(recorded_model),
                     scheduler_limits=limits.to_json(),
+                    preset=_recorded_preset(spec.preset, spec.instructions),
+                    role_turns=config.role_turns,
                     **budget_record,
                 ),
             )

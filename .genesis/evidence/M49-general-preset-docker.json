@@ -1,0 +1,22 @@
+{
+  "task": "M49-general-preset",
+  "gate": "docker",
+  "command": ".venv\\Scripts\\python.exe -m pytest tests/test_workspace.py tests/test_workspace_tools.py tests/test_workspace_plan.py tests/test_docker_provider.py tests/test_sandbox_contention.py tests/test_compute.py tests/test_egress.py tests/test_sandboxed_mcp.py tests/test_snapshots.py tests/test_increment2_contention.py tests/test_plain_budgets.py tests/test_general_preset.py -m docker -q -p no:cacheprovider",
+  "started_at": "2026-11-07T16:21:26.081Z",
+  "observed_at": "2026-11-07T17:52:24.828Z",
+  "exit_code": 0,
+  "signal": null,
+  "stdout": "........................................................................ [ 42%]\r\n........................................................................ [ 84%]\r\n...........................                                              [100%]\r\n171 passed, 895 deselected in 5457.59s (1:30:57)\r\n",
+  "stderr": "",
+  "revision": {
+    "commit": "2a26790f20e6d33d2538aef643bd2baaa687e896",
+    "dirty": true
+  },
+  "source_hash": "96af195668d6bdf8a622b011d46760892cf8bc7705b14f35b60b467e01f9468e",
+  "environment": {
+    "node": "v20.10.0",
+    "platform": "win32",
+    "arch": "x64"
+  },
+  "hash": "285a480ea2d622268bdcb18d692bdc4c27e4d385cd8cc74195a24e9c3cb9106e"
+}

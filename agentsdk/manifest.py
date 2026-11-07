@@ -54,6 +54,8 @@ def build_manifest(
     approval_timeout: float | None = None,
     mcp_servers: list[dict[str, Any]] | None = None,
     workspace: dict[str, Any] | None = None,
+    preset: dict[str, str] | None = None,
+    role_turns: dict[str, int] | None = None,
 ) -> dict[str, Any]:
     # The spec hash covers what actually changes behaviour: identity,
     # instructions and the tool profile. A spec whose display name changed is
@@ -96,4 +98,8 @@ def build_manifest(
         # values -- of what it is given (NFR-37); an empty list for a Runner with none.
         "mcp_servers": mcp_servers,
         "workspace": workspace,
+        # FR-176, FR-177 (M49): the preset the spec came from, and an orchestrator's role_turns;
+        # None for every other run (NFR-50).
+        "preset": preset,
+        "role_turns": role_turns,
     }

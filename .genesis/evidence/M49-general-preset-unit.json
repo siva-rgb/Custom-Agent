@@ -1,0 +1,22 @@
+{
+  "task": "M49-general-preset",
+  "gate": "unit",
+  "command": ".venv\\Scripts\\python.exe -m pytest tests/test_general_preset.py -q -p no:cacheprovider",
+  "started_at": "2026-11-07T15:44:19.638Z",
+  "observed_at": "2026-11-07T15:44:32.126Z",
+  "exit_code": 0,
+  "signal": null,
+  "stdout": "........................................................................ [ 58%]\r\n....................................................                     [100%]\r\n124 passed, 2 deselected in 11.73s\r\n",
+  "stderr": "",
+  "revision": {
+    "commit": "2a26790f20e6d33d2538aef643bd2baaa687e896",
+    "dirty": true
+  },
+  "source_hash": "96af195668d6bdf8a622b011d46760892cf8bc7705b14f35b60b467e01f9468e",
+  "environment": {
+    "node": "v20.10.0",
+    "platform": "win32",
+    "arch": "x64"
+  },
+  "hash": "26af12502cd67bd5ee2e60f467b370d2f0322e003c77d6c81595b3caa468e4f5"
+}

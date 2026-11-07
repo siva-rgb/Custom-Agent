@@ -4,7 +4,7 @@
 
 - workflow: new-product
 - phase: build
-- plan approval: siva-rgb (owner) at 2026-11-05T16:53:01.319Z
+- plan approval: siva-rgb (owner) at 2026-11-07T15:43:53.358Z
 
 ## Tasks
 
@@ -442,15 +442,15 @@
 
 ### M49-general-preset — general_agent and general_subagent give a ready general agent in the sandbox, within a budget, its exports approved, recorded in the manifest
 
-- state/risk: active / high
+- state/risk: done / high
 - requirements: FR-174, FR-175, FR-176, FR-177, FR-178, AC-107, NFR-50, NFR-52
 - scope: not bounded
-- gates: unit: .venv\Scripts\python.exe -m pytest tests/test_general_preset.py -q -p no:cacheprovider, regression: .venv\Scripts\python.exe -m pytest -q -p no:cacheprovider, docker: .venv\Scripts\python.exe -m pytest tests/test_workspace.py tests/test_workspace_tools.py tests/test_workspace_plan.py tests/test_docker_provider.py tests/test_sandbox_contention.py tests/test_compute.py tests/test_egress.py tests/test_sandboxed_mcp.py tests/test_snapshots.py tests/test_increment2_contention.py tests/test_plain_budgets.py tests/test_general_preset.py -m docker -q -p no:cacheprovider, independent-review: pending
+- gates: unit: .venv\Scripts\python.exe -m pytest tests/test_general_preset.py -q -p no:cacheprovider, regression: .venv\Scripts\python.exe -m pytest -q -p no:cacheprovider, docker: .venv\Scripts\python.exe -m pytest tests/test_workspace.py tests/test_workspace_tools.py tests/test_workspace_plan.py tests/test_docker_provider.py tests/test_sandbox_contention.py tests/test_compute.py tests/test_egress.py tests/test_sandboxed_mcp.py tests/test_snapshots.py tests/test_increment2_contention.py tests/test_plain_budgets.py tests/test_general_preset.py -m docker -q -p no:cacheprovider, independent-review: pass
 - next: Run the task pre-flight.
 
 ### M50-adr12-sandbox — The ADR-12 harness runs sandbox tasks on the general preset and on a containerised Claude arm, each checked by its result in the workspace
 
-- state/risk: queued / high
+- state/risk: active / high
 - requirements: FR-179, FR-180, AC-108, NFR-51
 - scope: not bounded
 - gates: unit: .venv\Scripts\python.exe -m pytest tests/test_adr12_sandbox.py tests/test_adr12_comparison.py -q -p no:cacheprovider, regression: .venv\Scripts\python.exe -m pytest -q -p no:cacheprovider, docker: .venv\Scripts\python.exe -m pytest tests/test_workspace.py tests/test_workspace_tools.py tests/test_workspace_plan.py tests/test_docker_provider.py tests/test_sandbox_contention.py tests/test_compute.py tests/test_egress.py tests/test_sandboxed_mcp.py tests/test_snapshots.py tests/test_increment2_contention.py tests/test_plain_budgets.py tests/test_general_preset.py tests/test_adr12_sandbox.py -m docker -q -p no:cacheprovider, independent-review: pending

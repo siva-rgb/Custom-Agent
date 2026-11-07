@@ -19,7 +19,7 @@ import uuid
 from dataclasses import dataclass, field
 from typing import Any, Mapping
 
-from .api import AgentSpec, RunConfig, RunStatus
+from .api import AgentSpec, RunConfig, RunStatus, checked_role_turns
 from .budget import ORCHESTRATOR, BudgetGovernor, BudgetPolicy
 from .errors import MaxDepthExceeded, describe_exception
 from .events import EventType
@@ -33,7 +33,7 @@ from .primitives import ContentProvenance, ToolCall
 from .scheduler import SchedulerLimits
 from .context_policy import ContextPolicy
 from .scope import ToolScope
-from .subagents import Briefing, SubagentPool
+from .subagents import _DEFAULT_MAX_TURNS, Briefing, SubagentPool
 from .tools import Tool, ToolOutput, ToolSpec
 
 __all__ = ["PLAN_TOOL", "Orchestrator"]
@@ -145,6 +145,7 @@ class Orchestrator:
         instructions: str = _INSTRUCTIONS,
         context_policy: ContextPolicy | None = None,
         gate: GatePolicy | None = None,
+        role_turns: Mapping[str, int] | None = None,
     ) -> None:
         if not isinstance(roles, Mapping) or not roles or not all(
             type(name) is str and name and isinstance(spec, AgentSpec) for name, spec in roles.items()
@@ -158,6 +159,15 @@ class Orchestrator:
             raise ValueError(f"context_policy must be a ContextPolicy or None, got {type(context_policy).__name__}")
         if gate is not None and not isinstance(gate, GatePolicy):
             raise ValueError(f"gate must be a GatePolicy or None, got {type(gate).__name__}")
+        # FR-177 (M49): the turns each named role's children are briefed with; every other role's
+        # get 4, as before (NFR-50). Recorded in the run's manifest through config().
+        if role_turns is not None:
+            # Pre-review F5: an empty mapping names no role, so it is recorded as none given (NULL).
+            role_turns = checked_role_turns(role_turns) or None
+            unknown = sorted(set(role_turns or ()) - set(roles))
+            if unknown:
+                raise ValueError(f"role_turns names roles this orchestrator does not have: {unknown}")
+        self._role_turns = role_turns
         # FR-101, FR-102 (M26): the gate a node passes after its deterministic criteria.
         self._gate = gate
         self._roles = dict(roles)
@@ -189,13 +199,20 @@ class Orchestrator:
         The orchestrator's own calls draw on its reserve from the first one, before any
         plan exists (FR-73): planning is counted, not free.
         """
+        # M49 round 1 F-A: the manifest's role_turns is what this orchestrator briefs its children
+        # with, so it comes only from Orchestrator(role_turns=...); an override here would record
+        # turns no child was given.
+        if "role_turns" in options:
+            raise ValueError("role_turns is set on the Orchestrator, not in config(): "
+                             "pass Orchestrator(..., role_turns=...)")
         governor = BudgetGovernor.for_run(self._policy)
         return RunConfig(
             tenant_id=tenant_id, project_id=project_id, budget_lease=governor.orchestrator_lease(),
             # Unresolved from the start: only a plan version that completes clears it, so
             # a run that never gets one through ends failed (FR-75, round 1 D1).
             pending_failure="no plan version completed", context_policy=self.context_policy,
-            gate_policy=self._gate, **options,
+            gate_policy=self._gate,
+            role_turns=None if self._role_turns is None else dict(self._role_turns), **options,
         )
 
     def plans(self, run_id: str) -> tuple[PlanVersion, ...]:
@@ -488,6 +505,7 @@ class Orchestrator:
                     # its taint follows the edge (FR-70, FR-83).
                     input_refs=tuple(node.input_refs) + tuple(run.outputs[d] for d in node.dependencies),
                     expected_output_schema=_thawed(node.expected_output_schema),
+                    max_turns=(self._role_turns or {}).get(node.assigned_role, _DEFAULT_MAX_TURNS),
                 ),
                 agent=role,
                 lease=lease,

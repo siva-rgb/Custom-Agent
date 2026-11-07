@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import asyncio
 import base64
+import hashlib
 import io
 import math
 import posixpath
@@ -63,6 +64,8 @@ _LIMITS: dict[str, tuple[float, float, type]] = {
     "max_output_bytes": (1 * _MiB, 16 * _MiB, int),
 }
 SCOPES = ("run", "plan")
+# FR-146: the workspace tools' longest path, which a starting file's path keeps to (FR-175).
+_PATH_CHARACTERS = 4096
 # FR-138, FR-148: what a workspace's setup -- reaping, the slot wait, creation -- may take before a
 # call fails WorkspaceUnavailable; every workspace tool's deadline is past it, so a command that
 # starts ends by its own timeout (DECISION-e799700b).
@@ -92,6 +95,60 @@ def _limit(name: str, value: Any) -> float:
     return value
 
 
+def _clean_files(files: Any) -> dict[str, bytes]:
+    """FR-164, FR-175: clean relative paths to bytes, as one tree the transfer filter reads -- no
+    path a folder of another, and none two that only case tells apart (M45 pre-review F5)."""
+    if files is None or not isinstance(files, Mapping):
+        raise ValueError("files must map paths to bytes")
+    for path, data in files.items():
+        parts = path.split("/") if isinstance(path, str) else []
+        if (not parts or any(p in ("", ".", "..") for p in parts) or "\\" in path or ":" in path
+                or "\x00" in path or unstorable_reason(path)):
+            raise ValueError(f"files: {path!r} is not a clean relative path")
+        if not isinstance(data, bytes):
+            raise ValueError(f"files: {path!r} must be bytes")
+    folders = {"/".join(path.split("/")[:i]) for path in files for i in range(1, path.count("/") + 1)}
+    clashes = sorted(folders & set(files))
+    if clashes:
+        raise ValueError(f"files: {clashes[0]!r} is a file and also another file's folder")
+    if len({path.casefold() for path in files}) != len(files):
+        raise ValueError("files: two paths differ only in case")
+    return dict(files)
+
+
+def _workspace_files(spec: WorkspaceSpec) -> Mapping[str, bytes]:
+    """FR-175: a run's starting files, checked, bounded and frozen before anything is written: the
+    checked transfer's member count and size (FR-143), the workspace tools' path length (FR-146),
+    and the spec's own max_workspace_bytes. Never with a snapshot, whose copy is the start, nor on a
+    plan's workspace, which children naming different files would share."""
+    from .docker import MAX_TRANSFER_BYTES, MAX_TRANSFER_MEMBERS
+
+    files = _clean_files(spec.files)
+    if not files:
+        return MappingProxyType({})
+    if spec.from_snapshot is not None:
+        raise ValueError("WorkspaceSpec.files cannot be given with from_snapshot: the snapshot is its start")
+    if spec.scope == "plan":
+        raise ValueError("WorkspaceSpec.files cannot be given on a plan's workspace: its children share it")
+    long = next((path for path in files if len(path) > _PATH_CHARACTERS), None)
+    if long is not None:
+        raise ValueError(f"files: a path is over {_PATH_CHARACTERS} characters")
+    folders = {"/".join(path.split("/")[:i]) for path in files for i in range(1, path.count("/") + 1)}
+    if len(files) + len(folders) > MAX_TRANSFER_MEMBERS:
+        raise ValueError(f"files: {len(files) + len(folders)} entries, over the transfer's {MAX_TRANSFER_MEMBERS}")
+    total = sum(len(data) for data in files.values())
+    if total > spec.max_workspace_bytes:
+        raise ValueError(f"files: {total} bytes in all, over max_workspace_bytes of {spec.max_workspace_bytes} bytes")
+    # Pre-review F1: the transfer bounds the tar it is sent, headers and padding included, so the
+    # tar the manager will send is what is measured; contents alone fit where their tar does not.
+    from .tools import files_tar
+
+    sent = len(files_tar(files))
+    if sent > MAX_TRANSFER_BYTES:
+        raise ValueError(f"files: their transfer would be {sent} bytes, over its bound of {MAX_TRANSFER_BYTES} bytes")
+    return MappingProxyType(files)
+
+
 @dataclass(frozen=True)
 class WorkspaceSpec:
     """FR-137: what a run's workspace is made from and bound by. Frozen; `env`'s values are never
@@ -113,6 +170,12 @@ class WorkspaceSpec:
     egress: tuple[str, ...] = ()
     # FR-169 (M46): the snapshot, of the same tenancy, it starts as a copy of; none by default.
     from_snapshot: str | None = None
+    # FR-175 (M49): relative paths to bytes, written into a run's workspace when it is created;
+    # none by default. Recorded as path to SHA-256, never shown.
+    files: Mapping[str, bytes] = field(default_factory=dict, repr=False)
+    # FR-174 (M49): what `export_workspace_file` asks before a file leaves; AUTO keeps every
+    # workspace as it was before M49 (NFR-50).
+    export_approval: ApprovalPolicy = ApprovalPolicy.AUTO
 
     def __post_init__(self) -> None:
         # P5-D6: by digest, never a tag, so what runs is what was recorded; the provider never
@@ -146,6 +209,9 @@ class WorkspaceSpec:
         parse_egress(self.egress)
         if self.from_snapshot is not None and (not isinstance(self.from_snapshot, str) or not self.from_snapshot):
             raise ValueError("WorkspaceSpec.from_snapshot must name a snapshot, as SnapshotRef.snapshot_id does")
+        if not isinstance(self.export_approval, ApprovalPolicy):
+            raise ValueError("WorkspaceSpec.export_approval must be an ApprovalPolicy")
+        object.__setattr__(self, "files", _workspace_files(self))
 
     def record(self) -> dict[str, Any]:
         """What the manifest and the `workspaces` row record: the image, the limits in force, the
@@ -160,6 +226,11 @@ class WorkspaceSpec:
             # Named only when set, so a spec without it records what it did before (NFR-49).
             **({"egress": list(self.egress)} if self.egress else {}),
             **({"from_snapshot": self.from_snapshot} if self.from_snapshot is not None else {}),
+            # FR-175: each file by path and SHA-256, never its content; named only when given.
+            **({"files": {path: hashlib.sha256(data).hexdigest() for path, data in sorted(self.files.items())}}
+               if self.files else {}),
+            **({"export_approval": self.export_approval.value}
+               if self.export_approval is not ApprovalPolicy.AUTO else {}),
         }
 
 
@@ -324,8 +395,7 @@ def server_files(env: Any, cwd: Any, spec: Any, files: Any) -> Mapping[str, byte
     frozen. A workspace's server takes its environment from its spec alone and runs from its
     workspace's root; it lives exactly as long as its server, so it is neither kept nor a plan's;
     its files are clean relative paths to bytes, and given only with a workspace."""
-    if files is None or not isinstance(files, Mapping):
-        raise ValueError("files must map paths to bytes")
+    files = _clean_files(files)
     if spec is None:
         if files:
             raise ValueError("files are given to a sandboxed server only: give it a workspace too")
@@ -340,21 +410,6 @@ def server_files(env: Any, cwd: Any, spec: Any, files: Any) -> Mapping[str, byte
     if spec.from_snapshot is not None:
         # DECISION-bafa7be8: snapshots are of run and plan workspaces only (M46 pre-review F2).
         raise ValueError("a server's workspace starts from its files, never from a snapshot")
-    for path, data in files.items():
-        parts = path.split("/") if isinstance(path, str) else []
-        if (not parts or any(p in ("", ".", "..") for p in parts) or "\\" in path or ":" in path
-                or "\x00" in path or unstorable_reason(path)):
-            raise ValueError(f"files: {path!r} is not a clean relative path")
-        if not isinstance(data, bytes):
-            raise ValueError(f"files: {path!r} must be bytes")
-    # Pre-review F5: one tree, as the transfer filter reads it -- no path a folder of another, and
-    # none two that only case tells apart (a host's folder may fold them into one file).
-    folders = {"/".join(path.split("/")[:i]) for path in files for i in range(1, path.count("/") + 1)}
-    clashes = sorted(folders & set(files))
-    if clashes:
-        raise ValueError(f"files: {clashes[0]!r} is a file and also another file's folder")
-    if len({path.casefold() for path in files}) != len(files):
-        raise ValueError("files: two paths differ only in case")
     return MappingProxyType(dict(files))
 
 

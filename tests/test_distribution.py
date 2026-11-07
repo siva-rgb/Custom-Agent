@@ -90,6 +90,8 @@ EXPECTED_EXAMPLES = {
     "40_snapshots.py",
     # FR-171 (M47): increment 2's exit signal.
     "41_increment2_contention.py",
+    # FR-178 (M49): the general preset.
+    "42_general_agent.py",
 }
 
 
