@@ -1150,3 +1150,22 @@ def test_the_example_shows_a_node_exceeding_its_reservation_offline(tmp_path):
     assert "budget_exceeded" in out, out
     assert re.search(r"reserv", out, re.I) and re.search(r"reclaim|returned", out, re.I), out
     assert "0.20" in out or "0.40" in out, "the example prints no amounts"
+
+
+def test_budget_exceeded_is_defined_once():
+    """M50 round 1, note 1: the error code the orchestrator keys on has one definition. The stored
+    value is the contract; no source module spells it out, so a typo in a copy cannot fail quietly."""
+    from pathlib import Path
+
+    from agentsdk.budget import BUDGET_EXCEEDED
+
+    assert BUDGET_EXCEEDED == "budget_exceeded"
+    root = Path(__file__).resolve().parent.parent
+    sources = [*sorted((root / "agentsdk").rglob("*.py")), *sorted((root / "evals" / "adr12").glob("*.py"))]
+    assert len(sources) > 20, len(sources)
+    copies = []
+    for path in sources:
+        for line in path.read_text(encoding="utf-8").splitlines():
+            if '"budget_exceeded"' in line or "'budget_exceeded'" in line:
+                copies.append(path.relative_to(root).as_posix())
+    assert copies == ["agentsdk/budget.py"], copies

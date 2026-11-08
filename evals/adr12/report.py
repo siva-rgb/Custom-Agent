@@ -37,6 +37,7 @@ def build_markdown(metadata: dict[str, Any], rows: list[dict[str, Any]]) -> str:
         f"- Model, as the gateway names it: {metadata.get('gateway_model')}",
         f"- Repetitions per task and arm: {metadata.get('repetitions')}",
         f"- Tasks: {len(metadata.get('tasks', []))}",
+        *([f"- **Incomplete:** {metadata['incomplete']}."] if metadata.get("incomplete") else []),
         "",
         "## Arms",
         "",
@@ -47,11 +48,47 @@ def build_markdown(metadata: dict[str, Any], rows: list[dict[str, Any]]) -> str:
         version = metadata.get("versions", {}).get(arm, UNAVAILABLE)
         wire = metadata.get("wire_formats", {}).get(arm, UNAVAILABLE)
         lines.append(f"| {arm} | {version} | {wire} |")
+    setups = metadata.get("setups")
+    if setups:
+        # FR-179: the task count, each kind's setup, the budget rule, networking and the images.
+        lines += ["", "## Tasks and setups", "",
+                  f"{metadata.get('task_count')} tasks: "
+                  + ", ".join(f"{count} {kind}" for kind, count in metadata.get("kinds", {}).items()) + ".",
+                  "", "| kind | tasks | arm | setup | USD ceiling | token ceiling |", "|---|---|---|---|---|---|"]
+        for kind, by_arm in setups.items():
+            ceiling = metadata.get("ceilings", {}).get(kind, {})
+            for arm in arms:
+                budgeted = arm == "agentsdk"
+                lines.append(f"| {kind} | {metadata.get('kinds', {}).get(kind)} | {arm} | {_cell(by_arm.get(arm, UNAVAILABLE))} | "
+                             f"{ceiling.get('usd', UNAVAILABLE) if budgeted else 'none'} | "
+                             f"{ceiling.get('tokens', UNAVAILABLE) if budgeted else 'none'} |")
+        lines += ["", f"- Budget rule: {metadata.get('budget_rule')}."]
+        if metadata.get("networking"):
+            lines.append(f"- Networking: {metadata['networking']}.")
+        if metadata.get("preset_version"):
+            lines.append(f"- The general preset's version: {metadata['preset_version']}.")
+        if metadata.get("verification"):
+            lines.append(f"- Verification: {metadata['verification']}; a run's own check.txt is not evidence.")
+        witness = metadata.get("witness")
+        if witness:
+            lines.append(f"- Fetch witness: {witness.get('url')} as the harness fetched it at {witness.get('fetched_at')}, "
+                         f"{witness.get('bytes')} bytes, SHA-256 {witness.get('sha256')}; the fetch tasks are judged "
+                         "against it.")
+        if metadata.get("swept"):
+            lines.append(f"- Containers removed by the closing sweep: {', '.join(metadata['swept'])}.")
+        for arm, digest in (metadata.get("images") or {}).items():
+            lines.append(f"- {arm} image: {digest}")
+        lines += ["", "Both arms use the same model through the same gateway and each task's turn limit. Both",
+                  "are costed from one price list; the Claude Agent SDK's own figure is its estimate and is",
+                  "reported as such."]
+    else:
+        lines += [
+            "",
+            "Both arms ran the same tasks, with the same model through the same gateway, the same turn",
+            "limit and read-only tools over their own copy of the fixture folder. Both are costed from",
+            "one price list; the Claude Agent SDK's own figure is its estimate and is reported as such.",
+        ]
     lines += [
-        "",
-        "Both arms ran the same tasks, with the same model through the same gateway, the same turn",
-        "limit and read-only tools over their own copy of the fixture folder. Both are costed from",
-        "one price list; the Claude Agent SDK's own figure is its estimate and is reported as such.",
         "",
         "## What each arm measured",
         "",
@@ -65,6 +102,18 @@ def build_markdown(metadata: dict[str, Any], rows: list[dict[str, Any]]) -> str:
             f"{_median(taken, 'turns')} | {_median(taken, 'wall_ms')} | {_total(taken, 'cost_usd')} | "
             f"{_total(taken, 'sdk_cost_estimate_usd')} |"
         )
+    if setups:
+        lines += ["", "## By kind", "", "| kind | arm | passed | runs | terminal statuses | median turns | total cost |",
+                  "|---|---|---|---|---|---|---|"]
+        for kind in setups:
+            for arm in arms:
+                taken = [row for row in rows if row["arm"] == arm and row["kind"] == kind]
+                statuses = {}
+                for row in taken:
+                    statuses[row["status"]] = statuses.get(row["status"], 0) + 1
+                lines.append(f"| {kind} | {arm} | {sum(1 for row in taken if row['passed'])} | {len(taken)} | "
+                             f"{', '.join(f'{s} {n}' for s, n in sorted(statuses.items())) or 'none'} | "
+                             f"{_median(taken, 'turns')} | {_total(taken, 'cost_usd')} |")
     lines += ["", "## By task", "", "| task | kind | arm | passed | status | turns | wall ms | cost | its estimate | answer |",
               "|---|---|---|---|---|---|---|---|---|---|"]
     for row in rows:

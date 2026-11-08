@@ -32,6 +32,7 @@ from agentsdk.errors import BudgetExceeded
 from agentsdk.model import Usage
 
 __all__ = [
+    "BUDGET_EXCEEDED",
     "BudgetAllocation",
     "BudgetAmount",
     "BudgetGovernor",
@@ -560,6 +561,9 @@ def tokens_of(usage: Usage) -> int:
 ORCHESTRATOR = "<orchestrator>"
 # The one reservation of a plain run's governor (FR-172), named in its manifest's budget_reservations.
 SINGLE_RUN = "run"
+# The error a run, node or critic ends with when its budget refuses a call (FR-68); a stored
+# contract value the orchestrator keys on, so one definition (M50 round 1, note 1).
+BUDGET_EXCEEDED = "budget_exceeded"
 
 
 @dataclass

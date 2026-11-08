@@ -20,7 +20,7 @@ from dataclasses import dataclass, field
 from typing import Any, Mapping
 
 from .api import AgentSpec, RunConfig, RunStatus, checked_role_turns
-from .budget import ORCHESTRATOR, BudgetGovernor, BudgetPolicy
+from .budget import BUDGET_EXCEEDED, ORCHESTRATOR, BudgetGovernor, BudgetPolicy
 from .errors import MaxDepthExceeded, describe_exception
 from .events import EventType
 from .executor import ToolExecutor
@@ -41,7 +41,7 @@ __all__ = ["PLAN_TOOL", "Orchestrator"]
 PLAN_TOOL = "run_plan"
 _ARTIFACT_URN = "urn:agentsdk:artifact:"
 # FR-75 and DECISION-c8d0932a: every failure replans except these.
-_NOT_REPLANNABLE = ("budget_exceeded", "cancelled")
+_NOT_REPLANNABLE = (BUDGET_EXCEEDED, "cancelled")
 _CLAIM_URN = "urn:agentsdk:claim:"
 _SOURCE_URN = "urn:agentsdk:source:"
 _CRITIC_SUFFIX = "#critic"  # FR-104: the node id a critic run carries
@@ -264,7 +264,7 @@ class Orchestrator:
             if run.replans >= self._policy.max_replans:
                 raise ValueError(self._end(run, scope, f"max_replans {self._policy.max_replans} reached"))
             if not governor.may_start_child():
-                raise ValueError(self._end(run, scope, "budget_exceeded"))
+                raise ValueError(self._end(run, scope, BUDGET_EXCEEDED))
         plan = plan_from_document(
             document,
             plan_id=run.plan_id,
@@ -479,7 +479,7 @@ class Orchestrator:
         if role is None:
             return "failed", f"unknown_role: {node.assigned_role!r} is not one of this orchestrator's roles"
         if not governor.may_start_child():
-            return "failed", "budget_exceeded"
+            return "failed", BUDGET_EXCEEDED
         # FR-102: a gated node's reservation is held until its gate, and any critic, has
         # finished; an ungated node's is released as soon as its child ends, as before.
         gated = self._gate is not None and self._gate.gates(node.acceptance_criteria)
@@ -523,8 +523,8 @@ class Orchestrator:
         if result.run_id:
             run.children.add(result.run_id)
         if result.status is not RunStatus.COMPLETED:
-            if result.error == "budget_exceeded":
-                return "failed", "budget_exceeded"
+            if result.error == BUDGET_EXCEEDED:
+                return "failed", BUDGET_EXCEEDED
             if result.error == "output_contract_violation" and any(
                 c.kind == "output_schema" for c in node.acceptance_criteria
             ):
@@ -643,7 +643,7 @@ class Orchestrator:
         unchanged = (answer, result.provenance, None)
         # The node's reservation pays for its critic, and must be able to pay for a call.
         if not lease.may_call():
-            return ("budget_exceeded", *unchanged)
+            return (BUDGET_EXCEEDED, *unchanged)
         # What the critic is briefed with, stored first: the answer, the claims as read
         # with the signals that fired, and every source version those claims cite.
         artifacts = scope.artifacts
@@ -690,8 +690,8 @@ class Orchestrator:
         if critic.run_id:
             run.children.add(critic.run_id)
         if critic.status is not RunStatus.COMPLETED:
-            if critic.error == "budget_exceeded":
-                return ("budget_exceeded", *unchanged)
+            if critic.error == BUDGET_EXCEEDED:
+                return (BUDGET_EXCEEDED, *unchanged)
             return (f"critic_failed: {critic.error or critic.status.value}", *unchanged)
         verdict = json.loads(critic.output or "{}")
         kind, reason = verdict["verdict"], verdict["reason"]
@@ -856,6 +856,6 @@ class Orchestrator:
             elif left <= 0:
                 why = f"max_replans {self._policy.max_replans} reached"
             else:
-                why = "budget_exceeded"
+                why = BUDGET_EXCEEDED
             report["next"] = f"The run has failed: {self._end(run, scope, why)}"
         return ToolOutput(json.dumps(report), taken_in=tuple(taken_in))

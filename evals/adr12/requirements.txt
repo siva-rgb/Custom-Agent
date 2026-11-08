@@ -1,5 +1,7 @@
 # The comparison harness, never an SDK dependency (NFR-20).
 claude-agent-sdk==0.2.152
+# The fetch tasks' witness verifies example.com against this bundle (M50, DECISION-b944d3ab).
+certifi==2026.7.22
 #
 # The Claude arm also needs the Claude Code CLI, pinned in package.json beside this file
 # and installed locally (DECISION-05ee16ad):

@@ -450,15 +450,15 @@
 
 ### M50-adr12-sandbox — The ADR-12 harness runs sandbox tasks on the general preset and on a containerised Claude arm, each checked by its result in the workspace
 
-- state/risk: active / high
+- state/risk: done / high
 - requirements: FR-179, FR-180, AC-108, NFR-51
 - scope: not bounded
-- gates: unit: .venv\Scripts\python.exe -m pytest tests/test_adr12_sandbox.py tests/test_adr12_comparison.py -q -p no:cacheprovider, regression: .venv\Scripts\python.exe -m pytest -q -p no:cacheprovider, docker: .venv\Scripts\python.exe -m pytest tests/test_workspace.py tests/test_workspace_tools.py tests/test_workspace_plan.py tests/test_docker_provider.py tests/test_sandbox_contention.py tests/test_compute.py tests/test_egress.py tests/test_sandboxed_mcp.py tests/test_snapshots.py tests/test_increment2_contention.py tests/test_plain_budgets.py tests/test_general_preset.py tests/test_adr12_sandbox.py -m docker -q -p no:cacheprovider, independent-review: pending
+- gates: unit: .venv\Scripts\python.exe -m pytest tests/test_adr12_sandbox.py tests/test_adr12_comparison.py -q -p no:cacheprovider, regression: .venv\Scripts\python.exe -m pytest -q -p no:cacheprovider, docker: .venv\Scripts\python.exe -m pytest tests/test_workspace.py tests/test_workspace_tools.py tests/test_workspace_plan.py tests/test_docker_provider.py tests/test_sandbox_contention.py tests/test_compute.py tests/test_egress.py tests/test_sandboxed_mcp.py tests/test_snapshots.py tests/test_increment2_contention.py tests/test_plain_budgets.py tests/test_general_preset.py tests/test_adr12_sandbox.py -m docker -q -p no:cacheprovider, independent-review: pass
 - next: Run the task pre-flight.
 
 ### M51-general-contention — The larger comparison is reported, and general agents of two tenancies hold budget, sandbox, approval and tenancy under contention on both stores
 
-- state/risk: queued / high
+- state/risk: active / high
 - requirements: FR-181, FR-182, FR-183, AC-109, NFR-50, NFR-51, NFR-52
 - scope: not bounded
 - gates: unit: .venv\Scripts\python.exe -m pytest tests/test_general_contention.py -q -p no:cacheprovider, regression: .venv\Scripts\python.exe -m pytest -q -p no:cacheprovider, docker: .venv\Scripts\python.exe -m pytest tests/test_workspace.py tests/test_workspace_tools.py tests/test_workspace_plan.py tests/test_docker_provider.py tests/test_sandbox_contention.py tests/test_compute.py tests/test_egress.py tests/test_sandboxed_mcp.py tests/test_snapshots.py tests/test_increment2_contention.py tests/test_plain_budgets.py tests/test_general_preset.py tests/test_adr12_sandbox.py tests/test_general_contention.py -m docker -q -p no:cacheprovider, independent-review: pending

@@ -18,6 +18,7 @@ from decimal import Decimal
 from typing import Any
 
 from agentsdk import AgentSpec, RunConfig, Runner
+from agentsdk.budget import BUDGET_EXCEEDED
 from agentsdk.builtin_tools import glob_tool, grep_tool, read_file_tool
 from agentsdk.model import Usage
 from agentsdk.version import __version__ as AGENTSDK_VERSION
@@ -49,6 +50,9 @@ class RunOutcome:
     # Only the Claude arm estimates a cost of its own; FR-62 records it separately.
     sdk_cost_estimate: Decimal | None = None
     error: str | None = None
+    # FR-179: this SDK's ceilings for the run, when the budget rule applied; None on the Claude arm.
+    budget_usd: str | None = None
+    budget_tokens: int | None = None
 
 
 class ThisSdkArm:
@@ -57,10 +61,13 @@ class ThisSdkArm:
     name = "agentsdk"
     wire_format = "OpenAI-compatible chat completions"
 
-    def __init__(self, *, client_factory, model: str | None = None, model_registry: Any = None) -> None:
+    def __init__(self, *, client_factory, model: str | None = None, model_registry: Any = None,
+                 budgets: bool = False) -> None:
         self._client_factory = client_factory
         self._model = model
         self._registry = model_registry
+        # FR-179: the budget rule, applied to every kind when the larger comparison runs.
+        self._budgets = budgets
 
     @property
     def version(self) -> str:
@@ -83,7 +90,16 @@ class ThisSdkArm:
             tool_profile=tuple(tool.spec.name for tool in tools),
             preferred_model=f"model:{self._model}" if self._model else None,
         )
-        config = RunConfig(tenant_id="adr12", project_id="comparison", max_turns=task.max_turns)
+        usd, tokens = None, None
+        budget: dict[str, Any] = {}
+        if self._budgets:
+            from agentsdk.budget import BudgetPolicy
+
+            from .sandbox import ceilings
+
+            usd, tokens = ceilings(task.kind)
+            budget = {"budget": BudgetPolicy(run_ceiling_usd=Decimal(usd), run_ceiling_tokens=tokens)}
+        config = RunConfig(tenant_id="adr12", project_id="comparison", max_turns=task.max_turns, **budget)
         started = time.perf_counter()
         try:
             result = await runner.run(spec, task.prompt, config)
@@ -95,12 +111,15 @@ class ThisSdkArm:
         turns = sum(1 for event in result.events if event.event_type.value == "ModelCalled")
         return RunOutcome(
             answer=result.output,
-            status=result.status.value,
+            # FR-179: a run its budget stopped is reported as a terminal status of its own.
+            status=BUDGET_EXCEEDED if result.error == BUDGET_EXCEEDED else result.status.value,
             turns=turns,
             usage=result.usage,
             wall_ms=wall_ms,
             sdk_cost_estimate=None,
             error=result.error,
+            budget_usd=usd,
+            budget_tokens=tokens,
         )
 
 

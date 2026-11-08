@@ -13,6 +13,8 @@ an arm does not report is the string "unavailable", never 0 (AC-50).
 from __future__ import annotations
 
 import asyncio
+import contextlib
+import hashlib
 import pathlib
 import shutil
 from dataclasses import dataclass, field
@@ -20,12 +22,36 @@ from datetime import datetime, timezone
 from decimal import Decimal
 from typing import Any
 
+from agentsdk.model import Usage
+from agentsdk.presets import GENERAL_VERSION
 from agentsdk.registry import call_cost
+from agentsdk.workspace.docker import UID as WORKSPACE_UID
 
 from . import report as report_module
+from .sandbox import BUDGET_MULTIPLE, M15_REPORT, SANDBOX, Workspace, ceilings
+from .sandbox_arms import CLAUDE_UID
 from .tasks import FIXTURE_ROOT
 
 UNAVAILABLE = "unavailable"
+M15_SETUP = {
+    "agentsdk": "read, glob and grep over a host copy of the fixture, as in M15",
+    "claude-agent-sdk": "Read, Glob and Grep over a host copy of the fixture, as in M15",
+}
+# The users differ as well as the tools (FR-179 asks the report to state each asymmetry; M50 round 1,
+# note 2): read from both images' /etc/passwd on 2026-11-08, the uids from the constants that set them.
+SANDBOX_SETUP = {
+    "agentsdk": "the general preset in a workspace holding the task's files, egress by the task's allow list, "
+                f"every export refused; it runs as uid {WORKSPACE_UID} (nobody, home /) in the workspace image, "
+                "which has /bin/sh but no bash",
+    "claude-agent-sdk": "Read, Glob, Grep, Bash, Write and Edit in a disposable container holding the task's files; "
+                        f"it runs as uid {CLAUDE_UID} (agent, home /home/agent), and its image adds nodejs, npm "
+                        "and bash (for the Bash tool) to the workspace image's base",
+}
+BUDGET_RULE = (f"this SDK's arm only: a USD and a token ceiling of {BUDGET_MULTIPLE} times the kind's median on "
+               f"this SDK's arm in M15 ({M15_REPORT}); the sandbox kind {BUDGET_MULTIPLE} times the multi-step "
+               "median. The Claude arm has no budget")
+NETWORKING = ("this SDK's arm reaches only its task's allowed host, through its workspace's proxy; the Claude arm "
+              "runs with ordinary networking, to reach the gateway and the fetch tasks' host")
 
 
 @dataclass
@@ -48,24 +74,73 @@ def run_comparison(
     workdir: pathlib.Path,
     gateway_model: str,
     stamp: str | None = None,
+    sandbox_arms: list[Any] = (),
+    sandbox_tasks: Any = (),
+    image_digests: dict[str, str] | None = None,
+    verifier: Any = None,
+    witness: tuple[bytes, str] | None = None,
+    sweep: Any = None,
 ) -> Comparison:
-    """Run every task on every arm, write the report, and return the rows."""
+    """Run every task on every arm, write the report, and return the rows.
+
+    FR-179: the M15 tasks run on `arms` as M15 ran them; the sandbox tasks run on `sandbox_arms`,
+    each checked by the workspace it left (DECISION-d0269633). A code task is checked by
+    `verifier`'s run of its cases, a fetch task against `witness`, the page body the harness
+    fetched itself and when (DECISION-b944d3ab). `sweep`, when given, removes whatever containers
+    the comparison's labels still name once it ends."""
     reports_dir, workdir = pathlib.Path(reports_dir), pathlib.Path(workdir)
     reports_dir.mkdir(parents=True, exist_ok=True)
     workdir.mkdir(parents=True, exist_ok=True)
+    tasks, sandbox_tasks = list(tasks), list(sandbox_tasks)
+    if sandbox_tasks and not sandbox_arms:
+        raise ValueError("sandbox tasks need the sandbox arms")
+    if any(task.verification for task in sandbox_tasks) and verifier is None:
+        raise ValueError("code tasks need the verifier")
+    if any(task.group == "fetch" for task in sandbox_tasks) and witness is None:
+        raise ValueError("fetch tasks need the harness's witness")
     rows: list[dict[str, Any]] = []
-    for repetition in range(1, repetitions + 1):
-        for task in tasks:
-            for arm in arms:
-                rows.append(_one_run(arm, task, repetition, pricing, workdir))
+    metadata: dict[str, Any] = {"date": (stamp or datetime.now(timezone.utc).isoformat(timespec="seconds"))}
+    try:
+        for repetition in range(1, repetitions + 1):
+            for task in tasks:
+                for arm in arms:
+                    rows.append(_one_run(arm, task, repetition, pricing, workdir))
+            for task in sandbox_tasks:
+                for arm in sandbox_arms:
+                    rows.append(_one_sandbox_run(arm, task, repetition, pricing, verifier, witness))
+    finally:
+        # Pre-review F6: what was measured is written even when a run raised; F4: nothing is left.
+        if sweep is not None:
+            with contextlib.suppress(Exception):
+                metadata["swept"] = asyncio.run(sweep())
+        if len(rows) < repetitions * (len(tasks) * len(arms) + len(sandbox_tasks) * len(sandbox_arms)):
+            metadata["incomplete"] = f"{len(rows)} runs measured before the comparison stopped"
+            report_module.write_report({**metadata, "arms": [a.name for a in [*arms, *sandbox_arms]]}, rows,
+                                       reports_dir)
+    every = [*tasks, *sandbox_tasks]
+    kinds = sorted({task.kind for task in every})
+    names = list(dict.fromkeys([arm.name for arm in arms] + [arm.name for arm in sandbox_arms]))
     metadata = {
-        "date": (stamp or datetime.now(timezone.utc).isoformat(timespec="seconds")),
+        **metadata,
         "gateway_model": gateway_model,
-        "arms": [arm.name for arm in arms],
-        "versions": {arm.name: arm.version for arm in arms},
-        "wire_formats": {arm.name: arm.wire_format for arm in arms},
+        "witness": ({"url": "https://example.com/", "fetched_at": witness[1], "bytes": len(witness[0]),
+                     "sha256": hashlib.sha256(witness[0]).hexdigest()} if witness else None),
+        "verification": ("code tasks verified by the harness in a fresh container of the workspace image with no "
+                         "network, on visible and hidden cases" if verifier is not None else None),
+        "arms": names,
+        "versions": {arm.name: arm.version for arm in [*arms, *sandbox_arms]},
+        "wire_formats": {arm.name: arm.wire_format for arm in [*arms, *sandbox_arms]},
         "repetitions": repetitions,
-        "tasks": [task.id for task in tasks],
+        "tasks": [task.id for task in every],
+        # FR-179: the report states the task count, and every kind's setup and budget.
+        "task_count": len(every),
+        "kinds": {kind: sum(1 for task in every if task.kind == kind) for kind in kinds},
+        "setups": {kind: (SANDBOX_SETUP if kind == SANDBOX else M15_SETUP) for kind in kinds},
+        "budget_rule": BUDGET_RULE,
+        "ceilings": {kind: dict(zip(("usd", "tokens"), ceilings(kind))) for kind in kinds},
+        "networking": NETWORKING if sandbox_tasks else None,
+        "preset_version": GENERAL_VERSION if sandbox_tasks else None,
+        "images": dict(image_digests or {}),
         "pricing": pricing.to_json() if hasattr(pricing, "to_json") else str(pricing),
     }
     json_path, markdown_path = report_module.write_report(metadata, rows, reports_dir)
@@ -77,7 +152,13 @@ def _one_run(arm: Any, task: Any, repetition: int, pricing: Any, workdir: pathli
     if root.exists():  # pragma: no cover - a repeated stamp would hide a run
         shutil.rmtree(root)
     shutil.copytree(FIXTURE_ROOT, root)
-    outcome = asyncio.run(arm.run(task, root))
+    try:
+        outcome = asyncio.run(arm.run(task, root))
+    except Exception as exc:  # noqa: BLE001 - pre-review F6: a run that raised is a failed row
+        from .arms import RunOutcome
+
+        outcome = RunOutcome(answer=None, status="failed", turns=0, usage=Usage(), wall_ms=0.0,
+                             error=f"the arm raised {type(exc).__name__}")
     usage = outcome.usage
     cost = call_cost(usage, pricing)
     return {
@@ -97,6 +178,53 @@ def _one_run(arm: Any, task: Any, repetition: int, pricing: Any, workdir: pathli
         "cost_usd": _money(cost),
         "sdk_cost_estimate_usd": _money(outcome.sdk_cost_estimate),
         "run_root": str(root),
+        "answer": _short(outcome.answer),
+        "error": outcome.error or UNAVAILABLE,
+        "budget_usd": outcome.budget_usd or UNAVAILABLE,
+        "budget_tokens": outcome.budget_tokens if outcome.budget_tokens is not None else UNAVAILABLE,
+    }
+
+
+def _one_sandbox_run(arm: Any, task: Any, repetition: int, pricing: Any, verifier: Any = None,
+                     witness: tuple[bytes, str] | None = None) -> dict[str, Any]:
+    """FR-179: one sandbox run, checked by the workspace it left, read back by the arm. A code task
+    is verified by the harness, a fetch task judged against its witness (DECISION-b944d3ab)."""
+    try:
+        outcome = asyncio.run(arm.run_sandbox(task))
+    except Exception as exc:  # noqa: BLE001 - pre-review F6: a run that raised is a failed row
+        from .sandbox_arms import SandboxOutcome
+
+        outcome = SandboxOutcome(answer=None, status="failed", turns=0, usage=Usage(), wall_ms=0.0,
+                                 error=f"the arm raised {type(exc).__name__}")
+    verified = None
+    if task.verification is not None and outcome.files:
+        verified = asyncio.run(verifier.verify(task, dict(outcome.files)))
+    usage = outcome.usage
+    space = Workspace(files=dict(outcome.files), answer=outcome.answer, verified=verified,
+                      witness=witness[0] if witness and task.group == "fetch" else None)
+    return {
+        "verified": verified if verified is not None else UNAVAILABLE,
+        "task": task.id,
+        "kind": task.kind,
+        "group": task.group,
+        "arm": arm.name,
+        "repetition": repetition,
+        "passed": bool(task.checker(space)),
+        "status": outcome.status,
+        "turns": outcome.turns,
+        "prompt_tokens": usage.prompt_tokens,
+        "completion_tokens": usage.completion_tokens,
+        "cache_read_tokens": usage.cache_read_tokens,
+        "cache_write_tokens": usage.cache_write_tokens,
+        "wall_ms": round(outcome.wall_ms, 1),
+        "cost_usd": _money(call_cost(usage, pricing)),
+        "sdk_cost_estimate_usd": _money(outcome.sdk_cost_estimate),
+        "files_read_back": len(outcome.files),
+        "exports_refused": outcome.exports_refused if outcome.exports_refused is not None else UNAVAILABLE,
+        "run_id": outcome.run_id or UNAVAILABLE,
+        "workspace_id": outcome.workspace_id or UNAVAILABLE,
+        "budget_usd": outcome.budget_usd or UNAVAILABLE,
+        "budget_tokens": outcome.budget_tokens if outcome.budget_tokens is not None else UNAVAILABLE,
         "answer": _short(outcome.answer),
         "error": outcome.error or UNAVAILABLE,
     }

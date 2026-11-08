@@ -9,7 +9,7 @@
     "non_goals": [],
     "trust_boundary": "local repository",
     "created_at": "2026-09-05T14:48:57.894Z",
-    "updated_at": "2026-11-07T18:08:23.503Z"
+    "updated_at": "2026-11-08T12:39:25.605Z"
   },
   "policy": {
     "ponytail": "full",
@@ -25,7 +25,7 @@
   "lifecycle": {
     "phase": "build",
     "status": "active",
-    "active_task": "M50-adr12-sandbox",
+    "active_task": "M51-general-contention",
     "blocker": null,
     "next_action": "Run the task pre-flight."
   },
@@ -2647,6 +2647,38 @@
       "status": "accepted",
       "source": ".genesis/reviews/M49-review-prompt.md",
       "recorded_at": "2026-11-07T17:53:02.824Z"
+    },
+    {
+      "id": "DECISION-d0269633",
+      "title": "M50 pre-flight: M15 tasks as they were, example.com, the alpine digest, each sandbox task live once, the budget rule as written (owner)",
+      "text": "The 12 M15 tasks keep their M15 setup on both arms (read-only file tools over a host copy of the fixture); only the new sandbox kind runs on the general preset and in the Claude container, and the report states which setup each kind ran under. The fetch task allows example.com:443 and its checker looks for Example Domain in the saved page. The Claude arm image is built FROM python@sha256:6d43704baacd1bfbe7c295d7f13079d5d8104ed33568873133f8fc69980419df (the SDK arm workspace image) with apk nodejs/npm, the pinned CLI 2.1.267 and claude-agent-sdk 0.2.152; if the CLI does not run on musl the owner is asked before any other base. The owner approves the build when the Docker work begins. Model bedrock.anthropic.claude-haiku-4-5 with the harness price list, as M15. M50 runs every sandbox task once on each arm live; M51 runs the 3x comparison. Budget rule kept as FR-179 states it: M15 medians on this SDK arm are single-step 0.002175 USD / 1925 tokens, multi-step 0.002394 / 2017.5, long 0.002237 / 1942, decline 0.001531 / 999; sandbox ceilings are ten times multi-step, 0.02394 USD and 20175 tokens. If the live runs show many budget_exceeded, the measured numbers go to the owner before M51.",
+      "status": "accepted",
+      "source": "SPEC.md FR-179",
+      "recorded_at": "2026-11-08T04:16:25.538Z"
+    },
+    {
+      "id": "DECISION-b944d3ab",
+      "title": "M50 pre-review: eight findings repaired in M50; code checked by a verifier container with hidden cases, fetches by a harness witness (owner)",
+      "text": "Pre-review (Sonnet 5.5) found F1 to F8; F1, F2 and F5 reproduced first-hand. F1: the export approver died on a raising decide or interruptions, the run hung to the approval timeout and the arm raised; repaired by a loop that survives and retries each refusal, and a cleanup that never raises. F2: check.txt could be forged (by hand, at import time, by a shadowing package) and a lookup table passed check.py; owner chose a verifier container: after a code task the harness copies the read-back files and a pristine verifier into a fresh --network none container of the workspace image, loads the named module file by path in a child process per case, runs visible and hidden cases, and prints a result carrying a nonce the workspace code never sees; check.txt no longer counts. F3: the Claude arm docker output is read in bounded chunks. F4: container removal is shielded from cancellation, retried after a cancelled create, and a sweep by the arm labels ends every comparison. F5: the gateway key is redacted from every error and answer the Claude arm records. F6: each run is guarded into a failed row, the release has its own guard, and the report is written even when a run fails. F7: create requires --pull never exactly, rm only the arm own names, and the static test flags build, pull or push anywhere in a list. F8: owner chose a harness witness: the harness fetches https://example.com/ once per comparison; fetch-page must save that body, and fetch-title-into-config also records its byte length; the report names when the witness was fetched.",
+      "status": "accepted",
+      "source": "scratchpad m50/prereview",
+      "recorded_at": "2026-11-08T05:53:48.377Z"
+    },
+    {
+      "id": "DECISION-02d5d160",
+      "title": "M50 pre-review repairs as built: drained pipes after a kill, a certifi-verified witness, live pass rerun on the final checkers",
+      "text": "Two things the repairs of DECISION-b944d3ab found. (1) The bounded docker client hung after a kill: a pipe left unread past its bound stays paused, so asyncio never sees the killed process end and wait() never returns; the client now cancels its sibling reads, kills, drains both pipes to their end discarding the bytes, then waits, under a 30 s deadline, and a test bounds the call to 10 s (the mutant without the drain survived until that bound was added). An async test calling the harness also turned out vacuous under the new per-run guard (asyncio.run inside a running loop became a failed row); it now runs the harness in a thread and asserts the redacted answer reaches the report. (2) The witness fetch failed certificate verification on this host: the certificate is genuine (Cloudflare TLS Issuing ECC CA 3 for example.com) but the Windows store Python lacks its root; the witness verifies against certifi, pinned in evals/adr12/requirements.txt as certifi==2026.7.22. Mutation run: 35 mutants, all killed. Live pass on the final code (every sandbox task once per arm, Haiku 4.5): 46 of 48 checkers passed, Claude arm 24 of 24, this SDK arm 22 of 24; three SDK-arm runs ended budget_exceeded, two of them with the repair unfinished (1 of 5 cases verified); the verifier ran on 20 code-task rows; witness 577 bytes.",
+      "status": "accepted",
+      "source": "scratchpad m50",
+      "recorded_at": "2026-11-08T07:27:24.517Z"
+    },
+    {
+      "id": "DECISION-ce409a10",
+      "title": "M50 round 1 close: notes 1 and 2 repaired in M50, note 3 to M51, no further review (owner)",
+      "text": "Round 1 (Fable 5.1) approved M50 with nothing blocking and three notes; under DECISION-c697f36c it is the last round. Owner's choices: note 1 repaired in M50: the error code budget_exceeded is defined once as agentsdk.budget.BUDGET_EXCEEDED and used at all 13 source sites in loop.py, orchestrator.py, evals/adr12/arms.py and sandbox_arms.py; tests and the example scripts keep the literal, since they check the stored contract value from outside; tests/test_budget.py scans agentsdk and evals/adr12 for any other copy. Note 2 repaired in M50: FR-179's setup text states each arm's user, built from agentsdk.workspace.docker.UID (65534, nobody, home /, /bin/sh but no bash) and CLAUDE_UID (1000, agent, home /home/agent, bash), both read from the images' /etc/passwd; the stored 2026-11-08 report's setup text is corrected with a note saying so, its runs unchanged. Note 3 (example.com reproducible from memory) is inherent to the chosen witness and goes to M51's tuning. The reviewer reproduced 9 of the 35 mutants; the author's 35-mutant run stands for the rest, and 6 more mutants for these repairs were all killed. Gates rerun on the repaired tree.",
+      "status": "accepted",
+      "source": "M50 round 1 verdict; owner answers 2026-11-08",
+      "recorded_at": "2026-11-08T10:34:39.553Z"
     }
   ],
   "knowledge": [
@@ -7570,7 +7602,7 @@
     {
       "id": "M50-adr12-sandbox",
       "outcome": "The ADR-12 harness runs sandbox tasks on the general preset and on a containerised Claude arm, each checked by its result in the workspace",
-      "state": "active",
+      "state": "done",
       "risk": "high",
       "owner": null,
       "scope": [],
@@ -7588,29 +7620,49 @@
           "id": "unit",
           "command": ".venv\\Scripts\\python.exe -m pytest tests/test_adr12_sandbox.py tests/test_adr12_comparison.py -q -p no:cacheprovider",
           "mandatory": true,
-          "status": "pending",
-          "evidence": null
+          "status": "pass",
+          "evidence": {
+            "path": ".genesis/evidence/M50-adr12-sandbox-unit.json",
+            "source_hash": "831c24ecef002ee7363089bc722b5402490e45a47a305bdf36f38ae910031d18",
+            "hash": "952da1fe15980aa8ef9db79bda598a02ebfad31b5e8f45fbbe3255116764087c",
+            "observed_at": "2026-11-08T10:36:32.458Z"
+          }
         },
         {
           "id": "regression",
           "command": ".venv\\Scripts\\python.exe -m pytest -q -p no:cacheprovider",
           "mandatory": true,
-          "status": "pending",
-          "evidence": null
+          "status": "pass",
+          "evidence": {
+            "path": ".genesis/evidence/M50-adr12-sandbox-regression.json",
+            "source_hash": "831c24ecef002ee7363089bc722b5402490e45a47a305bdf36f38ae910031d18",
+            "hash": "ff3c5f30f59a42423a338c798790b34169681bfc3727194cc58b6cab7da22a73",
+            "observed_at": "2026-11-08T11:15:16.108Z"
+          }
         },
         {
           "id": "docker",
           "command": ".venv\\Scripts\\python.exe -m pytest tests/test_workspace.py tests/test_workspace_tools.py tests/test_workspace_plan.py tests/test_docker_provider.py tests/test_sandbox_contention.py tests/test_compute.py tests/test_egress.py tests/test_sandboxed_mcp.py tests/test_snapshots.py tests/test_increment2_contention.py tests/test_plain_budgets.py tests/test_general_preset.py tests/test_adr12_sandbox.py -m docker -q -p no:cacheprovider",
           "mandatory": true,
-          "status": "pending",
-          "evidence": null
+          "status": "pass",
+          "evidence": {
+            "path": ".genesis/evidence/M50-adr12-sandbox-docker.json",
+            "source_hash": "831c24ecef002ee7363089bc722b5402490e45a47a305bdf36f38ae910031d18",
+            "hash": "e4c426bbbc135c8b06bd50dd33eb378b05c9ef075936d2cd6906fc5b80ddd8e4",
+            "observed_at": "2026-11-08T12:37:28.416Z"
+          }
         },
         {
           "id": "independent-review",
           "command": "",
           "mandatory": true,
-          "status": "pending",
-          "evidence": null
+          "status": "pass",
+          "evidence": {
+            "human": "siva-rgb (owner)",
+            "reason": "round 1 approval kept; notes 1 and 2 repaired per DECISION-ce409a10",
+            "source_hash": "831c24ecef002ee7363089bc722b5402490e45a47a305bdf36f38ae910031d18",
+            "observed_at": "2026-11-08T12:39:25.397Z"
+          }
         }
       ],
       "next_action": "Run the task pre-flight.",
@@ -7619,12 +7671,12 @@
       "failures": [],
       "limitations": [],
       "created_at": "2026-11-05T14:39:54.557Z",
-      "updated_at": "2026-11-05T14:39:54.557Z"
+      "updated_at": "2026-11-08T12:39:25.605Z"
     },
     {
       "id": "M51-general-contention",
       "outcome": "The larger comparison is reported, and general agents of two tenancies hold budget, sandbox, approval and tenancy under contention on both stores",
-      "state": "queued",
+      "state": "active",
       "risk": "high",
       "owner": null,
       "scope": [],
@@ -9687,6 +9739,24 @@
       "task": "M49-general-preset",
       "human": "siva-rgb (owner)",
       "reason": "M49 round 1 (Fable 5.1) approved with nothing blocking; F-A and F-B repaired per DECISION-2ee2b899, gates rerun on 96af1956",
+      "revision": null
+    },
+    {
+      "id": "6b53b68f-53ab-43d4-aa84-d78ce47157a2",
+      "at": "2026-11-08T10:12:01.297Z",
+      "action": "approve",
+      "task": "M50-adr12-sandbox",
+      "human": "Fable 5.1",
+      "reason": "Independent L4 review of M50 at contentHash 937e7a65. Verified first-hand: offline suite 215 passed 3 deselected (matches unit gate); 3 docker-marked tests passed under the awake wrapper with no standby; working tree byte-identical to baseline by SHA-256 after all work. Reproduced nine mutants by exact byte edit, each killed by its own test and each file restored: the verifier nonce and hidden cases, checker trusts-anything, F5 key redaction, F7 create-may-pull and rm-of-anyones, the F1 approver-dies retry, and the two first-run survivors release-observed and pipes-drained (the pipes mutant hangs to the 30s deadline and fails the under-10s bound). All nine attack items probed and sound: verifier fail-closed with a nonce the workspace never sees and child processes loading by path over visible and hidden cases; checkers accept good and reject bad and tricky for all 24 tasks; witness byte-exact and fail-closed; read-back parses the checked tar in memory and refuses links (NFR-43); no credential in image env, history, argv or the committed report; cleanup leaves zero labelled containers and no new temp folders; nothing pulls or builds including the live command via image inspect; the budget rule is ten times the M15 medians on every kind with budget_exceeded as its own terminal status; report states task count setups budget networking preset version and image digests. NFR-51 holds at import level: agentsdk imports nothing of the eval or image. Non-blocking notes only: status keys on the SDK sentinel error budget_exceeded which the orchestrator itself uses internally so it is a code not free text; the uid asymmetry 1000 vs 65534 is unstated but immaterial since both users are unprivileged and own their files; example.com is memorizable so a byte-identical reproduction without a real fetch would pass the content witness, inherent to any witness and the owner chosen mechanism. No blocking findings.",
+      "revision": null
+    },
+    {
+      "id": "bb2c4d4e-d751-405e-a2ef-3f4cb13ede49",
+      "at": "2026-11-08T12:39:25.397Z",
+      "action": "approve",
+      "task": "M50-adr12-sandbox",
+      "human": "siva-rgb (owner)",
+      "reason": "round 1 approval kept; notes 1 and 2 repaired per DECISION-ce409a10",
       "revision": null
     }
   ],

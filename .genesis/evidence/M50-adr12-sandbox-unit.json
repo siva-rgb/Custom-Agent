@@ -1,0 +1,22 @@
+{
+  "task": "M50-adr12-sandbox",
+  "gate": "unit",
+  "command": ".venv\\Scripts\\python.exe -m pytest tests/test_adr12_sandbox.py tests/test_adr12_comparison.py -q -p no:cacheprovider",
+  "started_at": "2026-11-08T10:34:50.934Z",
+  "observed_at": "2026-11-08T10:36:32.458Z",
+  "exit_code": 0,
+  "signal": null,
+  "stdout": "........................................................................ [ 33%]\r\n........................................................................ [ 66%]\r\n........................................................................ [100%]\r\n216 passed, 3 deselected in 100.52s (0:01:40)\r\n",
+  "stderr": "",
+  "revision": {
+    "commit": "8d93f8d05b68eb1d092207d188ad14c7b908ec58",
+    "dirty": true
+  },
+  "source_hash": "831c24ecef002ee7363089bc722b5402490e45a47a305bdf36f38ae910031d18",
+  "environment": {
+    "node": "v20.10.0",
+    "platform": "win32",
+    "arch": "x64"
+  },
+  "hash": "952da1fe15980aa8ef9db79bda598a02ebfad31b5e8f45fbbe3255116764087c"
+}

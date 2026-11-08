@@ -47,7 +47,7 @@ from .model import ModelClient, ModelRequest, ModelResponse, StopReason, Usage
 from .outcomes import ApprovalRequired, Completed, Failed, RunInterruption, ToolExecutionOutcome
 from .primitives import Message, Role, ToolCall, ToolResult
 from .primitives import unstorable_reason
-from .budget import tokens_of
+from .budget import BUDGET_EXCEEDED, tokens_of
 from .registry import add_costs
 from .timings import elapsed_ms, now_ns, wall_clock
 from .tools import ToolRegistry
@@ -276,7 +276,7 @@ class AgentLoop:
             # at or over its reservation, or a run at its ceiling, makes no further
             # call; what it already spent stands and is charged to the run.
             if self._budget is not None and not self._budget.may_call():
-                return _outcome(meter, None, turn, error="budget_exceeded")
+                return _outcome(meter, None, turn, error=BUDGET_EXCEEDED)
             sending = False
             try:
                 # FR-46: the wait for a provider slot is outside send, so it is
@@ -434,7 +434,7 @@ class AgentLoop:
         request = compactor.request(replaced, model_settings)
         control.checkpoint()
         if self._budget is not None and not self._budget.may_call():
-            return "budget_exceeded"
+            return BUDGET_EXCEEDED
         sending = False
         try:
             waiting = now_ns()
