@@ -9,7 +9,7 @@
     "non_goals": [],
     "trust_boundary": "local repository",
     "created_at": "2026-09-05T14:48:57.894Z",
-    "updated_at": "2026-11-08T12:39:25.605Z"
+    "updated_at": "2026-11-09T10:31:10.943Z"
   },
   "policy": {
     "ponytail": "full",
@@ -23,11 +23,11 @@
     }
   },
   "lifecycle": {
-    "phase": "build",
-    "status": "active",
-    "active_task": "M51-general-contention",
+    "phase": "verify",
+    "status": "ready",
+    "active_task": null,
     "blocker": null,
-    "next_action": "Run the task pre-flight."
+    "next_action": "Review completed work and choose the next bounded outcome."
   },
   "commands": {},
   "workflow": {
@@ -2679,6 +2679,38 @@
       "status": "accepted",
       "source": "M50 round 1 verdict; owner answers 2026-11-08",
       "recorded_at": "2026-11-08T10:34:39.553Z"
+    },
+    {
+      "id": "DECISION-7830ca10",
+      "title": "M51 pre-flight: tuning on Haiku 4.5 and gpt-4o-mini, up to 3 versions, a 20 USD cap, proof of fetch, example 43 on gpt-4o-mini (owner)",
+      "text": "Owner's choices for M51. Tuning (FR-182): on bedrock.anthropic.claude-haiku-4-5 (the comparison's model) and openai.gpt-4o-mini; at most three new versions (general-v2 to general-v4), each run on the 24 sandbox tasks once per provider, tuned against the failures seen; tuning stops at the first version that passes every sandbox task its predecessor passed on both providers, or at the third, and the final comparison (FR-181, every task three times on each arm, on Haiku 4.5) runs the last version. Live spend capped at 20 USD for the milestone (tuning, comparisons, example 43 live, one repeat of the full comparison if a run is broken by something outside the code); the author stops and asks on reaching it. M50 note 3 is closed in M51: a fetch task passes only with evidence of the fetch, this SDK's arm by its recorded egress to the task's host, the Claude arm by a fetch tool call in its transcript, besides the content witness. Example 43 (FR-183): per tenancy two plain general agents and one orchestrator plan with two general subagents, all started shuffled with random delays; live on openai.gpt-4o-mini, given each hostile attempt verbatim, 3 runs per store; ten DockerProvider runs per store before review as tests, as DECISION-fc8cb843.",
+      "status": "accepted",
+      "source": "M51 pre-flight, owner answers 2026-11-08",
+      "recorded_at": "2026-11-08T13:20:20.307Z"
+    },
+    {
+      "id": "DECISION-2685735a",
+      "title": "M51 live work: general-v4 ships after three tuning versions, the comparison 101/108 and 104/108, example 43 live 6 of 6",
+      "text": "Under DECISION-7830ca10. Tuning (24 sandbox tasks once per version, this SDK's arm): general-v1 21 Haiku 4.5 / 18 gpt-4o-mini; general-v2 22/20 (did not hold: lost repair-restock on gpt-4o-mini); general-v3 22/19 (did not hold: lost 4); general-v4 23/18 (did not hold: lost repair-dedupe and top-words on gpt-4o-mini). The rule stopped tuning at the third version after general-v1; general-v4 ships (general-v2's text with independent calls in one turn, another way to download, and no result written that was not obtained), naming no provider or model (NFR-52). The tuning log and every tuning run's report are under evals/adr12/reports/tuning/. The final comparison (FR-181) ran all 36 tasks three times on each arm on general-v4 and Haiku 4.5: this SDK 101 of 108 (4 budget_exceeded, 2 max_tokens), the Claude arm 104 of 108; every M15 task passed on both arms; report adr12-comparison-2026-11-08-2. That run first overwrote M50's report of the same date (named by date alone): M50's was restored from its commit and report.write_report now never replaces a report, numbering a second one -2. The Claude image was rebuilt with the owner's approval for the driver's tool calls (new id d2abd92b; the old untagged image left in place). Example 43 live on openai.gpt-4o-mini through a scratchpad driver under SYN-m51live- tenancies: the first six runs held no run whole, the model stopping each runaway before its USD 0.001 ceiling, and one Postgres run in which no run acted, its cause not printed; with the live runaway ceiling set below one call's cost, as example 42's in M49, and the direct clause made to report its own reason, six runs (three per store) held all 11 checks. Live spend for M51 about USD 4.62 of the 20 cap.",
+      "status": "accepted",
+      "source": "M51 live runs 2026-11-08",
+      "recorded_at": "2026-11-08T17:23:45.709Z"
+    },
+    {
+      "id": "DECISION-8fc29ec4",
+      "title": "M51 pre-review: five findings and three notes repaired in M51; the comparison rerun on the strict proof of fetch (owner)",
+      "text": "Pre-review (Sonnet, no blocking finding). Owner's choices, all repaired in M51. F1: the Claude arm's proof of fetch was a substring match (echo example.com counted); a fetch now counts only for a Bash call running a downloader or a language runtime on the host's URL, or a WebFetch of it, whose result the driver reported and was not an error. The driver reports each call's id and each result's error flag, never its content; the image was rebuilt (9cf6ef1c) and the 216-run comparison rerun on general-v4 under the strict rule: this SDK 102 of 108, the Claude arm 105 of 108, all 12 fetch rows with evidence (report adr12-comparison-2026-11-08-2; the loose-rule report kept outside the repository). F2: example 43 gains a twelfth check, each tenancy trying to decide the other's interruption and to list it by its run, its control the owner finding it decided; removals of the interruption store's tenant check on both stores and of the memory listing's tenant filter fail it. F3: the spend check's subject is a run whose spend reached its ceiling, so a declining model leaves it unexercised. F4: tune.py refuses a changed text before it spends; the log is written whole under a lock. F5: write_report claims each file exclusively. N1: the presets comment says general-v4 ships by the stop rule, general-v2 having passed one task more. N3: the example's operator retries a failed decision. N4: removals of the Postgres connections and interruptions predicates added. Mutation run: 43 mutants, all killed (two survivors killed once tests reached them, two whose CRLF sites first failed to apply). Example 43 with 12 checks: 20 of 20 on Docker, 6 of 6 live. Live spend for M51 about USD 7.36 of the 20 cap.",
+      "status": "accepted",
+      "source": "M51 pre-review and owner answers 2026-11-08/09",
+      "recorded_at": "2026-11-08T20:25:41.284Z"
+    },
+    {
+      "id": "DECISION-8d85c1d3",
+      "title": "M51 round 1 F1 repaired in M51: the Claude arm's proof of fetch reads the command as the shell runs it, each row keeps its evidence, the comparison rerun (owner)",
+      "text": "Round 1 (Fable 5.1) approved with one non-blocking finding; by DECISION-c697f36c the last round. F1: named_hosts matched text, so echo, a comment, print or grep naming the URL counted, and a scheme-less host, www, or a joined URL did not; README and fetch_proof claimed more than the code. Owner chose: parse, record, reword; and a full rerun. Repair: evals/adr12/fetch_proof.py splits a Bash call into simple commands and counts curl or wget with the host or a subdomain among its arguments (option values skipped), or python or node whose code uses an HTTP client and names the URL (inline, heredoc, or a script written by Write or cat heredoc, forgotten on Edit or redirect), through wrappers, same-call variables, substitutions outside single quotes and sh -c; WebFetch by host. Each row keeps fetch_evidence (this SDK's arm: connection ids; Claude arm: the call, key redacted) and the Markdown report lists it; README and FETCH_PROOF state the evidence is the command, not the network, and what it misses. Tests: the reviewer's 7 cases plus 33 more forms; 25 of 25 mutants killed (2 first survived for want of a test reaching them; tests added). Comparison rerun 2026-11-09: 103 of 108 on each arm, USD 2.79 (M51 about USD 10.15 of 20); all 12 fetch rows passed and each row's evidence was read and is a real download. The 2026-11-08-2 report moved to the scratchpad; that move overwrote the earlier superseded loose-rule copy kept there, which is lost (never in the repository). Gates on hash aae13f2b: unit 26, regression 3735, docker 194, exit 0, no standby.",
+      "status": "accepted",
+      "source": null,
+      "recorded_at": "2026-11-09T10:28:48.424Z"
     }
   ],
   "knowledge": [
@@ -7676,7 +7708,7 @@
     {
       "id": "M51-general-contention",
       "outcome": "The larger comparison is reported, and general agents of two tenancies hold budget, sandbox, approval and tenancy under contention on both stores",
-      "state": "active",
+      "state": "done",
       "risk": "high",
       "owner": null,
       "scope": [],
@@ -7697,29 +7729,49 @@
           "id": "unit",
           "command": ".venv\\Scripts\\python.exe -m pytest tests/test_general_contention.py -q -p no:cacheprovider",
           "mandatory": true,
-          "status": "pending",
-          "evidence": null
+          "status": "pass",
+          "evidence": {
+            "path": ".genesis/evidence/M51-general-contention-unit.json",
+            "source_hash": "aae13f2b082cb1cf9053f72d96018dd3bdf7e5829451d2a7d617b2a9e1bef52c",
+            "hash": "3eb9b036799c90073bb8ebacc181e95b9786e36c815e6ec0c9c7aa34ab054ec1",
+            "observed_at": "2026-11-09T08:12:36.008Z"
+          }
         },
         {
           "id": "regression",
           "command": ".venv\\Scripts\\python.exe -m pytest -q -p no:cacheprovider",
           "mandatory": true,
-          "status": "pending",
-          "evidence": null
+          "status": "pass",
+          "evidence": {
+            "path": ".genesis/evidence/M51-general-contention-regression.json",
+            "source_hash": "aae13f2b082cb1cf9053f72d96018dd3bdf7e5829451d2a7d617b2a9e1bef52c",
+            "hash": "6af1b29c2f278e0264d5115f27893af2be27d3872e8bcba3361037b2703ab449",
+            "observed_at": "2026-11-09T08:51:47.862Z"
+          }
         },
         {
           "id": "docker",
           "command": ".venv\\Scripts\\python.exe -m pytest tests/test_workspace.py tests/test_workspace_tools.py tests/test_workspace_plan.py tests/test_docker_provider.py tests/test_sandbox_contention.py tests/test_compute.py tests/test_egress.py tests/test_sandboxed_mcp.py tests/test_snapshots.py tests/test_increment2_contention.py tests/test_plain_budgets.py tests/test_general_preset.py tests/test_adr12_sandbox.py tests/test_general_contention.py -m docker -q -p no:cacheprovider",
           "mandatory": true,
-          "status": "pending",
-          "evidence": null
+          "status": "pass",
+          "evidence": {
+            "path": ".genesis/evidence/M51-general-contention-docker.json",
+            "source_hash": "aae13f2b082cb1cf9053f72d96018dd3bdf7e5829451d2a7d617b2a9e1bef52c",
+            "hash": "343c74c5e2f71644d2bf263e360128812171054a3af892be61cc584f7685f7c7",
+            "observed_at": "2026-11-09T10:28:06.954Z"
+          }
         },
         {
           "id": "independent-review",
           "command": "",
           "mandatory": true,
-          "status": "pending",
-          "evidence": null
+          "status": "pass",
+          "evidence": {
+            "human": "siva-rgb (owner)",
+            "reason": "round 1 (Fable 5.1) approval kept; F1 repaired per DECISION-8d85c1d3, comparison rerun, gates rerun on aae13f2b",
+            "source_hash": "aae13f2b082cb1cf9053f72d96018dd3bdf7e5829451d2a7d617b2a9e1bef52c",
+            "observed_at": "2026-11-09T10:31:10.246Z"
+          }
         }
       ],
       "next_action": "Run the task pre-flight.",
@@ -7728,7 +7780,7 @@
       "failures": [],
       "limitations": [],
       "created_at": "2026-11-05T14:39:54.725Z",
-      "updated_at": "2026-11-05T14:39:54.726Z"
+      "updated_at": "2026-11-09T10:31:10.943Z"
     }
   ],
   "learning_proposals": [],
@@ -9757,6 +9809,24 @@
       "task": "M50-adr12-sandbox",
       "human": "siva-rgb (owner)",
       "reason": "round 1 approval kept; notes 1 and 2 repaired per DECISION-ce409a10",
+      "revision": null
+    },
+    {
+      "id": "ffea7906-3dfd-40f2-8064-bdf452f56bff",
+      "at": "2026-11-09T05:46:50.423Z",
+      "action": "approve",
+      "task": "M51-general-contention",
+      "human": "Fable 5.1, independent L4 reviewer, M51 round 1",
+      "reason": "Verified first-hand: gates unit 26, regression 3703, docker 194 passed at source hash b8790e16 with empty stderr; M51 offline tests 245 passed in 167 s awake (gap 0.0 s); example 43 on DockerProvider 12 of 12 checks in 46 s leaving 0 labelled containers, volumes or networks; database counters, locks and connections unchanged, 0 SYN-m51- tenancies left; report recomputed from JSON, every arm-task pair 3 times, by-kind and overall markdown rows match exactly, versions, model and preset general-v4 named; tuning log 4 versions x 2 providers, 4 distinct hashes, shipped text equals the v4 hash, stop rule applied correctly; NFR-51 grep 0 hits; proof of fetch on this SDK arm is an allowed row written only after upstream connect and read after release by run id; the AC-109 removals and ten more fail the check that names them by its own clause. Non-blocking: the Claude arm fetch heuristic in named_hosts counts a Bash command that only writes or echoes a fetcher line naming the URL and misses a real fetch whose URL is not on the Bash command line (a script written with Write then run as python3 fetch.py, a scheme-less curl, www. host); no shipped row was affected (12 of 12 fetch rows show example.com) and the method is stated in the report. Not probed live: no gateway spend this round.",
+      "revision": null
+    },
+    {
+      "id": "3df32a31-54dc-4b80-a31b-1bef5c8f8aa0",
+      "at": "2026-11-09T10:31:10.246Z",
+      "action": "approve",
+      "task": "M51-general-contention",
+      "human": "siva-rgb (owner)",
+      "reason": "round 1 (Fable 5.1) approval kept; F1 repaired per DECISION-8d85c1d3, comparison rerun, gates rerun on aae13f2b",
       "revision": null
     }
   ],

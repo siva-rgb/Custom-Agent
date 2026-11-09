@@ -37,7 +37,7 @@ from agentsdk.workspace import FakeProvider, WorkspaceSpec
 
 from evals.adr12 import claude_driver, harness, report
 from evals.adr12.sandbox import (
-    FETCH_HOST, GROUPS, M15_MEDIANS, M15_REPORT, SANDBOX, SANDBOX_TASKS, VERIFIER, SandboxTask, Workspace, _PAGE,
+    FETCH_HOST, FETCH_NAME, GROUPS, M15_MEDIANS, M15_REPORT, SANDBOX, SANDBOX_TASKS, VERIFIER, SandboxTask, Workspace, _PAGE,
     applied, ceilings, verification_input, verification_result,
 )
 from evals.adr12.sandbox_arms import (
@@ -102,10 +102,23 @@ def _verify_here(task: SandboxTask, files: dict, tmp_path: pathlib.Path) -> str:
 
 def judged(task: SandboxTask, which: str, tmp_path: pathlib.Path) -> Workspace:
     """An outcome as the harness hands it to the checker: verified when it is a code task, with the
-    witness when it is a fetch task (DECISION-b944d3ab)."""
+    witness and the evidence of a fetch when it is a fetch task (DECISION-b944d3ab, DECISION-7830ca10)."""
     space = task.outcome(which)
     verified = _verify_here(task, dict(space.files), tmp_path) if task.verification else None
-    return task.outcome(which, verified=verified, witness=PAGE if task.group == "fetch" else None)
+    fetch = task.group == "fetch"
+    return task.outcome(which, verified=verified, witness=PAGE if fetch else None,
+                        fetched={FETCH_NAME} if fetch else frozenset())
+
+
+@pytest.mark.parametrize("task", [t for t in SANDBOX_TASKS if t.group == "fetch"], ids=lambda t: t.id)
+def test_a_fetch_passes_only_with_evidence_of_the_fetch(task, tmp_path):
+    """M50 round 1, note 3: the page exactly as served, with no evidence the run reached the host, is a
+    page reproduced from memory and fails; so does evidence of another host only."""
+    good = judged(task, "good", tmp_path)
+    assert task.checker(good) is True
+    assert task.checker(task.outcome("good", witness=PAGE)) is False, "a page with no fetch behind it passed"
+    assert task.checker(task.outcome("good", witness=PAGE, fetched={"example.org"})) is False
+    assert task.checker(task.outcome("good", witness=PAGE, fetched={FETCH_NAME, "example.org"})) is True
 
 
 @pytest.mark.parametrize("task", SANDBOX_TASKS, ids=lambda t: t.id)
@@ -223,10 +236,10 @@ def test_a_verification_without_its_nonce_or_with_a_failed_case_is_not_a_pass():
 
 @pytest.mark.parametrize("task", [t for t in SANDBOX_TASKS if t.group == "fetch"], ids=lambda t: t.id)
 def test_a_fetch_is_judged_against_the_witness_and_refused_without_one(task):
-    assert task.checker(task.outcome("good", witness=PAGE)) is True
-    assert task.checker(task.outcome("good")) is False, "judged with no witness"
+    assert task.checker(task.outcome("good", witness=PAGE, fetched={FETCH_NAME})) is True
+    assert task.checker(task.outcome("good", fetched={FETCH_NAME})) is False, "judged with no witness"
     other = PAGE.replace(b"documentation examples", b"illustrative examples")
-    assert task.checker(task.outcome("good", witness=other)) is False, "a page other than the one served"
+    assert task.checker(task.outcome("good", witness=other, fetched={FETCH_NAME})) is False, "a page other than the one served"
 
 
 class _Served:
@@ -742,7 +755,7 @@ def test_the_harness_runs_the_sandbox_tasks_and_the_report_states_what_fr_179_na
     assert meta["preset_version"] == GENERAL_VERSION and meta["ceilings"]["sandbox"] == {"usd": "0.023940",
                                                                                          "tokens": 20175}
     text = comparison.markdown_path.read_text(encoding="utf-8")
-    for needle in ("2 tasks: 2 sandbox.", "Budget rule:", "Networking:", "ordinary networking", "general-v1",
+    for needle in ("2 tasks: 2 sandbox.", "Budget rule:", "Networking:", "ordinary networking", "general-v4",
                    WORKSPACE_IMAGE, "sha256:abc", "## By kind", "0.023940", "20175"):
         assert needle in text, needle
 
@@ -1160,3 +1173,315 @@ def test_setup_states_each_arms_user():
     stored = json.loads((HERE / "reports" / "adr12-comparison-2026-11-08.json").read_text(encoding="utf-8"))
     assert stored["metadata"]["setups"]["sandbox"] == harness.SANDBOX_SETUP, "the stored report was not corrected"
     assert stored["metadata"]["corrections"], "a corrected report says so"
+
+
+# =================================================================================================
+# M51: proof of fetch (M50 round 1, note 3; DECISION-7830ca10)
+# =================================================================================================
+
+
+class FetchingProvider(CountingProvider):
+    """The fake with example.com served through its proxy, and a `curl` that connects through it."""
+
+    def __init__(self):
+        FakeProvider.__init__(self, commands={"rm": _rm, "curl": _curl}, sites={("example.com", 443): PAGE},
+                              resolve={"example.com": ["93.184.215.14"]})
+        self.exports = []
+
+
+async def _curl(cmd):
+    """curl -o FILE https://example.com/ -- the page through the workspace's proxy, as served."""
+    target, url = cmd.argv[2], cmd.argv[3]
+    host = url.split("//", 1)[1].split("/", 1)[0]
+    try:
+        body = await cmd.connect(host, 443)
+    except OSError:
+        cmd.err("refused\n")
+        return 7
+    cmd.files.write(target, body)
+    return 0
+
+
+def _fetch_turns(*, fetch: bool):
+    """fetch-page: the page through curl, or typed out as served with no fetch behind it."""
+    first = (("run_command", {"argv": ["curl", "-o", "page.html", "https://example.com/"]}) if fetch
+             else ("write_workspace_file", {"path": "page.html", "content": PAGE.decode()}))
+    return [[first], [("write_workspace_file", {"path": "status.txt", "content": "200\n"})],
+            [("export_workspace_file", {"path": "page.html"})]]
+
+
+@pytest.mark.parametrize("fetch", [True, False], ids=["fetched", "from-memory"])
+async def test_this_sdks_arm_shows_a_fetch_by_its_recorded_connection(fetch):
+    """The evidence is the workspace's allowed connection, read from the store after the release; a
+    page typed out exactly as served, with no connection, is no fetch."""
+    task = BY_ID["fetch-page"]
+    arm, provider = _arm(Scripted(_fetch_turns(fetch=fetch)), provider=FetchingProvider())
+    outcome = await arm.run_sandbox(task)
+    assert outcome.status == "completed", outcome.error
+    assert outcome.files["page.html"] == PAGE, "the page is the one served either way"
+    assert outcome.fetched == (frozenset({FETCH_NAME}) if fetch else frozenset())
+    space = Workspace(files=dict(outcome.files), witness=PAGE, fetched=outcome.fetched)
+    assert task.checker(space) is fetch
+    # Round-1 F1: the row carries the connection that counted, to be checked against the store.
+    if fetch:
+        assert len(outcome.fetch_evidence) == 1
+        assert outcome.fetch_evidence[0].startswith("connection ")
+        assert outcome.fetch_evidence[0].endswith(f" to {FETCH_NAME}:443, allowed")
+    else:
+        assert outcome.fetch_evidence == ()
+
+
+async def test_this_sdks_arm_counts_only_an_allowed_connection_of_its_own_run(monkeypatch):
+    """A refused connection, or another run's, is not this run's fetch."""
+    from agentsdk.workspace.records import ConnectionRecord
+    from evals.adr12 import sandbox_arms
+
+    fields = {name: None for name in ConnectionRecord.__dataclass_fields__}
+    rows = [ConnectionRecord(**{**fields, "host": "example.com", "allowed": False, "run_id": "r1"}),
+            ConnectionRecord(**{**fields, "host": "example.org", "allowed": True, "run_id": "r2"}),
+            ConnectionRecord(**{**fields, "host": "example.net", "allowed": True, "run_id": "r1"})]
+
+    class Store:
+        def connections(self, tenant, project, run_id=None):
+            assert (tenant, project, run_id) == (TENANT, PROJECT, "r1")
+            return rows
+
+    class Holder:
+        def _workspace_store(self):
+            return Store()
+
+    assert await sandbox_arms.reached_hosts(Holder(), "r1") == frozenset({"example.net"})
+
+
+def _call(name, key, value, error=False, reported=True):
+    tools = [{"id": "c1", "name": name, "input": {key: value}}]
+    results = [{"kind": "results", "results": [{"id": "c1", "is_error": error}]}] if reported else []
+    return tools, results
+
+
+CURL = "curl -s -o page.html https://example.com/"
+
+
+@pytest.mark.parametrize("call, expected", [
+    (_call("Bash", "command", CURL), {FETCH_NAME}),
+    (_call("Bash", "command", "python3 -c \"import urllib.request as u; u.urlopen('https://example.com/')\""),
+     {FETCH_NAME}),
+    (_call("WebFetch", "url", "https://example.com/"), {FETCH_NAME}),
+    (_call("Bash", "command", CURL, error=True), set()),
+    (_call("Bash", "command", CURL, reported=False), set()),
+    (_call("Bash", "command", "echo example.com"), set()),
+    (_call("Bash", "command", "echo https://example.com/"), set()),
+    (_call("Bash", "command", "curl -s https://example.com.evil.org/"), set()),
+    (_call("Bash", "command", "curl -s https://notexample.com/"), set()),
+    (_call("Write", "content", "https://example.com/"), set()),
+    (_call("NotebookEdit", "url", "https://example.com/"), set()),
+    (_call("Bash", "command", "curl -s https://example.org/"), set()),
+    (([], []), set()),
+    # Round-1 F1: the program run, not the text. The four the verdict reproduced as counted...
+    (_call("Bash", "command", "echo 'curl -s https://example.com/ -o page.html' > notes.sh"), set()),
+    (_call("Bash", "command", "# curl https://example.com/ then ls -la"), set()),
+    (_call("Bash", "command", "python3 -c \"print('https://example.com/')\""), set()),
+    (_call("Bash", "command", "grep -n https://example.com/ notes.txt && echo curl"), set()),
+    # ...and the three it reproduced as missed.
+    (_call("Bash", "command", "curl -sL example.com -o page.html"), {FETCH_NAME}),
+    (_call("Bash", "command", "curl -s https://www.example.com/ -o page.html"), {FETCH_NAME}),
+    (_call("Bash", "command", "u=https://exam; curl -s ${u}ple.com/ -o page.html"), {FETCH_NAME}),
+    # The forms a run writes, each a fetch.
+    (_call("Bash", "command", "U=https://example.com/; curl -s \"$U\" -o page.html"), {FETCH_NAME}),
+    (_call("Bash", "command", "cd /work && curl -s https://example.com/ -o page.html && wc -c page.html"),
+     {FETCH_NAME}),
+    (_call("Bash", "command", "/usr/bin/wget -q -O page.html https://example.com/"), {FETCH_NAME}),
+    (_call("Bash", "command", "timeout 30 curl -s https://example.com/ > page.html"), {FETCH_NAME}),
+    (_call("Bash", "command", "python3 - <<'EOF'\nimport urllib.request\n"
+                              "urllib.request.urlretrieve('https://example.com/', 'page.html')\nEOF"), {FETCH_NAME}),
+    (_call("Bash", "command", "sh -c 'curl -s https://example.com/ -o page.html'"), {FETCH_NAME}),
+    (_call("Bash", "command", "echo \"$(curl -s https://example.com/)\" > page.html"), {FETCH_NAME}),
+    (_call("Bash", "command", "node -e \"fetch('https://example.com/').then(r => r.text())"
+                              ".then(t => console.log(t))\" > page.html"), {FETCH_NAME}),
+    # And the forms that run nothing on the host.
+    (_call("Bash", "command", "echo '$(curl -s https://example.com/)'"), set()),
+    (_call("Bash", "command", "python3 -c \"import requests\"; echo https://example.com/"), set()),
+    (_call("Bash", "command", "curl -s -o example.com.html https://example.org/"), set()),
+    (_call("Bash", "command", "curl -s -o example.com -e https://example.com/ https://example.org/"), set()),
+    (_call("Bash", "command", "ls -la # ; curl -s https://example.com/ -o page.html"), set()),
+    (_call("Bash", "command", "curl 'https://example.com/"), set()),
+    (_call("Bash", "command", "cat <<'EOF'\ncurl -s https://example.com/\nEOF"), set()),
+], ids=["curl", "python", "webfetch", "an-error", "no-result", "echo-name", "echo-url", "longer-host",
+        "prefixed-host", "write-names-it", "not-a-fetcher", "another-host", "no-call",
+        "echo-a-curl-line", "a-comment", "print-the-url", "grep-then-echo-curl",
+        "no-scheme", "www", "joined-url",
+        "quoted-variable", "and-chain", "wget-by-path", "timeout-wrapped", "python-heredoc", "sh-c",
+        "command-substitution", "node-fetch",
+        "single-quoted-substitution", "library-and-url-apart", "host-as-a-filename",
+        "host-as-option-values", "a-comment-holding-a-command", "unbalanced-quote",
+        "heredoc-to-cat"])
+async def test_the_claude_arm_shows_a_fetch_only_by_a_fetching_call_that_succeeded(call, expected):
+    """Pre-review F1 and round-1 F1: a fetch is a downloader, or a runtime whose code uses an HTTP
+    library, actually run on the host; a call that only names the host, a failed or unreported call, or
+    a look-alike host is no fetch, and the page reproduced from memory then fails. The call that counted
+    is the row's evidence."""
+    tools, results = call
+    task = BY_ID["fetch-page"]
+    lines = [{"kind": "assistant", "text": "", "tools": tools}, *results,
+             {"kind": "result", "num_turns": 2, "usage": {"input_tokens": 1}, "total_cost_usd": 0.0,
+              "subtype": "success", "is_error": False}]
+    docker = RecordingDocker(driver_lines=lines, written={"page.html": PAGE, "status.txt": b"200\n"})
+    outcome = await _claude(docker).run_sandbox(task)
+    assert outcome.fetched == frozenset(expected)
+    assert task.checker(Workspace(files=dict(outcome.files), witness=PAGE, fetched=outcome.fetched)) is bool(expected)
+    said = next(iter(tools[0]["input"].values())) if tools else None
+    assert outcome.fetch_evidence == ((f"{tools[0]['name']}: {said}",) if expected else ())
+
+
+def _script_run(*steps):
+    """Calls in order, each reported a success: ("Write", path, content), ("Edit", path), ("Bash", command)."""
+    tools = []
+    for number, step in enumerate(steps):
+        given = ({"file_path": step[1], "content": step[2]} if step[0] == "Write" else
+                 {"file_path": step[1], "old_string": "a", "new_string": "b"} if step[0] == "Edit" else
+                 {"command": step[1]})
+        tools.append({"id": f"c{number}", "name": step[0], "input": given})
+    results = [{"id": tool["id"], "is_error": False} for tool in tools]
+    return [{"kind": "assistant", "text": "", "tools": tools}, {"kind": "results", "results": results}]
+
+
+FETCH_PY = "import urllib.request\nurllib.request.urlretrieve('https://example.com/', 'page.html')\n"
+
+
+@pytest.mark.parametrize("steps, expected", [
+    ((("Write", "/work/fetch.py", FETCH_PY), ("Bash", "cd /work && python3 fetch.py")), {FETCH_NAME}),
+    ((("Write", "/work/get.sh", "curl -s https://example.com/ -o page.html\n"), ("Bash", "bash get.sh")),
+     {FETCH_NAME}),
+    ((("Write", "/work/fetch.py", FETCH_PY), ("Edit", "/work/fetch.py"), ("Bash", "python3 fetch.py")), set()),
+    ((("Bash", "python3 fetch.py"),), set()),
+    ((("Write", "/work/fetch.py", "print('https://example.com/')\n"), ("Bash", "python3 fetch.py")), set()),
+    ((("Bash", "cat > fetch.py <<'EOF'\n" + FETCH_PY + "EOF"), ("Bash", "python3 fetch.py")), {FETCH_NAME}),
+    ((("Write", "fetch.py", FETCH_PY), ("Bash", "echo 'print(1)' > fetch.py"), ("Bash", "python3 fetch.py")), set()),
+    ((("Write", "/work/fetch.py", FETCH_PY.replace("example.com", "example.org")), ("Bash", "python3 fetch.py")),
+     set()),
+], ids=["written-python", "written-shell", "edited-after-written", "never-written", "written-but-no-fetch",
+        "written-by-cat", "overwritten-by-a-redirect", "fetches-another-host"])
+def test_a_script_the_run_wrote_is_read_from_its_write_call(steps, expected):
+    """A run that writes its fetch to a file and runs it fetched; a file edited since is not known."""
+    from evals.adr12.sandbox_arms import named_hosts
+
+    assert named_hosts(_script_run(*steps), ("example.com:443",)) == frozenset(expected)
+
+
+def test_the_report_lists_each_fetch_rows_evidence():
+    """Round-1 F1: a fetch credit can be checked from the report itself."""
+    base = {"kind": "sandbox", "status": "completed", "turns": 2, "wall_ms": 1.0, "cost_usd": "0.01",
+            "sdk_cost_estimate_usd": "unavailable", "answer": "done", "repetition": 1}
+    rows = [{**base, "task": "fetch-page", "group": "fetch", "arm": "claude-agent-sdk", "passed": True,
+             "fetched": [FETCH_NAME], "fetch_evidence": ["Bash: curl -s https://example.com/ | tee page.html"]},
+            {**base, "task": "fetch-page", "group": "fetch", "arm": "agentsdk", "passed": False,
+             "fetched": [], "fetch_evidence": []},
+            {**base, "task": "count-error-lines", "group": "shell", "arm": "agentsdk", "passed": True,
+             "fetched": [], "fetch_evidence": []}]
+    text = report.build_markdown({"date": "2026-11-09", "arms": ["agentsdk", "claude-agent-sdk"]}, rows)
+    section = text.split("## Fetch evidence", 1)[1].split("\n## ", 1)[0]
+    assert "| fetch-page | claude-agent-sdk | 1 | yes | example.com | Bash: curl -s https://example.com/ \\| tee page.html |" in section
+    assert "| fetch-page | agentsdk | 1 | no | none | none |" in section
+    assert "count-error-lines" not in section
+
+
+def test_the_claude_arms_evidence_never_carries_the_key():
+    task = BY_ID["fetch-page"]
+    command = f"curl -s -H 'x-api-key: {KEY}' https://example.com/ -o page.html"
+    tools, results = _call("Bash", "command", command)
+    lines = [{"kind": "assistant", "text": "", "tools": tools}, *results,
+             {"kind": "result", "num_turns": 2, "usage": {"input_tokens": 1}, "total_cost_usd": 0.0,
+              "subtype": "success", "is_error": False}]
+    docker = RecordingDocker(driver_lines=lines, written={"page.html": PAGE, "status.txt": b"200\n"})
+    outcome = asyncio.run(_claude(docker).run_sandbox(task))
+    assert outcome.fetched == frozenset({FETCH_NAME})
+    assert KEY not in json.dumps(outcome.fetch_evidence) and "[redacted]" in outcome.fetch_evidence[0]
+
+
+def test_the_driver_reports_each_tool_call_and_whether_its_result_was_an_error_never_the_result():
+    from claude_agent_sdk import AssistantMessage, TextBlock, ToolResultBlock, ToolUseBlock, UserMessage
+
+    call = ToolUseBlock(id="t1", name="Bash", input={"command": "curl https://example.com/"})
+    message = AssistantMessage(content=[TextBlock(text="fetching"), call], model="m")
+    said = [{"id": "t1", "name": "Bash", "input": {"command": "curl https://example.com/"}}]
+    assert claude_driver.describe(message) == {"kind": "assistant", "text": "fetching", "tools": said}
+    assert claude_driver.describe(AssistantMessage(content=[call], model="m"))["tools"] == said
+    assert claude_driver.describe(AssistantMessage(content=[TextBlock(text=" ")], model="m")) is None
+    results = UserMessage(content=[ToolResultBlock(tool_use_id="t1", content=f"the key {KEY}", is_error=False),
+                                   ToolResultBlock(tool_use_id="t2", content="boom", is_error=True),
+                                   ToolResultBlock(tool_use_id="t3", content="?")])
+    assert claude_driver.describe(results) == {"kind": "results", "results": [
+        {"id": "t1", "is_error": False}, {"id": "t2", "is_error": True}, {"id": "t3", "is_error": False}]}
+    assert KEY not in json.dumps(claude_driver.describe(results)), "a result's content left the container"
+    assert claude_driver.describe(UserMessage(content="text only")) is None
+
+
+@pytest.mark.parametrize("fetched", [frozenset({FETCH_NAME}), frozenset()], ids=["shown", "not-shown"])
+def test_the_harness_gives_the_checker_the_arms_evidence_and_records_it(fetched):
+    task = BY_ID["fetch-page"]
+
+    class Arm:
+        name = "agentsdk"
+
+        async def run_sandbox(self, _task):
+            return SandboxOutcome(answer=None, status="completed", turns=2, usage=Usage(), wall_ms=1.0,
+                                  files={"page.html": PAGE, "status.txt": b"200\n"}, fetched=fetched,
+                                  fetch_evidence=("Bash: " + CURL,) if fetched else ())
+
+    row = harness._one_sandbox_run(Arm(), task, 1, None, None, (PAGE, "2026-11-08T00:00:00+00:00"))
+    assert row["passed"] is bool(fetched) and row["fetched"] == sorted(fetched)
+    assert row["fetch_evidence"] == (["Bash: " + CURL] if fetched else [])
+
+
+def test_the_report_gives_each_kind_and_the_whole_its_rates_statuses_turns_tokens_cost_and_time():
+    """FR-181: per kind and overall, for each arm, each measure as measured."""
+    metadata = {"date": "2026-11-08", "arms": ["agentsdk", "claude-agent-sdk"], "task_count": 2,
+                "kinds": {"multi-step": 1, "sandbox": 1},
+                "setups": {"multi-step": harness.M15_SETUP, "sandbox": harness.SANDBOX_SETUP}, "images": {}}
+
+    def row(kind, arm, passed, status, turns, tokens, cost, wall):
+        return {"task": kind + "-task", "kind": kind, "arm": arm, "passed": passed, "status": status, "turns": turns,
+                "prompt_tokens": tokens, "completion_tokens": 10 if tokens is not None else None, "wall_ms": wall,
+                "cost_usd": cost, "sdk_cost_estimate_usd": "unavailable", "answer": ""}
+
+    rows = [row("multi-step", "agentsdk", True, "completed", 3, 100, "0.01", 1000.0),
+            row("multi-step", "agentsdk", False, "budget_exceeded", 7, 300, "0.03", 3000.0),
+            row("sandbox", "agentsdk", True, "completed", 5, 200, "0.02", 2000.0),
+            row("sandbox", "claude-agent-sdk", False, "failed", 4, None, "unavailable", 500.0)]
+    text = report.build_markdown(metadata, rows)
+    table = text.split("## By kind", 1)[1].split("## By task", 1)[0]
+    assert ("| multi-step | agentsdk | 1 | 50% | 2 | budget_exceeded 1, completed 1 | 5.0 | 420 | 0.04 | 2000.0 |"
+            in table), table
+    assert "| sandbox | claude-agent-sdk | 0 | 0% | 1 | failed 1 | 4 | unavailable | unavailable | 500.0 |" in table
+    assert ("| all | agentsdk | 2 | 67% | 3 | budget_exceeded 1, completed 2 | 5 | 630 | 0.06 | 2000.0 |" in table), table
+    assert "| all | claude-agent-sdk | 0 | 0% | 1 | failed 1 |" in table
+    assert "| multi-step | claude-agent-sdk | 0 | unavailable | 0 | none |" in table, "a kind an arm never ran"
+
+
+def test_a_report_never_replaces_another_of_the_same_date(tmp_path):
+    """M51: the final comparison overwrote M50's report of the same day; a second report is -2, then -3."""
+    metadata, rows = {"date": "2026-11-08T10:00:00+00:00", "arms": []}, []
+    first = report.write_report(metadata, rows, tmp_path)
+    (tmp_path / "keep.marker").write_text("x")
+    first_text = first[0].read_text(encoding="utf-8")
+    second = report.write_report({**metadata, "date": "2026-11-08T11:00:00+00:00"}, rows, tmp_path)
+    third = report.write_report(metadata, rows, tmp_path)
+    assert [p.name for p in (*first, *second, *third)] == [
+        "adr12-comparison-2026-11-08.json", "adr12-comparison-2026-11-08.md",
+        "adr12-comparison-2026-11-08-2.json", "adr12-comparison-2026-11-08-2.md",
+        "adr12-comparison-2026-11-08-3.json", "adr12-comparison-2026-11-08-3.md"]
+    assert first[0].read_text(encoding="utf-8") == first_text, "the first report was rewritten"
+
+
+def test_a_report_takes_no_name_either_of_whose_files_exists(tmp_path):
+    """Pre-review F5: each file is claimed exclusively; a name half taken is skipped and nothing of it
+    is overwritten or left behind."""
+    (tmp_path / "adr12-comparison-2026-11-08.md").write_text("someone else's")
+    (tmp_path / "adr12-comparison-2026-11-08-2.json").write_text("another's")
+    paths = report.write_report({"date": "2026-11-08", "arms": []}, [], tmp_path)
+    assert [p.name for p in paths] == ["adr12-comparison-2026-11-08-3.json", "adr12-comparison-2026-11-08-3.md"]
+    assert (tmp_path / "adr12-comparison-2026-11-08.md").read_text() == "someone else's"
+    assert (tmp_path / "adr12-comparison-2026-11-08-2.json").read_text() == "another's"
+    assert sorted(p.name for p in tmp_path.iterdir()) == [
+        "adr12-comparison-2026-11-08-2.json", "adr12-comparison-2026-11-08-3.json", "adr12-comparison-2026-11-08-3.md",
+        "adr12-comparison-2026-11-08.md"], "a claimed file of a skipped name was left"

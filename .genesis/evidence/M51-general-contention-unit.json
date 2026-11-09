@@ -1,0 +1,22 @@
+{
+  "task": "M51-general-contention",
+  "gate": "unit",
+  "command": ".venv\\Scripts\\python.exe -m pytest tests/test_general_contention.py -q -p no:cacheprovider",
+  "started_at": "2026-11-09T08:11:41.305Z",
+  "observed_at": "2026-11-09T08:12:36.008Z",
+  "exit_code": 0,
+  "signal": null,
+  "stdout": "..........................                                               [100%]\r\n26 passed, 20 deselected in 52.41s\r\n",
+  "stderr": "",
+  "revision": {
+    "commit": "deb47a64a98d6b43d4960472f133d786abb5baa2",
+    "dirty": true
+  },
+  "source_hash": "aae13f2b082cb1cf9053f72d96018dd3bdf7e5829451d2a7d617b2a9e1bef52c",
+  "environment": {
+    "node": "v20.10.0",
+    "platform": "win32",
+    "arch": "x64"
+  },
+  "hash": "3eb9b036799c90073bb8ebacc181e95b9786e36c815e6ec0c9c7aa34ab054ec1"
+}

@@ -51,6 +51,7 @@ from agentsdk.workspace import normal_path
 from agentsdk.workspace.docker import MAX_TRANSFER_BYTES, read_tar
 
 from .arms import RunOutcome, _estimate, _normalised_usage, cli_pin
+from .fetch_proof import fetch_calls, named_hosts  # noqa: F401 - named_hosts is part of this module's surface
 from .sandbox import VERIFIER, SandboxTask, ceilings, verification_input, verification_result
 
 TENANT, PROJECT = "adr12", "comparison"
@@ -80,6 +81,12 @@ class SandboxOutcome(RunOutcome):
     exports_refused: int | None = None
     run_id: str | None = None
     workspace_id: str | None = None
+    # The hosts the arm shows the run reached (DECISION-7830ca10): this SDK's arm from its
+    # workspace's allowed connections, the Claude arm from its fetch tool calls.
+    fetched: frozenset[str] = frozenset()
+    # Round-1 F1: what showed each fetch, kept in the row so a credit can be checked afterwards: this
+    # SDK's arm's connections by id, the Claude arm's calls as it gave them (fetch_proof).
+    fetch_evidence: tuple[str, ...] = ()
 
 
 def read_back(data: bytes) -> dict[str, bytes]:
@@ -138,6 +145,8 @@ class PresetArm:
                         persistence=self._persistence)
         started = time.perf_counter()
         result, error, files, refused, workspace_id = None, None, {}, None, None
+        fetched: frozenset[str] = frozenset()
+        evidence: tuple[str, ...] = ()
         wall_ms = 0.0
         try:
             try:
@@ -170,6 +179,16 @@ class PresetArm:
                     await runner.release_workspace(TENANT, PROJECT, workspace_id)
                 except Exception as exc:  # noqa: BLE001
                     error = error or f"release: {type(exc).__name__}: {exc}"
+                # DECISION-7830ca10: the evidence of a fetch is the workspace's recorded egress, read
+                # after the release, which settles the proxy's last reports.
+                try:
+                    reached = await reached_connections(runner, result.run_id)
+                    fetched = frozenset(row.host for row in reached)
+                    # Round-1 F1: the connections that counted, to be checked against the store.
+                    evidence = tuple(f"connection {row.connection_id} to {row.host}:{row.port}, allowed"
+                                     for row in reached)
+                except Exception as exc:  # noqa: BLE001 - evidence not read is no evidence
+                    error = error or f"connections: {type(exc).__name__}: {exc}"
         finally:
             try:
                 await runner.aclose()
@@ -183,7 +202,7 @@ class PresetArm:
             answer=result.output, status=BUDGET_EXCEEDED if result.error == BUDGET_EXCEEDED else result.status.value,
             turns=turns, usage=result.usage, wall_ms=wall_ms, error=error or result.error, files=files,
             exports_refused=refused, run_id=result.run_id, workspace_id=workspace_id, budget_usd=usd,
-            budget_tokens=tokens,
+            budget_tokens=tokens, fetched=fetched, fetch_evidence=evidence,
         )
 
     async def _read_kept(self, workspace_id: str) -> dict[str, bytes]:
@@ -216,6 +235,18 @@ async def _refuse_every_export(runner: Runner, run_id: str) -> None:
             except Exception:  # noqa: BLE001 - tried again on the next pass; a decided one leaves the list
                 pass
         await asyncio.sleep(0.02)
+
+
+async def reached_connections(runner: Runner, run_id: str) -> list[Any]:
+    """The connections a run's workspace made through its proxy and was allowed (FR-162)."""
+    store = runner._workspace_store()
+    rows = await asyncio.to_thread(store.connections, TENANT, PROJECT, run_id)
+    return [row for row in rows if row.allowed and row.run_id == run_id]
+
+
+async def reached_hosts(runner: Runner, run_id: str) -> frozenset[str]:
+    """The hosts a run's workspace connected to through its proxy and was allowed (FR-162)."""
+    return frozenset(row.host for row in await reached_connections(runner, run_id))
 
 
 async def _refusals(runner: Runner, run_id: str) -> int:
@@ -466,7 +497,10 @@ class ClaudeContainerArm:
         if result is None and error is None:
             error = "the driver reported no result"
         answer = answers[-1] if answers else None
+        calls = fetch_calls(events, task.egress)
         return SandboxOutcome(
+            fetched=frozenset(name for reached, _ in calls for name in reached),
+            fetch_evidence=tuple(self._redacted(said) or "" for _, said in calls),
             answer=self._redacted(answer),
             status=_status(result, error),
             turns=int((result or {}).get("num_turns") or 0),

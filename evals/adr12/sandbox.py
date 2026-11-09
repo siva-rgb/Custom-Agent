@@ -16,7 +16,10 @@ package shadowing the module, or a table of the visible answers all fail there. 
 also come back unchanged.
 
 A fetch task is judged against the harness's own witness: the page the harness fetched from the
-same host for this comparison (DECISION-b944d3ab).
+same host for this comparison (DECISION-b944d3ab), and passes only with evidence that the run
+reached that host: this SDK's arm by its workspace's recorded egress, the Claude arm by a fetch tool
+call in its transcript. A page reproduced from memory, however exact, is no fetch (M50 round 1,
+note 3; DECISION-7830ca10).
 
 Every task carries a good, a bad and a tricky outcome, each a workspace as the checker would read
 it, so the gate proves that every checker accepts the right result and refuses the wrong ones
@@ -38,6 +41,8 @@ SANDBOX = "sandbox"
 GROUPS = ("shell", "code", "files", "fetch", "repair")
 # DECISION-d0269633: the fetch tasks' one allowed host.
 FETCH_HOST = "example.com:443"
+# The host's name, as a run's evidence of a fetch names it.
+FETCH_NAME = FETCH_HOST.rsplit(":", 1)[0]
 
 
 @dataclass(frozen=True)
@@ -51,6 +56,8 @@ class Workspace:
     verified: str | None = None
     # A fetch task's witness: the page body the harness fetched itself; None when it has none.
     witness: bytes | None = None
+    # The hosts the arm shows the run reached (DECISION-7830ca10); empty when it shows none.
+    fetched: frozenset[str] = frozenset()
 
     def text(self, path: str) -> str | None:
         data = self.files.get(path)
@@ -95,12 +102,14 @@ class SandboxTask:
         check = self.checker
         object.__setattr__(self, "checker", lambda space: isinstance(space, Workspace) and bool(check(space)))
 
-    def outcome(self, which: str, *, verified: str | None = None, witness: bytes | None = None) -> Workspace:
+    def outcome(self, which: str, *, verified: str | None = None, witness: bytes | None = None,
+                fetched: frozenset[str] | set[str] = frozenset()) -> Workspace:
         """The workspace after a run that made the good, bad or tricky changes, with the
-        harness's verification and witness as given."""
+        harness's verification and witness, and the arm's evidence of a fetch, as given."""
         changes = {"good": self.good, "bad": self.bad, "tricky": self.tricky}[which]
         answer = self.answers[("good", "bad", "tricky").index(which)]
-        return Workspace(files=applied(self.files, changes), answer=answer, verified=verified, witness=witness)
+        return Workspace(files=applied(self.files, changes), answer=answer, verified=verified, witness=witness,
+                         fetched=frozenset(fetched))
 
 
 def applied(files: Mapping[str, bytes], changes: Mapping[str, bytes | None]) -> dict[str, bytes]:
@@ -662,15 +671,16 @@ def _title(page: bytes) -> str | None:
 
 
 def _fetched(space: Workspace) -> bool:
-    """page.html is the page the witness was served, and status.txt says 200."""
+    """page.html is the page the witness was served, status.txt says 200, and the run reached the host."""
     page = space.files.get("page.html")
-    return (space.witness is not None and page is not None and _squeezed(page) == _squeezed(space.witness)
+    return (FETCH_NAME in space.fetched and space.witness is not None and page is not None and _squeezed(page) == _squeezed(space.witness)
             and (space.text("status.txt") or "").strip() == "200")
 
 
 def _site(space: Workspace) -> bool:
-    """site.json carries the served page's title and its byte length, its other fields kept."""
-    if space.witness is None:
+    """site.json carries the served page's title and its byte length, its other fields kept, and the
+    run reached the host."""
+    if space.witness is None or FETCH_NAME not in space.fetched:
         return False
     try:
         found = json.loads(space.text("site.json") or "")

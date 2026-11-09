@@ -1,0 +1,22 @@
+{
+  "task": "M51-general-contention",
+  "gate": "docker",
+  "command": ".venv\\Scripts\\python.exe -m pytest tests/test_workspace.py tests/test_workspace_tools.py tests/test_workspace_plan.py tests/test_docker_provider.py tests/test_sandbox_contention.py tests/test_compute.py tests/test_egress.py tests/test_sandboxed_mcp.py tests/test_snapshots.py tests/test_increment2_contention.py tests/test_plain_budgets.py tests/test_general_preset.py tests/test_adr12_sandbox.py tests/test_general_contention.py -m docker -q -p no:cacheprovider",
+  "started_at": "2026-11-09T08:51:48.126Z",
+  "observed_at": "2026-11-09T10:28:06.954Z",
+  "exit_code": 0,
+  "signal": null,
+  "stdout": "........................................................................ [ 37%]\r\n........................................................................ [ 74%]\r\n..................................................                       [100%]\r\n194 passed, 1159 deselected in 5777.47s (1:36:17)\r\n",
+  "stderr": "",
+  "revision": {
+    "commit": "deb47a64a98d6b43d4960472f133d786abb5baa2",
+    "dirty": true
+  },
+  "source_hash": "aae13f2b082cb1cf9053f72d96018dd3bdf7e5829451d2a7d617b2a9e1bef52c",
+  "environment": {
+    "node": "v20.10.0",
+    "platform": "win32",
+    "arch": "x64"
+  },
+  "hash": "343c74c5e2f71644d2bf263e360128812171054a3af892be61cc584f7685f7c7"
+}

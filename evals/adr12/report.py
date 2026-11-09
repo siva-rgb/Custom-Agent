@@ -17,15 +17,31 @@ UNAVAILABLE = "unavailable"
 
 
 def write_report(metadata: dict[str, Any], rows: list[dict[str, Any]], reports_dir: pathlib.Path) -> tuple[pathlib.Path, pathlib.Path]:
-    """Write both files and return their paths."""
+    """Write both files and return their paths. A report never replaces another: a second one on the
+    same date is named -2, then -3 (M51: the final comparison overwrote M50's of the same day). Each
+    file is created exclusively, so two writers at once never share a name (pre-review F5)."""
     reports_dir = pathlib.Path(reports_dir)
     reports_dir.mkdir(parents=True, exist_ok=True)
-    stem = "adr12-comparison-" + str(metadata.get("date", ""))[:10]
-    json_path = reports_dir / f"{stem}.json"
-    markdown_path = reports_dir / f"{stem}.md"
-    json_path.write_text(json.dumps({"metadata": metadata, "rows": rows}, indent=2, sort_keys=True), encoding="utf-8")
-    markdown_path.write_text(build_markdown(metadata, rows), encoding="utf-8")
-    return json_path, markdown_path
+    base = "adr12-comparison-" + str(metadata.get("date", ""))[:10]
+    texts = (json.dumps({"metadata": metadata, "rows": rows}, indent=2, sort_keys=True),
+             build_markdown(metadata, rows))
+    number = 1
+    while True:
+        stem = base if number == 1 else f"{base}-{number}"
+        json_path, markdown_path = reports_dir / f"{stem}.json", reports_dir / f"{stem}.md"
+        number += 1
+        try:
+            with open(json_path, "x", encoding="utf-8") as claimed:
+                claimed.write(texts[0])
+        except FileExistsError:
+            continue
+        try:
+            with open(markdown_path, "x", encoding="utf-8") as claimed:
+                claimed.write(texts[1])
+        except FileExistsError:
+            json_path.unlink()
+            continue
+        return json_path, markdown_path
 
 
 def build_markdown(metadata: dict[str, Any], rows: list[dict[str, Any]]) -> str:
@@ -74,6 +90,8 @@ def build_markdown(metadata: dict[str, Any], rows: list[dict[str, Any]]) -> str:
             lines.append(f"- Fetch witness: {witness.get('url')} as the harness fetched it at {witness.get('fetched_at')}, "
                          f"{witness.get('bytes')} bytes, SHA-256 {witness.get('sha256')}; the fetch tasks are judged "
                          "against it.")
+        if metadata.get("fetch_proof"):
+            lines.append(f"- Proof of fetch: {metadata['fetch_proof']}.")
         if metadata.get("swept"):
             lines.append(f"- Containers removed by the closing sweep: {', '.join(metadata['swept'])}.")
         for arm, digest in (metadata.get("images") or {}).items():
@@ -103,17 +121,14 @@ def build_markdown(metadata: dict[str, Any], rows: list[dict[str, Any]]) -> str:
             f"{_total(taken, 'sdk_cost_estimate_usd')} |"
         )
     if setups:
-        lines += ["", "## By kind", "", "| kind | arm | passed | runs | terminal statuses | median turns | total cost |",
-                  "|---|---|---|---|---|---|---|"]
-        for kind in setups:
+        # FR-181: per kind and overall, each gap as measured.
+        lines += ["", "## By kind", "",
+                  "| kind | arm | passed | pass rate | runs | terminal statuses | median turns | tokens | total cost "
+                  "| median wall ms |", "|---|---|---|---|---|---|---|---|---|---|"]
+        for kind in [*setups, ALL]:
             for arm in arms:
-                taken = [row for row in rows if row["arm"] == arm and row["kind"] == kind]
-                statuses = {}
-                for row in taken:
-                    statuses[row["status"]] = statuses.get(row["status"], 0) + 1
-                lines.append(f"| {kind} | {arm} | {sum(1 for row in taken if row['passed'])} | {len(taken)} | "
-                             f"{', '.join(f'{s} {n}' for s, n in sorted(statuses.items())) or 'none'} | "
-                             f"{_median(taken, 'turns')} | {_total(taken, 'cost_usd')} |")
+                taken = [row for row in rows if row["arm"] == arm and (kind == ALL or row["kind"] == kind)]
+                lines.append(_kind_row(kind, arm, taken))
     lines += ["", "## By task", "", "| task | kind | arm | passed | status | turns | wall ms | cost | its estimate | answer |",
               "|---|---|---|---|---|---|---|---|---|---|"]
     for row in rows:
@@ -122,6 +137,15 @@ def build_markdown(metadata: dict[str, Any], rows: list[dict[str, Any]]) -> str:
             f"{row['turns']} | {row['wall_ms']} | {row['cost_usd']} | {row['sdk_cost_estimate_usd']} | "
             f"{_cell(row['answer'])} |"
         )
+    fetches = [row for row in rows if row.get("group") == "fetch"]
+    if fetches:
+        # Round-1 F1: what showed each fetch, so a credit can be checked from the report itself.
+        lines += ["", "## Fetch evidence", "", "| task | arm | repetition | passed | hosts shown | evidence |",
+                  "|---|---|---|---|---|---|"]
+        for row in fetches:
+            lines.append(f"| {row['task']} | {row['arm']} | {row.get('repetition')} | {'yes' if row['passed'] else 'no'} | "
+                         f"{', '.join(row.get('fetched') or []) or 'none'} | "
+                         f"{_cell('; '.join(row.get('fetch_evidence') or [])) or 'none'} |")
     lines += [
         "",
         "## How to read this",
@@ -133,6 +157,28 @@ def build_markdown(metadata: dict[str, Any], rows: list[dict[str, Any]]) -> str:
         "",
     ]
     return "\n".join(lines)
+
+
+# The by-kind table's overall row (FR-181).
+ALL = "all"
+
+
+def _kind_row(kind: str, arm: str, taken: list[dict[str, Any]]) -> str:
+    statuses: dict[str, int] = {}
+    for row in taken:
+        statuses[row["status"]] = statuses.get(row["status"], 0) + 1
+    passed = sum(1 for row in taken if row["passed"])
+    rate = f"{100 * passed / len(taken):.0f}%" if taken else UNAVAILABLE
+    return (f"| {kind} | {arm} | {passed} | {rate} | {len(taken)} | "
+            f"{', '.join(f'{s} {n}' for s, n in sorted(statuses.items())) or 'none'} | "
+            f"{_median(taken, 'turns')} | {_tokens(taken)} | {_total(taken, 'cost_usd')} | {_median(taken, 'wall_ms')} |")
+
+
+def _tokens(rows: list[dict[str, Any]]) -> str:
+    """Prompt and completion tokens summed; unavailable when no row reports a count."""
+    counts = [row.get(key) for row in rows for key in ("prompt_tokens", "completion_tokens")]
+    counts = [c for c in counts if isinstance(c, int) and not isinstance(c, bool)]
+    return str(sum(counts)) if counts else UNAVAILABLE
 
 
 def _median(rows: list[dict[str, Any]], key: str) -> str:

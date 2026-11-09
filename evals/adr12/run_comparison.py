@@ -1,6 +1,6 @@
 """Run the ADR-12 comparison live, against the gateway and the pinned Claude Code CLI.
 
-This is the only entry point that spends tokens. The gate's tests never call it: they run the
+This and tune.py are the only entry points that spend tokens. The gate's tests never call it: they run the
 same harness with scripted stand-ins on both arms (AC-48, FR-180).
 
     python evals/adr12/run_comparison.py --repetitions 3                   # every task
@@ -42,25 +42,10 @@ def main(argv: list[str] | None = None) -> int:
                         help="the M15 tasks, the sandbox tasks, or both")
     parser.add_argument("--only", default=None, help="run one task by id, for a smoke run")
     arguments = parser.parse_args(argv)
-
-    import os
-
-    from dotenv import load_dotenv
-
-    # Only a .env in the folder this is run from. load_dotenv() searches upward from this
-    # file instead, which is inside the repository, so it would find the repository's .env
-    # however it was invoked -- and a command meant to refuse without configuration would
-    # quietly run a live comparison.
-    load_dotenv(pathlib.Path.cwd() / ".env")
-
-    base_url, api_key = (os.environ.get("BASE_URL") or "").strip(), (os.environ.get("MODEL_API_KEY") or "").strip()
-    missing = [name for name, value in (("BASE_URL", base_url), ("MODEL_API_KEY", api_key)) if not value]
-    if missing:
-        print(f"set {' and '.join(missing)} in the environment or in .env to run the live comparison", file=sys.stderr)
+    found = credentials("the live comparison")
+    if found is None:
         return 2
-
-    from agentsdk.providers import OpenAICompatibleModelClient
-    from agentsdk.registry import ModelCapabilities, ModelEntry, ModelPricing, ModelRegistry
+    base_url, api_key = found
 
     from .arms import ClaudeAgentSdkArm, ThisSdkArm
     from .harness import run_comparison
@@ -79,14 +64,7 @@ def main(argv: list[str] | None = None) -> int:
         print(f"the Claude Code CLI is not installed: run npm install --prefix {HERE.relative_to(REPO)}", file=sys.stderr)
         return 2
 
-    pricing = ModelPricing(**PRICES)
-    registry = ModelRegistry([
-        ModelEntry(provider="gateway", model_id=GATEWAY_MODEL, model_version="unknown", adapter_version="openai/1",
-                   capabilities=ModelCapabilities(max_context_tokens=200_000, pricing=pricing))
-    ])
-
-    def client():
-        return OpenAICompatibleModelClient(base_url=base_url, api_key=api_key, model=GATEWAY_MODEL)
+    pricing, registry, client = gateway(GATEWAY_MODEL, PRICES, 200_000, base_url, api_key)
 
     this_arm = ThisSdkArm(client_factory=client, model=GATEWAY_MODEL, model_registry=registry, budgets=True)
     claude_arm = ClaudeAgentSdkArm(cli_path=CLI, model=GATEWAY_MODEL, base_url=base_url, auth_token=api_key)
@@ -130,6 +108,44 @@ def main(argv: list[str] | None = None) -> int:
     print(f"wrote {comparison.json_path}")
     print(f"wrote {comparison.markdown_path}")
     return 0
+
+
+def credentials(purpose: str) -> tuple[str, str] | None:
+    """The gateway's address and key from the environment or the .env of the folder this is run
+    from; None, having said which is missing, when either is."""
+    import os
+
+    from dotenv import load_dotenv
+
+    # Only a .env in the folder this is run from. load_dotenv() searches upward from this
+    # file instead, which is inside the repository, so it would find the repository's .env
+    # however it was invoked -- and a command meant to refuse without configuration would
+    # quietly run a live comparison.
+    load_dotenv(pathlib.Path.cwd() / ".env")
+    base_url, api_key = (os.environ.get("BASE_URL") or "").strip(), (os.environ.get("MODEL_API_KEY") or "").strip()
+    missing = [name for name, value in (("BASE_URL", base_url), ("MODEL_API_KEY", api_key)) if not value]
+    if missing:
+        print(f"set {' and '.join(missing)} in the environment or in .env to run {purpose}", file=sys.stderr)
+        return None
+    return base_url, api_key
+
+
+def gateway(model: str, prices: dict[str, str], window: int, base_url: str, api_key: str):
+    """The pricing, a registry naming `model` with its context window and prices, and a client
+    factory for it through the gateway."""
+    from agentsdk.providers import OpenAICompatibleModelClient
+    from agentsdk.registry import ModelCapabilities, ModelEntry, ModelPricing, ModelRegistry
+
+    pricing = ModelPricing(**prices)
+    registry = ModelRegistry([
+        ModelEntry(provider="gateway", model_id=model, model_version="unknown", adapter_version="openai/1",
+                   capabilities=ModelCapabilities(max_context_tokens=window, pricing=pricing))
+    ])
+
+    def client():
+        return OpenAICompatibleModelClient(base_url=base_url, api_key=api_key, model=model)
+
+    return pricing, registry, client
 
 
 async def _image_id(docker, image: str) -> str | None:

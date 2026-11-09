@@ -52,6 +52,15 @@ BUDGET_RULE = (f"this SDK's arm only: a USD and a token ceiling of {BUDGET_MULTI
                "median. The Claude arm has no budget")
 NETWORKING = ("this SDK's arm reaches only its task's allowed host, through its workspace's proxy; the Claude arm "
               "runs with ordinary networking, to reach the gateway and the fetch tasks' host")
+# DECISION-7830ca10 (M50 round 1, note 3): a page reproduced from memory is no fetch.
+FETCH_PROOF = ("a fetch task passes only with evidence the run reached its host, kept in each row's fetch_evidence: "
+               "on this SDK's arm an allowed connection its workspace's proxy recorded, by id; on the Claude arm, "
+               "whose network is not recorded, a call whose result was not an error, read as the shell would run "
+               "it: WebFetch of the host's URL, or a Bash command whose program, after any wrapper, is curl or "
+               "wget with the host among its arguments, or python or node running code that uses an HTTP client "
+               "and names the host's URL (inline, a heredoc, or a script the run wrote). The Claude arm's evidence "
+               "is the command the run gave, not the network: a URL computed at run time or a script edited after "
+               "it was written is a fetch it does not count (pre-review F1, round-1 F1)")
 
 
 @dataclass
@@ -125,6 +134,7 @@ def run_comparison(
         "gateway_model": gateway_model,
         "witness": ({"url": "https://example.com/", "fetched_at": witness[1], "bytes": len(witness[0]),
                      "sha256": hashlib.sha256(witness[0]).hexdigest()} if witness else None),
+        "fetch_proof": FETCH_PROOF if any(task.group == "fetch" for task in sandbox_tasks) else None,
         "verification": ("code tasks verified by the harness in a fresh container of the workspace image with no "
                          "network, on visible and hidden cases" if verifier is not None else None),
         "arms": names,
@@ -201,7 +211,8 @@ def _one_sandbox_run(arm: Any, task: Any, repetition: int, pricing: Any, verifie
         verified = asyncio.run(verifier.verify(task, dict(outcome.files)))
     usage = outcome.usage
     space = Workspace(files=dict(outcome.files), answer=outcome.answer, verified=verified,
-                      witness=witness[0] if witness and task.group == "fetch" else None)
+                      witness=witness[0] if witness and task.group == "fetch" else None,
+                      fetched=frozenset(getattr(outcome, "fetched", frozenset())))
     return {
         "verified": verified if verified is not None else UNAVAILABLE,
         "task": task.id,
@@ -220,6 +231,8 @@ def _one_sandbox_run(arm: Any, task: Any, repetition: int, pricing: Any, verifie
         "cost_usd": _money(call_cost(usage, pricing)),
         "sdk_cost_estimate_usd": _money(outcome.sdk_cost_estimate),
         "files_read_back": len(outcome.files),
+        "fetched": sorted(getattr(outcome, "fetched", frozenset())),
+        "fetch_evidence": list(getattr(outcome, "fetch_evidence", ())),
         "exports_refused": outcome.exports_refused if outcome.exports_refused is not None else UNAVAILABLE,
         "run_id": outcome.run_id or UNAVAILABLE,
         "workspace_id": outcome.workspace_id or UNAVAILABLE,

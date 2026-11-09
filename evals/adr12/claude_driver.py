@@ -3,6 +3,8 @@
 It reads one request -- the prompt, the turn limit, the tools, the model and the working folder --
 as a JSON line on its standard input, runs the Python claude_agent_sdk against the pinned Claude
 Code CLI installed in the image, and writes one JSON line per message: the assistant's text, and
+the tool calls it makes, by id, name and input, and whether each one's result was an error -- never
+the result itself (M51: the evidence of a fetch, DECISION-7830ca10, pre-review F1) -- and
 the result with its turns, usage, cost estimate and subtype. The gateway's address and key come
 from the container's environment, never from the request, so no credential is in the image, on a
 command line or in what this prints.
@@ -56,13 +58,21 @@ async def drive(request: dict[str, Any], query: Any, options: Any, emit: Any) ->
 
 def describe(message: Any) -> dict[str, Any] | None:
     kind = getattr(message, "kind", None)
-    if kind in ("assistant", "result"):  # a scripted stand-in names its kind
+    if kind in ("assistant", "result", "results"):  # a scripted stand-in names its kind
         return {"kind": kind, **{k: v for k, v in vars(message).items() if k != "kind"}}
-    from claude_agent_sdk import AssistantMessage, ResultMessage, TextBlock
+    from claude_agent_sdk import AssistantMessage, ResultMessage, TextBlock, ToolResultBlock, ToolUseBlock, UserMessage
 
     if isinstance(message, AssistantMessage):
         texts = [b.text for b in message.content if isinstance(b, TextBlock) and b.text.strip()]
-        return {"kind": "assistant", "text": "\n".join(texts)} if texts else None
+        tools = [{"id": b.id, "name": b.name, "input": b.input} for b in message.content
+                 if isinstance(b, ToolUseBlock)]
+        if not texts and not tools:
+            return None
+        return {"kind": "assistant", "text": "\n".join(texts), "tools": tools}
+    if isinstance(message, UserMessage) and isinstance(message.content, list):
+        found = [{"id": b.tool_use_id, "is_error": bool(b.is_error)} for b in message.content
+                 if isinstance(b, ToolResultBlock)]
+        return {"kind": "results", "results": found} if found else None
     if isinstance(message, ResultMessage):
         return {"kind": "result", "num_turns": message.num_turns, "usage": message.usage,
                 "total_cost_usd": message.total_cost_usd, "subtype": message.subtype, "is_error": message.is_error}

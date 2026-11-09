@@ -1,4 +1,4 @@
-# The ADR-12 comparison (M15, grown in M50)
+# The ADR-12 comparison (M15, grown in M50, tuned and rerun in M51)
 
 This harness measures this SDK against the raw Claude Agent SDK, with the same model through the
 same gateway and the same turn limit. It lives outside the `agentsdk` package and never ships in
@@ -20,7 +20,16 @@ verifier, into a fresh container of the workspace image with no network and no c
 case -- the visible ones and hidden ones the run never saw -- loads the named module file in a
 child process, and the verifier's result carries a nonce no workspace code sees. A fetch task is
 judged against the page the harness fetches itself from the same URL once per comparison, its
-time, length and SHA-256 named in the report.
+time, length and SHA-256 named in the report, and passes only with evidence the run reached the
+host (DECISION-7830ca10), kept in each row's `fetch_evidence`: on this SDK's arm an allowed
+connection its workspace's proxy recorded, by id; on the Claude arm, whose network is not recorded,
+a call whose result was not an error, read as the shell would run it (`fetch_proof.py`): `WebFetch`
+of the host's URL, or a `Bash` command whose program, after any wrapper such as `timeout`, is `curl`
+or `wget` with the host among its arguments, or `python` or `node` running code that uses an HTTP
+client and names the host's URL, given inline, in a heredoc, or in a script the run wrote. `echo`,
+a comment, quoted text, a failed call, and a page reproduced from memory, however exact, are no
+fetch. The Claude arm's evidence is the command the run gave, not the network: a URL computed at
+run time, or a script edited after it was written, is a fetch it does not count.
 
 On a sandbox task, **this SDK's arm** runs the general preset (FR-174) in a `DockerProvider`
 workspace holding the task's files, its egress the task's allow list, `keep=True`, tenant `adr12`
@@ -41,7 +50,11 @@ For every task, arm and repetition (FR-62, FR-179):
 - turns, the token counts, and wall time;
 - the cost, computed for **both** arms from one price list;
 - the Claude Agent SDK's own cost estimate, recorded separately and labelled as its estimate;
-- on a sandbox task, the files read back and, on this SDK's arm, the exports refused.
+- on a sandbox task, the files read back, the hosts the run is shown to have reached and, on this
+  SDK's arm, the exports refused.
+
+The report sums these per kind and overall, for each arm: pass rate, terminal statuses, median
+turns, tokens, cost and median wall time (FR-181).
 
 **Budgets.** This SDK's arm runs every task within one rule per kind: a USD and a token ceiling of
 ten times that kind's median on this SDK's arm in M15 (`reports/adr12-comparison-2026-09-16.json`);
@@ -79,11 +92,28 @@ folder you run it from, and refuses to start without them. The sandbox tasks nee
 built image. Reports land in `reports/`, which is deliberately **not** gitignored, so the
 credential scan reads what a run wrote (AC-50).
 
+## Tuning the preset
+
+```bash
+python evals/adr12/tune.py --model bedrock.anthropic.claude-haiku-4-5
+python evals/adr12/tune.py --model openai.gpt-4o-mini
+```
+
+Tuning changes the general preset's instructions alone, between comparisons (FR-182). Each change
+is a new version in `agentsdk/presets.py` and a new `agent_spec_hash`. `tune.py` runs the 24
+sandbox tasks once on this SDK's arm with the version as shipped, on one of two upstream providers
+through the gateway, keeps the run's full report under `reports/tuning/`, and appends it to
+`reports/tuning/tuning-log.json` with the version, its instructions' hash and each task's result;
+`tuning-log.md` shows each version against its predecessor. Tuning stops at the first version that
+passes, on both providers, every task its predecessor passed, or at the third version after
+`general-v1`; the final comparison runs the last version (DECISION-7830ca10).
+
 The offline half needs neither the gateway nor the CLI: `tests/test_adr12_comparison.py` runs the
 M15 tasks with scripted stand-ins on both arms (AC-48), and `tests/test_adr12_sandbox.py` holds
 every sandbox checker against its good, bad and tricky outcomes, runs each task's own check, and
 runs both sandbox arms with stand-ins (FR-180). Its docker-marked tests run this SDK's arm on
-`DockerProvider` and the Claude arm's container on the built image.
+`DockerProvider` and the Claude arm's container on the built image. `tests/test_adr12_tuning.py`
+holds the tuning log and its stop rule. Only `run_comparison.py` and `tune.py` spend tokens.
 
 ## What is here
 
@@ -94,11 +124,13 @@ runs both sandbox arms with stand-ins (FR-180). Its docker-marked tests run this
 | `sandbox.py` | the 24 sandbox tasks, their files and checkers, and the budget rule |
 | `arms.py` | the M15 arms, each taking its runner as an argument so the set runs offline |
 | `sandbox_arms.py` | the sandbox arms: the general preset, and the Claude Agent SDK in its container |
+| `fetch_proof.py` | the Claude arm's evidence of a fetch: its calls, read as the shell would run them |
 | `claude_driver.py` | the program the Claude arm's container runs |
 | `Dockerfile`, `.dockerignore` | the Claude arm's image |
 | `harness.py` | runs every task on every arm, checks and costs each run |
 | `report.py` | writes the JSON and the Markdown |
-| `run_comparison.py` | the live command, the only thing here that spends tokens |
+| `run_comparison.py` | the live comparison |
+| `tune.py` | the live tuning runs, and the tuning log and its stop rule |
 | `reports/` | where reports land; kept in the repository |
 
 The M15 tasks name no URL (FR-61): this SDK's fetch tool refuses loopback addresses, and the Claude

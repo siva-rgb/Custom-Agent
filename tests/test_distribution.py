@@ -92,6 +92,8 @@ EXPECTED_EXAMPLES = {
     "41_increment2_contention.py",
     # FR-178 (M49): the general preset.
     "42_general_agent.py",
+    # FR-183 (M51): Phase 5A increment 1's exit signal.
+    "43_general_contention.py",
 }
 
 
