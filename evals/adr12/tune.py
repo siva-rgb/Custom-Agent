@@ -31,6 +31,9 @@ HERE = pathlib.Path(__file__).resolve().parent
 REPO = HERE.parents[1]
 TUNING_DIR = HERE / "reports" / "tuning"
 LOG = "tuning-log.json"
+# M53 pre-review F1: each set's log in a folder of its own, so a delegation version is never read as
+# the next version of the sandbox history.
+SET_DIRECTORIES = {"sandbox": TUNING_DIR, "delegation": TUNING_DIR / "delegation"}
 
 # DECISION-7830ca10: the comparison's model, and a second upstream provider.
 HAIKU, MINI = "bedrock.anthropic.claude-haiku-4-5", "openai.gpt-4o-mini"
@@ -170,8 +173,9 @@ def verdict(log: list[dict[str, Any]], version: str) -> dict[str, Any]:
 
 def markdown(log: list[dict[str, Any]]) -> str:
     lines = ["# Tuning the general preset (FR-182)", "",
-             "Each version of the preset's instructions, on each model it ran on: the 24 sandbox tasks once, on "
-             "this SDK's arm. DECISION-7830ca10: tuning stops at the first version that passes every task its "
+             "Each version of the preset's instructions, on each model it ran on: its set's tasks once (the 24 "
+             "sandbox tasks in reports/tuning/, the 6 delegation tasks in reports/tuning/delegation/), on this "
+             "SDK's arm. DECISION-7830ca10: tuning stops at the first version that passes every task its "
              "predecessor passed on both models, or at the third version after general-v1.", "",
              "| version | instructions sha256 | model | date | passed | cost | report |", "|---|---|---|---|---|---|---|"]
     for item in log:
@@ -222,8 +226,11 @@ def tune(*, arm: Any, model: str, tasks: Any, pricing: Any, directory: pathlib.P
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--model", required=True, choices=tuple(MODELS))
-    parser.add_argument("--directory", default=str(TUNING_DIR))
+    parser.add_argument("--directory", default=None, help="the tuning log's folder; by default the set's own")
+    # DECISION-0a617b3f (M53): the delegation tasks are tuned in a log of their own, beside M51's.
+    parser.add_argument("--set", choices=tuple(SET_DIRECTORIES), default="sandbox", dest="which")
     arguments = parser.parse_args(argv)
+    directory = pathlib.Path(arguments.directory) if arguments.directory else SET_DIRECTORIES[arguments.which]
 
     from .run_comparison import GATEWAY_MODEL, PRICES, WORKSPACE_IMAGE, credentials, gateway
 
@@ -237,13 +244,16 @@ def main(argv: list[str] | None = None) -> int:
 
     from agentsdk.workspace.docker import DockerProvider
 
+    from .delegation import DELEGATION_TASKS
     from .sandbox import SANDBOX_TASKS
     from .sandbox_arms import DockerCli, PresetArm, Verifier, fetch_witness, sweep
 
     arm = PresetArm(client_factory=client, model=model, registry=registry, image=WORKSPACE_IMAGE,
                     provider=DockerProvider())
-    item = tune(arm=arm, model=model, tasks=SANDBOX_TASKS, pricing=pricing, directory=pathlib.Path(arguments.directory),
-                verifier=Verifier(image=WORKSPACE_IMAGE), witness=fetch_witness(),
+    tasks = DELEGATION_TASKS if arguments.which == "delegation" else SANDBOX_TASKS
+    item = tune(arm=arm, model=model, tasks=tasks, pricing=pricing, directory=directory,
+                verifier=Verifier(image=WORKSPACE_IMAGE),
+                witness=fetch_witness() if any(task.group == "fetch" for task in tasks) else None,
                 sweep=lambda: sweep(DockerCli()), image_digests={"agentsdk": WORKSPACE_IMAGE})
     print(f"{item['version']} on {model}: {len(item['passed'])} of {len(item['passed']) + len(item['failed'])} "
           f"passed, {item['cost_usd']} USD")

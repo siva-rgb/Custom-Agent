@@ -5,6 +5,7 @@ same harness with scripted stand-ins on both arms (AC-48, FR-180).
 
     python evals/adr12/run_comparison.py --repetitions 3                   # every task
     python evals/adr12/run_comparison.py --set sandbox --repetitions 1     # the sandbox tasks only
+    python evals/adr12/run_comparison.py --set delegation --repetitions 1  # the delegation tasks only
     python evals/adr12/run_comparison.py --only fetch-page --repetitions 1 # one task, as a smoke run
 
 It needs BASE_URL and MODEL_API_KEY in the environment or in .env. The M15 tasks need the Claude
@@ -38,8 +39,8 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--repetitions", type=int, default=3, help="runs per task and arm (P2-D13: 3)")
     parser.add_argument("--reports-dir", default=str(HERE / "reports"))
-    parser.add_argument("--set", choices=("all", "m15", "sandbox"), default="all", dest="which",
-                        help="the M15 tasks, the sandbox tasks, or both")
+    parser.add_argument("--set", choices=SETS, default="all", dest="which",
+                        help="the M15 tasks, the sandbox tasks, the delegation tasks, or all of them")
     parser.add_argument("--only", default=None, help="run one task by id, for a smoke run")
     arguments = parser.parse_args(argv)
     found = credentials("the live comparison")
@@ -49,14 +50,8 @@ def main(argv: list[str] | None = None) -> int:
 
     from .arms import ClaudeAgentSdkArm, ThisSdkArm
     from .harness import run_comparison
-    from .sandbox import SANDBOX_TASKS
-    from .tasks import TASKS
 
-    def chosen(found):
-        return [task for task in found if arguments.only is None or task.id == arguments.only]
-
-    tasks = chosen(TASKS) if arguments.which in ("all", "m15") else []
-    sandbox_tasks = chosen(SANDBOX_TASKS) if arguments.which in ("all", "sandbox") else []
+    tasks, sandbox_tasks = chosen_tasks(arguments.which, arguments.only)
     if not tasks and not sandbox_tasks:
         print(f"no task with id {arguments.only!r} in the set {arguments.which}", file=sys.stderr)
         return 2
@@ -108,6 +103,25 @@ def main(argv: list[str] | None = None) -> int:
     print(f"wrote {comparison.json_path}")
     print(f"wrote {comparison.markdown_path}")
     return 0
+
+
+SETS = ("all", "m15", "sandbox", "delegation")
+
+
+def chosen_tasks(which: str, only: str | None = None) -> tuple[list, list]:
+    """The M15 tasks and the workspace tasks (sandbox, then delegation, FR-188) a set names, or the
+    one task `only` names within it."""
+    from .delegation import DELEGATION_TASKS
+    from .sandbox import SANDBOX_TASKS
+    from .tasks import TASKS
+
+    def chosen(found):
+        return [task for task in found if only is None or task.id == only]
+
+    tasks = chosen(TASKS) if which in ("all", "m15") else []
+    spaces = [*(SANDBOX_TASKS if which in ("all", "sandbox") else ()),
+              *(DELEGATION_TASKS if which in ("all", "delegation") else ())]
+    return tasks, chosen(spaces)
 
 
 def credentials(purpose: str) -> tuple[str, str] | None:

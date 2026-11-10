@@ -1,0 +1,22 @@
+{
+  "task": "M53-delegation-comparison",
+  "gate": "docker",
+  "command": ".venv\\Scripts\\python.exe -m pytest tests/test_workspace.py tests/test_workspace_tools.py tests/test_workspace_plan.py tests/test_docker_provider.py tests/test_sandbox_contention.py tests/test_compute.py tests/test_egress.py tests/test_sandboxed_mcp.py tests/test_snapshots.py tests/test_increment2_contention.py tests/test_plain_budgets.py tests/test_general_preset.py tests/test_adr12_sandbox.py tests/test_general_contention.py tests/test_delegation.py tests/test_adr12_delegation.py -m docker -q -p no:cacheprovider",
+  "started_at": "2026-11-10T15:24:22.571Z",
+  "observed_at": "2026-11-10T17:20:24.139Z",
+  "exit_code": 0,
+  "signal": null,
+  "stdout": "........................................................................ [ 36%]\r\n........................................................................ [ 72%]\r\n......................................................                   [100%]\r\n198 passed, 1283 deselected in 6959.96s (1:55:59)\r\n",
+  "stderr": "",
+  "revision": {
+    "commit": "d0c795df0ae98437e74239d0c16ecd6d63e8c43b",
+    "dirty": true
+  },
+  "source_hash": "28501bca9ceb3cf7c8dceede06854ce327b6ebc116c2b8f15e22d3c94a36c299",
+  "environment": {
+    "node": "v20.10.0",
+    "platform": "win32",
+    "arch": "x64"
+  },
+  "hash": "3b337aeac9f49ba591d06098044fe975df3148deca6fb63ab0be1706f4da5507"
+}

@@ -52,12 +52,15 @@ from agentsdk.workspace.docker import MAX_TRANSFER_BYTES, read_tar
 
 from .arms import RunOutcome, _estimate, _normalised_usage, cli_pin
 from .fetch_proof import fetch_calls, named_hosts  # noqa: F401 - named_hosts is part of this module's surface
-from .sandbox import VERIFIER, SandboxTask, ceilings, verification_input, verification_result
+from .sandbox import DELEGATION, VERIFIER, SandboxTask, ceilings, verification_input, verification_result
 
 TENANT, PROJECT = "adr12", "comparison"
 APPROVER = PrincipalContext(agent_principal="adr12-approver", user_principal="adr12")
 # FR-179: the Claude arm's tools on a sandbox task.
 CLAUDE_SANDBOX_TOOLS = ("Read", "Glob", "Grep", "Bash", "Write", "Edit")
+# FR-188: the pinned CLI's own subagent tool (claude-code 2.1.267, sdk-tools.d.ts AgentInput), given on a
+# delegation task alone.
+CLAUDE_SUBAGENT_TOOL = "Agent"
 CLAUDE_WORKDIR = "/work"
 # The container's own user, created by the Dockerfile; the copied files are given to it.
 CLAUDE_UID = 1000
@@ -87,6 +90,29 @@ class SandboxOutcome(RunOutcome):
     # Round-1 F1: what showed each fetch, kept in the row so a credit can be checked afterwards: this
     # SDK's arm's connections by id, the Claude arm's calls as it gave them (fetch_proof).
     fetch_evidence: tuple[str, ...] = ()
+    # FR-188: how many children the run ran -- this SDK's arm from its runs' parent links, the Claude
+    # arm from its Agent calls whose result was not an error; None when it could not be read.
+    children: int | None = None
+    # M53 round 1 NB-1: the usage leaves out work the arm could not see -- the Claude CLI's reported
+    # usage excludes its subagents' -- so the row prices the run by its sdk_cost_estimate instead.
+    usage_partial: bool = False
+
+
+class _Counted:
+    """FR-188: the Runner's model client, counting every call made through it. A run and its
+    children share the client, so this is the whole run's usage, children included."""
+
+    def __init__(self, inner: Any) -> None:
+        self._inner = inner
+        self.usage = Usage()
+
+    async def send(self, request: Any) -> Any:
+        response = await self._inner.send(request)
+        self.usage = self.usage + response.usage
+        return response
+
+    def __getattr__(self, name: str) -> Any:
+        return getattr(self._inner, name)
 
 
 def read_back(data: bytes) -> dict[str, bytes]:
@@ -129,18 +155,23 @@ class PresetArm:
         return self._image
 
     def agent_for(self, task: SandboxTask):
-        """The general agent FR-179 names: the task's files, its egress, keep=True, the budget rule."""
+        """The general agent FR-179 names: the task's files, its egress, keep=True, the budget rule;
+        on a delegation task, the delegating preset (FR-188)."""
         usd, tokens = ceilings(task.kind)
         return general_agent(
             model=f"model:{self._model}", image=self._image, registry=self._registry,
             budget=BudgetPolicy(run_ceiling_usd=Decimal(usd), run_ceiling_tokens=tokens),
             egress=task.egress, files=dict(task.files), keep=True, max_turns=task.max_turns,
+            delegate=task.kind == DELEGATION,
         )
 
     async def run_sandbox(self, task: SandboxTask) -> SandboxOutcome:
         agent = self.agent_for(task)
         usd, tokens = ceilings(task.kind)
         client = self._client_factory()
+        if task.kind == DELEGATION:
+            client = _Counted(client)
+        children: int | None = None
         runner = Runner({"model": client}, model_registry=self._registry, workspace_provider=self._provider,
                         persistence=self._persistence)
         started = time.perf_counter()
@@ -167,6 +198,13 @@ class PresetArm:
                 refused = await _refusals(runner, result.run_id)
             except Exception:  # noqa: BLE001 - the count is a measure; a measure not read is unavailable
                 refused = None
+            # FR-188: the runs whose parent is this one. This arm keeps no store, so runs.parent_run_id
+            # is never written; the Runner's _parents holds the value it would write there (api.py,
+            # _run), recorded just before start_run writes the row. They differ in one case: a child
+            # that fails between the two is counted here, though its row would never exist (M53 round
+            # 1 NB-2, recorded as knowledge).
+            if task.kind == DELEGATION:
+                children = sum(1 for key, parent in runner._parents.items() if parent == result.run_id)
             made = [e.payload["workspace_id"] for e in result.events if e.event_type is EventType.WORKSPACE_CREATED]
             workspace_id = made[0] if made else None
             if workspace_id is not None:
@@ -198,11 +236,13 @@ class PresetArm:
                     await closer()
         turns = sum(1 for e in result.events if e.event_type is EventType.MODEL_CALLED)
         # FR-179: a run its budget stopped is reported as a terminal status of its own.
+        # FR-188: a delegation task's usage is the whole run's, its children's calls included.
+        usage = client.usage if isinstance(client, _Counted) else result.usage
         return SandboxOutcome(
             answer=result.output, status=BUDGET_EXCEEDED if result.error == BUDGET_EXCEEDED else result.status.value,
-            turns=turns, usage=result.usage, wall_ms=wall_ms, error=error or result.error, files=files,
+            turns=turns, usage=usage, wall_ms=wall_ms, error=error or result.error, files=files,
             exports_refused=refused, run_id=result.run_id, workspace_id=workspace_id, budget_usd=usd,
-            budget_tokens=tokens, fetched=fetched, fetch_evidence=evidence,
+            budget_tokens=tokens, fetched=fetched, fetch_evidence=evidence, children=children,
         )
 
     async def _read_kept(self, workspace_id: str) -> dict[str, bytes]:
@@ -448,7 +488,8 @@ class ClaudeContainerArm:
 
     def request_for(self, task: SandboxTask) -> dict[str, Any]:
         """What the driver is given on its standard input: no credential, which is in its environment."""
-        return {"prompt": task.prompt, "max_turns": task.max_turns, "tools": list(CLAUDE_SANDBOX_TOOLS),
+        tools = [*CLAUDE_SANDBOX_TOOLS, *((CLAUDE_SUBAGENT_TOOL,) if task.kind == DELEGATION else ())]
+        return {"prompt": task.prompt, "max_turns": task.max_turns, "tools": tools,
                 "model": self._model, "cwd": CLAUDE_WORKDIR}
 
     def create_argv(self, name: str) -> list[str]:
@@ -509,6 +550,9 @@ class ClaudeContainerArm:
             sdk_cost_estimate=_estimate((result or {}).get("total_cost_usd")),
             error=self._redacted(error),
             files=files,
+            children=subagents(events) if task.kind == DELEGATION else None,
+            # Any Agent call, an errored one too, may have spent what the CLI's usage leaves out.
+            usage_partial=bool(_agent_calls(events)),
         )
 
     def _redacted(self, text: str | None) -> str | None:
@@ -517,6 +561,20 @@ class ClaudeContainerArm:
         if text is None or not self._auth_token:
             return text
         return text.replace(self._auth_token, "[redacted]")
+
+
+def subagents(events: list[dict[str, Any]]) -> int:
+    """FR-188: the Claude arm's children, its Agent calls whose result was not an error, each call
+    counted once however many times its result appears (M53 pre-review)."""
+    called = _agent_calls(events)
+    return len({r.get("id") for e in events if e.get("kind") == "results" for r in e.get("results") or ()
+                if r.get("id") in called and r.get("is_error") is False})
+
+
+def _agent_calls(events: list[dict[str, Any]]) -> set[Any]:
+    """The ids of the Claude arm's Agent calls, whatever their results."""
+    return {tool.get("id") for e in events if e.get("kind") == "assistant"
+            for tool in e.get("tools") or () if tool.get("name") == CLAUDE_SUBAGENT_TOOL}
 
 
 def _events(out: bytes) -> list[dict[str, Any]]:

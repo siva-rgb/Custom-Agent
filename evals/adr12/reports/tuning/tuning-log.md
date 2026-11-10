@@ -1,6 +1,6 @@
 # Tuning the general preset (FR-182)
 
-Each version of the preset's instructions, on each model it ran on: the 24 sandbox tasks once, on this SDK's arm. DECISION-7830ca10: tuning stops at the first version that passes every task its predecessor passed on both models, or at the third version after general-v1.
+Each version of the preset's instructions, on each model it ran on: its set's tasks once (the 24 sandbox tasks in reports/tuning/, the 6 delegation tasks in reports/tuning/delegation/), on this SDK's arm. DECISION-7830ca10: tuning stops at the first version that passes every task its predecessor passed on both models, or at the third version after general-v1.
 
 | version | instructions sha256 | model | date | passed | cost | report |
 |---|---|---|---|---|---|---|

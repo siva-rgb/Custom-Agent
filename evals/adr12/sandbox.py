@@ -183,7 +183,9 @@ for arguments, expected in CASES:
         done = subprocess.run([sys.executable, "-I", "-c", CHILD, MODULE, FUNCTION, WORK],
                               input=json.dumps(arguments), capture_output=True, text=True, timeout=20, cwd=WORK)
         lines = [l for l in done.stdout.splitlines() if l.startswith("RESULT ")]
-        if done.returncode == 0 and lines and json.loads(lines[-1][7:]) == expected:
+        # Type for type, as JSON: Python's == takes 1 for True and 7.0 for 7 (M53 round 1).
+        found = json.dumps(json.loads(lines[-1][7:]), sort_keys=True) if lines else None
+        if done.returncode == 0 and found == json.dumps(expected, sort_keys=True):
             passed += 1
     except Exception:
         pass
@@ -557,9 +559,14 @@ def _ini(space: Workspace) -> bool:
 def _package(space: Workspace) -> bool:
     try:
         found = json.loads(space.text("package.json") or "")
-    except ValueError:
+    except (ValueError, RecursionError):  # M53 round 1 NB-4: too deep to read is a failed row
         return False
-    return found == {**json.loads(_PACKAGE), "license": "MIT"}
+    return _same(found, {**json.loads(_PACKAGE), "license": "MIT"})
+
+
+def _same(found: object, expected: object) -> bool:
+    """Equal type for type, as JSON: Python's == takes 1.0 for 1 and True for 1 (M53 round 1)."""
+    return json.dumps(found, sort_keys=True) == json.dumps(expected, sort_keys=True)
 
 
 def _changelog(space: Workspace) -> bool:
@@ -684,9 +691,9 @@ def _site(space: Workspace) -> bool:
         return False
     try:
         found = json.loads(space.text("site.json") or "")
-    except ValueError:
+    except (ValueError, RecursionError):  # M53 round 1 NB-4: too deep to read is a failed row
         return False
-    return found == {**json.loads(_SITE), "title": _title(space.witness), "bytes": len(space.witness)}
+    return _same(found, {**json.loads(_SITE), "title": _title(space.witness), "bytes": len(space.witness)})
 
 
 _FETCH = (
@@ -807,12 +814,18 @@ M15_MEDIANS = {
 }
 M15_REPORT = "adr12-comparison-2026-09-16.json"
 BUDGET_MULTIPLE = 10
+# FR-188 (M53): the delegation kind's ceilings are ten times the sandbox kind's median on this SDK's
+# arm in M51's final comparison, cost in USD and tokens; the gate recomputes them from that report.
+DELEGATION = "delegation"
+M51_SANDBOX_MEDIAN = ("0.020369", 16905)
+M51_REPORT = "adr12-comparison-2026-11-09.json"
 
 
 def ceilings(kind: str) -> tuple[str, int]:
     """One rule for every task of a kind: ten times that kind's M15 median, the sandbox kind ten
-    times the multi-step median. The USD ceiling as text, the token ceiling as a whole number."""
+    times the multi-step median, the delegation kind ten times M51's sandbox median. The USD
+    ceiling as text, the token ceiling as a whole number."""
     from decimal import Decimal
 
-    usd, tokens = M15_MEDIANS["multi-step" if kind == SANDBOX else kind]
+    usd, tokens = M51_SANDBOX_MEDIAN if kind == DELEGATION else M15_MEDIANS["multi-step" if kind == SANDBOX else kind]
     return str(Decimal(usd) * BUDGET_MULTIPLE), int(tokens * BUDGET_MULTIPLE)

@@ -146,6 +146,25 @@ def build_markdown(metadata: dict[str, Any], rows: list[dict[str, Any]]) -> str:
             lines.append(f"| {row['task']} | {row['arm']} | {row.get('repetition')} | {'yes' if row['passed'] else 'no'} | "
                          f"{', '.join(row.get('fetched') or []) or 'none'} | "
                          f"{_cell('; '.join(row.get('fetch_evidence') or [])) or 'none'} |")
+    delegations = [row for row in rows if row.get("kind") == "delegation"]
+    if delegations:
+        # FR-188: whether each run delegated and how many children it ran, never a condition of passing.
+        lines += ["", "## Delegation", ""]
+        if metadata.get("delegation"):
+            lines += [f"How it is measured: {metadata['delegation']}.", ""]
+        lines += ["| arm | runs | delegated | children in all |", "|---|---|---|---|"]
+        for arm in arms:
+            taken = [row for row in delegations if row["arm"] == arm]
+            if taken:
+                counted = [row["children"] for row in taken if isinstance(row.get("children"), int)]
+                lines.append(f"| {arm} | {len(taken)} | {sum(1 for row in taken if row.get('delegated') is True)} | "
+                             f"{sum(counted) if len(counted) == len(taken) else UNAVAILABLE} |")
+        lines += ["", "| task | arm | repetition | passed | delegated | children |", "|---|---|---|---|---|---|"]
+        for row in delegations:
+            delegated = row.get("delegated", UNAVAILABLE)
+            lines.append(f"| {row['task']} | {row['arm']} | {row.get('repetition')} | {'yes' if row['passed'] else 'no'} "
+                         f"| {delegated if delegated == UNAVAILABLE else ('yes' if delegated else 'no')} "
+                         f"| {row.get('children', UNAVAILABLE)} |")
     lines += [
         "",
         "## How to read this",
@@ -175,10 +194,11 @@ def _kind_row(kind: str, arm: str, taken: list[dict[str, Any]]) -> str:
 
 
 def _tokens(rows: list[dict[str, Any]]) -> str:
-    """Prompt and completion tokens summed; unavailable when no row reports a count."""
+    """Prompt and completion tokens summed; unavailable when any row's count is: a total over runs some
+    of which were not counted is no total (M53 round 1 NB-1)."""
     counts = [row.get(key) for row in rows for key in ("prompt_tokens", "completion_tokens")]
-    counts = [c for c in counts if isinstance(c, int) and not isinstance(c, bool)]
-    return str(sum(counts)) if counts else UNAVAILABLE
+    whole = counts and all(isinstance(c, int) and not isinstance(c, bool) for c in counts)
+    return str(sum(counts)) if whole else UNAVAILABLE
 
 
 def _median(rows: list[dict[str, Any]], key: str) -> str:
@@ -189,16 +209,15 @@ def _median(rows: list[dict[str, Any]], key: str) -> str:
 def _total(rows: list[dict[str, Any]], key: str) -> str:
     from decimal import Decimal
 
-    total, seen = Decimal(0), False
+    # Unavailable when any row's value is: a total over runs some of which were not priced is no total
+    # (M53 round 1 NB-1, as an arm's children).
+    total = Decimal(0)
     for row in rows:
-        value = row.get(key)
-        if isinstance(value, str) and value != UNAVAILABLE:
-            try:
-                total += Decimal(value)
-                seen = True
-            except Exception:  # noqa: BLE001 - a value that is not money is not counted
-                continue
-    return str(total) if seen else UNAVAILABLE
+        try:
+            total += Decimal(row.get(key))
+        except Exception:  # noqa: BLE001 - unavailable, missing, or not money
+            return UNAVAILABLE
+    return str(total) if rows else UNAVAILABLE
 
 
 def _cell(text: Any) -> str:

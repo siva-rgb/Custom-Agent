@@ -9,7 +9,7 @@
     "non_goals": [],
     "trust_boundary": "local repository",
     "created_at": "2026-09-05T14:48:57.894Z",
-    "updated_at": "2026-11-10T02:44:29.813Z"
+    "updated_at": "2026-11-10T17:22:27.551Z"
   },
   "policy": {
     "ponytail": "full",
@@ -25,7 +25,7 @@
   "lifecycle": {
     "phase": "build",
     "status": "active",
-    "active_task": "M53-delegation-comparison",
+    "active_task": "M54-delegation-contention",
     "blocker": null,
     "next_action": "Run the task pre-flight."
   },
@@ -2775,6 +2775,54 @@
       "status": "accepted",
       "source": null,
       "recorded_at": "2026-11-09T20:15:47.381Z"
+    },
+    {
+      "id": "DECISION-0a617b3f",
+      "title": "M53 pre-flight: 6 delegation tasks, tuning only if needed, Haiku 4.5, a 6 USD cap (owner)",
+      "text": "Owner, 2026-11-10, choosing every recommended option. Spend: M53 may spend up to 6 USD live (first delegation pass, any tuning, the full comparison of 42 tasks x 3 x 2 arms, one rerun if something outside the code breaks a run), within the 20 USD cap of which about 10.16 USD is spent; the author stops and asks on reaching it. Tuning (FR-182): general-v5 runs the 6 delegation tasks once on bedrock.anthropic.claude-haiku-4-5 and once on openai.gpt-4o-mini; tuning starts only if a task fails; at most 2 new versions (general-v6, general-v7), each kept only if it passes every task its predecessor passed, sandbox tasks included, on both providers (M51's rule); the comparison runs the last version. Model: the comparison runs on bedrock.anthropic.claude-haiku-4-5 on both arms, as M51. Tasks (FR-188): word-counts (4 chapters to counts.json; tricky: hyphenated words, an empty file), csv-totals (3 region CSVs to totals.csv; tricky: quoted thousands, a blank row), log-errors (4 service logs to errors.json; tricky: ERROR inside a message, CRLF lines), ini-to-json (3 .ini configs to one .json each; tricky: inline comments, a duplicate key), three-functions (roman, slugify, isbn10 in 3 modules, verified on hidden cases with no network), fix-three-bugs (3 independent modules, each with its own test, verified by its test and hidden cases). The parent writes each result into its own workspace, which the checker reads; this SDK's arm runs general_agent(delegate=True) with 30 turns and the FR-188 budget of 10 times M51's sandbox median on this SDK's arm (0.2037 USD, 169050 tokens); the Claude arm is given the pinned CLI's Agent tool (claude-code 2.1.267, sdk-tools.d.ts AgentInput) and 30 turns, with no image rebuild since the driver takes its tools per request. Each row reports whether its run delegated and its children, never a pass condition.",
+      "status": "accepted",
+      "source": null,
+      "recorded_at": "2026-11-10T03:20:37.492Z"
+    },
+    {
+      "id": "DECISION-c529a9ae",
+      "title": "M53: no tuning; the comparison runs general-v5 as shipped (owner)",
+      "text": "Owner, 2026-11-10, amending DECISION-0a617b3f's tuning rule. The first pass (FR-182) ran general-v5 on the 6 delegation tasks once per provider, this SDK's arm, log evals/adr12/reports/tuning/delegation/: bedrock.anthropic.claude-haiku-4-5 6 of 6 (0.346477 USD), openai.gpt-4o-mini 4 of 6 (0.011278 USD; word-counts miscounted one file without running a program, csv-totals summed every region to zero). Neither model delegated on any run (0 children in all 12). Tuning as decided needed a general-v5 sandbox baseline and up to two versions on all 30 tasks on both providers, about 7.6 USD with the comparison, over the 6 USD cap. The owner chose no tuning: the failures are gpt-4o-mini's arithmetic, not delegation, and M51's three versions never held on that model; the comparison (FR-181, FR-189) runs general-v5 on Haiku 4.5, and the failures and the absence of delegation are reported as measured. M53 has spent about 0.36 USD.",
+      "status": "accepted",
+      "source": null,
+      "recorded_at": "2026-11-10T04:08:55.195Z"
+    },
+    {
+      "id": "DECISION-3f05f648",
+      "title": "M53 live work: the comparison 252 runs, no run delegated on either arm",
+      "text": "The full comparison (all 42 tasks, 3 repetitions, both arms, general-v5 as shipped per DECISION-c529a9ae) ran 2026-11-10 and wrote evals/adr12/reports/adr12-comparison-2026-11-10.json: 243 of 252 checkers passed. This SDK: M15 36/36, sandbox 69/72 (repair-date-format budget_exceeded 3 times, as in M51), delegation 17/18 (ini-to-json once). Claude arm: M15 36/36, sandbox 69/72 (repair-dedupe twice, top-words max_turns once), delegation 16/18 (csv-totals once, log-errors once). None of the 36 delegation runs delegated: children 0 on every row, on this SDK's delegate_task and on the Claude CLI's Agent tool alike. So the open question of whether the CLI's usage includes its subagents' is not measured by this comparison; it is reported as unmeasured, and no image rebuild is asked for. The CLI's cost estimate equalled the cost computed from its usage on every Claude row, up to float rounding (at most 6e-18); the smoke run's 0.0017 USD gap on three-functions did not recur. Cost of this run 4.03 USD; M53 about 4.90 of its 6 USD cap; the project about 15.06 of 20.",
+      "status": "accepted",
+      "source": "evals/adr12/reports/adr12-comparison-2026-11-10.json",
+      "recorded_at": "2026-11-10T05:29:57.624Z"
+    },
+    {
+      "id": "DECISION-8c9e432d",
+      "title": "M53 mutation run and pre-review: four survivors pinned, F1 and F3 to F6 repaired in M53, F2 reported",
+      "text": "Mutation run 1 (35 mutants): 31 killed, 4 survived (report total over unavailable children, the ini expectation, fix-three-bugs hidden cases, the check program's file name); four tests added (expected results recomputed by the standard library, a fix passing every visible case but not a hidden one, each check_<module>.py run on the host writing its own file, an arm total unavailable when any run was not read); all four then killed. Pre-review (Sonnet 5.5, fresh agent, no repo edits, tree hash unchanged afterwards) found nothing blocking. Repairs in M53: F1 tune.py --set delegation logged into M51's tuning log by default -- each set now has its own default folder (SET_DIRECTORIES), and the log header names both sets; both tuning-log.md views rewritten from their JSON logs (header line only). F3 sandbox rows carried children 0 and delegated false though no delegation tool was given -- the two keys and both arms' counts now exist on delegation tasks alone (NFR-53); the 2026-11-10 report was written before this repair and is kept as the evidence it is: its 144 sandbox rows hold 0 and false. F4 the JSON checkers compared with Python ==, taking false for 0 and 7.0 for 7 -- compared as canonical JSON now. F5 a correct module importing a sibling of the run failed verification -- the delegation dispatcher appends the run's folder to sys.path after the standard library (a run's json.py does not shadow it). F6 FR-188 names runs.parent_run_id while the arm reads runner._parents -- the same value the Runner writes to that column as it starts a run, and this arm keeps no store; stated in the code. Also: subagents() counts each Agent call once however many times its result appears. F2 (no run delegated live, so the measure is exercised offline only) is the finding of DECISION-3f05f648 and is reported as such.",
+      "status": "accepted",
+      "source": "scratchpad m53/prereview",
+      "recorded_at": "2026-11-10T06:29:39.488Z"
+    },
+    {
+      "id": "DECISION-222260a8",
+      "title": "M53 round 1 closing repairs, the owner's choices",
+      "text": "Fable 5.1 approved M53 round 1 with nothing blocking; under DECISION-c697f36c it is the last round, and every note is repaired in M53. Owner's choices (2026-11-10): NB-1, a Claude row whose run called Agent at all reports its four token counts unavailable and its cost_usd as the CLI's total_cost_usd (unavailable when absent), the measure text says so, and an arm's token and cost totals in the report are unavailable when any row's is (no committed report changes: rendered old against new, all 14 the same). NB-2, the comment is corrected and the gap recorded as knowledge; FR-188 unchanged. The author's sweep after F4 found the code-task verifier comparing with Python's ==: by the owner's choice it compares canonical JSON, type for type, as do _package and _site; M50, M51 and M53's committed reports stay as evidence of the verifier they ran under. NB-4, RecursionError is a failed row in _json, _package and _site. NB-3 needs no change (the lead reviewer: cosmetic, rows byte-identical). The tuning log's cost sum, which leaves unavailable costs out (tests/test_adr12_tuning.py pins it), is left as designed. The delegation-prompt question is settled at M54's pre-flight.",
+      "status": "accepted",
+      "source": "M53 round 1 verdict (Fable 5.1), owner's answers 2026-11-10",
+      "recorded_at": "2026-11-10T13:33:26.155Z"
+    },
+    {
+      "id": "DECISION-0c9d61ef",
+      "title": "Correction to DECISION-8c9e432d's test count",
+      "text": "M53 round 1 NB-5: tests/test_adr12_delegation.py had 51 offline tests and 2 Docker (53 in all) at the review, not 53 offline + 2 Docker as DECISION-8c9e432d and the round-1 brief said.",
+      "status": "accepted",
+      "source": "M53 round 1 verdict NB-5, confirmed by pytest --co",
+      "recorded_at": "2026-11-10T13:33:26.639Z"
     }
   ],
   "knowledge": [
@@ -4153,6 +4201,30 @@
       "source": null,
       "tags": [],
       "recorded_at": "2026-10-31T08:07:32.108Z"
+    },
+    {
+      "id": "KNOWLEDGE-62022843",
+      "title": "The Claude CLI's reported usage excludes its subagents'",
+      "text": "On a forced delegating run (children 4), the usage the CLI's result reports (prompt 26529, completion 348, cache_read 25622, cache_write 892) prices to 0.00543220 USD at the report's pricing, against the CLI's own total_cost_usd 0.0527849: 9.7x under. On all 126 non-delegating Claude rows of the 2026-11-10 report the two agree to 6E-18, so the gap is the subagents'. This SDK's arm counts children through the shared client. From M53 round 1, a Claude row whose run called Agent reports its tokens unavailable and its cost as total_cost_usd.",
+      "source": "M53 round 1 verdict NB-1 (Fable 5.1 reviewer's forced runs, lead reviewer's arithmetic)",
+      "tags": [],
+      "recorded_at": "2026-11-10T13:33:39.355Z"
+    },
+    {
+      "id": "KNOWLEDGE-f55645fe",
+      "title": "The live comparison's children come from the Runner's _parents, not runs.parent_run_id",
+      "text": "FR-188 names runs.parent_run_id; run_comparison builds PresetArm with no persistence, so the column is never written live (database counters unchanged across the 252-run comparison). PresetArm counts children from runner._parents, which api.py's _run writes just before start_run writes the row: the two agree in every end state except a child that fails between the two writes, which _parents counts and the column would not hold.",
+      "source": "M53 round 1 verdict NB-2; api.py _run",
+      "tags": [],
+      "recorded_at": "2026-11-10T13:33:39.847Z"
+    },
+    {
+      "id": "KNOWLEDGE-19203186",
+      "title": "Haiku solves the six delegation tasks without delegating unless asked",
+      "text": "In M53's comparison every delegation row had children 0 on both arms (36 rows), and the reviewer's runs show Haiku solves all six in about 7 turns unprompted; prompted to delegate, each arm ran 4 children and passed. So unforced delegation rows measure nothing about delegation. To decide at M54's pre-flight: whether M54's tasks ask for delegation (a SPEC change) or report the zero as the result.",
+      "source": "M53 round 1 verdict, 'What to carry into M54'; DECISION-3f05f648",
+      "tags": [],
+      "recorded_at": "2026-11-10T13:33:40.208Z"
     }
   ],
   "tasks": [
@@ -7924,7 +7996,7 @@
     {
       "id": "M53-delegation-comparison",
       "outcome": "The ADR-12 comparison gains delegation tasks, reports whether each run delegated, and is rerun on every task three times on both arms",
-      "state": "active",
+      "state": "done",
       "risk": "high",
       "owner": null,
       "scope": [],
@@ -7940,29 +8012,49 @@
           "id": "unit",
           "command": ".venv\\Scripts\\python.exe -m pytest tests/test_adr12_delegation.py tests/test_adr12_sandbox.py tests/test_adr12_comparison.py -q -p no:cacheprovider",
           "mandatory": true,
-          "status": "pending",
-          "evidence": null
+          "status": "pass",
+          "evidence": {
+            "path": ".genesis/evidence/M53-delegation-comparison-unit.json",
+            "source_hash": "28501bca9ceb3cf7c8dceede06854ce327b6ebc116c2b8f15e22d3c94a36c299",
+            "hash": "7463c8babd1deedbeefaf6b41aee8dd8875d707dcd0fefbd46288b5619656e48",
+            "observed_at": "2026-11-10T14:40:02.039Z"
+          }
         },
         {
           "id": "regression",
           "command": ".venv\\Scripts\\python.exe -m pytest -q -p no:cacheprovider",
           "mandatory": true,
-          "status": "pending",
-          "evidence": null
+          "status": "pass",
+          "evidence": {
+            "path": ".genesis/evidence/M53-delegation-comparison-regression.json",
+            "source_hash": "28501bca9ceb3cf7c8dceede06854ce327b6ebc116c2b8f15e22d3c94a36c299",
+            "hash": "27a920a1c272474eec86920a216aba4ab5cfc6ffb354a4d1848564b39efdc2cd",
+            "observed_at": "2026-11-10T15:24:22.264Z"
+          }
         },
         {
           "id": "docker",
           "command": ".venv\\Scripts\\python.exe -m pytest tests/test_workspace.py tests/test_workspace_tools.py tests/test_workspace_plan.py tests/test_docker_provider.py tests/test_sandbox_contention.py tests/test_compute.py tests/test_egress.py tests/test_sandboxed_mcp.py tests/test_snapshots.py tests/test_increment2_contention.py tests/test_plain_budgets.py tests/test_general_preset.py tests/test_adr12_sandbox.py tests/test_general_contention.py tests/test_delegation.py tests/test_adr12_delegation.py -m docker -q -p no:cacheprovider",
           "mandatory": true,
-          "status": "pending",
-          "evidence": null
+          "status": "pass",
+          "evidence": {
+            "path": ".genesis/evidence/M53-delegation-comparison-docker.json",
+            "source_hash": "28501bca9ceb3cf7c8dceede06854ce327b6ebc116c2b8f15e22d3c94a36c299",
+            "hash": "3b337aeac9f49ba591d06098044fe975df3148deca6fb63ab0be1706f4da5507",
+            "observed_at": "2026-11-10T17:20:24.139Z"
+          }
         },
         {
           "id": "independent-review",
           "command": "",
           "mandatory": true,
-          "status": "pending",
-          "evidence": null
+          "status": "pass",
+          "evidence": {
+            "human": "siva-rgb (owner)",
+            "reason": "M53 round 1 (Fable 5.1) approved with nothing blocking; its notes repaired in M53 with no further review under DECISION-c697f36c (DECISION-222260a8, DECISION-0c9d61ef): NB-1 partial Claude usage priced by total_cost_usd with tokens unavailable, NB-2 comment and KNOWLEDGE-f55645fe, the verifier and _package/_site compared as canonical JSON, NB-4 RecursionError a failed row. 12 new tests red before their fixes; 55 of 55 mutants killed and restored; gates on 28501bca: unit 335, regression 3859, docker 198 passed, kept awake. Re-approved in the owner's name at the owner's instruction, 2026-11-10.",
+            "source_hash": "28501bca9ceb3cf7c8dceede06854ce327b6ebc116c2b8f15e22d3c94a36c299",
+            "observed_at": "2026-11-10T17:22:27.183Z"
+          }
         }
       ],
       "next_action": "Run the task pre-flight.",
@@ -7971,12 +8063,12 @@
       "failures": [],
       "limitations": [],
       "created_at": "2026-11-09T12:20:42.498Z",
-      "updated_at": "2026-11-09T12:20:42.499Z"
+      "updated_at": "2026-11-10T17:22:27.550Z"
     },
     {
       "id": "M54-delegation-contention",
       "outcome": "Delegating general agents of two tenancies hold child reservations, file bounds, depth, approval, tenancy and cancellation under contention on both stores, Phase 5A increment 2 exit signal",
-      "state": "queued",
+      "state": "active",
       "risk": "high",
       "owner": null,
       "scope": [],
@@ -10097,6 +10189,24 @@
       "task": "M52-delegation-tool",
       "human": "siva-rgb (owner)",
       "reason": "M52 round 1 (Fable 5.1) approved with two non-blocking findings; F1 and F2 repaired in M52 with no further review under DECISION-c697f36c (DECISION-19fe7dc3); gates pass on df0acaee2fcb",
+      "revision": null
+    },
+    {
+      "id": "eac6c818-74c4-4e34-bf96-eefebecb0bd2",
+      "at": "2026-11-10T13:01:11.189Z",
+      "action": "approve",
+      "task": "M53-delegation-comparison",
+      "human": "Fable 5.1 (L4 reviewer, M53 round 1)",
+      "reason": "M53 round 1 approved, nothing blocking. Verified first-hand: the six delegation checkers hold under 70 adversarial variants (canonical JSON on the F4 cases, key order, CRLF, BOM, duplicate keys, basenames, changed and deleted inputs, forged verification strings); children and delegated appear on delegation rows only, on both arms, in a mixed-kind comparison from the current code; the measure counts direct children in every end state probed (failed child, refused spawn, failed parent, budget exceeded) and the row usage is the whole run through _Counted; 10 of 10 mutants killed with SHA-verified apply and restore; colorsys is not preloaded under -I so the F5 shadow test is real; stand-in sandbox rows are byte-identical to d0c795d; 51 offline and 2 docker tests pass; the 2026-11-10 report matches its rows and DECISION-3f05f648 and its markdown regenerates identically. A live forced-delegation probe of word-counts gave children 4 on each arm, both passed, so the measure is non-zero live on both arms. Non-blocking findings: the Claude CLI reported usage excludes its subagents (cost from usage 0.0054 USD against the CLI estimate 0.0528 USD on that delegating run), so a delegating Claude row undercounts the whole run while sdk_cost_estimate_usd carries it; record this and state it in the measure text or use the estimate. Also: a sandbox-only report now carries the delegation budget_rule text and a null delegation key; runner._parents can diverge from runs.parent_run_id under persistence for a child failing before its row write, moot for the live arm which has no persistence; the _json checker catches ValueError only; the brief counts 53 offline tests where there are 51 plus 2 docker.",
+      "revision": null
+    },
+    {
+      "id": "4379ab5e-6d8d-4f96-9742-b8b6c21f8631",
+      "at": "2026-11-10T17:22:27.183Z",
+      "action": "approve",
+      "task": "M53-delegation-comparison",
+      "human": "siva-rgb (owner)",
+      "reason": "M53 round 1 (Fable 5.1) approved with nothing blocking; its notes repaired in M53 with no further review under DECISION-c697f36c (DECISION-222260a8, DECISION-0c9d61ef): NB-1 partial Claude usage priced by total_cost_usd with tokens unavailable, NB-2 comment and KNOWLEDGE-f55645fe, the verifier and _package/_site compared as canonical JSON, NB-4 RecursionError a failed row. 12 new tests red before their fixes; 55 of 55 mutants killed and restored; gates on 28501bca: unit 335, regression 3859, docker 198 passed, kept awake. Re-approved in the owner's name at the owner's instruction, 2026-11-10.",
       "revision": null
     }
   ],

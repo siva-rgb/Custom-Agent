@@ -474,15 +474,15 @@
 
 ### M53-delegation-comparison — The ADR-12 comparison gains delegation tasks, reports whether each run delegated, and is rerun on every task three times on both arms
 
-- state/risk: active / high
+- state/risk: done / high
 - requirements: FR-188, FR-189, AC-111, NFR-53
 - scope: not bounded
-- gates: unit: .venv\Scripts\python.exe -m pytest tests/test_adr12_delegation.py tests/test_adr12_sandbox.py tests/test_adr12_comparison.py -q -p no:cacheprovider, regression: .venv\Scripts\python.exe -m pytest -q -p no:cacheprovider, docker: .venv\Scripts\python.exe -m pytest tests/test_workspace.py tests/test_workspace_tools.py tests/test_workspace_plan.py tests/test_docker_provider.py tests/test_sandbox_contention.py tests/test_compute.py tests/test_egress.py tests/test_sandboxed_mcp.py tests/test_snapshots.py tests/test_increment2_contention.py tests/test_plain_budgets.py tests/test_general_preset.py tests/test_adr12_sandbox.py tests/test_general_contention.py tests/test_delegation.py tests/test_adr12_delegation.py -m docker -q -p no:cacheprovider, independent-review: pending
+- gates: unit: .venv\Scripts\python.exe -m pytest tests/test_adr12_delegation.py tests/test_adr12_sandbox.py tests/test_adr12_comparison.py -q -p no:cacheprovider, regression: .venv\Scripts\python.exe -m pytest -q -p no:cacheprovider, docker: .venv\Scripts\python.exe -m pytest tests/test_workspace.py tests/test_workspace_tools.py tests/test_workspace_plan.py tests/test_docker_provider.py tests/test_sandbox_contention.py tests/test_compute.py tests/test_egress.py tests/test_sandboxed_mcp.py tests/test_snapshots.py tests/test_increment2_contention.py tests/test_plain_budgets.py tests/test_general_preset.py tests/test_adr12_sandbox.py tests/test_general_contention.py tests/test_delegation.py tests/test_adr12_delegation.py -m docker -q -p no:cacheprovider, independent-review: pass
 - next: Run the task pre-flight.
 
 ### M54-delegation-contention — Delegating general agents of two tenancies hold child reservations, file bounds, depth, approval, tenancy and cancellation under contention on both stores, Phase 5A increment 2 exit signal
 
-- state/risk: queued / high
+- state/risk: active / high
 - requirements: FR-190, AC-112, NFR-53, NFR-54
 - scope: not bounded
 - gates: unit: .venv\Scripts\python.exe -m pytest tests/test_delegation_contention.py -q -p no:cacheprovider, regression: .venv\Scripts\python.exe -m pytest -q -p no:cacheprovider, docker: .venv\Scripts\python.exe -m pytest tests/test_workspace.py tests/test_workspace_tools.py tests/test_workspace_plan.py tests/test_docker_provider.py tests/test_sandbox_contention.py tests/test_compute.py tests/test_egress.py tests/test_sandboxed_mcp.py tests/test_snapshots.py tests/test_increment2_contention.py tests/test_plain_budgets.py tests/test_general_preset.py tests/test_adr12_sandbox.py tests/test_general_contention.py tests/test_delegation.py tests/test_adr12_delegation.py tests/test_delegation_contention.py -m docker -q -p no:cacheprovider, independent-review: pending

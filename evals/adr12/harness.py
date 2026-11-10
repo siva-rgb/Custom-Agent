@@ -28,7 +28,7 @@ from agentsdk.registry import call_cost
 from agentsdk.workspace.docker import UID as WORKSPACE_UID
 
 from . import report as report_module
-from .sandbox import BUDGET_MULTIPLE, M15_REPORT, SANDBOX, Workspace, ceilings
+from .sandbox import BUDGET_MULTIPLE, DELEGATION, M15_REPORT, M51_REPORT, SANDBOX, Workspace, ceilings
 from .sandbox_arms import CLAUDE_UID
 from .tasks import FIXTURE_ROOT
 
@@ -49,7 +49,20 @@ SANDBOX_SETUP = {
 }
 BUDGET_RULE = (f"this SDK's arm only: a USD and a token ceiling of {BUDGET_MULTIPLE} times the kind's median on "
                f"this SDK's arm in M15 ({M15_REPORT}); the sandbox kind {BUDGET_MULTIPLE} times the multi-step "
-               "median. The Claude arm has no budget")
+               f"median; the delegation kind {BUDGET_MULTIPLE} times the sandbox kind's median on this SDK's arm in "
+               f"M51 ({M51_REPORT}), a child's share reserved from its parent's. The Claude arm has no budget")
+# FR-188: the delegation kind's setup on each arm, and how its rows' children are counted.
+DELEGATION_SETUP = {
+    "agentsdk": SANDBOX_SETUP["agentsdk"] + "; the delegating preset (delegate=True), each child a general subagent "
+                                            "in a workspace of its own with the files its call named",
+    "claude-agent-sdk": SANDBOX_SETUP["claude-agent-sdk"] + "; and its CLI's own subagent tool, Agent",
+}
+DELEGATION_MEASURE = ("each row reports whether its run delegated and how many children it ran, never a condition "
+                      "of passing: on this SDK's arm the runs whose parent_run_id is the run's, and its usage the "
+                      "whole run's, children included; on the Claude arm its Agent calls whose result was not an "
+                      "error, and its usage as the CLI's result reports it, which leaves out its subagents': so a "
+                      "Claude run that called Agent at all reports its tokens unavailable and its cost as the CLI's "
+                      "total_cost_usd, which counts them, or unavailable when the CLI gave none")
 NETWORKING = ("this SDK's arm reaches only its task's allowed host, through its workspace's proxy; the Claude arm "
               "runs with ordinary networking, to reach the gateway and the fetch tasks' host")
 # DECISION-7830ca10 (M50 round 1, note 3): a page reproduced from memory is no fetch.
@@ -145,7 +158,8 @@ def run_comparison(
         # FR-179: the report states the task count, and every kind's setup and budget.
         "task_count": len(every),
         "kinds": {kind: sum(1 for task in every if task.kind == kind) for kind in kinds},
-        "setups": {kind: (SANDBOX_SETUP if kind == SANDBOX else M15_SETUP) for kind in kinds},
+        "setups": {kind: {SANDBOX: SANDBOX_SETUP, DELEGATION: DELEGATION_SETUP}.get(kind, M15_SETUP) for kind in kinds},
+        "delegation": DELEGATION_MEASURE if DELEGATION in kinds else None,
         "budget_rule": BUDGET_RULE,
         "ceilings": {kind: dict(zip(("usd", "tokens"), ceilings(kind))) for kind in kinds},
         "networking": NETWORKING if sandbox_tasks else None,
@@ -210,6 +224,12 @@ def _one_sandbox_run(arm: Any, task: Any, repetition: int, pricing: Any, verifie
     if task.verification is not None and outcome.files:
         verified = asyncio.run(verifier.verify(task, dict(outcome.files)))
     usage = outcome.usage
+    # M53 round 1 NB-1: a usage that leaves out what the arm could not see is no count and no price;
+    # the run's cost is then the arm's own total, and unavailable when it gave none (NFR-11).
+    partial = getattr(outcome, "usage_partial", False)
+    tokens = {key: UNAVAILABLE if partial else getattr(usage, key)
+              for key in ("prompt_tokens", "completion_tokens", "cache_read_tokens", "cache_write_tokens")}
+    cost = outcome.sdk_cost_estimate if partial else call_cost(usage, pricing)
     space = Workspace(files=dict(outcome.files), answer=outcome.answer, verified=verified,
                       witness=witness[0] if witness and task.group == "fetch" else None,
                       fetched=frozenset(getattr(outcome, "fetched", frozenset())))
@@ -223,16 +243,19 @@ def _one_sandbox_run(arm: Any, task: Any, repetition: int, pricing: Any, verifie
         "passed": bool(task.checker(space)),
         "status": outcome.status,
         "turns": outcome.turns,
-        "prompt_tokens": usage.prompt_tokens,
-        "completion_tokens": usage.completion_tokens,
-        "cache_read_tokens": usage.cache_read_tokens,
-        "cache_write_tokens": usage.cache_write_tokens,
+        **tokens,
         "wall_ms": round(outcome.wall_ms, 1),
-        "cost_usd": _money(call_cost(usage, pricing)),
+        "cost_usd": _money(cost),
         "sdk_cost_estimate_usd": _money(outcome.sdk_cost_estimate),
         "files_read_back": len(outcome.files),
         "fetched": sorted(getattr(outcome, "fetched", frozenset())),
         "fetch_evidence": list(getattr(outcome, "fetch_evidence", ())),
+        # FR-188: whether the run delegated and how many children it ran -- measured, never a pass
+        # condition, and only on a delegation task: no other run is given a tool to delegate with
+        # (M53 pre-review F3, NFR-53).
+        **({"children": UNAVAILABLE if getattr(outcome, "children", None) is None else outcome.children,
+            "delegated": UNAVAILABLE if getattr(outcome, "children", None) is None else outcome.children > 0}
+           if task.kind == DELEGATION else {}),
         "exports_refused": outcome.exports_refused if outcome.exports_refused is not None else UNAVAILABLE,
         "run_id": outcome.run_id or UNAVAILABLE,
         "workspace_id": outcome.workspace_id or UNAVAILABLE,

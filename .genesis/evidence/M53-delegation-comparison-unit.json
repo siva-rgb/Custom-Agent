@@ -1,0 +1,22 @@
+{
+  "task": "M53-delegation-comparison",
+  "gate": "unit",
+  "command": ".venv\\Scripts\\python.exe -m pytest tests/test_adr12_delegation.py tests/test_adr12_sandbox.py tests/test_adr12_comparison.py -q -p no:cacheprovider",
+  "started_at": "2026-11-10T14:36:06.804Z",
+  "observed_at": "2026-11-10T14:40:02.039Z",
+  "exit_code": 0,
+  "signal": null,
+  "stdout": "........................................................................ [ 21%]\r\n........................................................................ [ 42%]\r\n........................................................................ [ 64%]\r\n........................................................................ [ 85%]\r\n...............................................                          [100%]\r\n335 passed, 5 deselected in 233.29s (0:03:53)\r\n",
+  "stderr": "",
+  "revision": {
+    "commit": "d0c795df0ae98437e74239d0c16ecd6d63e8c43b",
+    "dirty": true
+  },
+  "source_hash": "28501bca9ceb3cf7c8dceede06854ce327b6ebc116c2b8f15e22d3c94a36c299",
+  "environment": {
+    "node": "v20.10.0",
+    "platform": "win32",
+    "arch": "x64"
+  },
+  "hash": "7463c8babd1deedbeefaf6b41aee8dd8875d707dcd0fefbd46288b5619656e48"
+}

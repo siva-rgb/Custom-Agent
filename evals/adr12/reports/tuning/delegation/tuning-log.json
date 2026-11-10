@@ -1,0 +1,55 @@
+[
+  {
+    "cost_usd": "0.346477",
+    "date": "2026-11-10T03:45:22+00:00",
+    "failed": [],
+    "instructions_sha256": "4cbee96d6defbe906509128524daa8c0f94e292405332d3ad7b78f3ae6a26651",
+    "model": "bedrock.anthropic.claude-haiku-4-5",
+    "passed": [
+      "csv-totals",
+      "fix-three-bugs",
+      "ini-to-json",
+      "log-errors",
+      "three-functions",
+      "word-counts"
+    ],
+    "provider": "bedrock",
+    "report": "general-v5-bedrock.anthropic.claude-haiku-4-5/adr12-comparison-2026-11-10.json",
+    "statuses": {
+      "csv-totals": "completed",
+      "fix-three-bugs": "completed",
+      "ini-to-json": "completed",
+      "log-errors": "completed",
+      "three-functions": "completed",
+      "word-counts": "completed"
+    },
+    "version": "general-v5"
+  },
+  {
+    "cost_usd": "0.011278200",
+    "date": "2026-11-10T03:49:14+00:00",
+    "failed": [
+      "csv-totals",
+      "word-counts"
+    ],
+    "instructions_sha256": "4cbee96d6defbe906509128524daa8c0f94e292405332d3ad7b78f3ae6a26651",
+    "model": "openai.gpt-4o-mini",
+    "passed": [
+      "fix-three-bugs",
+      "ini-to-json",
+      "log-errors",
+      "three-functions"
+    ],
+    "provider": "openai",
+    "report": "general-v5-openai.gpt-4o-mini/adr12-comparison-2026-11-10.json",
+    "statuses": {
+      "csv-totals": "completed",
+      "fix-three-bugs": "completed",
+      "ini-to-json": "completed",
+      "log-errors": "completed",
+      "three-functions": "completed",
+      "word-counts": "completed"
+    },
+    "version": "general-v5"
+  }
+]
