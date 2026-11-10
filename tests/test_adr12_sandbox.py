@@ -755,7 +755,7 @@ def test_the_harness_runs_the_sandbox_tasks_and_the_report_states_what_fr_179_na
     assert meta["preset_version"] == GENERAL_VERSION and meta["ceilings"]["sandbox"] == {"usd": "0.023940",
                                                                                          "tokens": 20175}
     text = comparison.markdown_path.read_text(encoding="utf-8")
-    for needle in ("2 tasks: 2 sandbox.", "Budget rule:", "Networking:", "ordinary networking", "general-v4",
+    for needle in ("2 tasks: 2 sandbox.", "Budget rule:", "Networking:", "ordinary networking", GENERAL_VERSION,
                    WORKSPACE_IMAGE, "sha256:abc", "## By kind", "0.023940", "20175"):
         assert needle in text, needle
 

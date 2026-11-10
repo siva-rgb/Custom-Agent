@@ -26,7 +26,7 @@ from . import MEASURE_SECONDS, SETUP_SECONDS, CommandOutcome, WorkspaceSpec
 
 NAMES = ("run_command", "read_workspace_file", "write_workspace_file", "list_workspace", "export_workspace_file")
 # Every name a workspace tool has: none may be a registered tool's (M38 pre-flight).
-RESERVED = NAMES
+RESERVED = (*NAMES, "delegate_task")  # FR-185: the delegation tool is added per run too
 MAX_ENTRIES = 1000
 
 UNTRUSTED = ResultProvenance(

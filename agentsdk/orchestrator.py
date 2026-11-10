@@ -19,7 +19,7 @@ import uuid
 from dataclasses import dataclass, field
 from typing import Any, Mapping
 
-from .api import AgentSpec, RunConfig, RunStatus, checked_role_turns
+from .api import AgentSpec, RunConfig, RunStatus, _refuse_child_delegation, checked_role_turns
 from .budget import BUDGET_EXCEEDED, ORCHESTRATOR, BudgetGovernor, BudgetPolicy
 from .errors import MaxDepthExceeded, describe_exception
 from .events import EventType
@@ -322,6 +322,7 @@ class Orchestrator:
                 context_policy=self.context_policy, budget_lease=scope._lease,
             )
             try:
+                _refuse_child_delegation(role)  # spawned at depth 1 (M52 round 1 F2)
                 scope._runner._open(role, config)
             except Exception as exc:  # noqa: BLE001 - every configuration error alike
                 run.ended = (

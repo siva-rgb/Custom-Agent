@@ -1,0 +1,22 @@
+{
+  "task": "M52-delegation-tool",
+  "gate": "docker",
+  "command": ".venv\\Scripts\\python.exe -m pytest tests/test_workspace.py tests/test_workspace_tools.py tests/test_workspace_plan.py tests/test_docker_provider.py tests/test_sandbox_contention.py tests/test_compute.py tests/test_egress.py tests/test_sandboxed_mcp.py tests/test_snapshots.py tests/test_increment2_contention.py tests/test_plain_budgets.py tests/test_general_preset.py tests/test_adr12_sandbox.py tests/test_general_contention.py tests/test_delegation.py -m docker -q -p no:cacheprovider",
+  "started_at": "2026-11-09T18:37:42.344Z",
+  "observed_at": "2026-11-09T20:13:53.081Z",
+  "exit_code": 0,
+  "signal": null,
+  "stdout": "........................................................................ [ 36%]\r\n........................................................................ [ 73%]\r\n....................................................                     [100%]\r\n196 passed, 1220 deselected in 5769.09s (1:36:09)\r\n",
+  "stderr": "",
+  "revision": {
+    "commit": "188ba43f2ff9e6cbf1cecd345a9cfb9a6d32ba83",
+    "dirty": true
+  },
+  "source_hash": "df0acaee2fcbfe6a2abddd893d719d4c7a5bc21fdf55e97531722022b8fbcc9e",
+  "environment": {
+    "node": "v20.10.0",
+    "platform": "win32",
+    "arch": "x64"
+  },
+  "hash": "ce4a5da2cc706c9396d7f2d1956c265ebb4c6a4fbd6edce0acc813d4e0f8521c"
+}

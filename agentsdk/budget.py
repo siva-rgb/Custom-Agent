@@ -46,6 +46,8 @@ _INT_CEILING = 2**63 - 1
 # does not divide exactly still add back up to it (F6). Smaller than any price.
 _USD_PLACES = 18
 _USD_STEP = Decimal(1).scaleb(-_USD_PLACES)
+# FR-184: below this a delegated child's USD share is nothing.
+_SMALLEST_SHARE = Decimal("0.000001")
 
 
 def _money(name: str, value: Any, *, allow_zero: bool = False) -> Decimal | None:
@@ -125,8 +127,11 @@ class BudgetPolicy:
     # FR-157 (M43): the price of a CPU-second a workspace command uses. None counts compute and
     # charges nothing.
     cpu_second_usd: Decimal | None = None
+    # FR-184 (M52, P5A-D15): the share of its parent's remainder a delegated child reserves.
+    delegation_fraction: Decimal = Decimal("0.25")
 
     def __post_init__(self) -> None:
+        _fraction("delegation_fraction", self.delegation_fraction)
         _money("run_ceiling_usd", self.run_ceiling_usd)
         _money("cpu_second_usd", self.cpu_second_usd, allow_zero=True)
         _tokens("run_ceiling_tokens", self.run_ceiling_tokens)
@@ -473,6 +478,38 @@ class BudgetGovernor:
         with self._lock:
             return self._within_ceiling()
 
+    def reserve_child(self, parent_node_id: str, child_id: str) -> BudgetLease:
+        """FR-184 (M52): move `delegation_fraction` of the parent reservation's remainder -- what it
+        holds less what its lease has spent -- into a new reservation `child_id`, and return its
+        lease. Released, the child's unspent amount returns to the parent, never to the pool.
+        `BudgetExceeded` when the parent may not call, or the share is nothing in a unit with a
+        ceiling (below one token, or below 0.000001 USD)."""
+        fraction = self.policy.delegation_fraction
+        with self._lock:
+            if parent_node_id not in self._reservations:
+                raise KeyError(parent_node_id)
+            if child_id in self._reservations:
+                raise ValueError(f"reservation {child_id!r} already exists")
+            parent = self._leases.get(parent_node_id)
+            if parent is None or not self._may_call_locked(parent_node_id):
+                raise BudgetExceeded(f"{parent_node_id} has no budget left to delegate")
+            usd, tokens = self._reservations[parent_node_id]
+            share_usd = None if usd is None else (usd - parent._spent_usd) * fraction
+            if share_usd is not None and share_usd.as_tuple().exponent < -_USD_PLACES:
+                share_usd = share_usd.quantize(_USD_STEP, rounding=ROUND_DOWN)  # at most the allocation's step
+            share_tokens = None if tokens is None else int(Decimal(tokens - parent._spent_tokens) * fraction)
+            if (share_usd is not None and share_usd < _SMALLEST_SHARE) or (share_tokens is not None and share_tokens < 1):
+                raise BudgetExceeded(f"the budget left to {parent_node_id} gives a child nothing: "
+                                     f"{share_usd} USD, {share_tokens} tokens")
+            if share_usd is not None:
+                self._reservations[parent_node_id][0] = usd - share_usd
+            if share_tokens is not None:
+                self._reservations[parent_node_id][1] = tokens - share_tokens
+            self._reservations[child_id] = [share_usd, share_tokens]
+            lease = BudgetLease(self, child_id, parent=parent_node_id)
+            self._leases[child_id] = lease
+            return lease
+
     # --- accounting, called by the leases -------------------------------------------------------
 
     def _charge(self, node_id: str, usage: Usage | None, cost: Decimal | None) -> None:
@@ -494,18 +531,21 @@ class BudgetGovernor:
 
     def _may_call(self, node_id: str) -> bool:
         with self._lock:
-            if not self._within_ceiling():
+            return self._may_call_locked(node_id)
+
+    def _may_call_locked(self, node_id: str) -> bool:
+        if not self._within_ceiling():
+            return False
+        lease = self._leases[node_id]
+        if lease._released:
+            return False
+        reserved_usd, reserved_tokens = self._reservations[node_id]
+        if reserved_usd is not None:
+            if lease._spent_usd is None or lease._spent_usd >= reserved_usd:
                 return False
-            lease = self._leases[node_id]
-            if lease._released:
-                return False
-            reserved_usd, reserved_tokens = self._reservations[node_id]
-            if reserved_usd is not None:
-                if lease._spent_usd is None or lease._spent_usd >= reserved_usd:
-                    return False
-            if reserved_tokens is not None and lease._spent_tokens >= reserved_tokens:
-                return False
-            return True
+        if reserved_tokens is not None and lease._spent_tokens >= reserved_tokens:
+            return False
+        return True
 
     def _release(self, node_id: str) -> None:
         with self._lock:
@@ -516,15 +556,21 @@ class BudgetGovernor:
             reserved_usd, reserved_tokens = self._reservations[node_id]
             # Whatever the node did not spend goes back to the unallocated reserve AND
             # stops being its reservation, so the allocation keeps summing to the run
-            # ceiling instead of counting the same money twice (round 2, G2).
+            # ceiling instead of counting the same money twice (round 2, G2). A delegated
+            # child's goes back to its parent instead (FR-184).
+            parent = None if lease.parent is None else self._reservations[lease.parent]
             if reserved_usd is not None and lease._spent_usd is not None:
                 returned = max(Decimal(0), reserved_usd - lease._spent_usd)
-                if self._unallocated_usd is not None:
+                if parent is not None:
+                    parent[0] += returned
+                elif self._unallocated_usd is not None:
                     self._unallocated_usd += returned
                 self._reservations[node_id][0] = reserved_usd - returned
             if reserved_tokens is not None:
                 returned_tokens = max(0, reserved_tokens - lease._spent_tokens)
-                if self._unallocated_tokens is not None:
+                if parent is not None:
+                    parent[1] += returned_tokens
+                elif self._unallocated_tokens is not None:
                     self._unallocated_tokens += returned_tokens
                 self._reservations[node_id][1] = reserved_tokens - returned_tokens
 
@@ -576,6 +622,8 @@ class BudgetLease:
 
     governor: BudgetGovernor
     node_id: str
+    # FR-184: the reservation a delegated child's lease was carved from, which its release refills.
+    parent: str | None = None
     _spent_usd: Decimal | None = field(default_factory=lambda: Decimal(0), repr=False)
     _spent_tokens: int = field(default=0, repr=False)
     _released: bool = field(default=False, repr=False)

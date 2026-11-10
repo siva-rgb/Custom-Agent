@@ -1225,6 +1225,97 @@ amended by the owner after the spec review (DECISION-abd83872).
   - nothing of one tenancy is read by the other -- its workspace, rows, snapshot or exported artifact -- and nothing remains after `aclose()`.
   - **Checked against the store, the provider and the commands' own output, on both stores,** each check naming its subject with a witness independent of the property (KNOWLEDGE-1afcf6b2), ten times on `DockerProvider` before review and on `FakeProvider` in the gates, under DECISION-a00773b0 and DECISION-a7d6a1f5.
 
+### Phase 5A, increment 2: ad hoc delegation (M52 to M54)
+
+Increment 1 gave the SDK a general agent. A plan's children come only from an orchestrator, which
+plans first and then runs the DAG. Increment 2 is the model-driven autonomous mode of P5A-D3:
+the general agent decides for itself, mid-run, to hand a piece of its task to a general subagent
+through a tool. Every spawn goes through the `SubagentPool`, a budget reservation, the sandbox and
+the approval manager, as an orchestrator's children do. Orchestrated plans stay DAG-only, and no
+loop node is built (I-01).
+
+**What exists** (inventory of 2026-11-09):
+- `SubagentPool.spawn` runs a briefed child under `MAX_SUBAGENT_DEPTH` and `SchedulerLimits`'
+  `max_tasks_per_run` and `max_concurrent_subagents` (FR-70 to FR-72). Only the orchestrator calls
+  it.
+- `general_subagent(...)` returns the child's spec, with its own workspace (FR-177); its documented
+  turns are 20.
+- A plain run's budget is one lease of `BudgetGovernor.for_single_run`, holding the whole ceiling
+  (FR-172). FR-68's "a nested child reserves from its parent's reservation" was never built:
+  `BudgetGovernor` has reservations only for plan nodes and the orchestrator.
+- A workspace can start with files (FR-175), and its files leave only through the provider's
+  checked tar (FR-143).
+- M51's comparison: 103 of 108 on each arm across 36 tasks, at $1.47 against $1.32. None of the
+  tasks delegates.
+
+**The decisions.** P5A-D15 to P5A-D18 are the owner's choices of 2026-11-09 (DECISION-8b115c86).
+P5A-D19 to P5A-D22 are defaults this specification proposes, approved with it.
+
+| Decision | P5A-D15 to P5A-D22, 2026-11-09 |
+|---|---|
+| P5A-D15 Child budget | Each spawn reserves a fixed share of its parent's remaining reservation, a `BudgetPolicy` default, nested as FR-68 states. What the child does not spend returns to the parent |
+| P5A-D16 Child files | The call names paths in the parent's workspace. They are copied into the child's fresh workspace through the checked tar (FR-175's `files`) and recorded by SHA-256. The child's answer returns as text |
+| P5A-D17 Nesting | One level. A child has no delegation tool, so hub and spoke holds, and the overshoot stays bounded by `max_concurrent_subagents` |
+| P5A-D18 Approval | A spawn is `auto` by default, like `run_command`: the budget, the sandbox and the depth do the containing. A caller may require approval |
+| P5A-D19 The call | `delegate_task` blocks until its child ends and returns the child's answer. Calls in one response run concurrently, up to `max_concurrent_subagents` |
+| P5A-D20 Records | No migration. A child is a run linked by `parent_run_id`, and its reservation is named in its own manifest's `budget_reservations`, since a manifest is written once, when its run starts (FR-11; corrected 2026-11-09, DECISION-8b115c86's follow-up) |
+| P5A-D21 Eval | ADR-12 gains a `delegation` kind of about 6 tasks. The Claude arm is given its CLI's own subagent tool. Whether a run delegated is measured and reported, never required to pass |
+| P5A-D22 Milestones | M52 the reservation and the tool (example 44); M53 the delegation tasks and the comparison rerun; M54 the exit signal (example 45) |
+
+#### M52: child reservations and the delegation tool
+
+- FR-184: **Nested reservations** (P5A-D15, building FR-68's nesting).
+  - **The share:** `BudgetPolicy.delegation_fraction`, a fraction in (0, 1), default 0.25.
+  - **Reserving:** `BudgetGovernor.reserve_child(parent_node_id, child_id)` moves that share of the parent reservation's remainder, in each unit with a ceiling, into a new reservation `child_id`, and returns its lease. The remainder is the reservation minus what the parent has spent and what its open children hold.
+  - **Refused:** `BudgetExceeded` when the share would be zero in a unit with a ceiling (below one token, or below 0.000001 USD), or when the parent's lease may not call (FR-68).
+  - **Releasing:** a child's lease, when released, returns its unspent amount to its parent's reservation, never to the run's unallocated pool.
+  - **What the parent sees:** the child's spend is charged to the child's reservation, and through it to the run's spend. The parent's own `may_call` sees only the parent's remainder, so a parent whose children hold its budget stops before it overspends.
+  - **Overshoot:** at most one call or command per running agent, the parent included, as FR-68 states.
+- FR-185: **The `delegate_task` tool** (P5A-D16, P5A-D17, P5A-D19).
+  - **Arguments:** `objective` (a non-empty string) and `files`, a list of at most 64 relative paths in the parent's workspace, default empty.
+  - **Where it comes from:** like the workspace tools (FR-146), it is added to a run whose spec has a workspace and names `delegate_task` in its `tool_profile`. The SDK's `RESERVED` names include it.
+  - **Its configuration:** `AgentSpec.delegate`, a `Delegation` holding the child's `AgentSpec` (a `general_subagent` spec, or any spec with a workspace and without `delegate_task`), the child's `max_turns` (default 20), and the spawn's `approval` (default `AUTO`).
+  - **Refused at construction, `ValueError`:** a `tool_profile` naming `delegate_task` without `delegate`; `delegate` without a workspace; and a child spec whose profile names `delegate_task`.
+  - **Refused before the run starts, `ValueError`:** `delegate_task` on a run with no budget lease, or on a run the `SubagentPool` places, since a child has no delegation tool.
+  - **One call:**
+    1. The `files` are read from the parent's workspace through the provider's checked tar (FR-143): regular files only, FR-175's path, size and count bounds, counted against the child's `max_workspace_bytes`.
+    2. A reservation is made (FR-184).
+    3. The child runs through the parent's `SubagentPool` at depth 1, briefed with the objective and those files, in a fresh workspace started with them (FR-175). The child has the parent's tenant, project and principal.
+    4. The child's lease is released when the child ends.
+  - **What the parent receives:** the child's answer, its run id and its terminal status. The answer is labelled with the child's `SubagentResult.provenance` (ADR-26), so a child cannot launder taint.
+  - **Refusals are tool errors, never run failures:** a path outside the workspace or past a bound, the pool's `max_tasks_per_run`, and a reservation refused by FR-184. A call refused before step 3 spawns nothing; only a call refused by step 1 or step 2 also takes no task count. A child that fails or ends `budget_exceeded` returns its status as the tool's result.
+  - **Cancellation:** cancelling the parent cancels each running child, which ends `cancelled` with its record complete (FR-50) and its workspace released.
+- FR-186: **The general agent delegates.**
+  - **Turning it on:** `general_agent(..., delegate=True)` adds `delegate_task` to the preset's profile, with a `general_subagent` built from the preset's model, image, registry and egress as its child, and `delegate_approval` (default `AUTO`) as the spawn's approval.
+  - **Instructions:** the preset's instructions gain a section on when to delegate, as a new version, `general-v5`. Without `delegate=True`, the profile and spec are unchanged, though the shipped instruction text is the new version.
+  - **Requiring approval:** with `delegate_approval=REQUIRE_APPROVAL`, each spawn is an interruption the approval manager decides before step 3. A refusal returns a tool error and spawns nothing.
+- FR-187: **Example 44** (`scripts/44_delegation.py`) runs the delegating preset offline (`FakeProvider`, a scripted model), on Docker, and live with the gateway model. Each check names its subject with a store witness and fails when the subject never happened (KNOWLEDGE-1afcf6b2, DECISION-a7d6a1f5):
+  - **a delegated piece is solved by the child:** the child's `runs` row with the parent's id, its workspace holding only the named files by SHA-256, its commands, and its answer in the parent's tool result;
+  - **the child's reservation:** the child's own manifest's `budget_reservations` name it, its `runs` row names the parent by `parent_run_id`, and the child's spend stays within it plus one call;
+  - **a child cannot delegate:** a scripted child's `delegate_task` call is refused as an unknown tool;
+  - **approval:** a spawn under `REQUIRE_APPROVAL` waits for its decision, and a refused one spawns no run.
+
+#### M53: delegation tasks and the comparison
+
+- FR-188: The ADR-12 harness gains a `delegation` kind of about 6 tasks (P5A-D21).
+  - **The tasks:** each splits into independent pieces over the task's files, and its checker reads the parent's workspace or answer, as a sandbox task's does, with a good, a bad and a tricky outcome.
+  - **This SDK's arm** runs `general_agent(..., delegate=True)`.
+  - **The Claude arm** is given its CLI's own subagent tool, as the pinned CLI names it.
+  - **Budget:** the kind's budget follows FR-179's rule, ten times the sandbox kind's median cost on this SDK's arm in M51.
+  - **Reported per row:** whether the run delegated, and how many children it ran (on this SDK's arm from `runs.parent_run_id`; on the Claude arm from its subagent tool calls whose result was not an error). Delegation is never a condition of passing.
+- FR-189: **The comparison is rerun:** every task, three repetitions, both arms, as FR-181 states, with the preset's final version. Tuning follows FR-182, on the delegation tasks.
+
+#### M54: the exit signal
+
+- FR-190: **The exit signal** (P5A-D4) is a test and an example. `scripts/45_delegation_contention.py` runs delegating general agents of two tenancies at once, their starts shuffled with random delays. The hostile attempts are calls the example issues through scripted parents and children, as FR-183's are, so each subject always happens; live, the gateway model is given each attempt verbatim, and one it declines fails its check. The checks:
+  - each child stays within its reservation, and each parent's run within its ceiling, each within one call's or command's cost per running agent;
+  - a child's workspace holds only the files its call named, and a path outside the parent's workspace, a link, or a file past a bound is refused;
+  - a child's `delegate_task` is refused, so no run reaches depth 2;
+  - every spawn under `REQUIRE_APPROVAL` waits for its decision;
+  - nothing of one tenancy is read by the other, whether a parent's or a child's workspace, rows or answers;
+  - cancelling a parent ends its running children `cancelled`, with nothing remaining after `aclose()`.
+  - **Checked against the store, the provider and the commands' own output, on both stores,** each check naming its subject with a witness independent of the property (KNOWLEDGE-1afcf6b2): ten times on `DockerProvider` before review, and on `FakeProvider` in the gates, under DECISION-a00773b0 and DECISION-a7d6a1f5.
+
 ## Non-functional requirements
 
 - NFR-1: Provider-agnostic. Switching between `openai.*`, `bedrock.*`, `azure.*`, and `vertex_ai.*` models is a configuration change only — no SDK source file changes, no new adapter.
@@ -1285,6 +1376,8 @@ amended by the owner after the spec review (DECISION-abd83872).
 - NFR-50: A run with no `budget`, no preset and no workspace `files` sends the same requests and records the same events, rows and manifest as before M48, apart from the manifest's `preset` and `role_turns` columns, NULL (FR-176); a workspace spec without `files` and with the default `export_approval` has the record it had; an orchestrator without `role_turns` briefs every child with the turns it did (FR-172, FR-174, FR-175, FR-177).
 - NFR-51: Phase 5A adds no runtime dependency (NFR-40). The Claude arm's image, its Dockerfile and its CLI are eval-only, under `evals/adr12/`, and nothing in `agentsdk/` imports, pulls or builds them.
 - NFR-52: The preset stays provider-agnostic (NFR-1): its instructions, tools and defaults name no provider, model or provider-specific feature, and it runs on any registry model whose context window is known.
+- NFR-53: A run that does not name `delegate_task` behaves exactly as it did before M52: the same requests, events, rows and manifest. So does an orchestrator's plan, whose governor gains `reserve_child` but none of whose reservations change. The only exception is the general preset's instruction version and its `agent_spec_hash` (FR-186). Increment 2 adds no migration and no runtime dependency (NFR-51).
+- NFR-54: A spawn never widens what its parent may reach. A child has its parent's tenant, project and principal, egress no wider than its own spec's, no host path, and only the files its call named.
 
 ## Constraints
 
@@ -1316,6 +1409,7 @@ amended by the owner after the spec review (DECISION-abd83872).
 - M14 exports a minimal span tree and no content; the full OpenTelemetry mapping and compatibility enforcement stay in Phase 8.
 - M15 measures; it builds no general-agent capability. A general-agent preset and a model-driven autonomous mode alongside the DAG are Phase 5A (owner, 2026-09-14): the preset is its first increment, above; the autonomous mode its second.
 - Phase 5A's first increment has no delegation tool and no autonomous mode (increment 2, P5A-D3), no host file tool, `fetch_url`, web search or MCP server in the preset's profile (P5A-D6), no skills or instruction bundles, no resuming a preset's run, and no delegation task in the comparison (P5A-D12); the Claude arm's image is never pulled or built in a gate.
+- Phase 5A's second increment delegates one level only: a child has no delegation tool and returns text, not files (P5A-D16, P5A-D17). There are no loop nodes and no change to orchestrated plans (P5A-D3). A child's reservation is a fixed share of its parent's remainder, never a sum the model chooses (P5A-D15). Resuming a delegating run is Phase 6.
 - No streaming of model tokens. `RunHandle` (M12) streams runtime events, not tokens.
 - No structured-output enforcement beyond the unused schema slot.
 - None of the three Stage 2 products is built or started.
@@ -1658,6 +1752,23 @@ found the defects, turned into assertions.
 - AC-107: FR-174 to FR-178, on both stores: each refusal of FR-174 and FR-175 raises before anything is created, and files past a bound are refused before anything is written; files are recorded as path and SHA-256 only; an export waits for approval and a command does not; the manifest's `preset` names `general` and its version, and is NULL for a run without the preset; an orchestrator's `role_turns` briefs the general subagent with its turns and every other role with 4; example 42 holds every check offline, on Docker and live, and each of its checks fails without its subject.
 - AC-108: FR-179 and FR-180: every task's checker accepts its good outcome and rejects its bad and tricky ones; this SDK's arm runs a sandbox task with its files and egress, refuses its exports, reads the kept workspace through `export` and releases it; the Claude arm runs a sandbox task in its container and is read back, with no credential in its image; nothing in a gate pulls or builds an image.
 - AC-109: FR-181 to FR-183, the exit signal: the report covers every task three times on each arm, per kind and overall, with the preset's version, the model and both SDKs' versions; example 43 holds every check ten times on `DockerProvider`, shuffled with random delays, and the gates hold it on `FakeProvider`; each check fails without its subject -- a test removes, in turn, the plain run's budget check, the export's approval, the workspace's egress check, and the tenancy filter (the `WorkspaceManager`'s key by tenant and project, FR-138, and the store's tenant predicate, each removed on its own), and each removal fails the check that names it.
+
+### Phase 5A, increment 2
+
+- AC-110: FR-184 to FR-187, on both stores:
+  - a child's reservation is `delegation_fraction` of its parent's remainder, and its unspent amount returns to the parent;
+  - a parent whose children hold its budget makes no call past its own remainder;
+  - each refusal of FR-185 at construction and before the run raises before anything is created;
+  - a refused call returns a tool error, and one refused by its files or reservation spawns no run and takes no task count;
+  - the child's workspace holds only the named files, recorded by SHA-256;
+  - a child's answer carries its inputs' highest taint;
+  - a child's `delegate_task` is refused;
+  - cancelling the parent ends its children `cancelled`;
+  - a spawn under `REQUIRE_APPROVAL` waits for its decision;
+  - a run without `delegate_task` records what it did before M52;
+  - example 44 holds every check offline, on Docker and live, and each of its checks fails without its subject.
+- AC-111: FR-188 and FR-189: every delegation task's checker accepts its good outcome and rejects its bad and tricky ones; each row reports whether its run delegated and how many children it ran; the report covers every task three times on each arm, with the preset's final version.
+- AC-112: FR-190, the exit signal: example 45 holds every check ten times on `DockerProvider`, its starts shuffled with random delays, and the gates hold it on `FakeProvider`. Each check fails without its subject: a test removes, in turn, the child's reservation check, the files bound, the child's lack of the delegation tool, the spawn's approval, the tenancy filter, and the cancellation of children, and each removal fails the check that names it.
 
 ## Risks
 

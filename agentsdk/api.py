@@ -171,11 +171,28 @@ class AgentSpec:
     # `preset`; None for a spec built by hand. Beside agent_spec_hash, never in it: a preset's text
     # is already hashed, and its version is a new hash when the text changes (DECISION-8aa24890).
     preset: tuple[str, str] | None = None
+    # FR-185 (M52): what `delegate_task` runs its children as; required when the profile names the
+    # tool, and only with a workspace. Beside agent_spec_hash, as the workspace is: the profile naming
+    # the tool is what the hash sees.
+    delegate: Any = None
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "tool_profile", tuple(self.tool_profile))
         if self.workspace is not None and not isinstance(self.workspace, WorkspaceSpec):
             raise ValueError(f"AgentSpec.workspace must be a WorkspaceSpec, got {type(self.workspace).__name__}")
+        from .delegation import DELEGATE_TOOL, Delegation
+
+        if self.delegate is not None and not isinstance(self.delegate, Delegation):
+            raise ValueError(f"AgentSpec.delegate must be a Delegation or None, got {type(self.delegate).__name__}")
+        if DELEGATE_TOOL in self.tool_profile and self.delegate is None:
+            raise ValueError(f"a tool_profile naming {DELEGATE_TOOL} needs AgentSpec.delegate, a Delegation")
+        if self.delegate is not None and self.workspace is None:
+            raise ValueError("AgentSpec.delegate needs a workspace: the files a child is given come from it")
+        # NFR-54 (pre-review N1): a spawn never widens what its parent may reach.
+        if self.delegate is not None:
+            wider = sorted(set(self.delegate.agent.workspace.egress) - set(self.workspace.egress))
+            if wider:
+                raise ValueError(f"AgentSpec.delegate's child may reach {wider}, which this spec's egress does not allow")
         if self.preset is not None and not (
             type(self.preset) is tuple and len(self.preset) == 2
             and all(type(part) is str and part and unstorable_reason(part) is None for part in self.preset)
@@ -196,6 +213,30 @@ class AgentSpec:
         if self.permission_policy is not None:
             return self.permission_policy
         return AllowlistPermissionChecker(set(self.tool_profile))
+
+
+def _delegates(spec: AgentSpec) -> bool:
+    """FR-185: whether a run of this spec is given delegate_task."""
+    return spec.delegate is not None and "delegate_task" in spec.tool_profile
+
+
+def _refuse_child_delegation(spec: AgentSpec) -> None:
+    """FR-185 (M52): a spec the SubagentPool will place is a child, and a child has no delegation tool.
+    Also called by the Orchestrator's role pre-check (M52 round 1 F2), which opens a role with no depth,
+    so a delegating role is refused there and nothing is spent (C6). A critic has no tools (FR-101), so
+    it never delegates."""
+    if _delegates(spec):
+        raise ValueError("a run the SubagentPool placed is a child and cannot delegate")
+
+
+def _refuse_delegation(spec: AgentSpec, config: RunConfig) -> None:
+    """FR-185 (M52): a delegating run reserves its children's budgets from its own, and a child has no
+    delegation tool, so both are configuration errors, raised before the run starts."""
+    if _delegates(spec):
+        if config.budget_lease is None:
+            raise ValueError("a run whose spec names delegate_task needs a budget: give it RunConfig.budget")
+        if config.depth is not None:
+            _refuse_child_delegation(spec)
 
 
 def _recorded_preset(preset: tuple[str, str] | None, instructions: str) -> dict[str, str] | None:
@@ -1058,6 +1099,7 @@ class Runner:
         # loop raises: the failure path reports what the meter recorded, not what
         # the events happened to capture (R2).
         meter = RunMeter(no_call_cost=self._cost(recorded_model, Usage()))
+        _refuse_delegation(spec, config)
         # FR-69: a USD ceiling on a model nothing prices is a configuration error, so
         # it is raised here, at the call site, with the rest of them -- not inside the
         # run, where every exception becomes a FAILED result.
@@ -1358,6 +1400,10 @@ class Runner:
         limits = self._limits_for(config)
         # FR-69: refused before anything runs, with or without persistence.
         budget_record = self._budget_record(config.budget_lease, recorded_model)
+        if _delegates(spec) and "budget_policy" in budget_record:
+            # FR-184: named only on a run that delegates, so every other manifest is as it was (NFR-53).
+            policy = config.budget_lease.governor.policy
+            budget_record["budget_policy"]["delegation_fraction"] = _decimal_text(policy.delegation_fraction)
         # FR-77 (M20): the tools this run's agent is sent, and so the only ones its
         # executor resolves. Every registered tool when the run carries no policy.
         policy = config.context_policy
@@ -1385,6 +1431,13 @@ class Runner:
                 extended.register(registry.get(name))
             for tool in workspace_tools(workspace, spec.workspace, [n for n in NAMES if n in spec.tool_profile]):
                 extended.register(tool)
+            # FR-185 (M52): and delegate_task, its children run in a pool of this run's own.
+            if _delegates(spec):
+                from .delegation import delegate_tool
+                from .subagents import SubagentPool
+
+                pool = SubagentPool(self, limits=limits, context_policy=config.context_policy)
+                extended.register(delegate_tool(spec.delegate, workspace, pool, config.principal_context))
             registry = extended
         # FR-125 (M33): plus the MCP tools its agent names, rebuilt each turn; read once
         # here so the manifest records the tools usable at start.

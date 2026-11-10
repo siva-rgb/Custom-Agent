@@ -35,7 +35,7 @@ __all__ = [
     "general_subagent",
 ]
 
-GENERAL, GENERAL_VERSION = "general", "general-v4"
+GENERAL, GENERAL_VERSION = "general", "general-v5"
 SUBAGENT, SUBAGENT_VERSION = "general-subagent", "general-subagent-v1"
 # What a caller's own text is recorded as: not a shipped version (FR-176).
 CUSTOM = "custom"
@@ -45,6 +45,8 @@ GENERAL_TOOLS = ("run_command", "read_workspace_file", "write_workspace_file", "
 # FR-177: the turns the documentation gives the general subagent's role through role_turns.
 SUBAGENT_TURNS = 20
 
+# general-v5 (M52, FR-186): general-v4's text with the delegate_task paragraph, which names the tool "when you
+# have it" so a run without the tool reads instructions that still hold.
 # general-v4: tuned in M51 on the comparison's 24 sandbox tasks (FR-182), its tuning log kept with that
 # comparison; general-v1 to general-v3 are in the history. Shipped because the tuning rule stops at the
 # third version after general-v1, not because it scored best: across both providers general-v2 passed
@@ -64,6 +66,10 @@ it, and to inspect results.
 - export_workspace_file saves one file of the workspace as an artifact for the user. It is the only \
 way a file leaves the workspace, and it may wait for a person to approve it. Export only what the \
 task asks you to deliver.
+- delegate_task, when you have it, hands one self-contained piece of the task to a helper that works \
+in a workspace of its own and answers you with text. Give it an objective that says exactly what to do \
+and what to answer, and the paths of the files it needs. Delegate only work that stands on its own, \
+such as independent parts done at the same time, and check what a helper answers before you rely on it.
 
 How to work:
 1. Read the task and any files it refers to before acting.
@@ -198,22 +204,39 @@ def general_agent(
     run_command_approval: ApprovalPolicy = ApprovalPolicy.AUTO,
     export_approval: ApprovalPolicy = ApprovalPolicy.REQUIRE_APPROVAL,
     instructions: str | None = None,
+    delegate: bool = False,
+    delegate_approval: ApprovalPolicy = ApprovalPolicy.AUTO,
     **limits: Any,
 ) -> GeneralAgent:
     """FR-174: a general agent on `model`, working in a workspace made from `image`, always within
     `budget`. `limits` are the workspace's (`memory_bytes`, `cpus`, ...). Refused, ValueError,
     before anything is made: a model whose context window `registry` does not know, a budget that
-    is no `BudgetPolicy`, and an image not pinned by digest."""
+    is no `BudgetPolicy`, and an image not pinned by digest.
+
+    FR-186: `delegate=True` adds `delegate_task`, whose children are the general subagent on the same
+    model, image, egress and limits, briefed with `SUBAGENT_TURNS`; `delegate_approval` decides
+    whether each spawn waits for a person."""
     _known_window(model, registry)
     if not isinstance(budget, BudgetPolicy):
         raise ValueError(f"budget must be a BudgetPolicy, got {type(budget).__name__}")
+    if type(delegate) is not bool:
+        raise ValueError(f"delegate must be True or False, got {delegate!r}")
     space = _workspace(image, egress, files, keep, run_command_approval, export_approval, limits)
     text, version = _version(instructions, GENERAL_INSTRUCTIONS, GENERAL_VERSION)
     policy = context_policy if context_policy is not None else ContextPolicy()
     # Checked now, as a run would check them, so a bad value fails here rather than at config().
     RunConfig(tenant_id="-", project_id="-", budget=budget, max_turns=max_turns, context_policy=policy)
-    spec = AgentSpec(id=GENERAL, instructions=text, preferred_model=model, tool_profile=GENERAL_TOOLS,
-                     workspace=space, preset=(GENERAL, version))
+    delegation = None
+    if delegate:
+        from .delegation import DELEGATE_TOOL, Delegation
+
+        child = general_subagent(model=model, image=image, registry=registry, egress=egress,
+                                 run_command_approval=run_command_approval, export_approval=export_approval,
+                                 **limits)
+        delegation = Delegation(agent=child, max_turns=SUBAGENT_TURNS, approval=delegate_approval)
+    tools = (*GENERAL_TOOLS, DELEGATE_TOOL) if delegate else GENERAL_TOOLS
+    spec = AgentSpec(id=GENERAL, instructions=text, preferred_model=model, tool_profile=tools,
+                     workspace=space, preset=(GENERAL, version), delegate=delegation)
     return GeneralAgent(spec=spec, budget=budget, max_turns=max_turns, context_policy=policy)
 
 

@@ -1,0 +1,22 @@
+{
+  "task": "M52-delegation-tool",
+  "gate": "unit",
+  "command": ".venv\\Scripts\\python.exe -m pytest tests/test_delegation.py -q -p no:cacheprovider",
+  "started_at": "2026-11-09T17:54:41.192Z",
+  "observed_at": "2026-11-09T17:54:53.526Z",
+  "exit_code": 0,
+  "signal": null,
+  "stdout": ".............................................................            [100%]\r\n61 passed, 2 deselected in 11.35s\r\n",
+  "stderr": "",
+  "revision": {
+    "commit": "188ba43f2ff9e6cbf1cecd345a9cfb9a6d32ba83",
+    "dirty": true
+  },
+  "source_hash": "df0acaee2fcbfe6a2abddd893d719d4c7a5bc21fdf55e97531722022b8fbcc9e",
+  "environment": {
+    "node": "v20.10.0",
+    "platform": "win32",
+    "arch": "x64"
+  },
+  "hash": "57ccfa31e13a5e17e052ee499ef95b8db4b2344e32e50615a615a60dbb8082ba"
+}

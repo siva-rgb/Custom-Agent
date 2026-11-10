@@ -9,7 +9,7 @@
     "non_goals": [],
     "trust_boundary": "local repository",
     "created_at": "2026-09-05T14:48:57.894Z",
-    "updated_at": "2026-11-09T10:31:10.943Z"
+    "updated_at": "2026-11-10T02:44:29.813Z"
   },
   "policy": {
     "ponytail": "full",
@@ -23,19 +23,19 @@
     }
   },
   "lifecycle": {
-    "phase": "verify",
-    "status": "ready",
-    "active_task": null,
+    "phase": "build",
+    "status": "active",
+    "active_task": "M53-delegation-comparison",
     "blocker": null,
-    "next_action": "Review completed work and choose the next bounded outcome."
+    "next_action": "Run the task pre-flight."
   },
   "commands": {},
   "workflow": {
     "type": "new-product",
     "started_at": "2026-09-05T14:48:57.897Z",
     "spec_check": {
-      "at": "2026-11-07T15:18:28.813Z",
-      "source_hash": "f7c451e5997b463bfe6a064ec7354476d097796106d84dd0c778098444b4f4b1",
+      "at": "2026-11-09T12:23:32.438Z",
+      "source_hash": "fb8c28d9eb8f27bec009fb45bc11918daed2194c39b8019a00e6d51d612e1b1b",
       "requirements": [
         "AC-1",
         "AC-10",
@@ -50,6 +50,9 @@
         "AC-108",
         "AC-109",
         "AC-11",
+        "AC-110",
+        "AC-111",
+        "AC-112",
         "AC-12",
         "AC-13",
         "AC-14",
@@ -240,7 +243,14 @@
         "FR-181",
         "FR-182",
         "FR-183",
+        "FR-184",
+        "FR-185",
+        "FR-186",
+        "FR-187",
+        "FR-188",
+        "FR-189",
         "FR-19",
+        "FR-190",
         "FR-2",
         "FR-20",
         "FR-21",
@@ -377,6 +387,8 @@
         "NFR-50",
         "NFR-51",
         "NFR-52",
+        "NFR-53",
+        "NFR-54",
         "NFR-6",
         "NFR-7",
         "NFR-8",
@@ -384,14 +396,14 @@
       ]
     },
     "plan_check": {
-      "at": "2026-11-07T15:43:53.167Z",
-      "source_hash": "0c3ab68837bfbf04a960dcc410743a84ce23df8ce22aa4995c3848f1f822da13"
+      "at": "2026-11-09T12:23:33.454Z",
+      "source_hash": "0a24e04cc7d2a91ae5b32743d2c1468545752706ef405a61fb2ff491ca370af7"
     },
     "plan_approval": {
       "human": "siva-rgb (owner)",
-      "reason": "M49 round 1 close: plan re-approved after FR-177 and NFR-50 amended",
-      "at": "2026-11-07T15:43:53.358Z",
-      "source_hash": "0c3ab68837bfbf04a960dcc410743a84ce23df8ce22aa4995c3848f1f822da13"
+      "reason": "Owner re-approved the unchanged Phase 5A increment 2 plan after the P5A-D20/FR-187 correction, 2026-11-09.",
+      "at": "2026-11-09T12:23:33.934Z",
+      "source_hash": "0a24e04cc7d2a91ae5b32743d2c1468545752706ef405a61fb2ff491ca370af7"
     }
   },
   "artifacts": [
@@ -414,6 +426,9 @@
         "AC-108",
         "AC-109",
         "AC-11",
+        "AC-110",
+        "AC-111",
+        "AC-112",
         "AC-12",
         "AC-13",
         "AC-14",
@@ -604,7 +619,14 @@
         "FR-181",
         "FR-182",
         "FR-183",
+        "FR-184",
+        "FR-185",
+        "FR-186",
+        "FR-187",
+        "FR-188",
+        "FR-189",
         "FR-19",
+        "FR-190",
         "FR-2",
         "FR-20",
         "FR-21",
@@ -741,17 +763,19 @@
         "NFR-50",
         "NFR-51",
         "NFR-52",
+        "NFR-53",
+        "NFR-54",
         "NFR-6",
         "NFR-7",
         "NFR-8",
         "NFR-9"
       ],
-      "source_hash": "f7c451e5997b463bfe6a064ec7354476d097796106d84dd0c778098444b4f4b1",
+      "source_hash": "fb8c28d9eb8f27bec009fb45bc11918daed2194c39b8019a00e6d51d612e1b1b",
       "approval": {
         "human": "siva-rgb (owner)",
-        "reason": "M49 round 1 close: FR-177 states the role_turns refusals (F-A); NFR-50 names the role_turns column (F-B)",
-        "at": "2026-11-07T15:43:52.929Z",
-        "source_hash": "f7c451e5997b463bfe6a064ec7354476d097796106d84dd0c778098444b4f4b1"
+        "reason": "Owner approved the correction of P5A-D20 and FR-187 on 2026-11-09 (child reservation recorded in the child manifest).",
+        "at": "2026-11-09T12:23:32.934Z",
+        "source_hash": "fb8c28d9eb8f27bec009fb45bc11918daed2194c39b8019a00e6d51d612e1b1b"
       }
     }
   ],
@@ -2711,6 +2735,46 @@
       "status": "accepted",
       "source": null,
       "recorded_at": "2026-11-09T10:28:48.424Z"
+    },
+    {
+      "id": "DECISION-8b115c86",
+      "title": "P5A increment 2: delegation tool design choices",
+      "text": "Owner, 2026-11-09, choosing every recommended option: (1) child budget: each spawn reserves a fixed share of the parent's remaining budget, a BudgetPolicy default, nested as FR-68 does, unspent returned to the parent; (2) child files: the tool call names paths in the parent's workspace, copied into the child's fresh workspace through the checked tar (FR-175), recorded by SHA-256, the child's answer returned as text; (3) nesting: one level only, children get no delegation tool; (4) approval: a spawn is auto by default and a caller can require approval. Increment 2 follows P5A-D3: every spawn through SubagentPool, budget leases, the sandbox and the approval manager; plans stay DAG-only.",
+      "status": "accepted",
+      "source": null,
+      "recorded_at": "2026-11-09T12:11:11.862Z"
+    },
+    {
+      "id": "DECISION-12da8165",
+      "title": "M52 pre-flight: live spend",
+      "text": "Owner, 2026-11-09: M52 may spend up to 1 USD live (example 44 against the gateway), within the 20 USD cap of which about 10.15 USD is spent. M53's comparison rerun is budgeted at its own pre-flight.",
+      "status": "accepted",
+      "source": null,
+      "recorded_at": "2026-11-09T12:22:18.456Z"
+    },
+    {
+      "id": "DECISION-764be0d8",
+      "title": "Spec correction: a child's reservation is in its own manifest",
+      "text": "Owner, 2026-11-09: P5A-D20 and FR-187 said a delegated child's reservation is named in the parent manifest's budget_reservations, but a manifest is written once at its run's start (FR-11), before any child exists. Corrected: the child's own manifest names its reservation and its runs row names the parent by parent_run_id. No migration. Found at M52's start, before any code.",
+      "status": "accepted",
+      "source": null,
+      "recorded_at": "2026-11-09T12:23:31.943Z"
+    },
+    {
+      "id": "DECISION-83758f9e",
+      "title": "M52 live runs and pre-review: example 44 live 4 of 4; F1, F2 and N1 repaired in M52; N2 to N4 left as designed",
+      "text": "Live (openai.gpt-4o-mini, under 0.01 USD of the 1 USD cap): the first run hung on the child's export approval; the run was stopped and its two rows deleted by id, and checks 1 and 2 now refuse every interruption. Check 1's read rule was widened twice to the shapes the live model used (a command naming the file, then read_workspace_file plus a program with the numbers typed in), each with a test; live then passed 4 of 4. Mutants: two survivors (a parent that may not call delegates; the child's lease not released) were killed by new tests; the unreachable except MaxDepthExceeded was removed; the final run on the gated code caught 36 of 36. Pre-review: F1, repeated provider tool-call ids collided as reservation ids, is fixed with a fresh uuid per call; F2, a plan-scope or snapshot child shared or copied the parent's workspace, is refused at Delegation; N1, a child's egress wider than its parent's, is refused at AgentSpec. N2 to N4 were left as designed or unreachable, with reasons in the review brief. Gates unit 59, regression 3794 and docker 196 pass on source hash 056b6401b110.",
+      "status": "accepted",
+      "source": null,
+      "recorded_at": "2026-11-09T15:43:35.474Z"
+    },
+    {
+      "id": "DECISION-19fe7dc3",
+      "title": "M52 round 1 (Fable 5.1) approved; F1 and F2 repaired in M52, the match= checks too, no further review (owner)",
+      "text": "Round 1 approved with two non-blocking findings; under DECISION-c697f36c it is the last round, and both are repaired in M52 (owner rule: close everything in the round). F2: Orchestrator._refuse_unrunnable_roles opened a role with no depth, so a delegating plan role passed the C6 pre-check and failed at spawn as a node_error that invited a replan. Repaired by an explicit refusal, api._refuse_child_delegation, called in the role pre-check and by _refuse_delegation; depth was not set on the probe config. A critic needs no guard: FR-101 refuses a critic with tools. A test with a control fails with the guard removed. F1: five checks keyed on error text, plus a sixth the reviewer missed (run_parent picked children by a result's content prefix). A tool-raised failure reaches the model as ToolExecutionError, so the three tool-error checks key on that, each beside a control differing in one field; the two unknown-tool checks key on the provenance source urn:agentsdk:tool-error:ToolNotFound. Owner choice: DECISION-94bfee7c covers pytest.raises(match=), so M52's 11 are ValueError checks beside one-field controls, from M52 on; earlier milestones' uses are unchanged. Owner choice: README row 43, an M51 omission, added in M52. Mutants: 38 of 38 caught (two added for F2). Gates unit 61, regression 3796 and docker 196 pass on source hash df0acaee2fcb.",
+      "status": "accepted",
+      "source": null,
+      "recorded_at": "2026-11-09T20:15:47.381Z"
     }
   ],
   "knowledge": [
@@ -4111,9 +4175,9 @@
           "status": "pass",
           "evidence": {
             "human": "siva-rgb (owner)",
-            "reason": "M49 round 1 close: FR-177 states the role_turns refusals (F-A); NFR-50 names the role_turns column (F-B)",
-            "source_hash": "96af195668d6bdf8a622b011d46760892cf8bc7705b14f35b60b467e01f9468e",
-            "observed_at": "2026-11-07T15:43:52.929Z"
+            "reason": "Owner approved the correction of P5A-D20 and FR-187 on 2026-11-09 (child reservation recorded in the child manifest).",
+            "source_hash": "70d2476e6b8346dcd9407b6d67bc58972c4c9b1383876ead6e86126ed891c213",
+            "observed_at": "2026-11-09T12:23:32.934Z"
           }
         }
       ],
@@ -4123,7 +4187,7 @@
       "failures": [],
       "limitations": [],
       "created_at": "2026-09-05T14:48:57.897Z",
-      "updated_at": "2026-11-07T15:43:52.929Z"
+      "updated_at": "2026-11-09T12:23:32.934Z"
     },
     {
       "id": "M1-primitives",
@@ -7781,6 +7845,185 @@
       "limitations": [],
       "created_at": "2026-11-05T14:39:54.725Z",
       "updated_at": "2026-11-09T10:31:10.943Z"
+    },
+    {
+      "id": "M52-delegation-tool",
+      "outcome": "A general agent delegates a piece of its task to a general subagent through delegate_task: a nested reservation of its budget, only the named files in a fresh workspace, one level deep, approval when required, and children cancelled with their parent, on both stores",
+      "state": "done",
+      "risk": "high",
+      "owner": null,
+      "scope": [],
+      "dependencies": [],
+      "requirements": [
+        "FR-184",
+        "FR-185",
+        "FR-186",
+        "FR-187",
+        "AC-110",
+        "NFR-53",
+        "NFR-54"
+      ],
+      "gates": [
+        {
+          "id": "unit",
+          "command": ".venv\\Scripts\\python.exe -m pytest tests/test_delegation.py -q -p no:cacheprovider",
+          "mandatory": true,
+          "status": "pass",
+          "evidence": {
+            "path": ".genesis/evidence/M52-delegation-tool-unit.json",
+            "source_hash": "df0acaee2fcbfe6a2abddd893d719d4c7a5bc21fdf55e97531722022b8fbcc9e",
+            "hash": "57ccfa31e13a5e17e052ee499ef95b8db4b2344e32e50615a615a60dbb8082ba",
+            "observed_at": "2026-11-09T17:54:53.526Z"
+          }
+        },
+        {
+          "id": "regression",
+          "command": ".venv\\Scripts\\python.exe -m pytest -q -p no:cacheprovider",
+          "mandatory": true,
+          "status": "pass",
+          "evidence": {
+            "path": ".genesis/evidence/M52-delegation-tool-regression.json",
+            "source_hash": "df0acaee2fcbfe6a2abddd893d719d4c7a5bc21fdf55e97531722022b8fbcc9e",
+            "hash": "590665215af33de2c25b1aa68cf9df20f517a9faea1f353d0f675e6a6ca038fe",
+            "observed_at": "2026-11-09T18:37:42.044Z"
+          }
+        },
+        {
+          "id": "docker",
+          "command": ".venv\\Scripts\\python.exe -m pytest tests/test_workspace.py tests/test_workspace_tools.py tests/test_workspace_plan.py tests/test_docker_provider.py tests/test_sandbox_contention.py tests/test_compute.py tests/test_egress.py tests/test_sandboxed_mcp.py tests/test_snapshots.py tests/test_increment2_contention.py tests/test_plain_budgets.py tests/test_general_preset.py tests/test_adr12_sandbox.py tests/test_general_contention.py tests/test_delegation.py -m docker -q -p no:cacheprovider",
+          "mandatory": true,
+          "status": "pass",
+          "evidence": {
+            "path": ".genesis/evidence/M52-delegation-tool-docker.json",
+            "source_hash": "df0acaee2fcbfe6a2abddd893d719d4c7a5bc21fdf55e97531722022b8fbcc9e",
+            "hash": "ce4a5da2cc706c9396d7f2d1956c265ebb4c6a4fbd6edce0acc813d4e0f8521c",
+            "observed_at": "2026-11-09T20:13:53.081Z"
+          }
+        },
+        {
+          "id": "independent-review",
+          "command": "",
+          "mandatory": true,
+          "status": "pass",
+          "evidence": {
+            "human": "siva-rgb (owner)",
+            "reason": "M52 round 1 (Fable 5.1) approved with two non-blocking findings; F1 and F2 repaired in M52 with no further review under DECISION-c697f36c (DECISION-19fe7dc3); gates pass on df0acaee2fcb",
+            "source_hash": "df0acaee2fcbfe6a2abddd893d719d4c7a5bc21fdf55e97531722022b8fbcc9e",
+            "observed_at": "2026-11-10T02:43:55.048Z"
+          }
+        }
+      ],
+      "next_action": "Run the task pre-flight.",
+      "blocker": null,
+      "notes": [],
+      "failures": [],
+      "limitations": [],
+      "created_at": "2026-11-09T12:20:42.077Z",
+      "updated_at": "2026-11-10T02:44:29.812Z"
+    },
+    {
+      "id": "M53-delegation-comparison",
+      "outcome": "The ADR-12 comparison gains delegation tasks, reports whether each run delegated, and is rerun on every task three times on both arms",
+      "state": "active",
+      "risk": "high",
+      "owner": null,
+      "scope": [],
+      "dependencies": [],
+      "requirements": [
+        "FR-188",
+        "FR-189",
+        "AC-111",
+        "NFR-53"
+      ],
+      "gates": [
+        {
+          "id": "unit",
+          "command": ".venv\\Scripts\\python.exe -m pytest tests/test_adr12_delegation.py tests/test_adr12_sandbox.py tests/test_adr12_comparison.py -q -p no:cacheprovider",
+          "mandatory": true,
+          "status": "pending",
+          "evidence": null
+        },
+        {
+          "id": "regression",
+          "command": ".venv\\Scripts\\python.exe -m pytest -q -p no:cacheprovider",
+          "mandatory": true,
+          "status": "pending",
+          "evidence": null
+        },
+        {
+          "id": "docker",
+          "command": ".venv\\Scripts\\python.exe -m pytest tests/test_workspace.py tests/test_workspace_tools.py tests/test_workspace_plan.py tests/test_docker_provider.py tests/test_sandbox_contention.py tests/test_compute.py tests/test_egress.py tests/test_sandboxed_mcp.py tests/test_snapshots.py tests/test_increment2_contention.py tests/test_plain_budgets.py tests/test_general_preset.py tests/test_adr12_sandbox.py tests/test_general_contention.py tests/test_delegation.py tests/test_adr12_delegation.py -m docker -q -p no:cacheprovider",
+          "mandatory": true,
+          "status": "pending",
+          "evidence": null
+        },
+        {
+          "id": "independent-review",
+          "command": "",
+          "mandatory": true,
+          "status": "pending",
+          "evidence": null
+        }
+      ],
+      "next_action": "Run the task pre-flight.",
+      "blocker": null,
+      "notes": [],
+      "failures": [],
+      "limitations": [],
+      "created_at": "2026-11-09T12:20:42.498Z",
+      "updated_at": "2026-11-09T12:20:42.499Z"
+    },
+    {
+      "id": "M54-delegation-contention",
+      "outcome": "Delegating general agents of two tenancies hold child reservations, file bounds, depth, approval, tenancy and cancellation under contention on both stores, Phase 5A increment 2 exit signal",
+      "state": "queued",
+      "risk": "high",
+      "owner": null,
+      "scope": [],
+      "dependencies": [],
+      "requirements": [
+        "FR-190",
+        "AC-112",
+        "NFR-53",
+        "NFR-54"
+      ],
+      "gates": [
+        {
+          "id": "unit",
+          "command": ".venv\\Scripts\\python.exe -m pytest tests/test_delegation_contention.py -q -p no:cacheprovider",
+          "mandatory": true,
+          "status": "pending",
+          "evidence": null
+        },
+        {
+          "id": "regression",
+          "command": ".venv\\Scripts\\python.exe -m pytest -q -p no:cacheprovider",
+          "mandatory": true,
+          "status": "pending",
+          "evidence": null
+        },
+        {
+          "id": "docker",
+          "command": ".venv\\Scripts\\python.exe -m pytest tests/test_workspace.py tests/test_workspace_tools.py tests/test_workspace_plan.py tests/test_docker_provider.py tests/test_sandbox_contention.py tests/test_compute.py tests/test_egress.py tests/test_sandboxed_mcp.py tests/test_snapshots.py tests/test_increment2_contention.py tests/test_plain_budgets.py tests/test_general_preset.py tests/test_adr12_sandbox.py tests/test_general_contention.py tests/test_delegation.py tests/test_adr12_delegation.py tests/test_delegation_contention.py -m docker -q -p no:cacheprovider",
+          "mandatory": true,
+          "status": "pending",
+          "evidence": null
+        },
+        {
+          "id": "independent-review",
+          "command": "",
+          "mandatory": true,
+          "status": "pending",
+          "evidence": null
+        }
+      ],
+      "next_action": "Run the task pre-flight.",
+      "blocker": null,
+      "notes": [],
+      "failures": [],
+      "limitations": [],
+      "created_at": "2026-11-09T12:20:42.949Z",
+      "updated_at": "2026-11-09T12:20:42.950Z"
     }
   ],
   "learning_proposals": [],
@@ -9827,6 +10070,33 @@
       "task": "M51-general-contention",
       "human": "siva-rgb (owner)",
       "reason": "round 1 (Fable 5.1) approval kept; F1 repaired per DECISION-8d85c1d3, comparison rerun, gates rerun on aae13f2b",
+      "revision": null
+    },
+    {
+      "id": "51164e08-3ad5-4233-92b3-57f618250d97",
+      "at": "2026-11-09T12:23:31.477Z",
+      "action": "requeue",
+      "task": "M52-delegation-tool",
+      "human": null,
+      "reason": null,
+      "revision": null
+    },
+    {
+      "id": "9cdfdb73-cad8-42ca-959f-9d6473b9249a",
+      "at": "2026-11-09T16:33:11.706Z",
+      "action": "approve",
+      "task": "M52-delegation-tool",
+      "human": "Fable 5.1 (independent L4 reviewer, M52 round 1)",
+      "reason": "M52 round 1 on tree hash 056b6401: approved, nothing blocking. Verified first-hand: governor arithmetic in USD, tokens, both units and with an unpriced spend (11 probes), sequential holds sum to the ceiling and the second sees the first, a refusal after the reservation (max_tasks_per_run, FR-69 unpriced child) releases the lease and restores the parent, cancellation while a child runs, waits for a slot or awaits approval leaves no reservation, no extra child and no workspace, N4 unreachable through the tool, egress check exact by the FR-159 grammar, NFR-53 shown identical against the 188ba43 tree on Postgres for a plain budgeted run and a 3-node plan with only the preset version and hashes moving, unit file 59 passed, live example 44 four of four in 47 s with no sleep gap, store and Docker back to baseline. Two non-blocking findings to fix in M52 under DECISION-c697f36c: (1) DECISION-94bfee7c text-keyed checks: example 44 check 3 keys on the phrase no such tool in the result text (scripts/44_delegation.py:344) and tests/test_delegation.py lines 494, 504, 508 and 520 key on error text, while ToolCalled.error_type (ToolNotFound, ToolExecutionError) is available in both stores; (2) an orchestrator role that delegates passes _refuse_unrunnable_roles, which opens roles with depth None, and fails mid-plan as node_error after spend with a replan prompt, against the M21 C6 contract that an unrunnable role is refused before anything is spent.",
+      "revision": null
+    },
+    {
+      "id": "8c66f224-65d5-4fec-86a2-dd2c4bf55582",
+      "at": "2026-11-10T02:43:55.048Z",
+      "action": "approve",
+      "task": "M52-delegation-tool",
+      "human": "siva-rgb (owner)",
+      "reason": "M52 round 1 (Fable 5.1) approved with two non-blocking findings; F1 and F2 repaired in M52 with no further review under DECISION-c697f36c (DECISION-19fe7dc3); gates pass on df0acaee2fcb",
       "revision": null
     }
   ],

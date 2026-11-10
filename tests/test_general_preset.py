@@ -2,7 +2,7 @@
 DECISION-8aa24890, DECISION-05d0a716).
 
 `general_agent(...)` (`agentsdk.presets`) returns a `GeneralAgent`: an `AgentSpec` with the shipped
-instructions, the five workspace tools and a `WorkspaceSpec`, marked `preset=("general", "general-v4")`,
+instructions, the five workspace tools and a `WorkspaceSpec`, marked `preset=("general", "general-v5")`,
 and `config()` giving a `RunConfig` with its budget, 40 turns and `ContextPolicy()`. `run_command` is
 `auto`; `export_workspace_file` follows the new `WorkspaceSpec.export_approval`, `REQUIRE_APPROVAL` in
 the preset and `AUTO` everywhere else. `WorkspaceSpec.files` is written into a run's workspace when
@@ -211,7 +211,7 @@ def test_the_preset_is_a_general_agent_with_the_workspace_tools_and_no_other():
     assert spec.instructions == GENERAL_INSTRUCTIONS
     assert spec.tool_profile == GENERAL_TOOLS == ("run_command", "read_workspace_file", "write_workspace_file",
                                                   "list_workspace", "export_workspace_file")
-    assert spec.preset == ("general", "general-v4")
+    assert spec.preset == ("general", "general-v5")
     assert spec.permission_policy is None
     space = spec.workspace
     assert space.image == FAKE_IMAGE and space.keep is False and space.scope == "run" and space.egress == ()
@@ -253,7 +253,7 @@ def test_every_argument_reaches_the_spec_it_names():
 def test_a_caller_text_is_not_recorded_as_the_shipped_version():
     """A changed text is a new version (FR-176): the shipped version names the shipped text only."""
     assert preset(instructions="be brief").spec.preset == ("general", "custom")
-    assert preset(instructions=GENERAL_INSTRUCTIONS).spec.preset == ("general", "general-v4")
+    assert preset(instructions=GENERAL_INSTRUCTIONS).spec.preset == ("general", "general-v5")
 
 
 def test_the_shipped_registry_is_used_when_none_is_given():
@@ -303,7 +303,7 @@ def test_the_instructions_name_no_provider_model_or_provider_feature():
 
 def test_the_instructions_ship_as_sdk_source_with_their_version():
     source = (REPO / "agentsdk" / "presets.py").read_text(encoding="utf-8")
-    assert "general-v4" in source and "general-subagent-v1" in source
+    assert "general-v5" in source and "general-subagent-v1" in source
 
 
 # =================================================================================================
@@ -514,7 +514,7 @@ def test_the_columns_exist_as_nullable_jsonb():
 async def test_the_manifest_names_the_preset_and_its_version():
     result, _, _, _ = await run_preset("postgres", [])
     preset_, role_turns, _ = await manifest_columns(result.run_id)
-    assert preset_ == {"name": "general", "version": "general-v4"} and role_turns is None
+    assert preset_ == {"name": "general", "version": "general-v5"} and role_turns is None
 
 
 async def test_a_run_without_the_preset_records_no_preset():
@@ -874,10 +874,10 @@ async def test_a_shipped_mark_on_a_changed_text_is_recorded_as_custom():
     agent = preset(run_command_approval=ApprovalPolicy.AUTO)
     changed = GeneralAgent(spec=dataclasses.replace(agent.spec, instructions="my own text"), budget=agent.budget,
                            max_turns=agent.max_turns, context_policy=agent.context_policy)
-    assert changed.spec.preset == ("general", "general-v4"), "the mark itself is left as it was"
+    assert changed.spec.preset == ("general", "general-v5"), "the mark itself is left as it was"
     kept, _, _, _ = await run_preset("postgres", [], agent=agent)
     result, _, _, _ = await run_preset("postgres", [], agent=changed)
-    assert (await manifest_columns(kept.run_id))[0] == {"name": "general", "version": "general-v4"}
+    assert (await manifest_columns(kept.run_id))[0] == {"name": "general", "version": "general-v5"}
     assert (await manifest_columns(result.run_id))[0] == {"name": "general", "version": "custom"}
 
 
