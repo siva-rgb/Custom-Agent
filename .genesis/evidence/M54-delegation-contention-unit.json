@@ -1,0 +1,22 @@
+{
+  "task": "M54-delegation-contention",
+  "gate": "unit",
+  "command": ".venv\\Scripts\\python.exe -m pytest tests/test_delegation_contention.py -q -p no:cacheprovider",
+  "started_at": "2026-11-12T07:43:24.085Z",
+  "observed_at": "2026-11-12T07:46:08.618Z",
+  "exit_code": 0,
+  "signal": null,
+  "stdout": "...................................................                      [100%]\r\n51 passed, 20 deselected in 162.50s (0:02:42)\r\n",
+  "stderr": "",
+  "revision": {
+    "commit": "f91578bbbf0e1df4723e262e5ac33838d7f64a43",
+    "dirty": true
+  },
+  "source_hash": "c38e27bb3d0ca2394c83989694c248557bc7739fc947c536e8069371ed6c3df7",
+  "environment": {
+    "node": "v20.10.0",
+    "platform": "win32",
+    "arch": "x64"
+  },
+  "hash": "0de23c08bac796b58b6d5dfde4836b5eae55c05f608f0545eac65935510005be"
+}

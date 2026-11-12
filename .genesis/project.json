@@ -9,7 +9,7 @@
     "non_goals": [],
     "trust_boundary": "local repository",
     "created_at": "2026-09-05T14:48:57.894Z",
-    "updated_at": "2026-11-10T17:22:27.551Z"
+    "updated_at": "2026-11-12T12:11:27.804Z"
   },
   "policy": {
     "ponytail": "full",
@@ -23,11 +23,11 @@
     }
   },
   "lifecycle": {
-    "phase": "build",
-    "status": "active",
-    "active_task": "M54-delegation-contention",
+    "phase": "verify",
+    "status": "ready",
+    "active_task": null,
     "blocker": null,
-    "next_action": "Run the task pre-flight."
+    "next_action": "Review completed work and choose the next bounded outcome."
   },
   "commands": {},
   "workflow": {
@@ -2823,6 +2823,54 @@
       "status": "accepted",
       "source": "M53 round 1 verdict NB-5, confirmed by pytest --co",
       "recorded_at": "2026-11-10T13:33:26.639Z"
+    },
+    {
+      "id": "DECISION-61bead9f",
+      "title": "M54 pre-flight: FR-190 as written, gpt-4o-mini live 3 times, a 1 USD cap (owner)",
+      "text": "Owner, 2026-11-11, choosing every recommended option. KNOWLEDGE-19203186's question is settled by FR-190 as written: example 45's delegations and hostile calls are issued by scripted parents and children, and live the model is given each verbatim (declining fails its check), so the exit signal does not rest on a model choosing to delegate; no SPEC change, and M53's comparison zero stays as reported. Live: example 45 runs three times through the gateway on openai.gpt-4o-mini, on Docker and PostgreSQL, each run under tenancies of its own, cleaned up by id; every check holds on every run. Spend: up to 1 USD live within the 20 USD cap, of which about 15.06 USD is spent; the author stops and asks on reaching it.",
+      "status": "accepted",
+      "source": "M54 pre-flight answers, 2026-11-11",
+      "recorded_at": "2026-11-11T11:16:44.591Z"
+    },
+    {
+      "id": "DECISION-bd482fe5",
+      "title": "M54: live, example 45's nester stays scripted",
+      "text": "FR-190 says the hostile attempts are calls the example issues through scripted parents and children, and that live, the gateway model is given each attempt verbatim. One attempt cannot be given to a live model: the nester's child must call delegate_task, a tool it is not offered, and a model sees only the tools it has, so a live child declines and DEPTH would fail on every live run. So in live mode the nester, parent and child, stays scripted (s:scripted, priced at nothing); every other run is live on openai.gpt-4o-mini. FR-190 is unchanged; the M54 brief declares the exception. Owner's choice at M54, 2026-11-11, after the pre-review's F7.",
+      "status": "accepted",
+      "source": "siva-rgb (owner), M54 pre-review F7",
+      "recorded_at": "2026-11-11T17:18:56.960Z"
+    },
+    {
+      "id": "DECISION-7f7247eb",
+      "title": "M54 live evidence: run to three clean in a row, at most nine more",
+      "text": "Owner, 2026-11-11, after six live runs of example 45 on openai.gpt-4o-mini held every check twice (USD 0.050 spent). Every failure was traced in its rows. Example defects were fixed: the runaway's live ceiling (0.0015 let the model answer before it; now 0.0006, between a first call and that call with its child's, measured live), a repeated good delegation counted as a hostile spawn (now each good call's child is its own), and a mangled listing counted against FILES (now the two listings given decide). One failure was the model's: it added an argument to delegate_task, refused, so the runaway started no child; under FR-190 an attempt not made verbatim fails its check. Now: live runs continue until three consecutive runs hold every check, at most nine more (about USD 0.07); each failure is traced, an example defect fixed and a model deviation declared with its rows, in the brief. This refines DECISION-61bead9f's 'every check holds on every run'.",
+      "status": "accepted",
+      "source": "siva-rgb (owner), M54 live runs",
+      "recorded_at": "2026-11-11T17:48:49.208Z"
+    },
+    {
+      "id": "DECISION-06dc3b5b",
+      "title": "M54 mutation run and pre-review: F1-F7 repaired in M54",
+      "text": "The M54 mutation run (37 mutants on example 45's clauses and the library's delegation and workspace paths) ended with every mutant killed after new removals and tests. The rotated-model pre-review found F1-F7; all were repaired in M54: F1 a library fix (RunWorkspace takes stopping= from RunControl, so a cancel absorbed while a command's start is written never begins the command, which ends killed=cancelled); F2 the child's workspace is witnessed by its own list_workspace calls; F3 the bounds slack counts the children one turn starts together; F4 the transfer-bound removal no longer claims a firing; F5 live tenancies are unique per run and ceilings are set from measured costs; F7 ROWS needs a child's rows as well as a parent's. Live: 9 runs on gpt-4o-mini, the last 3 consecutive clean, about 0.073 USD.",
+      "status": "accepted",
+      "source": "scratchpad m54 mutate4-6.txt, prereview/",
+      "recorded_at": "2026-11-11T20:34:11.280Z"
+    },
+    {
+      "id": "DECISION-61282de5",
+      "title": "NFR-53 exception: the absorbed-cancel window at a command's start (M54 F1)",
+      "text": "Owner decision (siva-rgb, M54 round 1 close): the M54 F1 library fix is accepted as a second exception to NFR-53's 'exactly as before M52'. RunWorkspace now asks stopping= (control.requested) after WORKSPACE_COMMAND_STARTED is written and, if a cancel was absorbed during that write, never begins the command and ends it killed=cancelled. The window predates M52, so NFR-53 does not freeze it. A run never cancelled is unchanged by construction: requested=True is written only at handle.py:75, whose only caller is RunHandle.cancel (handle.py:319). Correction to DECISION-06dc3b5b: its CANCELLED repair did not make the check read the long command's own end, because killed=cancelled is stamped on every cancel path even when the kill fails (M54 round 1 F-A). That clause is repaired in M54 with kill_error and duration.",
+      "status": "accepted",
+      "source": "M54 round 1 review (Opus 5), F-A and F-E; owner answer 2026-11-12",
+      "recorded_at": "2026-11-12T05:55:54.501Z"
+    },
+    {
+      "id": "DECISION-f494e633",
+      "title": "M54 round 1 findings F-A, F-B, F-C repaired in M54 (no further review, DECISION-c697f36c)",
+      "text": "Round 1 (Opus 5) approved with nothing blocking; the owner chose to repair F-A, F-B and F-C in M54 and close. F-A: CANCELLED reads each long command's (killed, kill_error, duration_ms < _KILL_SECONDS) and needs ('cancelled', None, True), since an abandoned command runs at least the kill's bound past its start (Docker kills measured 1.4-1.6 s); the removal shaped to the check is replaced by three realistic ones: the command run out, a kill that raises, a kill that kills nothing. F-B: WORKSPACES' positive control: each tenancy snapshots its own kept workspace and releases the snapshot; the first also releases its workspace, its listing kept first as NOTHING_LEFT's subject, while the second's stays for aclose() (releasing both lost aclose()'s subject, which the Runner.aclose() removal caught); new removal: release and snapshot refused to everybody. F-C: the slack is slack(ceiling, largest, together, limit) = ceiling + largest * min(together, max_concurrent_subagents), with the Runner's own limit; tests pin the arithmetic and the limit. F-D accepted as unobservable; F-E recorded as DECISION-61282de5. Mutation: 47 mutants, 46 killed; the survivor (len(own) == 2 in WORKSPACES' subject) was implied by the reached clause and deleted. Offline 53 (with distribution 59), Docker 20/20, live gpt-4o-mini 4 runs, the last 3 clean (run 1: the runaway's first call, 0.000616, passed its 0.0006 ceiling, so delegate_task was refused and no child ran; the check failed for its absent subject, a model token deviation), 0.028 USD; live rows removed by tenancy.",
+      "status": "accepted",
+      "source": "M54 round 1 review; scratchpad m54 mutate7.txt, docker_r1.txt, live45d.txt",
+      "recorded_at": "2026-11-12T07:43:00.505Z"
     }
   ],
   "knowledge": [
@@ -4225,6 +4273,22 @@
       "source": "M53 round 1 verdict, 'What to carry into M54'; DECISION-3f05f648",
       "tags": [],
       "recorded_at": "2026-11-10T13:33:40.208Z"
+    },
+    {
+      "id": "KNOWLEDGE-5bb6df5d",
+      "title": "M54 live: example 45 held every check three runs in a row on gpt-4o-mini",
+      "text": "Under DECISION-7f7247eb, on Docker and PostgreSQL through the gateway, each run under tenancies of its own: runs 1 to 3 of the final set held all nine checks (USD 0.0085, 0.0069, 0.0078). Before it, six runs held twice; each failure traced in its rows: the runaway answered below a 0.0015 ceiling twice (now 0.0006, measured first calls USD 0.00043-0.00052, child calls 0.00029-0.00039), a piece repeated its good delegation (now each good call's child is its own), a child mangled a listing path to '. ' (now the two listings given decide), and once the model added an argument to delegate_task, refused, so its runaway started no child (a model deviation, failing its check under FR-190). Live spend for M54: USD 0.073 of its 1. Every run's rows were removed by its own tenancies (182 runs), and no Docker object of theirs remained.",
+      "source": "M54 live runs, scratchpad m54/live45*.txt",
+      "tags": [],
+      "recorded_at": "2026-11-11T17:51:33.167Z"
+    },
+    {
+      "id": "KNOWLEDGE-87998d9e",
+      "title": "Correction to DECISION-f494e633: M54 offline test count",
+      "text": "DECISION-f494e633 says 'Offline 53'; tests/test_delegation_contention.py has 51 offline tests (59 with tests/test_distribution.py). The M54 unit gate on source hash c38e27bb confirms 51 passed; regression 3910 passed; docker 218 passed.",
+      "source": ".genesis/evidence/M54-delegation-contention-unit.json",
+      "tags": [],
+      "recorded_at": "2026-11-12T10:14:55.768Z"
     }
   ],
   "tasks": [
@@ -8068,7 +8132,7 @@
     {
       "id": "M54-delegation-contention",
       "outcome": "Delegating general agents of two tenancies hold child reservations, file bounds, depth, approval, tenancy and cancellation under contention on both stores, Phase 5A increment 2 exit signal",
-      "state": "active",
+      "state": "done",
       "risk": "high",
       "owner": null,
       "scope": [],
@@ -8084,29 +8148,49 @@
           "id": "unit",
           "command": ".venv\\Scripts\\python.exe -m pytest tests/test_delegation_contention.py -q -p no:cacheprovider",
           "mandatory": true,
-          "status": "pending",
-          "evidence": null
+          "status": "pass",
+          "evidence": {
+            "path": ".genesis/evidence/M54-delegation-contention-unit.json",
+            "source_hash": "c38e27bb3d0ca2394c83989694c248557bc7739fc947c536e8069371ed6c3df7",
+            "hash": "0de23c08bac796b58b6d5dfde4836b5eae55c05f608f0545eac65935510005be",
+            "observed_at": "2026-11-12T07:46:08.618Z"
+          }
         },
         {
           "id": "regression",
           "command": ".venv\\Scripts\\python.exe -m pytest -q -p no:cacheprovider",
           "mandatory": true,
-          "status": "pending",
-          "evidence": null
+          "status": "pass",
+          "evidence": {
+            "path": ".genesis/evidence/M54-delegation-contention-regression.json",
+            "source_hash": "c38e27bb3d0ca2394c83989694c248557bc7739fc947c536e8069371ed6c3df7",
+            "hash": "0c7c3614819e02fed0ab8b5fa85b979a3226b5435985f601e45347c30101ed11",
+            "observed_at": "2026-11-12T08:26:27.906Z"
+          }
         },
         {
           "id": "docker",
           "command": ".venv\\Scripts\\python.exe -m pytest tests/test_workspace.py tests/test_workspace_tools.py tests/test_workspace_plan.py tests/test_docker_provider.py tests/test_sandbox_contention.py tests/test_compute.py tests/test_egress.py tests/test_sandboxed_mcp.py tests/test_snapshots.py tests/test_increment2_contention.py tests/test_plain_budgets.py tests/test_general_preset.py tests/test_adr12_sandbox.py tests/test_general_contention.py tests/test_delegation.py tests/test_adr12_delegation.py tests/test_delegation_contention.py -m docker -q -p no:cacheprovider",
           "mandatory": true,
-          "status": "pending",
-          "evidence": null
+          "status": "pass",
+          "evidence": {
+            "path": ".genesis/evidence/M54-delegation-contention-docker.json",
+            "source_hash": "c38e27bb3d0ca2394c83989694c248557bc7739fc947c536e8069371ed6c3df7",
+            "hash": "a22e99df7092cfaa172aa670ee7fd3583b10aba9703ecdb69fe17f0fae8a8a41",
+            "observed_at": "2026-11-12T10:14:35.627Z"
+          }
         },
         {
           "id": "independent-review",
           "command": "",
           "mandatory": true,
-          "status": "pending",
-          "evidence": null
+          "status": "pass",
+          "evidence": {
+            "human": "siva-rgb (owner)",
+            "reason": "M54 round 1 (Opus 5, independent L4 reviewer) approved with nothing blocking; under DECISION-c697f36c it is the last round. Its findings F-A, F-B and F-C were repaired in M54 (DECISION-f494e633), F-E recorded as an owner exception (DECISION-61282de5), F-D accepted as unobservable, F-F and F-G declared. The orchestrator verified each finding first-hand; mutation 46/46 killed after one redundant clause was deleted; gates pass on source hash c38e27bb (unit 51, regression 3910, docker 218).",
+            "source_hash": "c38e27bb3d0ca2394c83989694c248557bc7739fc947c536e8069371ed6c3df7",
+            "observed_at": "2026-11-12T12:11:22.084Z"
+          }
         }
       ],
       "next_action": "Run the task pre-flight.",
@@ -8115,7 +8199,7 @@
       "failures": [],
       "limitations": [],
       "created_at": "2026-11-09T12:20:42.949Z",
-      "updated_at": "2026-11-09T12:20:42.950Z"
+      "updated_at": "2026-11-12T12:11:27.803Z"
     }
   ],
   "learning_proposals": [],
@@ -10207,6 +10291,24 @@
       "task": "M53-delegation-comparison",
       "human": "siva-rgb (owner)",
       "reason": "M53 round 1 (Fable 5.1) approved with nothing blocking; its notes repaired in M53 with no further review under DECISION-c697f36c (DECISION-222260a8, DECISION-0c9d61ef): NB-1 partial Claude usage priced by total_cost_usd with tokens unavailable, NB-2 comment and KNOWLEDGE-f55645fe, the verifier and _package/_site compared as canonical JSON, NB-4 RecursionError a failed row. 12 new tests red before their fixes; 55 of 55 mutants killed and restored; gates on 28501bca: unit 335, regression 3859, docker 198 passed, kept awake. Re-approved in the owner's name at the owner's instruction, 2026-11-10.",
+      "revision": null
+    },
+    {
+      "id": "0dddf7a1-e1cd-49c4-8995-c78733d6d2d0",
+      "at": "2026-11-12T05:25:14.411Z",
+      "action": "approve",
+      "task": "M54-delegation-contention",
+      "human": "Opus 5 (independent L4 reviewer, M54 round 1)",
+      "reason": "Opus 5, independent L4 review of M54, round 1, with no memory of an earlier review of this project. Verified first hand: the three gates exit 0 at source hash df3db8b2 with empty stderr, unit 46 passed, regression 3905 passed, docker 218 passed with the docker marker in its command; controls 232 and the governance diff against f91578b; the SPEC wording of FR-190, NFR-53, NFR-54, AC-112 and P5A-D17; exactly one for_run call site, one RunWorkspace construction and one provider.run call site, so the F1 checkpoint closes the window on every provider and every store by construction; and control.requested set only by RunHandle.cancel, so a run never cancelled is provably unchanged, which is firmer than a byte comparison of 60 runs. One live run on DockerProvider and PostgreSQL held all nine checks at the first attempt, about USD 0.004, its rows removed by its own two tenancies. Approved with four findings to fix in M54, none blocking. One, CANCELLED reads only the killed label, which the cancel path sets unconditionally: with the provider kill raising on both children all nine checks still pass, while the same event carries kill_error RuntimeError and duration_ms 10047, and the matching removal needs a second rewrite to fail. Two, WORKSPACES has no positive control: making release and snapshot refuse every tenancy including the owner leaves all nine passing. Three, the BOUNDS fan out factor is unpinned, since slack squared and slack with the fan out dropped both survive all 46 offline tests, and the factor is uncapped by max_concurrent_subagents against P5A-D17. Four, the library repair meets NFR-53 in substance as an FR-50 and FR-148 conformance fix for a defect older than M52, but not in its letter, and no owner record carries that exception. The new forget line is untested but unobservable. Every mutant applied by SHA-256 and was restored byte for byte; tree, database and Docker are back at baseline.",
+      "revision": null
+    },
+    {
+      "id": "b4c4467e-915a-4c0e-bc04-389517f7ec65",
+      "at": "2026-11-12T12:11:22.084Z",
+      "action": "approve",
+      "task": "M54-delegation-contention",
+      "human": "siva-rgb (owner)",
+      "reason": "M54 round 1 (Opus 5, independent L4 reviewer) approved with nothing blocking; under DECISION-c697f36c it is the last round. Its findings F-A, F-B and F-C were repaired in M54 (DECISION-f494e633), F-E recorded as an owner exception (DECISION-61282de5), F-D accepted as unobservable, F-F and F-G declared. The orchestrator verified each finding first-hand; mutation 46/46 killed after one redundant clause was deleted; gates pass on source hash c38e27bb (unit 51, regression 3910, docker 218).",
       "revision": null
     }
   ],

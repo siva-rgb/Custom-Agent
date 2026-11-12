@@ -96,6 +96,8 @@ EXPECTED_EXAMPLES = {
     "43_general_contention.py",
     # FR-187 (M52): delegation.
     "44_delegation.py",
+    # FR-190 (M54): Phase 5A increment 2's exit signal.
+    "45_delegation_contention.py",
 }
 
 

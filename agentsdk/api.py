@@ -1423,6 +1423,7 @@ class Runner:
                                                  StoredEmit(control.store, events.emit), control.store,
                                                  plan_run_id=config.ledger_run_id if in_plan else None,
                                                  account=_Compute(config.budget_lease, meter),
+                                                 stopping=lambda: control.requested,
                                                  top=(StoredEmit(top[1].store, top[0].emit), top[1].store)
                                                  if in_plan else None)
             self._workspace_runs[run_id] = workspace

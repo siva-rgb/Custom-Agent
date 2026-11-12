@@ -320,8 +320,12 @@ class RunWorkspace:
     _stale = _shared("stale")
 
     def __init__(self, manager: WorkspaceManager, spec: WorkspaceSpec, tenant_id: str, project_id: str,
-                 run_id: str, emit: Emit, call: Call, space: _Space | None = None, account: Any = None) -> None:
+                 run_id: str, emit: Emit, call: Call, space: _Space | None = None, account: Any = None,
+                 stopping: Callable[[], bool] | None = None) -> None:
         self._manager, self.spec = manager, spec
+        # Whether the run has been asked to stop: asked after a command's start is written, as the
+        # loop's checkpoint is (M54 pre-review F1). None never stops.
+        self._stopping = stopping
         # FR-157: the run's own account for its commands' compute, asked before each command and
         # charged after it; None charges nothing. Never shared with another run of a plan workspace.
         self._account = account
@@ -513,6 +517,18 @@ class RunWorkspace:
             "command_id": command_id, "workspace_id": handle.workspace_id, "tool_call_id": tool_call_id,
             "argv": list(argv)})
         started_at, started = now(), time.monotonic()
+        if self._stopping is not None and self._stopping():
+            # M54 pre-review F1: a cancel that arrived while the start was written was absorbed by the
+            # store call (FR-50), so it is honoured here: the command never begins, and is recorded
+            # cancelled before the cancellation goes on (FR-148).
+            if self._space.reports is not None:
+                self._space.reports.put_nowait(_Forget(command_id))
+            never = CommandOutcome(exit_code=None, stdout=b"", stderr=b"", stdout_cut=False, stderr_cut=False,
+                                   stdout_bytes=0, stderr_bytes=0, duration=0.0, killed="cancelled", cpu_seconds=0.0)
+            with contextlib.suppress(Exception):  # the cancellation, not its record, decides how the run ends
+                await through(asyncio.ensure_future(
+                    self._finished(handle, command_id, argv, tool_call_id, started_at, started, never)))
+            raise asyncio.CancelledError()
         # The command runs as its own task, so a cancellation of this call reaches the kill below
         # first, and not the command's own ending half way (FR-148).
         running = asyncio.ensure_future(self._manager.provider.run(handle, list(argv), timeout=timeout,
@@ -711,7 +727,7 @@ class WorkspaceManager:
 
     def for_run(self, spec: WorkspaceSpec, tenant_id: str, project_id: str, run_id: str, emit: Emit,
                 call: Call, *, plan_run_id: str | None = None, account: Any = None,
-                top: tuple[Emit, Call] | None = None) -> RunWorkspace:
+                top: tuple[Emit, Call] | None = None, stopping: Callable[[], bool] | None = None) -> RunWorkspace:
         """A run's binding. Under `scope="plan"` every run of one top-level run (`plan_run_id`,
         or the run itself) and one spec shares a workspace, recorded under that top-level run; no
         other plan's run reaches it (FR-152). `top` is that run's emitter and store call: a
@@ -731,7 +747,7 @@ class WorkspaceManager:
                     space.owner = _Binding(top_id, *top)
                 else:  # no emitter of its own given: its rows, under it, with no event
                     space.owner = _Binding(top_id, _no_event, call)
-        return RunWorkspace(self, spec, tenant_id, project_id, run_id, emit, call, space, account)
+        return RunWorkspace(self, spec, tenant_id, project_id, run_id, emit, call, space, account, stopping)
 
     async def book(self, space: _Space, handle: WorkspaceHandle) -> None:
         """FR-162: records each report of a workspace's proxy, in order, for as long as it lives. A
